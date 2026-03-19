@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, Session } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,6 +30,12 @@ type IncidentRow = {
 };
 
 export default function Home() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
   const [vessel, setVessel] = useState("");
   const [species, setSpecies] = useState("");
   const [catchKg, setCatchKg] = useState("");
@@ -40,6 +46,22 @@ export default function Home() {
   const [incidents, setIncidents] = useState<IncidentRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setAuthLoading(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setAuthLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   async function loadBatches() {
     const { data, error } = await supabase
@@ -74,8 +96,10 @@ export default function Home() {
   }
 
   useEffect(() => {
-    loadAll();
-  }, []);
+    if (session) {
+      loadAll();
+    }
+  }, [session]);
 
   const totalCatch = useMemo(
     () => batches.reduce((sum, b) => sum + Number(b.catch_kg || 0), 0),
@@ -91,6 +115,45 @@ export default function Home() {
     () => incidents.filter((i) => i.status === "Open").length,
     [incidents]
   );
+
+  async function handleSignUp(e: FormEvent) {
+    e.preventDefault();
+    setMessage("");
+
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (error) {
+      setMessage(`Sign up failed: ${error.message}`);
+      return;
+    }
+
+    setMessage("Sign up successful. Check your email if confirmation is enabled.");
+  }
+
+  async function handleSignIn(e: FormEvent) {
+    e.preventDefault();
+    setMessage("");
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setMessage(`Sign in failed: ${error.message}`);
+      return;
+    }
+
+    setMessage("Signed in successfully.");
+  }
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    setMessage("Signed out.");
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -115,8 +178,7 @@ export default function Home() {
     }
 
     const loss = catchValue - storageValue;
-    const status =
-      loss > 25 ? "Flagged" : loss > 5 ? "Review" : "Normal";
+    const status = loss > 25 ? "Flagged" : loss > 5 ? "Review" : "Normal";
     const batchCode = `BAT-${Date.now()}`;
     const qrCode = `HG-${batchCode}`;
 
@@ -154,7 +216,7 @@ export default function Home() {
     }
 
     await supabase.from("audit_logs").insert({
-      actor_name: "Cameron Hendrick",
+      actor_name: session?.user.email || "Unknown",
       action: "Created batch",
       batch_code: batchCode,
       risk: status === "Flagged" ? "High" : status === "Review" ? "Medium" : "Low",
@@ -183,7 +245,7 @@ export default function Home() {
     }
 
     await supabase.from("audit_logs").insert({
-      actor_name: "Cameron Hendrick",
+      actor_name: session?.user.email || "Unknown",
       action: "Resolved incident",
       batch_code: null,
       risk: "Low",
@@ -200,10 +262,50 @@ export default function Home() {
     return "#111827";
   }
 
+  if (authLoading) {
+    return <main style={{ fontFamily: "Arial", padding: 40 }}>Loading...</main>;
+  }
+
+  if (!session) {
+    return (
+      <main style={{ fontFamily: "Arial", padding: 40, maxWidth: 420, margin: "auto" }}>
+        <h1>HarborGuard</h1>
+        <p>Sign in to access the Fish Supply Chain Monitoring System.</p>
+
+        <form onSubmit={handleSignIn} style={{ display: "grid", gap: 10 }}>
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button type="submit">Sign In</button>
+          <button type="button" onClick={handleSignUp}>Sign Up</button>
+        </form>
+
+        {message ? <p style={{ marginTop: 12 }}>{message}</p> : null}
+      </main>
+    );
+  }
+
   return (
     <main style={{ fontFamily: "Arial", padding: 40, maxWidth: 1100, margin: "auto" }}>
-      <h1>HarborGuard</h1>
-      <p>Fish Supply Chain Monitoring System</p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <h1>HarborGuard</h1>
+          <p>Fish Supply Chain Monitoring System</p>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <p style={{ margin: 0 }}>{session.user.email}</p>
+          <button onClick={handleSignOut}>Sign Out</button>
+        </div>
+      </div>
 
       <hr />
 
