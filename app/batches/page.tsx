@@ -41,6 +41,12 @@ function statusColor(status: string | null) {
   return "#111827";
 }
 
+function riskLabel(status: string | null) {
+  if (status === "Flagged") return "🔴 High Risk";
+  if (status === "Review") return "🟠 Medium Risk";
+  return "🟢 Low Risk";
+}
+
 export default function BatchesPage() {
   const [batches, setBatches] = useState<BatchRow[]>([]);
 
@@ -122,7 +128,10 @@ export default function BatchesPage() {
                         fontWeight: 800,
                       }}
                     >
-                      {batch.status}
+                      <div>{batch.status}</div>
+                      <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>
+                        {riskLabel(batch.status)}
+                      </div>
                     </td>
                   </tr>
                 ))}
