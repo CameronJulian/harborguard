@@ -7,6 +7,8 @@ import { CSSProperties } from "react";
 type Props = {
   email?: string | null;
   onSignOut: () => void;
+  isMobile?: boolean;
+  onNavigate?: () => void;
 };
 
 const cardStyle: CSSProperties = {
@@ -21,7 +23,7 @@ const mutedTextStyle: CSSProperties = {
   margin: 0,
 };
 
-export default function Sidebar({ email, onSignOut }: Props) {
+export default function Sidebar({ email, onSignOut, isMobile, onNavigate }: Props) {
   const pathname = usePathname();
 
   function navStyle(href: string): CSSProperties {
@@ -47,27 +49,29 @@ export default function Sidebar({ email, onSignOut }: Props) {
         ...cardStyle,
         padding: 24,
         alignSelf: "start",
-        position: "sticky",
+        position: isMobile ? "static" : "sticky",
         top: 20,
       }}
     >
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 36, lineHeight: 1.05, margin: "0 0 8px 0" }}>
-          HarborGuard
-        </h1>
-        <p style={{ ...mutedTextStyle, fontSize: 16 }}>
-          Fish Supply Chain Monitoring System
-        </p>
-      </div>
+      {!isMobile && (
+        <div style={{ marginBottom: 28 }}>
+          <h1 style={{ fontSize: 36, lineHeight: 1.05, margin: "0 0 8px 0" }}>
+            HarborGuard
+          </h1>
+          <p style={{ ...mutedTextStyle, fontSize: 16 }}>
+            Fish Supply Chain Monitoring System
+          </p>
+        </div>
+      )}
 
       <div style={{ display: "grid", gap: 10, marginBottom: 28 }}>
-        <Link href="/dashboard" style={navStyle("/dashboard")}>
+        <Link href="/dashboard" style={navStyle("/dashboard")} onClick={onNavigate}>
           Dashboard
         </Link>
-        <Link href="/batches" style={navStyle("/batches")}>
+        <Link href="/batches" style={navStyle("/batches")} onClick={onNavigate}>
           Recent Batches
         </Link>
-        <Link href="/incidents" style={navStyle("/incidents")}>
+        <Link href="/incidents" style={navStyle("/incidents")} onClick={onNavigate}>
           Incident Management
         </Link>
       </div>

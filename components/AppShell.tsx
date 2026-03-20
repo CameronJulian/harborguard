@@ -38,6 +38,7 @@ export default function AppShell({ children }: Props) {
   const [session, setSession] = useState<Session | null>(null);
   const [checking, setChecking] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     const updateLayout = () => setIsMobile(window.innerWidth < 980);
@@ -90,16 +91,59 @@ export default function AppShell({ children }: Props) {
 
   return (
     <main style={pageStyle}>
-      <div
-        style={{
-          ...shellStyle,
-          display: "grid",
-          gridTemplateColumns: isMobile ? "1fr" : "280px 1fr",
-          gap: 24,
-        }}
-      >
-        <Sidebar email={session?.user.email} onSignOut={handleSignOut} />
-        <section style={{ minWidth: 0 }}>{children}</section>
+      <div style={shellStyle}>
+        {isMobile && (
+          <div
+            style={{
+              ...cardStyle,
+              padding: 16,
+              marginBottom: 16,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 26, fontWeight: 800 }}>HarborGuard</div>
+              <div style={{ fontSize: 14, color: "#64748b" }}>Fish Supply Chain Monitoring System</div>
+            </div>
+
+            <button
+              onClick={() => setSidebarOpen((prev) => !prev)}
+              style={{
+                padding: "10px 14px",
+                borderRadius: 12,
+                border: "1px solid #d1d5db",
+                background: "#fff",
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              {sidebarOpen ? "Close" : "Menu"}
+            </button>
+          </div>
+        )}
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: isMobile ? "1fr" : "280px 1fr",
+            gap: 24,
+          }}
+        >
+          {(!isMobile || sidebarOpen) && (
+            <Sidebar
+              email={session?.user.email}
+              onSignOut={handleSignOut}
+              isMobile={isMobile}
+              onNavigate={() => {
+                if (isMobile) setSidebarOpen(false);
+              }}
+            />
+          )}
+
+          <section style={{ minWidth: 0 }}>{children}</section>
+        </div>
       </div>
     </main>
   );
