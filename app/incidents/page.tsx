@@ -38,6 +38,20 @@ function statusColor(status: string | null) {
   return "#111827";
 }
 
+function severityLabel(severity: string | null) {
+  if (severity === "High") return "🔴 Critical";
+  if (severity === "Medium") return "🟠 Elevated";
+  if (severity === "Low") return "🟢 Controlled";
+  return "⚪ Standard";
+}
+
+function statusLabel(status: string | null) {
+  if (status === "Open") return "🚨 Needs Action";
+  if (status === "Resolved") return "✅ Closed";
+  if (status === "Review") return "🟠 Under Review";
+  return "ℹ️ Logged";
+}
+
 export default function IncidentsPage() {
   const [incidents, setIncidents] = useState<IncidentRow[]>([]);
   const [message, setMessage] = useState("");
@@ -90,7 +104,7 @@ export default function IncidentsPage() {
       risk: "Low",
     });
 
-    setMessage("Incident resolved.");
+    setMessage("Incident resolved successfully.");
     await loadIncidents();
   }
 
@@ -121,7 +135,7 @@ export default function IncidentsPage() {
           <p style={mutedTextStyle}>No incidents yet.</p>
         ) : (
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}>
               <thead>
                 <tr>
                   {["Incident", "Severity", "Status", "Summary", "Action"].map((h) => (
@@ -148,7 +162,21 @@ export default function IncidentsPage() {
                     <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9", fontWeight: 700 }}>
                       {incident.incident_code}
                     </td>
-                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>{incident.severity}</td>
+
+                    <td
+                      style={{
+                        padding: 14,
+                        borderBottom: "1px solid #f1f5f9",
+                        color: statusColor(incident.severity),
+                        fontWeight: 800,
+                      }}
+                    >
+                      <div>{incident.severity}</div>
+                      <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>
+                        {severityLabel(incident.severity)}
+                      </div>
+                    </td>
+
                     <td
                       style={{
                         padding: 14,
@@ -157,15 +185,22 @@ export default function IncidentsPage() {
                         fontWeight: 800,
                       }}
                     >
-                      {incident.status}
+                      <div>{incident.status}</div>
+                      <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>
+                        {statusLabel(incident.status)}
+                      </div>
                     </td>
-                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>{incident.summary}</td>
+
+                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
+                      {incident.summary}
+                    </td>
+
                     <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
                       {incident.status !== "Resolved" ? (
                         <button
                           onClick={() => resolveIncident(incident.id)}
                           style={{
-                            padding: "8px 12px",
+                            padding: "10px 14px",
                             borderRadius: 10,
                             border: "none",
                             background: "#0f172a",
