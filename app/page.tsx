@@ -41,19 +41,25 @@ type IncidentRow = {
 
 type ViewSection = "dashboard" | "batches" | "incidents";
 
-const supabaseClient = supabase;
-
 const pageStyle: CSSProperties = {
   fontFamily: "Inter, Arial, sans-serif",
-  background: "#f3f4f6",
+  background: "linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%)",
   minHeight: "100vh",
-  color: "#111827",
+  color: "#0f172a",
+};
+
+const shellStyle: CSSProperties = {
+  maxWidth: 1450,
+  margin: "0 auto",
+  paddingLeft: 20,
+  paddingRight: 20,
+  paddingBottom: 20,
 };
 
 const cardStyle: CSSProperties = {
   background: "#ffffff",
-  borderRadius: 18,
-  boxShadow: "0 10px 30px rgba(15, 23, 42, 0.08)",
+  borderRadius: 20,
+  boxShadow: "0 12px 32px rgba(15, 23, 42, 0.08)",
   border: "1px solid #e5e7eb",
 };
 
@@ -72,7 +78,7 @@ const primaryButtonStyle: CSSProperties = {
   padding: "14px 16px",
   borderRadius: 12,
   border: "none",
-  background: "#2563eb",
+  background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
   color: "#fff",
   fontWeight: 700,
   cursor: "pointer",
@@ -89,22 +95,22 @@ const secondaryButtonStyle: CSSProperties = {
 };
 
 const sectionTitleStyle: CSSProperties = {
-  fontSize: 22,
+  fontSize: 28,
   fontWeight: 800,
   margin: "0 0 8px 0",
-  lineHeight: 1.2,
 };
 
 const mutedTextStyle: CSSProperties = {
-  color: "#6b7280",
+  color: "#64748b",
   margin: 0,
 };
 
 const labelStyle: CSSProperties = {
-  color: "#6b7280",
+  color: "#64748b",
   fontSize: 13,
   marginBottom: 6,
   display: "block",
+  fontWeight: 600,
 };
 
 export default function Home() {
@@ -128,24 +134,21 @@ export default function Home() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    const updateLayout = () => {
-      setIsMobile(window.innerWidth < 980);
-    };
-
+    const updateLayout = () => setIsMobile(window.innerWidth < 980);
     updateLayout();
     window.addEventListener("resize", updateLayout);
     return () => window.removeEventListener("resize", updateLayout);
   }, []);
 
   useEffect(() => {
-    supabaseClient.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setAuthLoading(false);
     });
 
     const {
       data: { subscription },
-    } = supabaseClient.auth.onAuthStateChange((_event, currentSession) => {
+    } = supabase.auth.onAuthStateChange((_event, currentSession) => {
       setSession(currentSession);
       setAuthLoading(false);
     });
@@ -154,7 +157,7 @@ export default function Home() {
   }, []);
 
   async function loadBatches() {
-    const { data, error } = await supabaseClient
+    const { data, error } = await supabase
       .from("batches")
       .select("id, batch_code, vessel, species, catch_kg, dock_kg, storage_kg, status, created_at")
       .order("created_at", { ascending: false });
@@ -168,7 +171,7 @@ export default function Home() {
   }
 
   async function loadIncidents() {
-    const { data, error } = await supabaseClient
+    const { data, error } = await supabase
       .from("incidents")
       .select("id, incident_code, severity, status, summary, created_at")
       .order("created_at", { ascending: false });
@@ -224,7 +227,7 @@ export default function Home() {
     e.preventDefault();
     setMessage("");
 
-    const { error } = await supabaseClient.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email,
       password,
     });
@@ -241,7 +244,7 @@ export default function Home() {
     e.preventDefault();
     setMessage("");
 
-    const { error } = await supabaseClient.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -255,7 +258,7 @@ export default function Home() {
   }
 
   async function handleSignOut() {
-    await supabaseClient.auth.signOut();
+    await supabase.auth.signOut();
     setMessage("Signed out.");
   }
 
@@ -288,7 +291,7 @@ export default function Home() {
 
     setLoading(true);
 
-    const { error } = await supabaseClient.from("batches").insert({
+    const { error } = await supabase.from("batches").insert({
       batch_code: batchCode,
       vessel,
       species,
@@ -311,7 +314,7 @@ export default function Home() {
     }
 
     if (status === "Flagged") {
-      await supabaseClient.from("incidents").insert({
+      await supabase.from("incidents").insert({
         incident_code: `INC-${Date.now()}`,
         severity: "High",
         status: "Open",
@@ -319,7 +322,7 @@ export default function Home() {
       });
     }
 
-    await supabaseClient.from("audit_logs").insert({
+    await supabase.from("audit_logs").insert({
       actor_name: session?.user.email || "Unknown",
       action: "Created batch",
       batch_code: batchCode,
@@ -338,7 +341,7 @@ export default function Home() {
   }
 
   async function resolveIncident(id: string) {
-    const { error } = await supabaseClient
+    const { error } = await supabase
       .from("incidents")
       .update({ status: "Resolved" })
       .eq("id", id);
@@ -348,7 +351,7 @@ export default function Home() {
       return;
     }
 
-    await supabaseClient.from("audit_logs").insert({
+    await supabase.from("audit_logs").insert({
       actor_name: session?.user.email || "Unknown",
       action: "Resolved incident",
       batch_code: null,
@@ -368,25 +371,39 @@ export default function Home() {
 
   function sidebarButtonStyle(section: ViewSection): CSSProperties {
     const active = activeSection === section;
+
     return {
       width: "100%",
       textAlign: "left",
-      padding: "12px 14px",
-      borderRadius: 12,
+      padding: "14px 16px",
+      borderRadius: 14,
       border: active ? "1px solid #bfdbfe" : "1px solid transparent",
       background: active ? "#dbeafe" : "transparent",
       color: active ? "#1d4ed8" : "#111827",
       fontWeight: active ? 800 : 600,
       cursor: "pointer",
+      transition: "all 0.2s ease",
+      fontSize: 15,
     };
   }
 
   if (authLoading) {
     return (
       <main style={pageStyle}>
-        <div style={{ maxWidth: 420, margin: "80px auto 0", ...cardStyle, padding: 32, textAlign: "center" }}>
-          <h1 style={{ marginTop: 0 }}>HarborGuard</h1>
-          <p style={mutedTextStyle}>Loading...</p>
+        <div
+          style={{
+            maxWidth: 1450,
+            margin: "0 auto",
+            paddingLeft: 20,
+            paddingRight: 20,
+            paddingTop: 90,
+            textAlign: "center",
+          }}
+        >
+          <div style={{ ...cardStyle, padding: 36, maxWidth: 460, margin: "0 auto" }}>
+            <h1 style={{ marginTop: 0, fontSize: 44 }}>HarborGuard</h1>
+            <p style={mutedTextStyle}>Loading...</p>
+          </div>
         </div>
       </main>
     );
@@ -395,51 +412,63 @@ export default function Home() {
   if (!session) {
     return (
       <main style={pageStyle}>
-        <div style={{ maxWidth: 470, margin: "60px auto 0", ...cardStyle, padding: 32 }}>
-          <div style={{ marginBottom: 24 }}>
-            <h1 style={{ fontSize: 42, margin: "0 0 8px 0", lineHeight: 1.05 }}>HarborGuard</h1>
-            <p style={{ ...mutedTextStyle, fontSize: 18 }}>
-              Sign in to access the Fish Supply Chain Monitoring System.
-            </p>
-          </div>
-
-          <form onSubmit={handleSignIn} style={{ display: "grid", gap: 12 }}>
-            <input
-              style={inputStyle}
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <input
-              style={inputStyle}
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <button type="submit" style={primaryButtonStyle}>
-              Sign In
-            </button>
-            <button type="button" onClick={handleSignUp} style={secondaryButtonStyle}>
-              Sign Up
-            </button>
-          </form>
-
-          {message ? (
-            <div
-              style={{
-                marginTop: 16,
-                padding: 12,
-                borderRadius: 12,
-                background: "#eff6ff",
-                border: "1px solid #bfdbfe",
-                color: "#1d4ed8",
-              }}
-            >
-              {message}
+        <div
+          style={{
+            maxWidth: 1450,
+            margin: "0 auto",
+            paddingLeft: 20,
+            paddingRight: 20,
+            paddingTop: 70,
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <div style={{ ...cardStyle, width: "100%", maxWidth: 500, padding: 36 }}>
+            <div style={{ marginBottom: 28 }}>
+              <h1 style={{ fontSize: 52, margin: "0 0 10px 0", lineHeight: 1.02 }}>HarborGuard</h1>
+              <p style={{ ...mutedTextStyle, fontSize: 20 }}>
+                Sign in to access the Fish Supply Chain Monitoring System.
+              </p>
             </div>
-          ) : null}
+
+            <form onSubmit={handleSignIn} style={{ display: "grid", gap: 14 }}>
+              <input
+                style={inputStyle}
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <input
+                style={inputStyle}
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button type="submit" style={primaryButtonStyle}>
+                Sign In
+              </button>
+              <button type="button" onClick={handleSignUp} style={secondaryButtonStyle}>
+                Sign Up
+              </button>
+            </form>
+
+            {message ? (
+              <div
+                style={{
+                  marginTop: 18,
+                  padding: 14,
+                  borderRadius: 12,
+                  background: "#eff6ff",
+                  border: "1px solid #bfdbfe",
+                  color: "#1d4ed8",
+                }}
+              >
+                {message}
+              </div>
+            ) : null}
+          </div>
         </div>
       </main>
     );
@@ -449,35 +478,76 @@ export default function Home() {
     <main style={pageStyle}>
       <div
         style={{
+          ...shellStyle,
           display: "grid",
-          gridTemplateColumns: isMobile ? "1fr" : "260px 1fr",
+          gridTemplateColumns: isMobile ? "1fr" : "280px 1fr",
           gap: 24,
-          maxWidth: 1400,
-          margin: "0 auto",
+          paddingTop: 20,
         }}
       >
         <aside
           style={{
             ...cardStyle,
-            padding: 20,
+            padding: 24,
             alignSelf: "start",
             position: isMobile ? "static" : "sticky",
             top: 20,
           }}
         >
-          <div style={{ marginBottom: 24 }}>
-            <h1 style={{ fontSize: 34, lineHeight: 1.05, margin: "0 0 8px 0" }}>HarborGuard</h1>
-            <p style={mutedTextStyle}>Fish Supply Chain Monitoring System</p>
+          <div style={{ marginBottom: 28 }}>
+            <h1 style={{ fontSize: 36, lineHeight: 1.05, margin: "0 0 8px 0" }}>HarborGuard</h1>
+            <p style={{ ...mutedTextStyle, fontSize: 16 }}>Fish Supply Chain Monitoring System</p>
           </div>
 
-          <div style={{ display: "grid", gap: 8, marginBottom: 24 }}>
-            <button style={sidebarButtonStyle("dashboard")} onClick={() => setActiveSection("dashboard")}>
+          <div style={{ display: "grid", gap: 10, marginBottom: 28 }}>
+            <button
+              style={sidebarButtonStyle("dashboard")}
+              onClick={() => setActiveSection("dashboard")}
+              onMouseEnter={(e) => {
+                if (activeSection !== "dashboard") {
+                  e.currentTarget.style.background = "#f1f5f9";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (activeSection !== "dashboard") {
+                  e.currentTarget.style.background = "transparent";
+                }
+              }}
+            >
               Dashboard
             </button>
-            <button style={sidebarButtonStyle("batches")} onClick={() => setActiveSection("batches")}>
+
+            <button
+              style={sidebarButtonStyle("batches")}
+              onClick={() => setActiveSection("batches")}
+              onMouseEnter={(e) => {
+                if (activeSection !== "batches") {
+                  e.currentTarget.style.background = "#f1f5f9";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (activeSection !== "batches") {
+                  e.currentTarget.style.background = "transparent";
+                }
+              }}
+            >
               Recent Batches
             </button>
-            <button style={sidebarButtonStyle("incidents")} onClick={() => setActiveSection("incidents")}>
+
+            <button
+              style={sidebarButtonStyle("incidents")}
+              onClick={() => setActiveSection("incidents")}
+              onMouseEnter={(e) => {
+                if (activeSection !== "incidents") {
+                  e.currentTarget.style.background = "#f1f5f9";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (activeSection !== "incidents") {
+                  e.currentTarget.style.background = "transparent";
+                }
+              }}
+            >
               Incident Management
             </button>
           </div>
@@ -521,17 +591,17 @@ export default function Home() {
                   display: "grid",
                   gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))",
                   gap: 20,
-                  marginBottom: 28,
+                  marginBottom: 24,
                 }}
               >
                 {[
                   { label: "Total Catch", value: `${totalCatch} kg` },
                   { label: "Stored", value: `${totalStored} kg` },
                   { label: "Open Incidents", value: openIncidents },
-                ].map((card, index) => (
-                  <div key={index} style={{ ...cardStyle, padding: 24 }}>
-                    <div style={{ color: "#6b7280", fontSize: 14, marginBottom: 10 }}>{card.label}</div>
-                    <div style={{ fontSize: 32, fontWeight: 800 }}>{card.value}</div>
+                ].map((item, index) => (
+                  <div key={index} style={{ ...cardStyle, padding: 26 }}>
+                    <div style={{ color: "#64748b", fontSize: 15, marginBottom: 12 }}>{item.label}</div>
+                    <div style={{ fontSize: 44, fontWeight: 800, lineHeight: 1 }}>{item.value}</div>
                   </div>
                 ))}
               </div>
@@ -540,10 +610,10 @@ export default function Home() {
                 style={{
                   display: "grid",
                   gridTemplateColumns: isMobile ? "1fr" : "1.45fr 1fr",
-                  gap: 20,
+                  gap: 24,
                 }}
               >
-                <div style={{ ...cardStyle, padding: 24 }}>
+                <div style={{ ...cardStyle, padding: 26 }}>
                   <h2 style={sectionTitleStyle}>Analytics</h2>
                   <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
                     Catch volume and storage behaviour across recent batches.
@@ -559,13 +629,13 @@ export default function Home() {
                     <div
                       style={{
                         border: "1px solid #e5e7eb",
-                        borderRadius: 14,
-                        padding: 16,
-                        height: 320,
+                        borderRadius: 16,
+                        padding: 18,
+                        height: 340,
                         background: "#fff",
                       }}
                     >
-                      <h3 style={{ marginTop: 0, marginBottom: 12 }}>Catch vs Storage</h3>
+                      <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 20 }}>Catch vs Storage</h3>
                       <ResponsiveContainer width="100%" height="85%">
                         <LineChart data={chartData}>
                           <XAxis dataKey="name" />
@@ -580,16 +650,20 @@ export default function Home() {
                     <div
                       style={{
                         border: "1px solid #e5e7eb",
-                        borderRadius: 14,
-                        padding: 16,
-                        height: 320,
+                        borderRadius: 16,
+                        padding: 18,
+                        height: 340,
                         background: "#fff",
                       }}
                     >
-                      <h3 style={{ marginTop: 0, marginBottom: 12 }}>Status Distribution</h3>
+                      <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 20 }}>Status Distribution</h3>
                       <ResponsiveContainer width="100%" height="85%">
-                        <BarChart data={statusData}>
-                          <XAxis dataKey="name" />
+                        <BarChart
+                          data={statusData}
+                          margin={{ top: 10, right: 10, left: 0, bottom: 10 }}
+                          barCategoryGap="25%"
+                        >
+                          <XAxis dataKey="name" interval={0} />
                           <YAxis allowDecimals={false} />
                           <Tooltip />
                           <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]} />
@@ -599,7 +673,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div style={{ ...cardStyle, padding: 24 }}>
+                <div style={{ ...cardStyle, padding: 26 }}>
                   <h2 style={sectionTitleStyle}>Create Batch</h2>
                   <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
                     Capture a new fish supply batch for monitoring.
@@ -666,7 +740,7 @@ export default function Home() {
           )}
 
           {activeSection === "batches" && (
-            <div style={{ ...cardStyle, padding: 24 }}>
+            <div style={{ ...cardStyle, padding: 26 }}>
               <h2 style={sectionTitleStyle}>Recent Batches</h2>
               <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
                 Latest recorded supply batches and risk status.
@@ -686,7 +760,7 @@ export default function Home() {
                               textAlign: "left",
                               padding: 14,
                               borderBottom: "1px solid #e5e7eb",
-                              color: "#6b7280",
+                              color: "#64748b",
                               fontSize: 13,
                               textTransform: "uppercase",
                               letterSpacing: "0.04em",
@@ -700,18 +774,18 @@ export default function Home() {
                     <tbody>
                       {batches.map((batch) => (
                         <tr key={batch.id}>
-                          <td style={{ padding: 14, borderBottom: "1px solid #f3f4f6", fontWeight: 600 }}>
+                          <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9", fontWeight: 700 }}>
                             {batch.batch_code}
                           </td>
-                          <td style={{ padding: 14, borderBottom: "1px solid #f3f4f6" }}>{batch.vessel}</td>
-                          <td style={{ padding: 14, borderBottom: "1px solid #f3f4f6" }}>{batch.species}</td>
-                          <td style={{ padding: 14, borderBottom: "1px solid #f3f4f6" }}>{batch.catch_kg}</td>
-                          <td style={{ padding: 14, borderBottom: "1px solid #f3f4f6" }}>{batch.dock_kg}</td>
-                          <td style={{ padding: 14, borderBottom: "1px solid #f3f4f6" }}>{batch.storage_kg}</td>
+                          <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>{batch.vessel}</td>
+                          <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>{batch.species}</td>
+                          <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>{batch.catch_kg}</td>
+                          <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>{batch.dock_kg}</td>
+                          <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>{batch.storage_kg}</td>
                           <td
                             style={{
                               padding: 14,
-                              borderBottom: "1px solid #f3f4f6",
+                              borderBottom: "1px solid #f1f5f9",
                               color: statusColor(batch.status),
                               fontWeight: 800,
                             }}
@@ -728,7 +802,7 @@ export default function Home() {
           )}
 
           {activeSection === "incidents" && (
-            <div style={{ ...cardStyle, padding: 24 }}>
+            <div style={{ ...cardStyle, padding: 26 }}>
               <h2 style={sectionTitleStyle}>Incident Management</h2>
               <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
                 Review flagged incidents and resolve them when handled.
@@ -748,7 +822,7 @@ export default function Home() {
                               textAlign: "left",
                               padding: 14,
                               borderBottom: "1px solid #e5e7eb",
-                              color: "#6b7280",
+                              color: "#64748b",
                               fontSize: 13,
                               textTransform: "uppercase",
                               letterSpacing: "0.04em",
@@ -762,30 +836,30 @@ export default function Home() {
                     <tbody>
                       {incidents.map((incident) => (
                         <tr key={incident.id}>
-                          <td style={{ padding: 14, borderBottom: "1px solid #f3f4f6", fontWeight: 600 }}>
+                          <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9", fontWeight: 700 }}>
                             {incident.incident_code}
                           </td>
-                          <td style={{ padding: 14, borderBottom: "1px solid #f3f4f6" }}>{incident.severity}</td>
+                          <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>{incident.severity}</td>
                           <td
                             style={{
                               padding: 14,
-                              borderBottom: "1px solid #f3f4f6",
+                              borderBottom: "1px solid #f1f5f9",
                               color: statusColor(incident.status),
                               fontWeight: 800,
                             }}
                           >
                             {incident.status}
                           </td>
-                          <td style={{ padding: 14, borderBottom: "1px solid #f3f4f6" }}>{incident.summary}</td>
-                          <td style={{ padding: 14, borderBottom: "1px solid #f3f4f6" }}>
+                          <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>{incident.summary}</td>
+                          <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
                             {incident.status !== "Resolved" ? (
                               <button
                                 onClick={() => resolveIncident(incident.id)}
                                 style={{
                                   padding: "8px 12px",
-                                  borderRadius: 8,
+                                  borderRadius: 10,
                                   border: "none",
-                                  background: "#111827",
+                                  background: "#0f172a",
                                   color: "#fff",
                                   cursor: "pointer",
                                   fontWeight: 700,
