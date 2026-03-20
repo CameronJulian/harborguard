@@ -163,6 +163,16 @@ export default function DashboardPage() {
     [incidents]
   );
 
+  const highRiskBatches = useMemo(
+    () => batches.filter((b) => b.status === "Flagged"),
+    [batches]
+  );
+
+  const recentHighRisk = useMemo(
+    () => highRiskBatches.slice(0, 3),
+    [highRiskBatches]
+  );
+
   const chartData = [...batches]
     .reverse()
     .map((b) => ({
@@ -305,6 +315,25 @@ export default function DashboardPage() {
           {message}
         </div>
       ) : null}
+
+      {recentHighRisk.length > 0 && (
+        <div
+          style={{
+            marginBottom: 20,
+            padding: 16,
+            borderRadius: 14,
+            background: "#fee2e2",
+            border: "1px solid #fecaca",
+            color: "#991b1b",
+            fontWeight: 700,
+          }}
+        >
+          🚨 {recentHighRisk.length} high-risk batch{recentHighRisk.length > 1 ? "es" : ""} detected
+          <div style={{ marginTop: 8, fontSize: 14, fontWeight: 500 }}>
+            {recentHighRisk.map((b) => b.batch_code).join(", ")}
+          </div>
+        </div>
+      )}
 
       <div
         style={{
