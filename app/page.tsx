@@ -1,7 +1,17 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { CSSProperties, FormEvent, useEffect, useMemo, useState } from "react";
 import { createClient, Session } from "@supabase/supabase-js";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+} from "recharts";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,9 +39,80 @@ type IncidentRow = {
   created_at: string | null;
 };
 
+const pageStyle: CSSProperties = {
+  fontFamily: "Inter, Arial, sans-serif",
+  background: "#f3f4f6",
+  minHeight: "100vh",
+  padding: "24px 16px 40px",
+  color: "#111827",
+};
+
+const shellStyle: CSSProperties = {
+  maxWidth: 1240,
+  margin: "0 auto",
+};
+
+const cardStyle: CSSProperties = {
+  background: "#ffffff",
+  borderRadius: 18,
+  boxShadow: "0 10px 30px rgba(15, 23, 42, 0.08)",
+  border: "1px solid #e5e7eb",
+};
+
+const sectionTitleStyle: CSSProperties = {
+  fontSize: 22,
+  fontWeight: 800,
+  margin: "0 0 8px 0",
+  lineHeight: 1.2,
+};
+
+const mutedTextStyle: CSSProperties = {
+  color: "#6b7280",
+  margin: 0,
+};
+
+const inputStyle: CSSProperties = {
+  width: "100%",
+  padding: "14px 16px",
+  borderRadius: 12,
+  border: "1px solid #d1d5db",
+  outline: "none",
+  fontSize: 15,
+  background: "#fff",
+  boxSizing: "border-box",
+};
+
+const primaryButtonStyle: CSSProperties = {
+  padding: "14px 16px",
+  borderRadius: 12,
+  border: "none",
+  background: "#2563eb",
+  color: "#fff",
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const secondaryButtonStyle: CSSProperties = {
+  padding: "12px 16px",
+  borderRadius: 12,
+  border: "1px solid #d1d5db",
+  background: "#fff",
+  color: "#111827",
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const labelStyle: CSSProperties = {
+  color: "#6b7280",
+  fontSize: 13,
+  marginBottom: 6,
+  display: "block",
+};
+
 export default function Home() {
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -48,6 +129,16 @@ export default function Home() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
+    const updateLayout = () => {
+      setIsMobile(window.innerWidth < 900);
+    };
+
+    updateLayout();
+    window.addEventListener("resize", updateLayout);
+    return () => window.removeEventListener("resize", updateLayout);
+  }, []);
+
+  useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setAuthLoading(false);
@@ -55,8 +146,8 @@ export default function Home() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+    } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      setSession(currentSession);
       setAuthLoading(false);
     });
 
@@ -116,6 +207,20 @@ export default function Home() {
     [incidents]
   );
 
+  const chartData = [...batches]
+    .reverse()
+    .map((b) => ({
+      name: b.batch_code?.slice(-4) || "N/A",
+      catch: b.catch_kg || 0,
+      storage: b.storage_kg || 0,
+    }));
+
+  const statusData = [
+    { name: "Normal", value: batches.filter((b) => b.status === "Normal").length },
+    { name: "Flagged", value: batches.filter((b) => b.status === "Flagged").length },
+    { name: "Review", value: batches.filter((b) => b.status === "Review").length },
+  ];
+
   async function handleSignUp(e: FormEvent) {
     e.preventDefault();
     setMessage("");
@@ -130,7 +235,7 @@ export default function Home() {
       return;
     }
 
-    setMessage("Sign up successful. Check your email if confirmation is enabled.");
+    setMessage("Sign up successful. You can now sign in if email confirmation is off.");
   }
 
   async function handleSignIn(e: FormEvent) {
@@ -256,168 +361,426 @@ export default function Home() {
   }
 
   function statusColor(status: string | null) {
-    if (status === "Flagged" || status === "Open") return "#b91c1c";
-    if (status === "Review") return "#b45309";
-    if (status === "Normal" || status === "Resolved") return "#15803d";
+    if (status === "Flagged" || status === "Open") return "#dc2626";
+    if (status === "Review") return "#d97706";
+    if (status === "Normal" || status === "Resolved") return "#16a34a";
     return "#111827";
   }
 
   if (authLoading) {
-    return <main style={{ fontFamily: "Arial", padding: 40 }}>Loading...</main>;
+    return (
+      <main style={pageStyle}>
+        <div style={{ ...shellStyle, textAlign: "center", paddingTop: 80 }}>
+          <div style={{ ...cardStyle, padding: 32, maxWidth: 420, margin: "0 auto" }}>
+            <h1 style={{ marginTop: 0 }}>HarborGuard</h1>
+            <p style={mutedTextStyle}>Loading...</p>
+          </div>
+        </div>
+      </main>
+    );
   }
 
   if (!session) {
     return (
-      <main style={{ fontFamily: "Arial", padding: 40, maxWidth: 420, margin: "auto" }}>
-        <h1>HarborGuard</h1>
-        <p>Sign in to access the Fish Supply Chain Monitoring System.</p>
+      <main style={pageStyle}>
+        <div style={{ ...shellStyle, display: "flex", justifyContent: "center", paddingTop: 60 }}>
+          <div style={{ ...cardStyle, width: "100%", maxWidth: 470, padding: 32 }}>
+            <div style={{ marginBottom: 24 }}>
+              <h1 style={{ fontSize: 42, margin: "0 0 8px 0", lineHeight: 1.05 }}>HarborGuard</h1>
+              <p style={{ ...mutedTextStyle, fontSize: 18 }}>
+                Sign in to access the Fish Supply Chain Monitoring System.
+              </p>
+            </div>
 
-        <form onSubmit={handleSignIn} style={{ display: "grid", gap: 10 }}>
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          <button type="submit">Sign In</button>
-          <button type="button" onClick={handleSignUp}>Sign Up</button>
-        </form>
+            <form onSubmit={handleSignIn} style={{ display: "grid", gap: 12 }}>
+              <input
+                style={inputStyle}
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <input
+                style={inputStyle}
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button type="submit" style={primaryButtonStyle}>
+                Sign In
+              </button>
+              <button type="button" onClick={handleSignUp} style={secondaryButtonStyle}>
+                Sign Up
+              </button>
+            </form>
 
-        {message ? <p style={{ marginTop: 12 }}>{message}</p> : null}
+            {message ? (
+              <div
+                style={{
+                  marginTop: 16,
+                  padding: 12,
+                  borderRadius: 12,
+                  background: "#eff6ff",
+                  border: "1px solid #bfdbfe",
+                  color: "#1d4ed8",
+                }}
+              >
+                {message}
+              </div>
+            ) : null}
+          </div>
+        </div>
       </main>
     );
   }
 
   return (
-    <main style={{ fontFamily: "Arial", padding: 40, maxWidth: 1100, margin: "auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div>
-          <h1>HarborGuard</h1>
-          <p>Fish Supply Chain Monitoring System</p>
+    <main style={pageStyle}>
+      <div style={shellStyle}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: isMobile ? "column" : "row",
+            justifyContent: "space-between",
+            alignItems: isMobile ? "stretch" : "flex-start",
+            gap: 20,
+            marginBottom: 28,
+          }}
+        >
+          <div>
+            <h1 style={{ fontSize: isMobile ? 38 : 48, fontWeight: 800, margin: "0 0 8px 0", lineHeight: 1.05 }}>
+              HarborGuard
+            </h1>
+            <p style={{ ...mutedTextStyle, fontSize: 18 }}>Fish Supply Chain Monitoring System</p>
+          </div>
+
+          <div
+            style={{
+              ...cardStyle,
+              padding: 16,
+              minWidth: isMobile ? "100%" : 260,
+              textAlign: isMobile ? "left" : "right",
+            }}
+          >
+            <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 8 }}>Signed in as</div>
+            <div
+              style={{
+                fontWeight: 700,
+                marginBottom: 12,
+                wordBreak: "break-word",
+              }}
+            >
+              {session.user.email}
+            </div>
+            <button onClick={handleSignOut} style={secondaryButtonStyle}>
+              Sign Out
+            </button>
+          </div>
         </div>
-        <div style={{ textAlign: "right" }}>
-          <p style={{ margin: 0 }}>{session.user.email}</p>
-          <button onClick={handleSignOut}>Sign Out</button>
+
+        {message ? (
+          <div
+            style={{
+              marginBottom: 20,
+              padding: 14,
+              borderRadius: 12,
+              background: "#eff6ff",
+              border: "1px solid #bfdbfe",
+              color: "#1d4ed8",
+            }}
+          >
+            {message}
+          </div>
+        ) : null}
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))",
+            gap: 20,
+            marginBottom: 28,
+          }}
+        >
+          {[
+            { label: "Total Catch", value: `${totalCatch} kg` },
+            { label: "Stored", value: `${totalStored} kg` },
+            { label: "Open Incidents", value: openIncidents },
+          ].map((card, index) => (
+            <div key={index} style={{ ...cardStyle, padding: 24 }}>
+              <div style={{ color: "#6b7280", fontSize: 14, marginBottom: 10 }}>{card.label}</div>
+              <div style={{ fontSize: 32, fontWeight: 800 }}>{card.value}</div>
+            </div>
+          ))}
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: isMobile ? "1fr" : "1.45fr 1fr",
+            gap: 20,
+            marginBottom: 28,
+          }}
+        >
+          <div style={{ ...cardStyle, padding: 24 }}>
+            <h2 style={sectionTitleStyle}>Analytics</h2>
+            <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
+              Catch volume and storage behaviour across recent batches.
+            </p>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                gap: 20,
+              }}
+            >
+              <div
+                style={{
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 14,
+                  padding: 16,
+                  height: 320,
+                  background: "#fff",
+                }}
+              >
+                <h3 style={{ marginTop: 0, marginBottom: 12 }}>Catch vs Storage</h3>
+                <ResponsiveContainer width="100%" height="85%">
+                  <LineChart data={chartData}>
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="catch" stroke="#2563eb" strokeWidth={3} />
+                    <Line type="monotone" dataKey="storage" stroke="#16a34a" strokeWidth={3} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div
+                style={{
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 14,
+                  padding: 16,
+                  height: 320,
+                  background: "#fff",
+                }}
+              >
+                <h3 style={{ marginTop: 0, marginBottom: 12 }}>Status Distribution</h3>
+                <ResponsiveContainer width="100%" height="85%">
+                  <BarChart data={statusData}>
+                    <XAxis dataKey="name" />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip />
+                    <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ ...cardStyle, padding: 24 }}>
+            <h2 style={sectionTitleStyle}>Create Batch</h2>
+            <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
+              Capture a new fish supply batch for monitoring.
+            </p>
+
+            <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12 }}>
+              <div>
+                <label style={labelStyle}>Vessel</label>
+                <input
+                  style={inputStyle}
+                  placeholder="Vessel"
+                  value={vessel}
+                  onChange={(e) => setVessel(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Species</label>
+                <input
+                  style={inputStyle}
+                  placeholder="Species"
+                  value={species}
+                  onChange={(e) => setSpecies(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Catch kg</label>
+                <input
+                  style={inputStyle}
+                  placeholder="Catch kg"
+                  value={catchKg}
+                  onChange={(e) => setCatchKg(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Dock kg</label>
+                <input
+                  style={inputStyle}
+                  placeholder="Dock kg"
+                  value={dockKg}
+                  onChange={(e) => setDockKg(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Storage kg</label>
+                <input
+                  style={inputStyle}
+                  placeholder="Storage kg"
+                  value={storageKg}
+                  onChange={(e) => setStorageKg(e.target.value)}
+                />
+              </div>
+
+              <button type="submit" disabled={loading} style={primaryButtonStyle}>
+                {loading ? "Saving..." : "Save Batch"}
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 20 }}>
+          <div style={{ ...cardStyle, padding: 24 }}>
+            <h2 style={sectionTitleStyle}>Recent Batches</h2>
+            <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
+              Latest recorded supply batches and risk status.
+            </p>
+
+            {batches.length === 0 ? (
+              <p style={mutedTextStyle}>No batches saved yet.</p>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}>
+                  <thead>
+                    <tr>
+                      {["Batch", "Vessel", "Species", "Catch", "Dock", "Storage", "Status"].map((h) => (
+                        <th
+                          key={h}
+                          style={{
+                            textAlign: "left",
+                            padding: 14,
+                            borderBottom: "1px solid #e5e7eb",
+                            color: "#6b7280",
+                            fontSize: 13,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.04em",
+                          }}
+                        >
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {batches.map((batch) => (
+                      <tr key={batch.id}>
+                        <td style={{ padding: 14, borderBottom: "1px solid #f3f4f6", fontWeight: 600 }}>
+                          {batch.batch_code}
+                        </td>
+                        <td style={{ padding: 14, borderBottom: "1px solid #f3f4f6" }}>{batch.vessel}</td>
+                        <td style={{ padding: 14, borderBottom: "1px solid #f3f4f6" }}>{batch.species}</td>
+                        <td style={{ padding: 14, borderBottom: "1px solid #f3f4f6" }}>{batch.catch_kg}</td>
+                        <td style={{ padding: 14, borderBottom: "1px solid #f3f4f6" }}>{batch.dock_kg}</td>
+                        <td style={{ padding: 14, borderBottom: "1px solid #f3f4f6" }}>{batch.storage_kg}</td>
+                        <td
+                          style={{
+                            padding: 14,
+                            borderBottom: "1px solid #f3f4f6",
+                            color: statusColor(batch.status),
+                            fontWeight: 800,
+                          }}
+                        >
+                          {batch.status}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div style={{ ...cardStyle, padding: 24 }}>
+            <h2 style={sectionTitleStyle}>Incident Management</h2>
+            <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
+              Review flagged incidents and resolve them when handled.
+            </p>
+
+            {incidents.length === 0 ? (
+              <p style={mutedTextStyle}>No incidents yet.</p>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}>
+                  <thead>
+                    <tr>
+                      {["Incident", "Severity", "Status", "Summary", "Action"].map((h) => (
+                        <th
+                          key={h}
+                          style={{
+                            textAlign: "left",
+                            padding: 14,
+                            borderBottom: "1px solid #e5e7eb",
+                            color: "#6b7280",
+                            fontSize: 13,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.04em",
+                          }}
+                        >
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {incidents.map((incident) => (
+                      <tr key={incident.id}>
+                        <td style={{ padding: 14, borderBottom: "1px solid #f3f4f6", fontWeight: 600 }}>
+                          {incident.incident_code}
+                        </td>
+                        <td style={{ padding: 14, borderBottom: "1px solid #f3f4f6" }}>{incident.severity}</td>
+                        <td
+                          style={{
+                            padding: 14,
+                            borderBottom: "1px solid #f3f4f6",
+                            color: statusColor(incident.status),
+                            fontWeight: 800,
+                          }}
+                        >
+                          {incident.status}
+                        </td>
+                        <td style={{ padding: 14, borderBottom: "1px solid #f3f4f6" }}>{incident.summary}</td>
+                        <td style={{ padding: 14, borderBottom: "1px solid #f3f4f6" }}>
+                          {incident.status !== "Resolved" ? (
+                            <button
+                              onClick={() => resolveIncident(incident.id)}
+                              style={{
+                                padding: "8px 12px",
+                                borderRadius: 8,
+                                border: "none",
+                                background: "#111827",
+                                color: "#fff",
+                                cursor: "pointer",
+                                fontWeight: 700,
+                              }}
+                            >
+                              Resolve
+                            </button>
+                          ) : (
+                            <span style={{ color: "#16a34a", fontWeight: 700 }}>Done</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-
-      <hr />
-
-      <h2>Dashboard</h2>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 20 }}>
-        <div style={{ border: "1px solid #ccc", padding: 20, borderRadius: 10 }}>
-          <h3>Total Catch</h3>
-          <p>{totalCatch} kg</p>
-        </div>
-
-        <div style={{ border: "1px solid #ccc", padding: 20, borderRadius: 10 }}>
-          <h3>Stored</h3>
-          <p>{totalStored} kg</p>
-        </div>
-
-        <div style={{ border: "1px solid #ccc", padding: 20, borderRadius: 10 }}>
-          <h3>Open Incidents</h3>
-          <p>{openIncidents}</p>
-        </div>
-      </div>
-
-      <hr style={{ marginTop: 40 }} />
-
-      <h2>Create Batch</h2>
-
-      <form onSubmit={handleSubmit} style={{ display: "grid", gap: 10, maxWidth: 400 }}>
-        <input placeholder="Vessel" value={vessel} onChange={(e) => setVessel(e.target.value)} />
-        <input placeholder="Species" value={species} onChange={(e) => setSpecies(e.target.value)} />
-        <input placeholder="Catch kg" value={catchKg} onChange={(e) => setCatchKg(e.target.value)} />
-        <input placeholder="Dock kg" value={dockKg} onChange={(e) => setDockKg(e.target.value)} />
-        <input placeholder="Storage kg" value={storageKg} onChange={(e) => setStorageKg(e.target.value)} />
-        <button type="submit" disabled={loading}>
-          {loading ? "Saving..." : "Save Batch"}
-        </button>
-      </form>
-
-      {message ? <p style={{ marginTop: 12 }}>{message}</p> : null}
-
-      <hr style={{ marginTop: 40 }} />
-
-      <h2>Recent Batches</h2>
-
-      {batches.length === 0 ? (
-        <p>No batches saved yet.</p>
-      ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 40 }}>
-          <thead>
-            <tr>
-              <th style={{ textAlign: "left", borderBottom: "1px solid #ccc", padding: 8 }}>Batch</th>
-              <th style={{ textAlign: "left", borderBottom: "1px solid #ccc", padding: 8 }}>Vessel</th>
-              <th style={{ textAlign: "left", borderBottom: "1px solid #ccc", padding: 8 }}>Species</th>
-              <th style={{ textAlign: "left", borderBottom: "1px solid #ccc", padding: 8 }}>Catch</th>
-              <th style={{ textAlign: "left", borderBottom: "1px solid #ccc", padding: 8 }}>Dock</th>
-              <th style={{ textAlign: "left", borderBottom: "1px solid #ccc", padding: 8 }}>Storage</th>
-              <th style={{ textAlign: "left", borderBottom: "1px solid #ccc", padding: 8 }}>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {batches.map((batch) => (
-              <tr key={batch.id}>
-                <td style={{ borderBottom: "1px solid #eee", padding: 8 }}>{batch.batch_code}</td>
-                <td style={{ borderBottom: "1px solid #eee", padding: 8 }}>{batch.vessel}</td>
-                <td style={{ borderBottom: "1px solid #eee", padding: 8 }}>{batch.species}</td>
-                <td style={{ borderBottom: "1px solid #eee", padding: 8 }}>{batch.catch_kg}</td>
-                <td style={{ borderBottom: "1px solid #eee", padding: 8 }}>{batch.dock_kg}</td>
-                <td style={{ borderBottom: "1px solid #eee", padding: 8 }}>{batch.storage_kg}</td>
-                <td style={{ borderBottom: "1px solid #eee", padding: 8, color: statusColor(batch.status), fontWeight: 700 }}>
-                  {batch.status}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      <h2>Incident Management</h2>
-
-      {incidents.length === 0 ? (
-        <p>No incidents yet.</p>
-      ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr>
-              <th style={{ textAlign: "left", borderBottom: "1px solid #ccc", padding: 8 }}>Incident</th>
-              <th style={{ textAlign: "left", borderBottom: "1px solid #ccc", padding: 8 }}>Severity</th>
-              <th style={{ textAlign: "left", borderBottom: "1px solid #ccc", padding: 8 }}>Status</th>
-              <th style={{ textAlign: "left", borderBottom: "1px solid #ccc", padding: 8 }}>Summary</th>
-              <th style={{ textAlign: "left", borderBottom: "1px solid #ccc", padding: 8 }}>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {incidents.map((incident) => (
-              <tr key={incident.id}>
-                <td style={{ borderBottom: "1px solid #eee", padding: 8 }}>{incident.incident_code}</td>
-                <td style={{ borderBottom: "1px solid #eee", padding: 8 }}>{incident.severity}</td>
-                <td style={{ borderBottom: "1px solid #eee", padding: 8, color: statusColor(incident.status), fontWeight: 700 }}>
-                  {incident.status}
-                </td>
-                <td style={{ borderBottom: "1px solid #eee", padding: 8 }}>{incident.summary}</td>
-                <td style={{ borderBottom: "1px solid #eee", padding: 8 }}>
-                  {incident.status !== "Resolved" ? (
-                    <button onClick={() => resolveIncident(incident.id)}>Resolve</button>
-                  ) : (
-                    "Done"
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
     </main>
   );
 }
