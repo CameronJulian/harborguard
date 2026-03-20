@@ -104,6 +104,33 @@ export default function DashboardPage() {
 
   useEffect(() => {
     loadAll();
+
+    const batchChannel = supabase
+      .channel("batches-realtime-dashboard")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "batches" },
+        () => {
+          loadAll();
+        }
+      )
+      .subscribe();
+
+    const incidentChannel = supabase
+      .channel("incidents-realtime-dashboard")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "incidents" },
+        () => {
+          loadAll();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(batchChannel);
+      supabase.removeChannel(incidentChannel);
+    };
   }, []);
 
   async function loadAll() {
@@ -163,7 +190,11 @@ export default function DashboardPage() {
     const dockValue = Number(dockKg);
     const storageValue = Number(storageKg);
 
-    if (Number.isNaN(catchValue) || Number.isNaN(dockValue) || Number.isNaN(storageValue)) {
+    if (
+      Number.isNaN(catchValue) ||
+      Number.isNaN(dockValue) ||
+      Number.isNaN(storageValue)
+    ) {
       setMessage("Catch, Dock, and Storage must be numbers.");
       return;
     }
@@ -223,8 +254,6 @@ export default function DashboardPage() {
     setDockKg("");
     setStorageKg("");
     setMessage("Batch saved successfully.");
-
-    await loadAll();
     setLoading(false);
   }
 
@@ -341,22 +370,42 @@ export default function DashboardPage() {
           <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12 }}>
             <div>
               <label style={labelStyle}>Vessel</label>
-              <input style={inputStyle} placeholder="Vessel" value={vessel} onChange={(e) => setVessel(e.target.value)} />
+              <input
+                style={inputStyle}
+                placeholder="Vessel"
+                value={vessel}
+                onChange={(e) => setVessel(e.target.value)}
+              />
             </div>
 
             <div>
               <label style={labelStyle}>Species</label>
-              <input style={inputStyle} placeholder="Species" value={species} onChange={(e) => setSpecies(e.target.value)} />
+              <input
+                style={inputStyle}
+                placeholder="Species"
+                value={species}
+                onChange={(e) => setSpecies(e.target.value)}
+              />
             </div>
 
             <div>
               <label style={labelStyle}>Catch kg</label>
-              <input style={inputStyle} placeholder="Catch kg" value={catchKg} onChange={(e) => setCatchKg(e.target.value)} />
+              <input
+                style={inputStyle}
+                placeholder="Catch kg"
+                value={catchKg}
+                onChange={(e) => setCatchKg(e.target.value)}
+              />
             </div>
 
             <div>
               <label style={labelStyle}>Dock kg</label>
-              <input style={inputStyle} placeholder="Dock kg" value={dockKg} onChange={(e) => setDockKg(e.target.value)} />
+              <input
+                style={inputStyle}
+                placeholder="Dock kg"
+                value={dockKg}
+                onChange={(e) => setDockKg(e.target.value)}
+              />
             </div>
 
             <div>

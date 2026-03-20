@@ -44,12 +44,30 @@ function statusColor(status: string | null) {
 export default function BatchesPage() {
   const [batches, setBatches] = useState<BatchRow[]>([]);
 
-  useEffect(() => {
-    supabase
+  async function loadBatches() {
+    const { data } = await supabase
       .from("batches")
       .select("id, batch_code, vessel, species, catch_kg, dock_kg, storage_kg, status, created_at")
-      .order("created_at", { ascending: false })
-      .then(({ data }) => setBatches((data as BatchRow[]) || []));
+      .order("created_at", { ascending: false });
+
+    setBatches((data as BatchRow[]) || []);
+  }
+
+  useEffect(() => {
+    loadBatches();
+
+    const channel = supabase
+      .channel("batches-live-page")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "batches" },
+        () => loadBatches()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   return (

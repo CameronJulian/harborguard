@@ -42,10 +42,6 @@ export default function IncidentsPage() {
   const [incidents, setIncidents] = useState<IncidentRow[]>([]);
   const [message, setMessage] = useState("");
 
-  useEffect(() => {
-    loadIncidents();
-  }, []);
-
   async function loadIncidents() {
     const { data } = await supabase
       .from("incidents")
@@ -54,6 +50,23 @@ export default function IncidentsPage() {
 
     setIncidents((data as IncidentRow[]) || []);
   }
+
+  useEffect(() => {
+    loadIncidents();
+
+    const channel = supabase
+      .channel("incidents-live-page")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "incidents" },
+        () => loadIncidents()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   async function resolveIncident(id: string) {
     const { error } = await supabase
