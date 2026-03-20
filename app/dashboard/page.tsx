@@ -200,7 +200,39 @@ export default function DashboardPage() {
     }
 
     const loss = catchValue - storageValue;
-    const status = loss > 25 ? "Flagged" : loss > 5 ? "Review" : "Normal";
+    const lossPercent = catchValue > 0 ? (loss / catchValue) * 100 : 0;
+
+    let riskScore = 0;
+
+    if (lossPercent > 20) riskScore += 50;
+    else if (lossPercent > 10) riskScore += 25;
+    else if (lossPercent > 5) riskScore += 10;
+
+    if (catchValue > 1000) riskScore += 10;
+    if (storageValue < dockValue) riskScore += 10;
+
+    const historicalLosses = batches.map(
+      (b) => Number(b.catch_kg || 0) - Number(b.storage_kg || 0)
+    );
+    const avgLoss =
+      historicalLosses.length > 0
+        ? historicalLosses.reduce((sum, v) => sum + v, 0) / historicalLosses.length
+        : 0;
+
+    if (avgLoss > 0 && loss > avgLoss * 2) {
+      riskScore += 30;
+    }
+
+    const status =
+      riskScore > 70 ? "Flagged" :
+      riskScore > 30 ? "Review" :
+      "Normal";
+
+    const riskLevel =
+      riskScore > 70 ? "High" :
+      riskScore > 30 ? "Medium" :
+      "Low";
+
     const batchCode = `BAT-${Date.now()}`;
     const qrCode = `HG-${batchCode}`;
 
@@ -220,7 +252,7 @@ export default function DashboardPage() {
       handler_name: "Cameron Hendrick",
       handler_role: "manager",
       location: "Main Warehouse",
-      notes: "",
+      notes: `AI risk score: ${riskScore}`,
       qr_code: qrCode,
       status,
       created_by: null,
@@ -237,7 +269,7 @@ export default function DashboardPage() {
         incident_code: `INC-${Date.now()}`,
         severity: "High",
         status: "Open",
-        summary: `${loss}kg discrepancy detected for ${vessel} / ${species}`,
+        summary: `${loss}kg discrepancy detected for ${vessel} / ${species} (Risk Score: ${riskScore})`,
       });
     }
 
@@ -245,7 +277,7 @@ export default function DashboardPage() {
       actor_name: session?.user.email || "Unknown",
       action: "Created batch",
       batch_code: batchCode,
-      risk: status === "Flagged" ? "High" : status === "Review" ? "Medium" : "Low",
+      risk: riskLevel,
     });
 
     setVessel("");
@@ -253,7 +285,7 @@ export default function DashboardPage() {
     setCatchKg("");
     setDockKg("");
     setStorageKg("");
-    setMessage("Batch saved successfully.");
+    setMessage(`Batch saved successfully. AI Risk Score: ${riskScore} (${riskLevel})`);
     setLoading(false);
   }
 
