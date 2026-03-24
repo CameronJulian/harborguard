@@ -214,93 +214,41 @@ export default function DashboardPage() {
       return;
     }
 
-    const loss = catchValue - storageValue;
-    const lossPercent = catchValue > 0 ? (loss / catchValue) * 100 : 0;
-
-    let riskScore = 0;
-
-    if (lossPercent > 20) riskScore += 50;
-    else if (lossPercent > 10) riskScore += 25;
-    else if (lossPercent > 5) riskScore += 10;
-
-    if (catchValue > 1000) riskScore += 10;
-    if (storageValue < dockValue) riskScore += 10;
-
-    const historicalLosses = batches.map(
-      (b) => Number(b.catch_kg || 0) - Number(b.storage_kg || 0)
-    );
-    const avgLoss =
-      historicalLosses.length > 0
-        ? historicalLosses.reduce((sum, v) => sum + v, 0) / historicalLosses.length
-        : 0;
-
-    if (avgLoss > 0 && loss > avgLoss * 2) {
-      riskScore += 30;
-    }
-
-    const status =
-      riskScore > 70 ? "Flagged" :
-      riskScore > 30 ? "Review" :
-      "Normal";
-
-    const riskLevel =
-      riskScore > 70 ? "High" :
-      riskScore > 30 ? "Medium" :
-      "Low";
-
-    const batchCode = `BAT-${Date.now()}`;
-    const qrCode = `HG-${batchCode}`;
-
     setLoading(true);
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    const { error } = await supabase.from("batches").insert({
-      batch_code: batchCode,
-      vessel,
-      species,
-      catch_kg: catchValue,
-      dock_kg: dockValue,
-      storage_kg: storageValue,
-      handler_name: "Cameron Hendrick",
-      handler_role: "manager",
-      location: "Main Warehouse",
-      notes: `AI risk score: ${riskScore}`,
-      qr_code: qrCode,
-      status,
-      created_by: null,
+    const response = await fetch("/api/batches", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        vessel,
+        species,
+        catchKg: catchValue,
+        dockKg: dockValue,
+        storageKg: storageValue,
+      }),
     });
 
-    if (error) {
+    const result = await response.json();
+
+    if (!response.ok) {
       setLoading(false);
-      setMessage(`Save failed: ${error.message}`);
+      setMessage(result.error || "Failed to save batch.");
       return;
     }
-
-    if (status === "Flagged") {
-      await supabase.from("incidents").insert({
-        incident_code: `INC-${Date.now()}`,
-        severity: "High",
-        status: "Open",
-        summary: `${loss}kg discrepancy detected for ${vessel} / ${species} (Risk Score: ${riskScore})`,
-      });
-    }
-
-    await supabase.from("audit_logs").insert({
-      actor_name: session?.user.email || "Unknown",
-      action: "Created batch",
-      batch_code: batchCode,
-      risk: riskLevel,
-    });
 
     setVessel("");
     setSpecies("");
     setCatchKg("");
     setDockKg("");
     setStorageKg("");
-    setMessage(`Batch saved successfully. AI Risk Score: ${riskScore} (${riskLevel})`);
+
+    await loadAll();
+
+    setMessage(
+      `Batch saved successfully. AI Risk Score: ${result.riskScore} (${result.riskLevel})`
+    );
     setLoading(false);
   }
 
