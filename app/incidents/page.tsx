@@ -101,27 +101,21 @@ export default function IncidentsPage() {
     setMessage("");
     setResolvingId(id);
 
-    const { error } = await supabase
-      .from("incidents")
-      .update({ status: "Resolved" })
-      .eq("id", id);
+    const response = await fetch("/api/incidents/resolve", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id }),
+    });
 
-    if (error) {
+    const result = await response.json();
+
+    if (!response.ok) {
       setResolvingId(null);
-      setMessage(`Resolve failed: ${error.message}`);
+      setMessage(result.error || "Failed to resolve incident.");
       return;
     }
-
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    await supabase.from("audit_logs").insert({
-      actor_name: session?.user.email || "Unknown",
-      action: "Resolved incident",
-      batch_code: null,
-      risk: "Low",
-    });
 
     await loadIncidents();
     setResolvingId(null);
