@@ -323,6 +323,9 @@ export default function DashboardPage() {
 
       {recentHighRisk.length > 0 && (
         <div
+          onClick={() => {
+            window.location.href = "/incidents";
+          }}
           style={{
             marginBottom: 20,
             padding: 16,
@@ -331,11 +334,16 @@ export default function DashboardPage() {
             border: "1px solid #fecaca",
             color: "#991b1b",
             fontWeight: 700,
+            cursor: "pointer",
+            transition: "all 0.2s ease",
           }}
         >
           🚨 {recentHighRisk.length} high-risk batch{recentHighRisk.length > 1 ? "es" : ""} detected
           <div style={{ marginTop: 8, fontSize: 14, fontWeight: 500 }}>
             {recentHighRisk.map((b) => b.batch_code).join(", ")}
+          </div>
+          <div style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>
+            Click to view incidents
           </div>
         </div>
       )}
@@ -394,15 +402,21 @@ export default function DashboardPage() {
                 <LineChart data={chartData}>
                   <XAxis dataKey="name" />
                   <YAxis />
-                  <Tooltip />
+                  <Tooltip
+                    formatter={(value, name) => {
+                      if (name === "anomaly") return [`${value} kg loss`, "Anomaly"];
+                      return [value, name];
+                    }}
+                  />
                   <Line type="monotone" dataKey="catch" stroke="#2563eb" strokeWidth={3} />
                   <Line type="monotone" dataKey="storage" stroke="#16a34a" strokeWidth={3} />
                   <Line
                     type="monotone"
                     dataKey="anomaly"
                     stroke="#dc2626"
-                    strokeWidth={3}
-                    dot={{ r: 6 }}
+                    strokeWidth={4}
+                    dot={{ r: 6, stroke: "#dc2626", strokeWidth: 2, fill: "#fff" }}
+                    activeDot={{ r: 8 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
