@@ -175,11 +175,16 @@ export default function DashboardPage() {
 
   const chartData = [...batches]
     .reverse()
-    .map((b) => ({
-      name: b.batch_code?.slice(-4) || "N/A",
-      catch: b.catch_kg || 0,
-      storage: b.storage_kg || 0,
-    }));
+    .map((b) => {
+      const loss = Number(b.catch_kg || 0) - Number(b.storage_kg || 0);
+
+      return {
+        name: b.batch_code?.slice(-4) || "N/A",
+        catch: b.catch_kg || 0,
+        storage: b.storage_kg || 0,
+        anomaly: b.status === "Flagged" ? loss : 0,
+      };
+    });
 
   const statusData = [
     { name: "Normal", value: batches.filter((b) => b.status === "Normal").length },
@@ -392,6 +397,13 @@ export default function DashboardPage() {
                   <Tooltip />
                   <Line type="monotone" dataKey="catch" stroke="#2563eb" strokeWidth={3} />
                   <Line type="monotone" dataKey="storage" stroke="#16a34a" strokeWidth={3} />
+                  <Line
+                    type="monotone"
+                    dataKey="anomaly"
+                    stroke="#dc2626"
+                    strokeWidth={3}
+                    dot={{ r: 6 }}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </div>
