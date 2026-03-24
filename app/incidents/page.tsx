@@ -1,6 +1,6 @@
 "use client";
 
-import { CSSProperties, useEffect, useState } from "react";
+import { CSSProperties, useEffect, useMemo, useState } from "react";
 import AppShell from "@/components/AppShell";
 import { supabase } from "@/lib/supabase";
 
@@ -31,6 +31,17 @@ const mutedTextStyle: CSSProperties = {
   margin: 0,
 };
 
+const inputStyle: CSSProperties = {
+  width: "100%",
+  padding: "12px 14px",
+  borderRadius: 12,
+  border: "1px solid #d1d5db",
+  outline: "none",
+  fontSize: 14,
+  background: "#fff",
+  boxSizing: "border-box",
+};
+
 function statusColor(status: string | null) {
   if (status === "Flagged" || status === "Open") return "#dc2626";
   if (status === "Review") return "#d97706";
@@ -56,6 +67,9 @@ export default function IncidentsPage() {
   const [incidents, setIncidents] = useState<IncidentRow[]>([]);
   const [message, setMessage] = useState("");
   const [resolvingId, setResolvingId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [severityFilter, setSeverityFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
 
   async function loadIncidents() {
     const { data } = await supabase
@@ -114,6 +128,25 @@ export default function IncidentsPage() {
     setMessage("✅ Incident resolved successfully.");
   }
 
+  const filteredIncidents = useMemo(() => {
+    const term = search.trim().toLowerCase();
+
+    return incidents.filter((incident) => {
+      const matchesSearch =
+        !term ||
+        (incident.incident_code || "").toLowerCase().includes(term) ||
+        (incident.summary || "").toLowerCase().includes(term);
+
+      const matchesSeverity =
+        severityFilter === "All" || incident.severity === severityFilter;
+
+      const matchesStatus =
+        statusFilter === "All" || incident.status === statusFilter;
+
+      return matchesSearch && matchesSeverity && matchesStatus;
+    });
+  }, [incidents, search, severityFilter, statusFilter]);
+
   return (
     <AppShell>
       {message ? (
@@ -132,13 +165,72 @@ export default function IncidentsPage() {
       ) : null}
 
       <div style={{ ...cardStyle, padding: 26 }}>
-        <h2 style={sectionTitleStyle}>Incident Management</h2>
-        <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
-          Review flagged incidents and resolve them when handled.
-        </p>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: 16,
+            flexWrap: "wrap",
+            marginBottom: 18,
+          }}
+        >
+          <div>
+            <h2 style={sectionTitleStyle}>Incident Management</h2>
+            <p style={{ ...mutedTextStyle, marginBottom: 0 }}>
+              Review flagged incidents and resolve them when handled.
+            </p>
+          </div>
 
-        {incidents.length === 0 ? (
-          <p style={mutedTextStyle}>No incidents yet.</p>
+          <div style={{ color: "#64748b", fontSize: 14, fontWeight: 600 }}>
+            Showing {filteredIncidents.length} of {incidents.length} incidents
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(220px, 1fr) 180px 180px",
+            gap: 12,
+            marginBottom: 18,
+          }}
+        >
+          <input
+            style={inputStyle}
+            placeholder="Search by incident code or summary"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+
+          <select
+            style={inputStyle}
+            value={severityFilter}
+            onChange={(e) => setSeverityFilter(e.target.value)}
+          >
+            <option value="All">All Severities</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+          </select>
+
+          <select
+            style={inputStyle}
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="All">All Statuses</option>
+            <option value="Open">Open</option>
+            <option value="Resolved">Resolved</option>
+            <option value="Review">Review</option>
+          </select>
+        </div>
+
+        {filteredIncidents.length === 0 ? (
+          <p style={mutedTextStyle}>
+            {incidents.length === 0
+              ? "No incidents yet."
+              : "No incidents match your current search or filters."}
+          </p>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}>
@@ -163,7 +255,7 @@ export default function IncidentsPage() {
                 </tr>
               </thead>
               <tbody>
-                {incidents.map((incident) => (
+                {filteredIncidents.map((incident) => (
                   <tr key={incident.id}>
                     <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9", fontWeight: 700 }}>
                       {incident.incident_code}
