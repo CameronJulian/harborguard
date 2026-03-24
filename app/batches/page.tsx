@@ -1,6 +1,6 @@
 "use client";
 
-import { CSSProperties, useEffect, useState } from "react";
+import { CSSProperties, useEffect, useMemo, useState } from "react";
 import AppShell from "@/components/AppShell";
 import { supabase } from "@/lib/supabase";
 
@@ -34,6 +34,17 @@ const mutedTextStyle: CSSProperties = {
   margin: 0,
 };
 
+const inputStyle: CSSProperties = {
+  width: "100%",
+  padding: "12px 14px",
+  borderRadius: 12,
+  border: "1px solid #d1d5db",
+  outline: "none",
+  fontSize: 14,
+  background: "#fff",
+  boxSizing: "border-box",
+};
+
 function statusColor(status: string | null) {
   if (status === "Flagged" || status === "Open") return "#dc2626";
   if (status === "Review") return "#d97706";
@@ -49,6 +60,8 @@ function riskLabel(status: string | null) {
 
 export default function BatchesPage() {
   const [batches, setBatches] = useState<BatchRow[]>([]);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
 
   async function loadBatches() {
     const { data } = await supabase
@@ -76,16 +89,81 @@ export default function BatchesPage() {
     };
   }, []);
 
+  const filteredBatches = useMemo(() => {
+    const term = search.trim().toLowerCase();
+
+    return batches.filter((batch) => {
+      const matchesSearch =
+        !term ||
+        (batch.batch_code || "").toLowerCase().includes(term) ||
+        (batch.vessel || "").toLowerCase().includes(term) ||
+        (batch.species || "").toLowerCase().includes(term);
+
+      const matchesStatus =
+        statusFilter === "All" || batch.status === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [batches, search, statusFilter]);
+
   return (
     <AppShell>
       <div style={{ ...cardStyle, padding: 26 }}>
-        <h2 style={sectionTitleStyle}>Recent Batches</h2>
-        <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
-          Latest recorded supply batches and risk status.
-        </p>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: 16,
+            flexWrap: "wrap",
+            marginBottom: 18,
+          }}
+        >
+          <div>
+            <h2 style={sectionTitleStyle}>Recent Batches</h2>
+            <p style={{ ...mutedTextStyle, marginBottom: 0 }}>
+              Latest recorded supply batches and risk status.
+            </p>
+          </div>
 
-        {batches.length === 0 ? (
-          <p style={mutedTextStyle}>No batches saved yet.</p>
+          <div style={{ color: "#64748b", fontSize: 14, fontWeight: 600 }}>
+            Showing {filteredBatches.length} of {batches.length} batches
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(220px, 1fr) 220px",
+            gap: 12,
+            marginBottom: 18,
+          }}
+        >
+          <input
+            style={inputStyle}
+            placeholder="Search by batch, vessel, or species"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+
+          <select
+            style={inputStyle}
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="All">All Statuses</option>
+            <option value="Normal">Normal</option>
+            <option value="Review">Review</option>
+            <option value="Flagged">Flagged</option>
+          </select>
+        </div>
+
+        {filteredBatches.length === 0 ? (
+          <p style={mutedTextStyle}>
+            {batches.length === 0
+              ? "No batches saved yet."
+              : "No batches match your current search or filter."}
+          </p>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}>
@@ -110,16 +188,26 @@ export default function BatchesPage() {
                 </tr>
               </thead>
               <tbody>
-                {batches.map((batch) => (
+                {filteredBatches.map((batch) => (
                   <tr key={batch.id}>
                     <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9", fontWeight: 700 }}>
                       {batch.batch_code}
                     </td>
-                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>{batch.vessel}</td>
-                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>{batch.species}</td>
-                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>{batch.catch_kg}</td>
-                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>{batch.dock_kg}</td>
-                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>{batch.storage_kg}</td>
+                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
+                      {batch.vessel}
+                    </td>
+                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
+                      {batch.species}
+                    </td>
+                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
+                      {batch.catch_kg}
+                    </td>
+                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
+                      {batch.dock_kg}
+                    </td>
+                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
+                      {batch.storage_kg}
+                    </td>
                     <td
                       style={{
                         padding: 14,
