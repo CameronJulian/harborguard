@@ -55,6 +55,7 @@ function statusLabel(status: string | null) {
 export default function IncidentsPage() {
   const [incidents, setIncidents] = useState<IncidentRow[]>([]);
   const [message, setMessage] = useState("");
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
 
   async function loadIncidents() {
     const { data } = await supabase
@@ -83,12 +84,16 @@ export default function IncidentsPage() {
   }, []);
 
   async function resolveIncident(id: string) {
+    setMessage("");
+    setResolvingId(id);
+
     const { error } = await supabase
       .from("incidents")
       .update({ status: "Resolved" })
       .eq("id", id);
 
     if (error) {
+      setResolvingId(null);
       setMessage(`Resolve failed: ${error.message}`);
       return;
     }
@@ -104,8 +109,9 @@ export default function IncidentsPage() {
       risk: "Low",
     });
 
-    setMessage("Incident resolved successfully.");
     await loadIncidents();
+    setResolvingId(null);
+    setMessage("✅ Incident resolved successfully.");
   }
 
   return (
@@ -199,17 +205,19 @@ export default function IncidentsPage() {
                       {incident.status !== "Resolved" ? (
                         <button
                           onClick={() => resolveIncident(incident.id)}
+                          disabled={resolvingId === incident.id}
                           style={{
                             padding: "10px 14px",
                             borderRadius: 10,
                             border: "none",
                             background: "#0f172a",
                             color: "#fff",
-                            cursor: "pointer",
+                            cursor: resolvingId === incident.id ? "not-allowed" : "pointer",
                             fontWeight: 700,
+                            opacity: resolvingId === incident.id ? 0.7 : 1,
                           }}
                         >
-                          Resolve
+                          {resolvingId === incident.id ? "Resolving..." : "Resolve"}
                         </button>
                       ) : (
                         <span style={{ color: "#16a34a", fontWeight: 700 }}>Done</span>
