@@ -2,16 +2,16 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
-// ✅ Server-side Supabase (IMPORTANT)
+// ✅ Server-side Supabase (secure)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// ✅ Input validation
+// ✅ Validation schema
 const schema = z.object({
-  vessel: z.string().min(1),
-  species: z.string().min(1),
+  vessel: z.string().min(1, "Vessel is required"),
+  species: z.string().min(1, "Species is required"),
   catchKg: z.number(),
   dockKg: z.number(),
   storageKg: z.number(),
@@ -21,8 +21,17 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    // ✅ Validate request
-    const { vessel, species, catchKg, dockKg, storageKg } = schema.parse(body);
+    // ✅ Validate input safely
+    const parsed = schema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.errors[0].message },
+        { status: 400 }
+      );
+    }
+
+    const { vessel, species, catchKg, dockKg, storageKg } = parsed.data;
 
     // ✅ Risk calculation
     const loss = catchKg - storageKg;
@@ -52,7 +61,7 @@ export async function POST(req: Request) {
     const qrCode = `HG-${batchCode}`;
 
     // ✅ Insert batch
-    const { error } = await supabase.from("batches").insert({
+    const { error: batchError } = await supabase.from("batches").insert({
       batch_code: batchCode,
       vessel,
       species,
@@ -68,22 +77,36 @@ export async function POST(req: Request) {
       created_by: null,
     });
 
-    if (error) {
-      console.error("Insert error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (batchError) {
+      console.error("Batch insert error:", batchError);
+      return NextResponse.json(
+        { error: batchError.message },
+        { status: 500 }
+      );
     }
 
     // ✅ Create incident if high risk
     if (status === "Flagged") {
-      await supabase.from("incidents").insert({
+      const { error: incidentError } = await supabase.from("incidents").insert({
         incident_code: `INC-${Date.now()}`,
         severity: "High",
         status: "Open",
         summary: `${loss}kg discrepancy detected for ${vessel} / ${species} (Risk Score: ${riskScore})`,
       });
+
+      if (incidentError) {
+        console.error("Incident insert error:", incidentError);
+      }
     }
 
-    // ✅ Success
+    // ✅ Audit log (production feature)
+    await supabase.from("audit_logs").insert({
+      actor_name: "Cameron Hendrick",
+      action: "Created batch",
+      batch_code: batchCode,
+      risk: riskLevel,
+    });
+
     return NextResponse.json({
       success: true,
       riskScore,
