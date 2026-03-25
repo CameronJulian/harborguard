@@ -1,7 +1,7 @@
 "use client";
 
 import { CSSProperties, ReactNode, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import Sidebar from "@/components/Sidebar";
@@ -35,6 +35,8 @@ const cardStyle: CSSProperties = {
 
 export default function AppShell({ children }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
+
   const [session, setSession] = useState<Session | null>(null);
   const [checking, setChecking] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
@@ -48,41 +50,69 @@ export default function AppShell({ children }: Props) {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) {
+    let mounted = true;
+
+    async function checkSession() {
+      const {
+        data: { session: currentSession },
+      } = await supabase.auth.getSession();
+
+      if (!mounted) return;
+
+      if (!currentSession) {
+        setSession(null);
+        setChecking(false);
         router.replace("/");
-      } else {
-        setSession(data.session);
+        return;
       }
+
+      setSession(currentSession);
       setChecking(false);
-    });
+    }
+
+    checkSession();
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      if (!mounted) return;
+
       if (!currentSession) {
+        setSession(null);
+        setChecking(false);
         router.replace("/");
-      } else {
-        setSession(currentSession);
+        return;
       }
+
+      setSession(currentSession);
       setChecking(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [router]);
+
+  useEffect(() => {
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
+  }, [pathname, isMobile]);
 
   async function handleSignOut() {
     await supabase.auth.signOut();
+    setSession(null);
     router.replace("/");
   }
 
-  if (checking) {
+  if (checking || !session) {
     return (
       <main style={pageStyle}>
         <div style={{ ...shellStyle, textAlign: "center", paddingTop: 90 }}>
           <div style={{ ...cardStyle, padding: 36, maxWidth: 460, margin: "0 auto" }}>
             <h1 style={{ marginTop: 0, fontSize: 44 }}>HarborGuard</h1>
-            <p>Loading...</p>
+            <p style={{ color: "#64748b", margin: 0 }}>Loading secure workspace...</p>
           </div>
         </div>
       </main>
@@ -101,11 +131,14 @@ export default function AppShell({ children }: Props) {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
+              gap: 12,
             }}
           >
             <div>
               <div style={{ fontSize: 26, fontWeight: 800 }}>HarborGuard</div>
-              <div style={{ fontSize: 14, color: "#64748b" }}>Fish Supply Chain Monitoring System</div>
+              <div style={{ fontSize: 14, color: "#64748b" }}>
+                Fish Supply Chain Monitoring System
+              </div>
             </div>
 
             <button
@@ -129,11 +162,12 @@ export default function AppShell({ children }: Props) {
             display: "grid",
             gridTemplateColumns: isMobile ? "1fr" : "280px 1fr",
             gap: 24,
+            alignItems: "start",
           }}
         >
           {(!isMobile || sidebarOpen) && (
             <Sidebar
-              email={session?.user.email}
+              email={session.user.email}
               onSignOut={handleSignOut}
               isMobile={isMobile}
               onNavigate={() => {
