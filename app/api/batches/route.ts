@@ -2,13 +2,11 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
-// ✅ Server client
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// ✅ Validation
 const schema = z.object({
   vessel: z.string().min(1),
   species: z.string().min(1),
@@ -22,14 +20,13 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { vessel, species, catchKg, dockKg, storageKg } = schema.parse(body);
 
-    // ✅ Get user from request (IMPORTANT)
     const authHeader = req.headers.get("authorization");
 
     if (!authHeader) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const token = authHeader.replace("Bearer ", "");
+    const token = authHeader.replace("Bearer ", "").trim();
 
     const {
       data: { user },
@@ -40,21 +37,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid user" }, { status: 401 });
     }
 
-    // ✅ Check role
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("role")
+      .select("full_name, role")
       .eq("id", user.id)
       .single();
 
-    if (!profile || profile.role === "viewer") {
+    if (profileError || !profile) {
+      return NextResponse.json(
+        { error: "User profile not found." },
+        { status: 403 }
+      );
+    }
+
+    if (profile.role === "viewer") {
       return NextResponse.json(
         { error: "Permission denied" },
         { status: 403 }
       );
     }
 
-    // ✅ Risk logic
     const loss = catchKg - storageKg;
     const lossPercent = catchKg > 0 ? (loss / catchKg) * 100 : 0;
 
@@ -77,37 +79,69 @@ export async function POST(req: Request) {
       riskScore > 30 ? "Medium" :
       "Low";
 
-    // ✅ Insert batch
-    const { error } = await supabase.from("batches").insert({
-      batch_code: `BAT-${Date.now()}`,
+    const batchCode = `BAT-${Date.now()}`;
+    const qrCode = `HG-${batchCode}`;
+
+    const handlerName = profile.full_name || user.email || "Unknown User";
+    const handlerRole = profile.role || "manager";
+
+    const { error: batchError } = await supabase.from("batches").insert({
+      batch_code: batchCode,
       vessel,
       species,
       catch_kg: catchKg,
       dock_kg: dockKg,
       storage_kg: storageKg,
+      handler_name: handlerName,
+      handler_role: handlerRole,
+      location: "Main Warehouse",
+      notes: `AI risk score: ${riskScore}`,
+      qr_code: qrCode,
       status,
+      created_by: user.id,
     });
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (batchError) {
+      return NextResponse.json({ error: batchError.message }, { status: 500 });
     }
 
-    // ✅ Create incident if needed
     if (status === "Flagged") {
-      await supabase.from("incidents").insert({
+      const { error: incidentError } = await supabase.from("incidents").insert({
         incident_code: `INC-${Date.now()}`,
         severity: "High",
         status: "Open",
-        summary: `${loss}kg discrepancy detected for ${vessel}`,
+        summary: `${loss}kg discrepancy detected for ${vessel} / ${species} (Risk Score: ${riskScore})`,
       });
+
+      if (incidentError) {
+        return NextResponse.json(
+          { error: incidentError.message },
+          { status: 500 }
+        );
+      }
+    }
+
+    const { error: auditError } = await supabase.from("audit_logs").insert({
+      actor_name: handlerName,
+      action: "Created batch",
+      batch_code: batchCode,
+      risk: riskLevel,
+    });
+
+    if (auditError) {
+      return NextResponse.json(
+        { error: auditError.message },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
       success: true,
       riskScore,
       riskLevel,
+      status,
+      batchCode,
     });
-
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || "Server error" },
