@@ -216,10 +216,15 @@ export default function DashboardPage() {
 
     setLoading(true);
 
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
     const response = await fetch("/api/batches", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${session?.access_token}`,
       },
       body: JSON.stringify({
         vessel,

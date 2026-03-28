@@ -2,16 +2,16 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
-// ✅ Server-side Supabase (secure)
+// ✅ Server client
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// ✅ Validation schema
+// ✅ Validation
 const schema = z.object({
-  vessel: z.string().min(1, "Vessel is required"),
-  species: z.string().min(1, "Species is required"),
+  vessel: z.string().min(1),
+  species: z.string().min(1),
   catchKg: z.number(),
   dockKg: z.number(),
   storageKg: z.number(),
@@ -20,20 +20,41 @@ const schema = z.object({
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    const { vessel, species, catchKg, dockKg, storageKg } = schema.parse(body);
 
-    // ✅ Validate input safely
-    const parsed = schema.safeParse(body);
+    // ✅ Get user from request (IMPORTANT)
+    const authHeader = req.headers.get("authorization");
 
-    if (!parsed.success) {
+    if (!authHeader) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(token);
+
+    if (userError || !user) {
+      return NextResponse.json({ error: "Invalid user" }, { status: 401 });
+    }
+
+    // ✅ Check role
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile || profile.role === "viewer") {
       return NextResponse.json(
-        { error: parsed.error.errors[0].message },
-        { status: 400 }
+        { error: "Permission denied" },
+        { status: 403 }
       );
     }
 
-    const { vessel, species, catchKg, dockKg, storageKg } = parsed.data;
-
-    // ✅ Risk calculation
+    // ✅ Risk logic
     const loss = catchKg - storageKg;
     const lossPercent = catchKg > 0 ? (loss / catchKg) * 100 : 0;
 
@@ -56,56 +77,30 @@ export async function POST(req: Request) {
       riskScore > 30 ? "Medium" :
       "Low";
 
-    // ✅ IDs
-    const batchCode = `BAT-${Date.now()}`;
-    const qrCode = `HG-${batchCode}`;
-
     // ✅ Insert batch
-    const { error: batchError } = await supabase.from("batches").insert({
-      batch_code: batchCode,
+    const { error } = await supabase.from("batches").insert({
+      batch_code: `BAT-${Date.now()}`,
       vessel,
       species,
       catch_kg: catchKg,
       dock_kg: dockKg,
       storage_kg: storageKg,
-      handler_name: "Cameron Hendrick",
-      handler_role: "manager",
-      location: "Main Warehouse",
-      notes: `AI risk score: ${riskScore}`,
-      qr_code: qrCode,
       status,
-      created_by: null,
     });
 
-    if (batchError) {
-      console.error("Batch insert error:", batchError);
-      return NextResponse.json(
-        { error: batchError.message },
-        { status: 500 }
-      );
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // ✅ Create incident if high risk
+    // ✅ Create incident if needed
     if (status === "Flagged") {
-      const { error: incidentError } = await supabase.from("incidents").insert({
+      await supabase.from("incidents").insert({
         incident_code: `INC-${Date.now()}`,
         severity: "High",
         status: "Open",
-        summary: `${loss}kg discrepancy detected for ${vessel} / ${species} (Risk Score: ${riskScore})`,
+        summary: `${loss}kg discrepancy detected for ${vessel}`,
       });
-
-      if (incidentError) {
-        console.error("Incident insert error:", incidentError);
-      }
     }
-
-    // ✅ Audit log (production feature)
-    await supabase.from("audit_logs").insert({
-      actor_name: "Cameron Hendrick",
-      action: "Created batch",
-      batch_code: batchCode,
-      risk: riskLevel,
-    });
 
     return NextResponse.json({
       success: true,
@@ -114,8 +109,6 @@ export async function POST(req: Request) {
     });
 
   } catch (err: any) {
-    console.error("API error:", err);
-
     return NextResponse.json(
       { error: err.message || "Server error" },
       { status: 500 }
