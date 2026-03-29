@@ -15,6 +15,8 @@ import {
 } from "recharts";
 import AppShell from "@/components/AppShell";
 import { supabase } from "@/lib/supabase";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 type BatchRow = {
   id: string;
@@ -101,10 +103,16 @@ function toDateInputValue(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+function formatDisplayDate(dateString: string | null) {
+  if (!dateString) return "-";
+  return new Date(dateString).toLocaleString();
+}
+
 export default function AnalyticsPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [batches, setBatches] = useState<BatchRow[]>([]);
   const [incidents, setIncidents] = useState<IncidentRow[]>([]);
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   const today = new Date();
   const thirtyDaysAgo = new Date();
@@ -357,6 +365,82 @@ export default function AnalyticsPage() {
     URL.revokeObjectURL(url);
   }
 
+  function exportAnalyticsPdf() {
+    setExportingPdf(true);
+
+    try {
+      const doc = new jsPDF("p", "mm", "a4");
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(20);
+      doc.text("HarborGuard Analytics Report", 14, 18);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(`Reporting Period: ${startDate} to ${endDate}`, 14, 25);
+      doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 30);
+
+      doc.setDrawColor(220, 226, 232);
+      doc.line(14, 34, pageWidth - 14, 34);
+
+      autoTable(doc, {
+        startY: 40,
+        head: [["Metric", "Value"]],
+        body: [
+          ["Total Catch", `${formatNumber(totalCatch)} kg`],
+          ["Total Stored", `${formatNumber(totalStored)} kg`],
+          ["Total Loss", `${formatNumber(totalLoss)} kg`],
+          ["Open Incidents", formatNumber(openIncidents)],
+          ["Flagged Batches", formatNumber(flaggedCount)],
+          ["Review Batches", formatNumber(reviewCount)],
+          ["Average Loss %", `${formatOneDecimal(avgLossPercent)}%`],
+          ["Filtered Batches", formatNumber(filteredBatches.length)],
+          ["Filtered Incidents", formatNumber(filteredIncidents.length)],
+        ],
+        theme: "grid",
+        headStyles: { fillColor: [37, 99, 235] },
+        styles: { fontSize: 10 },
+      });
+
+      autoTable(doc, {
+        startY: (doc as any).lastAutoTable.finalY + 10,
+        head: [["Batch Code", "Vessel", "Species", "Catch", "Storage", "Status", "Created"]],
+        body: filteredBatches.slice(0, 20).map((b) => [
+          b.batch_code ?? "",
+          b.vessel ?? "",
+          b.species ?? "",
+          String(b.catch_kg ?? ""),
+          String(b.storage_kg ?? ""),
+          b.status ?? "",
+          formatDisplayDate(b.created_at),
+        ]),
+        theme: "striped",
+        headStyles: { fillColor: [22, 163, 74] },
+        styles: { fontSize: 8 },
+      });
+
+      autoTable(doc, {
+        startY: (doc as any).lastAutoTable.finalY + 10,
+        head: [["Incident Code", "Severity", "Status", "Summary", "Created"]],
+        body: filteredIncidents.slice(0, 20).map((i) => [
+          i.incident_code ?? "",
+          i.severity ?? "",
+          i.status ?? "",
+          i.summary ?? "",
+          formatDisplayDate(i.created_at),
+        ]),
+        theme: "striped",
+        headStyles: { fillColor: [220, 38, 38] },
+        styles: { fontSize: 8 },
+      });
+
+      doc.save(`harborguard-analytics-${startDate}-to-${endDate}.pdf`);
+    } finally {
+      setExportingPdf(false);
+    }
+  }
+
   return (
     <AppShell>
       <div style={{ ...cardStyle, padding: 26, marginBottom: 24 }}>
@@ -381,7 +465,7 @@ export default function AnalyticsPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr auto auto",
+            gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr auto auto auto",
             gap: 12,
             alignItems: "end",
           }}
@@ -410,8 +494,12 @@ export default function AnalyticsPage() {
             Export Batches CSV
           </button>
 
-          <button style={buttonStyle} onClick={exportIncidentsCsv}>
+          <button style={secondaryButtonStyle} onClick={exportIncidentsCsv}>
             Export Incidents CSV
+          </button>
+
+          <button style={buttonStyle} onClick={exportAnalyticsPdf} disabled={exportingPdf}>
+            {exportingPdf ? "Exporting PDF..." : "Export PDF Report"}
           </button>
         </div>
       </div>
