@@ -68,9 +68,15 @@ export default function Sidebar({ email, onSignOut, isMobile, onNavigate }: Prop
         <Link href="/dashboard" style={navStyle("/dashboard")} onClick={onNavigate}>
           Dashboard
         </Link>
+
+        <Link href="/analytics" style={navStyle("/analytics")} onClick={onNavigate}>
+          Analytics
+        </Link>
+
         <Link href="/batches" style={navStyle("/batches")} onClick={onNavigate}>
           Recent Batches
         </Link>
+
         <Link href="/incidents" style={navStyle("/incidents")} onClick={onNavigate}>
           Incident Management
         </Link>
