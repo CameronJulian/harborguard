@@ -113,6 +113,7 @@ export default function AnalyticsPage() {
   const [batches, setBatches] = useState<BatchRow[]>([]);
   const [incidents, setIncidents] = useState<IncidentRow[]>([]);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   const today = new Date();
   const thirtyDaysAgo = new Date();
@@ -316,9 +317,7 @@ export default function AnalyticsPage() {
 
     const csv = [headers, ...rows]
       .map((row) =>
-        row
-          .map((value) => `"${String(value).replace(/"/g, '""')}"`)
-          .join(",")
+        row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(",")
       )
       .join("\n");
 
@@ -350,9 +349,7 @@ export default function AnalyticsPage() {
 
     const csv = [headers, ...rows]
       .map((row) =>
-        row
-          .map((value) => `"${String(value).replace(/"/g, '""')}"`)
-          .join(",")
+        row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(",")
       )
       .join("\n");
 
@@ -363,6 +360,35 @@ export default function AnalyticsPage() {
     link.download = `harborguard-incidents-${startDate}-to-${endDate}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function sendEmailReport() {
+    setSendingEmail(true);
+
+    try {
+      const response = await fetch("/api/reports/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          startDate,
+          endDate,
+          email: "cameronhendrick17@gmail.com",
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        alert(result.error || "Failed to send email report.");
+        return;
+      }
+
+      alert("Email report sent successfully.");
+    } finally {
+      setSendingEmail(false);
+    }
   }
 
   function exportAnalyticsPdf() {
@@ -465,7 +491,7 @@ export default function AnalyticsPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr auto auto auto",
+            gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr auto auto auto auto",
             gap: 12,
             alignItems: "end",
           }}
@@ -496,6 +522,10 @@ export default function AnalyticsPage() {
 
           <button style={secondaryButtonStyle} onClick={exportIncidentsCsv}>
             Export Incidents CSV
+          </button>
+
+          <button style={secondaryButtonStyle} onClick={sendEmailReport} disabled={sendingEmail}>
+            {sendingEmail ? "Sending Email..." : "Send Email Report"}
           </button>
 
           <button style={buttonStyle} onClick={exportAnalyticsPdf} disabled={exportingPdf}>
