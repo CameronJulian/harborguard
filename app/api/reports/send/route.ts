@@ -1,16 +1,188 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
-
-const resend = new Resend(process.env.RESEND_API_KEY!);
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+function formatDateTime(value: string | null) {
+  if (!value) return "-";
+  return new Date(value).toLocaleString();
+}
+
+function wrapText(text: string, maxLength: number) {
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let current = "";
+
+  for (const word of words) {
+    const test = current ? `${current} ${word}` : word;
+    if (test.length > maxLength) {
+      if (current) lines.push(current);
+      current = word;
+    } else {
+      current = test;
+    }
+  }
+
+  if (current) lines.push(current);
+  return lines;
+}
+
+async function buildAnalyticsPdf(params: {
+  startDate: string;
+  endDate: string;
+  totalCatch: number;
+  totalStored: number;
+  totalLoss: number;
+  flaggedCount: number;
+  reviewCount: number;
+  openIncidents: number;
+  avgLossPercent: number;
+  batches: any[];
+  incidents: any[];
+}) {
+  const {
+    startDate,
+    endDate,
+    totalCatch,
+    totalStored,
+    totalLoss,
+    flaggedCount,
+    reviewCount,
+    openIncidents,
+    avgLossPercent,
+    batches,
+    incidents,
+  } = params;
+
+  const pdfDoc = await PDFDocument.create();
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  let page = pdfDoc.addPage([595, 842]);
+  let { width, height } = page.getSize();
+  let y = height - 40;
+
+  const margin = 40;
+  const lineHeight = 14;
+
+  function ensureSpace(required = 24) {
+    if (y < required) {
+      page = pdfDoc.addPage([595, 842]);
+      ({ width, height } = page.getSize());
+      y = height - 40;
+    }
+  }
+
+  function drawText(
+    text: string,
+    x: number,
+    size = 11,
+    bold = false,
+    color = rgb(0, 0, 0)
+  ) {
+    page.drawText(text, {
+      x,
+      y,
+      size,
+      font: bold ? boldFont : font,
+      color,
+    });
+  }
+
+  drawText("HarborGuard Analytics Report", margin, 20, true);
+  y -= 24;
+  drawText(`Reporting Period: ${startDate} to ${endDate}`, margin, 10, false, rgb(0.35, 0.35, 0.35));
+  y -= 14;
+  drawText(`Generated: ${new Date().toLocaleString()}`, margin, 10, false, rgb(0.35, 0.35, 0.35));
+  y -= 24;
+
+  drawText("Summary", margin, 14, true);
+  y -= 18;
+
+  const summaryRows = [
+    `Total Catch: ${totalCatch} kg`,
+    `Total Stored: ${totalStored} kg`,
+    `Total Loss: ${totalLoss} kg`,
+    `Flagged Batches: ${flaggedCount}`,
+    `Review Batches: ${reviewCount}`,
+    `Open Incidents: ${openIncidents}`,
+    `Average Loss %: ${avgLossPercent.toFixed(1)}%`,
+  ];
+
+  for (const row of summaryRows) {
+    ensureSpace();
+    drawText(`• ${row}`, margin, 11);
+    y -= lineHeight;
+  }
+
+  y -= 18;
+  ensureSpace(80);
+  drawText("Recent Batches", margin, 14, true);
+  y -= 18;
+
+  const batchHeader = ["Batch", "Vessel", "Species", "Catch", "Storage", "Status"];
+  drawText(batchHeader[0], margin, 10, true);
+  drawText(batchHeader[1], 140, 10, true);
+  drawText(batchHeader[2], 240, 10, true);
+  drawText(batchHeader[3], 340, 10, true);
+  drawText(batchHeader[4], 400, 10, true);
+  drawText(batchHeader[5], 470, 10, true);
+  y -= 14;
+
+  for (const b of batches.slice(0, 12)) {
+    ensureSpace(70);
+    drawText(String(b.batch_code ?? ""), margin, 9);
+    drawText(String(b.vessel ?? ""), 140, 9);
+    drawText(String(b.species ?? ""), 240, 9);
+    drawText(String(b.catch_kg ?? ""), 340, 9);
+    drawText(String(b.storage_kg ?? ""), 400, 9);
+    drawText(String(b.status ?? ""), 470, 9);
+    y -= 12;
+  }
+
+  y -= 20;
+  ensureSpace(100);
+  drawText("Recent Incidents", margin, 14, true);
+  y -= 18;
+
+  for (const i of incidents.slice(0, 8)) {
+    ensureSpace(90);
+    drawText(`${i.incident_code ?? ""} | ${i.severity ?? ""} | ${i.status ?? ""}`, margin, 10, true);
+    y -= 14;
+
+    const wrapped = wrapText(String(i.summary ?? ""), 85);
+    for (const line of wrapped.slice(0, 3)) {
+      ensureSpace(30);
+      drawText(line, margin + 10, 9, false, rgb(0.2, 0.2, 0.2));
+      y -= 11;
+    }
+
+    drawText(formatDateTime(i.created_at), margin + 10, 8, false, rgb(0.4, 0.4, 0.4));
+    y -= 18;
+  }
+
+  const pdfBytes = await pdfDoc.save();
+  return Buffer.from(pdfBytes);
+}
+
 export async function POST(req: Request) {
   try {
+    const resendKey = process.env.RESEND_API_KEY;
+
+    if (!resendKey) {
+      return NextResponse.json(
+        { error: "RESEND_API_KEY is not configured." },
+        { status: 500 }
+      );
+    }
+
+    const resend = new Resend(resendKey);
+
     const body = await req.json();
     const { startDate, endDate, email } = body;
 
@@ -32,10 +204,7 @@ export async function POST(req: Request) {
       .order("created_at", { ascending: false });
 
     if (batchesError) {
-      return NextResponse.json(
-        { error: batchesError.message },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: batchesError.message }, { status: 500 });
     }
 
     const { data: incidents, error: incidentsError } = await supabase
@@ -46,10 +215,7 @@ export async function POST(req: Request) {
       .order("created_at", { ascending: false });
 
     if (incidentsError) {
-      return NextResponse.json(
-        { error: incidentsError.message },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: incidentsError.message }, { status: 500 });
     }
 
     const safeBatches = batches || [];
@@ -166,16 +332,36 @@ export async function POST(req: Request) {
       </div>
     `;
 
+    const pdfBuffer = await buildAnalyticsPdf({
+      startDate,
+      endDate,
+      totalCatch,
+      totalStored,
+      totalLoss,
+      flaggedCount,
+      reviewCount,
+      openIncidents,
+      avgLossPercent,
+      batches: safeBatches,
+      incidents: safeIncidents,
+    });
+
     const emailResult = await resend.emails.send({
       from: "HarborGuard <onboarding@resend.dev>",
       to: email,
       subject: `HarborGuard Analytics Report (${startDate} to ${endDate})`,
       html,
+      attachments: [
+        {
+          filename: `harborguard-analytics-${startDate}-to-${endDate}.pdf`,
+          content: pdfBuffer.toString("base64"),
+        },
+      ],
     });
 
     return NextResponse.json({
       success: true,
-      message: "Email report sent successfully.",
+      message: "Email report with PDF attachment sent successfully.",
       emailResult,
     });
   } catch (err: any) {
