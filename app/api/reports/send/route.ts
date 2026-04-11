@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { ChartJSNodeCanvas } from "chartjs-node-canvas";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,6 +31,157 @@ function wrapText(text: string, maxLength: number) {
 
   if (current) lines.push(current);
   return lines;
+}
+
+async function createTrendChart(batches: any[]) {
+  const width = 1000;
+  const height = 420;
+  const chartJSNodeCanvas = new ChartJSNodeCanvas({
+    width,
+    height,
+    backgroundColour: "white",
+  });
+
+  const ordered = [...batches].reverse();
+
+  const labels = ordered.map((b) => b.batch_code?.slice(-4) || "N/A");
+  const catchValues = ordered.map((b) => Number(b.catch_kg || 0));
+  const storageValues = ordered.map((b) => Number(b.storage_kg || 0));
+  const lossValues = ordered.map(
+    (b) => Number(b.catch_kg || 0) - Number(b.storage_kg || 0)
+  );
+
+  const configuration = {
+    type: "line" as const,
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Catch",
+          data: catchValues,
+          borderColor: "#2563eb",
+          backgroundColor: "#2563eb",
+          tension: 0.3,
+        },
+        {
+          label: "Storage",
+          data: storageValues,
+          borderColor: "#16a34a",
+          backgroundColor: "#16a34a",
+          tension: 0.3,
+        },
+        {
+          label: "Loss",
+          data: lossValues,
+          borderColor: "#f59e0b",
+          backgroundColor: "#f59e0b",
+          tension: 0.3,
+        },
+      ],
+    },
+    options: {
+      responsive: false,
+      plugins: {
+        legend: {
+          display: true,
+        },
+        title: {
+          display: true,
+          text: "Trend Over Time",
+          color: "#111827",
+          font: {
+            size: 18,
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: "#475569",
+          },
+          grid: {
+            color: "#e5e7eb",
+          },
+        },
+        y: {
+          ticks: {
+            color: "#475569",
+          },
+          grid: {
+            color: "#e5e7eb",
+          },
+        },
+      },
+    },
+  };
+
+  return chartJSNodeCanvas.renderToBuffer(configuration);
+}
+
+async function createStatusChart(batches: any[]) {
+  const width = 800;
+  const height = 420;
+  const chartJSNodeCanvas = new ChartJSNodeCanvas({
+    width,
+    height,
+    backgroundColour: "white",
+  });
+
+  const normalCount = batches.filter((b) => b.status === "Normal").length;
+  const reviewCount = batches.filter((b) => b.status === "Review").length;
+  const flaggedCount = batches.filter((b) => b.status === "Flagged").length;
+
+  const configuration = {
+    type: "bar" as const,
+    data: {
+      labels: ["Normal", "Review", "Flagged"],
+      datasets: [
+        {
+          label: "Batches",
+          data: [normalCount, reviewCount, flaggedCount],
+          backgroundColor: ["#2563eb", "#f59e0b", "#dc2626"],
+        },
+      ],
+    },
+    options: {
+      responsive: false,
+      plugins: {
+        legend: {
+          display: false,
+        },
+        title: {
+          display: true,
+          text: "Status Distribution",
+          color: "#111827",
+          font: {
+            size: 18,
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: "#475569",
+          },
+          grid: {
+            color: "#e5e7eb",
+          },
+        },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            color: "#475569",
+            precision: 0,
+          },
+          grid: {
+            color: "#e5e7eb",
+          },
+        },
+      },
+    },
+  };
+
+  return chartJSNodeCanvas.renderToBuffer(configuration);
 }
 
 async function buildAnalyticsPdf(params: {
@@ -70,11 +222,15 @@ async function buildAnalyticsPdf(params: {
   const margin = 40;
   const lineHeight = 14;
 
+  function newPage() {
+    page = pdfDoc.addPage([595, 842]);
+    ({ width, height } = page.getSize());
+    y = height - 40;
+  }
+
   function ensureSpace(required = 24) {
     if (y < required) {
-      page = pdfDoc.addPage([595, 842]);
-      ({ width, height } = page.getSize());
-      y = height - 40;
+      newPage();
     }
   }
 
@@ -120,8 +276,38 @@ async function buildAnalyticsPdf(params: {
     y -= lineHeight;
   }
 
-  y -= 18;
-  ensureSpace(80);
+  y -= 12;
+
+  if (batches.length > 0) {
+    const trendChartBuffer = await createTrendChart(batches);
+    const statusChartBuffer = await createStatusChart(batches);
+
+    const trendImage = await pdfDoc.embedPng(trendChartBuffer);
+    const statusImage = await pdfDoc.embedPng(statusChartBuffer);
+
+    const trendDims = trendImage.scale(0.45);
+    const statusDims = statusImage.scale(0.42);
+
+    ensureSpace(260);
+    page.drawImage(trendImage, {
+      x: margin,
+      y: y - trendDims.height,
+      width: trendDims.width,
+      height: trendDims.height,
+    });
+    y -= trendDims.height + 18;
+
+    ensureSpace(240);
+    page.drawImage(statusImage, {
+      x: margin,
+      y: y - statusDims.height,
+      width: statusDims.width,
+      height: statusDims.height,
+    });
+    y -= statusDims.height + 20;
+  }
+
+  ensureSpace(100);
   drawText("Recent Batches", margin, 14, true);
   y -= 18;
 
