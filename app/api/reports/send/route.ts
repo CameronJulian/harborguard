@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import { ChartJSNodeCanvas } from "chartjs-node-canvas";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,155 +32,179 @@ function wrapText(text: string, maxLength: number) {
   return lines;
 }
 
-async function createTrendChart(batches: any[]) {
-  const width = 1000;
-  const height = 420;
-  const chartJSNodeCanvas = new ChartJSNodeCanvas({
-    width,
-    height,
-    backgroundColour: "white",
+function drawLineChart(params: {
+  page: any;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  labels: string[];
+  series: Array<{
+    name: string;
+    values: number[];
+    color: ReturnType<typeof rgb>;
+  }>;
+  title: string;
+  font: any;
+  boldFont: any;
+}) {
+  const { page, x, y, width, height, labels, series, title, font, boldFont } = params;
+
+  page.drawText(title, {
+    x,
+    y: y + height + 20,
+    size: 14,
+    font: boldFont,
+    color: rgb(0.07, 0.09, 0.12),
   });
 
-  const ordered = [...batches].reverse();
+  page.drawRectangle({
+    x,
+    y,
+    width,
+    height,
+    borderColor: rgb(0.9, 0.92, 0.95),
+    borderWidth: 1,
+    color: rgb(1, 1, 1),
+  });
 
-  const labels = ordered.map((b) => b.batch_code?.slice(-4) || "N/A");
-  const catchValues = ordered.map((b) => Number(b.catch_kg || 0));
-  const storageValues = ordered.map((b) => Number(b.storage_kg || 0));
-  const lossValues = ordered.map(
-    (b) => Number(b.catch_kg || 0) - Number(b.storage_kg || 0)
-  );
+  const allValues = series.flatMap((s) => s.values);
+  const maxValue = Math.max(...allValues, 1);
 
-  const configuration = {
-    type: "line" as const,
-    data: {
-      labels,
-      datasets: [
-        {
-          label: "Catch",
-          data: catchValues,
-          borderColor: "#2563eb",
-          backgroundColor: "#2563eb",
-          tension: 0.3,
-        },
-        {
-          label: "Storage",
-          data: storageValues,
-          borderColor: "#16a34a",
-          backgroundColor: "#16a34a",
-          tension: 0.3,
-        },
-        {
-          label: "Loss",
-          data: lossValues,
-          borderColor: "#f59e0b",
-          backgroundColor: "#f59e0b",
-          tension: 0.3,
-        },
-      ],
-    },
-    options: {
-      responsive: false,
-      plugins: {
-        legend: {
-          display: true,
-        },
-        title: {
-          display: true,
-          text: "Trend Over Time",
-          color: "#111827",
-          font: {
-            size: 18,
-          },
-        },
-      },
-      scales: {
-        x: {
-          ticks: {
-            color: "#475569",
-          },
-          grid: {
-            color: "#e5e7eb",
-          },
-        },
-        y: {
-          ticks: {
-            color: "#475569",
-          },
-          grid: {
-            color: "#e5e7eb",
-          },
-        },
-      },
-    },
-  };
+  page.drawLine({
+    start: { x: x + 30, y: y + 25 },
+    end: { x: x + 30, y: y + height - 20 },
+    thickness: 1,
+    color: rgb(0.8, 0.84, 0.88),
+  });
 
-  return chartJSNodeCanvas.renderToBuffer(configuration);
+  page.drawLine({
+    start: { x: x + 30, y: y + 25 },
+    end: { x: x + width - 15, y: y + 25 },
+    thickness: 1,
+    color: rgb(0.8, 0.84, 0.88),
+  });
+
+  const innerWidth = width - 50;
+  const innerHeight = height - 50;
+
+  for (let i = 0; i < series.length; i++) {
+    const s = series[i];
+    const points = s.values.map((value, index) => {
+      const px =
+        x + 30 + (labels.length <= 1 ? innerWidth / 2 : (index / (labels.length - 1)) * innerWidth);
+      const py = y + 25 + (value / maxValue) * innerHeight;
+      return { x: px, y: py };
+    });
+
+    for (let j = 0; j < points.length - 1; j++) {
+      page.drawLine({
+        start: points[j],
+        end: points[j + 1],
+        thickness: 2,
+        color: s.color,
+      });
+    }
+
+    for (const point of points) {
+      page.drawCircle({
+        x: point.x,
+        y: point.y,
+        size: 2.5,
+        color: s.color,
+      });
+    }
+
+    page.drawText(s.name, {
+      x: x + 10 + i * 90,
+      y: y + height - 10,
+      size: 9,
+      font,
+      color: s.color,
+    });
+  }
+
+  const labelStep = Math.max(1, Math.ceil(labels.length / 6));
+  for (let i = 0; i < labels.length; i += labelStep) {
+    const px =
+      x + 30 + (labels.length <= 1 ? innerWidth / 2 : (i / (labels.length - 1)) * innerWidth);
+
+    page.drawText(labels[i], {
+      x: px - 10,
+      y: y + 10,
+      size: 8,
+      font,
+      color: rgb(0.35, 0.4, 0.47),
+    });
+  }
 }
 
-async function createStatusChart(batches: any[]) {
-  const width = 800;
-  const height = 420;
-  const chartJSNodeCanvas = new ChartJSNodeCanvas({
-    width,
-    height,
-    backgroundColour: "white",
+function drawBarChart(params: {
+  page: any;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  labels: string[];
+  values: number[];
+  colors: ReturnType<typeof rgb>[];
+  title: string;
+  font: any;
+  boldFont: any;
+}) {
+  const { page, x, y, width, height, labels, values, colors, title, font, boldFont } = params;
+
+  page.drawText(title, {
+    x,
+    y: y + height + 20,
+    size: 14,
+    font: boldFont,
+    color: rgb(0.07, 0.09, 0.12),
   });
 
-  const normalCount = batches.filter((b) => b.status === "Normal").length;
-  const reviewCount = batches.filter((b) => b.status === "Review").length;
-  const flaggedCount = batches.filter((b) => b.status === "Flagged").length;
+  page.drawRectangle({
+    x,
+    y,
+    width,
+    height,
+    borderColor: rgb(0.9, 0.92, 0.95),
+    borderWidth: 1,
+    color: rgb(1, 1, 1),
+  });
 
-  const configuration = {
-    type: "bar" as const,
-    data: {
-      labels: ["Normal", "Review", "Flagged"],
-      datasets: [
-        {
-          label: "Batches",
-          data: [normalCount, reviewCount, flaggedCount],
-          backgroundColor: ["#2563eb", "#f59e0b", "#dc2626"],
-        },
-      ],
-    },
-    options: {
-      responsive: false,
-      plugins: {
-        legend: {
-          display: false,
-        },
-        title: {
-          display: true,
-          text: "Status Distribution",
-          color: "#111827",
-          font: {
-            size: 18,
-          },
-        },
-      },
-      scales: {
-        x: {
-          ticks: {
-            color: "#475569",
-          },
-          grid: {
-            color: "#e5e7eb",
-          },
-        },
-        y: {
-          beginAtZero: true,
-          ticks: {
-            color: "#475569",
-            precision: 0,
-          },
-          grid: {
-            color: "#e5e7eb",
-          },
-        },
-      },
-    },
-  };
+  const maxValue = Math.max(...values, 1);
+  const innerHeight = height - 45;
+  const barWidth = Math.min(60, (width - 60) / Math.max(values.length, 1) - 20);
 
-  return chartJSNodeCanvas.renderToBuffer(configuration);
+  for (let i = 0; i < values.length; i++) {
+    const barHeight = (values[i] / maxValue) * innerHeight;
+    const bx = x + 30 + i * ((width - 60) / values.length) + 10;
+    const by = y + 25;
+
+    page.drawRectangle({
+      x: bx,
+      y: by,
+      width: barWidth,
+      height: barHeight,
+      color: colors[i],
+    });
+
+    page.drawText(String(values[i]), {
+      x: bx + 8,
+      y: by + barHeight + 4,
+      size: 9,
+      font,
+      color: rgb(0.2, 0.23, 0.28),
+    });
+
+    page.drawText(labels[i], {
+      x: bx,
+      y: y + 8,
+      size: 8,
+      font,
+      color: rgb(0.35, 0.4, 0.47),
+    });
+  }
 }
 
 async function buildAnalyticsPdf(params: {
@@ -216,15 +239,14 @@ async function buildAnalyticsPdf(params: {
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
   let page = pdfDoc.addPage([595, 842]);
-  let { width, height } = page.getSize();
+  let { height } = page.getSize();
   let y = height - 40;
-
   const margin = 40;
   const lineHeight = 14;
 
   function newPage() {
     page = pdfDoc.addPage([595, 842]);
-    ({ width, height } = page.getSize());
+    ({ height } = page.getSize());
     y = height - 40;
   }
 
@@ -276,35 +298,55 @@ async function buildAnalyticsPdf(params: {
     y -= lineHeight;
   }
 
-  y -= 12;
+  y -= 18;
 
   if (batches.length > 0) {
-    const trendChartBuffer = await createTrendChart(batches);
-    const statusChartBuffer = await createStatusChart(batches);
+    const ordered = [...batches].reverse();
+    const labels = ordered.map((b) => b.batch_code?.slice(-4) || "N/A");
+    const catchValues = ordered.map((b) => Number(b.catch_kg || 0));
+    const storageValues = ordered.map((b) => Number(b.storage_kg || 0));
+    const lossValues = ordered.map(
+      (b) => Number(b.catch_kg || 0) - Number(b.storage_kg || 0)
+    );
 
-    const trendImage = await pdfDoc.embedPng(trendChartBuffer);
-    const statusImage = await pdfDoc.embedPng(statusChartBuffer);
-
-    const trendDims = trendImage.scale(0.45);
-    const statusDims = statusImage.scale(0.42);
-
-    ensureSpace(260);
-    page.drawImage(trendImage, {
+    ensureSpace(280);
+    drawLineChart({
+      page,
       x: margin,
-      y: y - trendDims.height,
-      width: trendDims.width,
-      height: trendDims.height,
+      y: y - 220,
+      width: 500,
+      height: 200,
+      labels,
+      series: [
+        { name: "Catch", values: catchValues, color: rgb(0.15, 0.39, 0.92) },
+        { name: "Storage", values: storageValues, color: rgb(0.09, 0.64, 0.29) },
+        { name: "Loss", values: lossValues, color: rgb(0.96, 0.62, 0.04) },
+      ],
+      title: "Trend Over Time",
+      font,
+      boldFont,
     });
-    y -= trendDims.height + 18;
+    y -= 250;
 
     ensureSpace(240);
-    page.drawImage(statusImage, {
+    drawBarChart({
+      page,
       x: margin,
-      y: y - statusDims.height,
-      width: statusDims.width,
-      height: statusDims.height,
+      y: y - 180,
+      width: 320,
+      height: 160,
+      labels: ["Normal", "Review", "Flagged"],
+      values: [
+        batches.filter((b) => b.status === "Normal").length,
+        batches.filter((b) => b.status === "Review").length,
+        batches.filter((b) => b.status === "Flagged").length,
+      ],
+      colors: [rgb(0.15, 0.39, 0.92), rgb(0.96, 0.62, 0.04), rgb(0.86, 0.15, 0.15)],
+      title: "Status Distribution",
+      font,
+      boldFont,
     });
-    y -= statusDims.height + 20;
+    y -= 210;
   }
 
   ensureSpace(100);
