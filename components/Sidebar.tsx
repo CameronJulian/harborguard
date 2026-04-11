@@ -73,6 +73,10 @@ export default function Sidebar({ email, onSignOut, isMobile, onNavigate }: Prop
           Analytics
         </Link>
 
+        <Link href="/report-settings" style={navStyle("/report-settings")} onClick={onNavigate}>
+          Report Settings
+        </Link>
+
         <Link href="/batches" style={navStyle("/batches")} onClick={onNavigate}>
           Recent Batches
         </Link>
