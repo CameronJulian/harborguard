@@ -77,6 +77,10 @@ export default function Sidebar({ email, onSignOut, isMobile, onNavigate }: Prop
           Report Settings
         </Link>
 
+        <Link href="/report-history" style={navStyle("/report-history")} onClick={onNavigate}>
+          Reports History
+        </Link>
+
         <Link href="/batches" style={navStyle("/batches")} onClick={onNavigate}>
           Recent Batches
         </Link>
