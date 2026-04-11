@@ -1,11 +1,11 @@
 {
   "crons": [
     {
-      "path": "/api/reports/cron?period=daily&email=cameronhendrick17@gmail.com",
+      "path": "/api/reports/cron?period=daily",
       "schedule": "0 7 * * *"
     },
     {
-      "path": "/api/reports/cron?period=weekly&email=cameronhendrick17@gmail.com",
+      "path": "/api/reports/cron?period=weekly",
       "schedule": "0 8 * * 1"
     }
   ]

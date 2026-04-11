@@ -55,7 +55,6 @@ export async function GET(req: Request) {
       periodParam === "weekly" ? "weekly" : "daily";
 
     const { startDate, endDate } = getDateRange(period);
-
     const origin = process.env.NEXT_PUBLIC_SITE_URL || url.origin;
 
     const { data: subscriptions, error: subscriptionsError } = await supabase
@@ -77,7 +76,13 @@ export async function GET(req: Request) {
       return NextResponse.json({
         success: true,
         message: `No active ${period} subscriptions found.`,
-        sent: 0,
+        period,
+        startDate,
+        endDate,
+        totalRecipients: 0,
+        successCount: 0,
+        failedCount: 0,
+        results: [],
       });
     }
 
