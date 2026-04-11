@@ -87,6 +87,7 @@ export async function GET(req: Request) {
     }
 
     const sendResults: Array<{
+      subscriptionId: string;
       email: string;
       success: boolean;
       error?: string;
@@ -110,22 +111,64 @@ export async function GET(req: Request) {
 
         if (!response.ok) {
           sendResults.push({
+            subscriptionId: subscription.id,
             email: subscription.email,
             success: false,
             error: result.error || "Failed to send report.",
           });
+
+          await supabase.from("report_delivery_logs").insert({
+            subscription_id: subscription.id,
+            user_id: subscription.user_id,
+            email: subscription.email,
+            full_name: subscription.full_name,
+            report_frequency: period,
+            start_date: startDate,
+            end_date: endDate,
+            status: "failed",
+            error_message: result.error || "Failed to send report.",
+          });
+
           continue;
         }
 
         sendResults.push({
+          subscriptionId: subscription.id,
           email: subscription.email,
           success: true,
         });
+
+        await supabase.from("report_delivery_logs").insert({
+          subscription_id: subscription.id,
+          user_id: subscription.user_id,
+          email: subscription.email,
+          full_name: subscription.full_name,
+          report_frequency: period,
+          start_date: startDate,
+          end_date: endDate,
+          status: "success",
+          error_message: null,
+        });
       } catch (err: any) {
+        const errorMessage = err.message || "Unexpected send error.";
+
         sendResults.push({
+          subscriptionId: subscription.id,
           email: subscription.email,
           success: false,
-          error: err.message || "Unexpected send error.",
+          error: errorMessage,
+        });
+
+        await supabase.from("report_delivery_logs").insert({
+          subscription_id: subscription.id,
+          user_id: subscription.user_id,
+          email: subscription.email,
+          full_name: subscription.full_name,
+          report_frequency: period,
+          start_date: startDate,
+          end_date: endDate,
+          status: "failed",
+          error_message: errorMessage,
         });
       }
     }
