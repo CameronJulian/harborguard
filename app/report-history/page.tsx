@@ -2,6 +2,7 @@
 
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import AppShell from "@/components/AppShell";
+import RoleGuard from "@/components/RoleGuard";
 import { supabase } from "@/lib/supabase";
 
 type ReportDeliveryLogRow = {
@@ -133,204 +134,206 @@ export default function ReportHistoryPage() {
 
   return (
     <AppShell>
-      {message ? (
-        <div
-          style={{
-            marginBottom: 20,
-            padding: 14,
-            borderRadius: 12,
-            background: "#eff6ff",
-            border: "1px solid #bfdbfe",
-            color: "#1d4ed8",
-          }}
-        >
-          {message}
-        </div>
-      ) : null}
+      <RoleGuard allowedRoles={["admin", "manager"]}>
+        {message ? (
+          <div
+            style={{
+              marginBottom: 20,
+              padding: 14,
+              borderRadius: 12,
+              background: "#eff6ff",
+              border: "1px solid #bfdbfe",
+              color: "#1d4ed8",
+            }}
+          >
+            {message}
+          </div>
+        ) : null}
 
-      <div style={{ ...cardStyle, padding: 26, marginBottom: 24 }}>
-        <h2 style={sectionTitleStyle}>Reports History</h2>
-        <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
-          View scheduled report delivery history, successes, and failures.
-        </p>
+        <div style={{ ...cardStyle, padding: 26, marginBottom: 24 }}>
+          <h2 style={sectionTitleStyle}>Reports History</h2>
+          <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
+            View scheduled report delivery history, successes, and failures.
+          </p>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1.4fr 180px 180px auto",
+              gap: 12,
+              alignItems: "end",
+            }}
+          >
+            <div>
+              <div style={{ ...mutedTextStyle, marginBottom: 8, fontSize: 13 }}>Search by Email</div>
+              <input
+                style={inputStyle}
+                value={emailFilter}
+                onChange={(e) => setEmailFilter(e.target.value)}
+                placeholder="recipient@example.com"
+              />
+            </div>
+
+            <div>
+              <div style={{ ...mutedTextStyle, marginBottom: 8, fontSize: 13 }}>Status</div>
+              <select
+                style={inputStyle}
+                value={statusFilter}
+                onChange={(e) =>
+                  setStatusFilter(e.target.value as "all" | "success" | "failed")
+                }
+              >
+                <option value="all">All</option>
+                <option value="success">Success</option>
+                <option value="failed">Failed</option>
+              </select>
+            </div>
+
+            <div>
+              <div style={{ ...mutedTextStyle, marginBottom: 8, fontSize: 13 }}>Frequency</div>
+              <select
+                style={inputStyle}
+                value={frequencyFilter}
+                onChange={(e) =>
+                  setFrequencyFilter(e.target.value as "all" | "daily" | "weekly")
+                }
+              >
+                <option value="all">All</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+              </select>
+            </div>
+
+            <button
+              onClick={loadLogs}
+              style={{
+                padding: "12px 16px",
+                borderRadius: 12,
+                border: "none",
+                background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+                color: "#fff",
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              Refresh
+            </button>
+          </div>
+        </div>
 
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1.4fr 180px 180px auto",
-            gap: 12,
-            alignItems: "end",
+            gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+            gap: 20,
+            marginBottom: 24,
           }}
         >
-          <div>
-            <div style={{ ...mutedTextStyle, marginBottom: 8, fontSize: 13 }}>Search by Email</div>
-            <input
-              style={inputStyle}
-              value={emailFilter}
-              onChange={(e) => setEmailFilter(e.target.value)}
-              placeholder="recipient@example.com"
-            />
-          </div>
-
-          <div>
-            <div style={{ ...mutedTextStyle, marginBottom: 8, fontSize: 13 }}>Status</div>
-            <select
-              style={inputStyle}
-              value={statusFilter}
-              onChange={(e) =>
-                setStatusFilter(e.target.value as "all" | "success" | "failed")
-              }
-            >
-              <option value="all">All</option>
-              <option value="success">Success</option>
-              <option value="failed">Failed</option>
-            </select>
-          </div>
-
-          <div>
-            <div style={{ ...mutedTextStyle, marginBottom: 8, fontSize: 13 }}>Frequency</div>
-            <select
-              style={inputStyle}
-              value={frequencyFilter}
-              onChange={(e) =>
-                setFrequencyFilter(e.target.value as "all" | "daily" | "weekly")
-              }
-            >
-              <option value="all">All</option>
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-            </select>
-          </div>
-
-          <button
-            onClick={loadLogs}
-            style={{
-              padding: "12px 16px",
-              borderRadius: 12,
-              border: "none",
-              background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
-              color: "#fff",
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
-            Refresh
-          </button>
+          {[
+            { label: "Total Logs", value: summary.total },
+            { label: "Success", value: summary.success },
+            { label: "Failed", value: summary.failed },
+            { label: "Daily", value: summary.daily },
+            { label: "Weekly", value: summary.weekly },
+          ].map((item, index) => (
+            <div key={index} style={{ ...cardStyle, padding: 24 }}>
+              <div style={{ color: "#64748b", fontSize: 14, marginBottom: 10 }}>
+                {item.label}
+              </div>
+              <div style={{ fontSize: 30, fontWeight: 800, lineHeight: 1.1 }}>
+                {item.value}
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-          gap: 20,
-          marginBottom: 24,
-        }}
-      >
-        {[
-          { label: "Total Logs", value: summary.total },
-          { label: "Success", value: summary.success },
-          { label: "Failed", value: summary.failed },
-          { label: "Daily", value: summary.daily },
-          { label: "Weekly", value: summary.weekly },
-        ].map((item, index) => (
-          <div key={index} style={{ ...cardStyle, padding: 24 }}>
-            <div style={{ color: "#64748b", fontSize: 14, marginBottom: 10 }}>
-              {item.label}
-            </div>
-            <div style={{ fontSize: 30, fontWeight: 800, lineHeight: 1.1 }}>
-              {item.value}
-            </div>
-          </div>
-        ))}
-      </div>
+        <div style={{ ...cardStyle, padding: 26 }}>
+          <h2 style={sectionTitleStyle}>Delivery Log</h2>
+          <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
+            Latest report sends across all subscribed recipients.
+          </p>
 
-      <div style={{ ...cardStyle, padding: 26 }}>
-        <h2 style={sectionTitleStyle}>Delivery Log</h2>
-        <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
-          Latest report sends across all subscribed recipients.
-        </p>
-
-        {loading ? (
-          <p style={mutedTextStyle}>Loading report history...</p>
-        ) : filteredLogs.length === 0 ? (
-          <p style={mutedTextStyle}>No delivery logs found.</p>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1200 }}>
-              <thead>
-                <tr>
-                  {[
-                    "Recipient",
-                    "Name",
-                    "Frequency",
-                    "Window",
-                    "Status",
-                    "Error",
-                    "Sent At",
-                  ].map((h) => (
-                    <th
-                      key={h}
-                      style={{
-                        textAlign: "left",
-                        padding: 14,
-                        borderBottom: "1px solid #e5e7eb",
-                        color: "#64748b",
-                        fontSize: 13,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.04em",
-                      }}
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredLogs.map((log) => (
-                  <tr key={log.id}>
-                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9", fontWeight: 700 }}>
-                      {log.email}
-                    </td>
-
-                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
-                      {log.full_name || "-"}
-                    </td>
-
-                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9", textTransform: "capitalize" }}>
-                      {log.report_frequency}
-                    </td>
-
-                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
-                      {log.start_date} → {log.end_date}
-                    </td>
-
-                    <td
-                      style={{
-                        padding: 14,
-                        borderBottom: "1px solid #f1f5f9",
-                        color: statusColor(log.status),
-                        fontWeight: 800,
-                        textTransform: "capitalize",
-                      }}
-                    >
-                      {log.status}
-                    </td>
-
-                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9", color: "#b91c1c" }}>
-                      {log.error_message || "-"}
-                    </td>
-
-                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
-                      {formatDateTime(log.created_at)}
-                    </td>
+          {loading ? (
+            <p style={mutedTextStyle}>Loading report history...</p>
+          ) : filteredLogs.length === 0 ? (
+            <p style={mutedTextStyle}>No delivery logs found.</p>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1200 }}>
+                <thead>
+                  <tr>
+                    {[
+                      "Recipient",
+                      "Name",
+                      "Frequency",
+                      "Window",
+                      "Status",
+                      "Error",
+                      "Sent At",
+                    ].map((h) => (
+                      <th
+                        key={h}
+                        style={{
+                          textAlign: "left",
+                          padding: 14,
+                          borderBottom: "1px solid #e5e7eb",
+                          color: "#64748b",
+                          fontSize: 13,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.04em",
+                        }}
+                      >
+                        {h}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                </thead>
+                <tbody>
+                  {filteredLogs.map((log) => (
+                    <tr key={log.id}>
+                      <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9", fontWeight: 700 }}>
+                        {log.email}
+                      </td>
+
+                      <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
+                        {log.full_name || "-"}
+                      </td>
+
+                      <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9", textTransform: "capitalize" }}>
+                        {log.report_frequency}
+                      </td>
+
+                      <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
+                        {log.start_date} → {log.end_date}
+                      </td>
+
+                      <td
+                        style={{
+                          padding: 14,
+                          borderBottom: "1px solid #f1f5f9",
+                          color: statusColor(log.status),
+                          fontWeight: 800,
+                          textTransform: "capitalize",
+                        }}
+                      >
+                        {log.status}
+                      </td>
+
+                      <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9", color: "#b91c1c" }}>
+                        {log.error_message || "-"}
+                      </td>
+
+                      <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
+                        {formatDateTime(log.created_at)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </RoleGuard>
     </AppShell>
   );
 }

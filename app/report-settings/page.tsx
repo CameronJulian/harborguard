@@ -2,6 +2,7 @@
 
 import { CSSProperties, useEffect, useState } from "react";
 import AppShell from "@/components/AppShell";
+import RoleGuard from "@/components/RoleGuard";
 import { supabase } from "@/lib/supabase";
 
 type SubscriptionRow = {
@@ -182,162 +183,164 @@ export default function ReportSettingsPage() {
 
   return (
     <AppShell>
-      {message ? (
-        <div
-          style={{
-            marginBottom: 20,
-            padding: 14,
-            borderRadius: 12,
-            background: "#eff6ff",
-            border: "1px solid #bfdbfe",
-            color: "#1d4ed8",
-          }}
-        >
-          {message}
+      <RoleGuard allowedRoles={["admin", "manager"]}>
+        {message ? (
+          <div
+            style={{
+              marginBottom: 20,
+              padding: 14,
+              borderRadius: 12,
+              background: "#eff6ff",
+              border: "1px solid #bfdbfe",
+              color: "#1d4ed8",
+            }}
+          >
+            {message}
+          </div>
+        ) : null}
+
+        <div style={{ ...cardStyle, padding: 26, marginBottom: 24 }}>
+          <h2 style={sectionTitleStyle}>Report Settings</h2>
+          <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
+            Manage who receives scheduled analytics reports and how often they get them.
+          </p>
+
+          <form
+            onSubmit={addSubscription}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1.2fr 1fr 180px auto",
+              gap: 12,
+              alignItems: "end",
+            }}
+          >
+            <div>
+              <div style={{ ...mutedTextStyle, marginBottom: 8, fontSize: 13 }}>Email</div>
+              <input
+                style={inputStyle}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@example.com"
+              />
+            </div>
+
+            <div>
+              <div style={{ ...mutedTextStyle, marginBottom: 8, fontSize: 13 }}>Full Name</div>
+              <input
+                style={inputStyle}
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Full name"
+              />
+            </div>
+
+            <div>
+              <div style={{ ...mutedTextStyle, marginBottom: 8, fontSize: 13 }}>Frequency</div>
+              <select
+                style={inputStyle}
+                value={reportFrequency}
+                onChange={(e) => setReportFrequency(e.target.value as "daily" | "weekly")}
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+              </select>
+            </div>
+
+            <button type="submit" style={buttonStyle} disabled={saving}>
+              {saving ? "Saving..." : "Add Subscription"}
+            </button>
+          </form>
         </div>
-      ) : null}
 
-      <div style={{ ...cardStyle, padding: 26, marginBottom: 24 }}>
-        <h2 style={sectionTitleStyle}>Report Settings</h2>
-        <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
-          Manage who receives scheduled analytics reports and how often they get them.
-        </p>
+        <div style={{ ...cardStyle, padding: 26 }}>
+          <h2 style={sectionTitleStyle}>Active Subscriptions</h2>
+          <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
+            Enable, disable, change frequency, or remove subscriptions.
+          </p>
 
-        <form
-          onSubmit={addSubscription}
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1.2fr 1fr 180px auto",
-            gap: 12,
-            alignItems: "end",
-          }}
-        >
-          <div>
-            <div style={{ ...mutedTextStyle, marginBottom: 8, fontSize: 13 }}>Email</div>
-            <input
-              style={inputStyle}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@example.com"
-            />
-          </div>
-
-          <div>
-            <div style={{ ...mutedTextStyle, marginBottom: 8, fontSize: 13 }}>Full Name</div>
-            <input
-              style={inputStyle}
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Full name"
-            />
-          </div>
-
-          <div>
-            <div style={{ ...mutedTextStyle, marginBottom: 8, fontSize: 13 }}>Frequency</div>
-            <select
-              style={inputStyle}
-              value={reportFrequency}
-              onChange={(e) => setReportFrequency(e.target.value as "daily" | "weekly")}
-            >
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-            </select>
-          </div>
-
-          <button type="submit" style={buttonStyle} disabled={saving}>
-            {saving ? "Saving..." : "Add Subscription"}
-          </button>
-        </form>
-      </div>
-
-      <div style={{ ...cardStyle, padding: 26 }}>
-        <h2 style={sectionTitleStyle}>Active Subscriptions</h2>
-        <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
-          Enable, disable, change frequency, or remove subscriptions.
-        </p>
-
-        {loading ? (
-          <p style={mutedTextStyle}>Loading subscriptions...</p>
-        ) : subscriptions.length === 0 ? (
-          <p style={mutedTextStyle}>No subscriptions found.</p>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
-              <thead>
-                <tr>
-                  {["Email", "Full Name", "Frequency", "Enabled", "Actions"].map((h) => (
-                    <th
-                      key={h}
-                      style={{
-                        textAlign: "left",
-                        padding: 14,
-                        borderBottom: "1px solid #e5e7eb",
-                        color: "#64748b",
-                        fontSize: 13,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.04em",
-                      }}
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {subscriptions.map((subscription) => (
-                  <tr key={subscription.id}>
-                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9", fontWeight: 700 }}>
-                      {subscription.email}
-                    </td>
-
-                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
-                      {subscription.full_name || "-"}
-                    </td>
-
-                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
-                      <select
-                        style={{ ...inputStyle, minWidth: 130 }}
-                        value={subscription.report_frequency}
-                        onChange={(e) =>
-                          changeFrequency(
-                            subscription,
-                            e.target.value as "daily" | "weekly"
-                          )
-                        }
-                      >
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
-                      </select>
-                    </td>
-
-                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
-                      <button
-                        style={secondaryButtonStyle}
-                        onClick={() => toggleEnabled(subscription)}
-                      >
-                        {subscription.is_enabled ? "Enabled" : "Disabled"}
-                      </button>
-                    </td>
-
-                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
-                      <button
+          {loading ? (
+            <p style={mutedTextStyle}>Loading subscriptions...</p>
+          ) : subscriptions.length === 0 ? (
+            <p style={mutedTextStyle}>No subscriptions found.</p>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
+                <thead>
+                  <tr>
+                    {["Email", "Full Name", "Frequency", "Enabled", "Actions"].map((h) => (
+                      <th
+                        key={h}
                         style={{
-                          ...secondaryButtonStyle,
-                          border: "1px solid #fecaca",
-                          color: "#b91c1c",
+                          textAlign: "left",
+                          padding: 14,
+                          borderBottom: "1px solid #e5e7eb",
+                          color: "#64748b",
+                          fontSize: 13,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.04em",
                         }}
-                        onClick={() => deleteSubscription(subscription.id)}
                       >
-                        Delete
-                      </button>
-                    </td>
+                        {h}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                </thead>
+                <tbody>
+                  {subscriptions.map((subscription) => (
+                    <tr key={subscription.id}>
+                      <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9", fontWeight: 700 }}>
+                        {subscription.email}
+                      </td>
+
+                      <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
+                        {subscription.full_name || "-"}
+                      </td>
+
+                      <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
+                        <select
+                          style={{ ...inputStyle, minWidth: 130 }}
+                          value={subscription.report_frequency}
+                          onChange={(e) =>
+                            changeFrequency(
+                              subscription,
+                              e.target.value as "daily" | "weekly"
+                            )
+                          }
+                        >
+                          <option value="daily">Daily</option>
+                          <option value="weekly">Weekly</option>
+                        </select>
+                      </td>
+
+                      <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
+                        <button
+                          style={secondaryButtonStyle}
+                          onClick={() => toggleEnabled(subscription)}
+                        >
+                          {subscription.is_enabled ? "Enabled" : "Disabled"}
+                        </button>
+                      </td>
+
+                      <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
+                        <button
+                          style={{
+                            ...secondaryButtonStyle,
+                            border: "1px solid #fecaca",
+                            color: "#b91c1c",
+                          }}
+                          onClick={() => deleteSubscription(subscription.id)}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </RoleGuard>
     </AppShell>
   );
 }
