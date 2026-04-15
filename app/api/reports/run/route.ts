@@ -1,10 +1,4 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function POST(req: Request) {
   try {
@@ -33,9 +27,23 @@ export async function POST(req: Request) {
       headers: {
         Authorization: `Bearer ${cronSecret}`,
       },
+      cache: "no-store",
     });
 
-    const result = await response.json();
+    const rawText = await response.text();
+
+    let result: any;
+    try {
+      result = JSON.parse(rawText);
+    } catch {
+      return NextResponse.json(
+        {
+          error: `Expected JSON from cron route but received non-JSON response.`,
+          details: rawText.slice(0, 300),
+        },
+        { status: 500 }
+      );
+    }
 
     if (!response.ok) {
       return NextResponse.json(

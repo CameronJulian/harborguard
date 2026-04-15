@@ -55,7 +55,10 @@ export async function GET(req: Request) {
       periodParam === "weekly" ? "weekly" : "daily";
 
     const { startDate, endDate } = getDateRange(period);
-    const origin = process.env.NEXT_PUBLIC_SITE_URL || url.origin;
+
+    const origin =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      url.origin;
 
     const { data: subscriptions, error: subscriptionsError } = await supabase
       .from("report_subscriptions")
@@ -70,7 +73,8 @@ export async function GET(req: Request) {
       );
     }
 
-    const activeSubscriptions = (subscriptions as SubscriptionRow[] | null) || [];
+    const activeSubscriptions =
+      (subscriptions as SubscriptionRow[] | null) || [];
 
     if (activeSubscriptions.length === 0) {
       return NextResponse.json({
@@ -107,7 +111,18 @@ export async function GET(req: Request) {
           }),
         });
 
-        const result = await response.json();
+        // ✅ FIXED: Safe JSON parsing
+        const rawText = await response.text();
+
+        let result: any;
+        try {
+          result = JSON.parse(rawText);
+        } catch {
+          result = {
+            error: "Non-JSON response returned from /api/reports/send",
+            details: rawText.slice(0, 300),
+          };
+        }
 
         if (!response.ok) {
           sendResults.push({
