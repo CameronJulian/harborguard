@@ -57,6 +57,17 @@ const secondaryButtonStyle: CSSProperties = {
   cursor: "pointer",
 };
 
+const smallDangerButtonStyle: CSSProperties = {
+  padding: "8px 12px",
+  borderRadius: 10,
+  border: "1px solid #fecaca",
+  background: "#fff",
+  color: "#b91c1c",
+  fontWeight: 700,
+  cursor: "pointer",
+  fontSize: 13,
+};
+
 const sectionTitleStyle: CSSProperties = {
   fontSize: 28,
   fontWeight: 800,
@@ -82,6 +93,7 @@ export default function ReportHistoryPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [retrying, setRetrying] = useState(false);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
 
   const [statusFilter, setStatusFilter] = useState<"all" | "success" | "failed">("all");
   const [frequencyFilter, setFrequencyFilter] = useState<"all" | "daily" | "weekly">("all");
@@ -155,6 +167,35 @@ export default function ReportHistoryPage() {
       setMessage(err.message || "Failed to retry failed reports.");
     } finally {
       setRetrying(false);
+    }
+  }
+
+  async function retryOne(logId: string) {
+    setRetryingId(logId);
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/reports/retry-one", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ logId }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        setMessage(result.error || "Failed to retry this report.");
+        return;
+      }
+
+      setMessage("Report retried successfully.");
+      await loadLogs();
+    } catch (err: any) {
+      setMessage(err.message || "Failed to retry this report.");
+    } finally {
+      setRetryingId(null);
     }
   }
 
@@ -259,10 +300,7 @@ export default function ReportHistoryPage() {
               </select>
             </div>
 
-            <button
-              onClick={loadLogs}
-              style={primaryButtonStyle}
-            >
+            <button onClick={loadLogs} style={primaryButtonStyle}>
               Refresh
             </button>
 
@@ -318,7 +356,7 @@ export default function ReportHistoryPage() {
             <p style={mutedTextStyle}>No delivery logs found.</p>
           ) : (
             <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1200 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1320 }}>
                 <thead>
                   <tr>
                     {[
@@ -329,6 +367,7 @@ export default function ReportHistoryPage() {
                       "Status",
                       "Error",
                       "Sent At",
+                      "Actions",
                     ].map((h) => (
                       <th
                         key={h}
@@ -384,6 +423,24 @@ export default function ReportHistoryPage() {
 
                       <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
                         {formatDateTime(log.created_at)}
+                      </td>
+
+                      <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
+                        {log.status === "failed" ? (
+                          <button
+                            onClick={() => retryOne(log.id)}
+                            disabled={retryingId === log.id}
+                            style={{
+                              ...smallDangerButtonStyle,
+                              opacity: retryingId === log.id ? 0.6 : 1,
+                              cursor: retryingId === log.id ? "not-allowed" : "pointer",
+                            }}
+                          >
+                            {retryingId === log.id ? "Retrying..." : "Retry"}
+                          </button>
+                        ) : (
+                          <span style={{ color: "#94a3b8", fontSize: 13 }}>-</span>
+                        )}
                       </td>
                     </tr>
                   ))}
