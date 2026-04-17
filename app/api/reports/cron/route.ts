@@ -56,9 +56,8 @@ export async function GET(req: Request) {
 
     const { startDate, endDate } = getDateRange(period);
 
-    const origin =
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      url.origin;
+    // Use the actual request origin instead of NEXT_PUBLIC_SITE_URL
+    const origin = url.origin;
 
     const { data: subscriptions, error: subscriptionsError } = await supabase
       .from("report_subscriptions")
@@ -104,6 +103,7 @@ export async function GET(req: Request) {
           headers: {
             "Content-Type": "application/json",
           },
+          cache: "no-store",
           body: JSON.stringify({
             startDate,
             endDate,
@@ -111,7 +111,6 @@ export async function GET(req: Request) {
           }),
         });
 
-        // ✅ FIXED: Safe JSON parsing
         const rawText = await response.text();
 
         let result: any;
@@ -125,11 +124,16 @@ export async function GET(req: Request) {
         }
 
         if (!response.ok) {
+          const errorMessage =
+            result.error ||
+            result.details ||
+            "Failed to send report.";
+
           sendResults.push({
             subscriptionId: subscription.id,
             email: subscription.email,
             success: false,
-            error: result.error || "Failed to send report.",
+            error: errorMessage,
           });
 
           await supabase.from("report_delivery_logs").insert({
@@ -141,7 +145,34 @@ export async function GET(req: Request) {
             start_date: startDate,
             end_date: endDate,
             status: "failed",
-            error_message: result.error || "Failed to send report.",
+            error_message: errorMessage,
+          });
+
+          continue;
+        }
+
+        if (!result?.success) {
+          const errorMessage =
+            result?.error ||
+            "Report send route returned a non-success response.";
+
+          sendResults.push({
+            subscriptionId: subscription.id,
+            email: subscription.email,
+            success: false,
+            error: errorMessage,
+          });
+
+          await supabase.from("report_delivery_logs").insert({
+            subscription_id: subscription.id,
+            user_id: subscription.user_id,
+            email: subscription.email,
+            full_name: subscription.full_name,
+            report_frequency: period,
+            start_date: startDate,
+            end_date: endDate,
+            status: "failed",
+            error_message: errorMessage,
           });
 
           continue;
