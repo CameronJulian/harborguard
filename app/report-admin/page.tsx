@@ -46,6 +46,16 @@ const secondaryButtonStyle: CSSProperties = {
   cursor: "pointer",
 };
 
+const dangerButtonStyle: CSSProperties = {
+  padding: "12px 16px",
+  borderRadius: 12,
+  border: "1px solid #fecaca",
+  background: "#fff",
+  color: "#b91c1c",
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
 const sectionTitleStyle: CSSProperties = {
   fontSize: 28,
   fontWeight: 800,
@@ -68,6 +78,8 @@ export default function ReportAdminPage() {
   const [message, setMessage] = useState("");
   const [runningDaily, setRunningDaily] = useState(false);
   const [runningWeekly, setRunningWeekly] = useState(false);
+  const [retryingFailed, setRetryingFailed] = useState(false);
+  const [cleaningFailed, setCleaningFailed] = useState(false);
 
   async function loadLogs() {
     setLoading(true);
@@ -78,7 +90,7 @@ export default function ReportAdminPage() {
         "id, subscription_id, user_id, email, full_name, report_frequency, start_date, end_date, status, error_message, created_at"
       )
       .order("created_at", { ascending: false })
-      .limit(100);
+      .limit(150);
 
     if (error) {
       setMessage(`Failed to load admin data: ${error.message}`);
@@ -133,9 +145,71 @@ export default function ReportAdminPage() {
         `${period} reports completed. Sent: ${result.successCount}, Failed: ${result.failedCount}`
       );
       await loadLogs();
+    } catch (err: any) {
+      setMessage(err.message || `Failed to run ${period} reports.`);
     } finally {
       if (period === "daily") setRunningDaily(false);
       if (period === "weekly") setRunningWeekly(false);
+    }
+  }
+
+  async function retryFailedReports() {
+    setRetryingFailed(true);
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/reports/retry", {
+        method: "POST",
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setMessage(result.error || "Failed to retry failed reports.");
+        return;
+      }
+
+      setMessage(
+        `Retry completed. Retried ${result.retried || 0} failed report(s). Success: ${result.successCount || 0}, Failed: ${result.failedCount || 0}`
+      );
+      await loadLogs();
+    } catch (err: any) {
+      setMessage(err.message || "Failed to retry failed reports.");
+    } finally {
+      setRetryingFailed(false);
+    }
+  }
+
+  async function clearOldFailedLogs() {
+    const confirmed = window.confirm(
+      "Delete failed logs older than 1 day? This only removes historical failed records."
+    );
+
+    if (!confirmed) return;
+
+    setCleaningFailed(true);
+    setMessage("");
+
+    try {
+      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+      const { error } = await supabase
+        .from("report_delivery_logs")
+        .delete()
+        .eq("status", "failed")
+        .lt("created_at", cutoff);
+
+      if (error) {
+        setMessage(`Failed to clean old failed logs: ${error.message}`);
+        return;
+      }
+
+      setMessage("Old failed logs removed successfully.");
+      await loadLogs();
+    } catch (err: any) {
+      setMessage(err.message || "Failed to clean old failed logs.");
+    } finally {
+      setCleaningFailed(false);
     }
   }
 
@@ -143,11 +217,30 @@ export default function ReportAdminPage() {
     const total = logs.length;
     const success = logs.filter((l) => l.status === "success").length;
     const failed = logs.filter((l) => l.status === "failed").length;
-    const today = new Date().toISOString().slice(0, 10);
 
-    const todayRuns = logs.filter((l) => l.created_at?.startsWith(today)).length;
+    const last24hCutoff = Date.now() - 24 * 60 * 60 * 1000;
+    const last24hLogs = logs.filter((l) => {
+      if (!l.created_at) return false;
+      return new Date(l.created_at).getTime() >= last24hCutoff;
+    });
 
-    return { total, success, failed, todayRuns };
+    const last24hSuccess = last24hLogs.filter((l) => l.status === "success").length;
+    const last24hFailed = last24hLogs.filter((l) => l.status === "failed").length;
+    const successRate =
+      total > 0 ? ((success / total) * 100).toFixed(1) : "0.0";
+
+    const lastRunAt = logs.length > 0 ? logs[0].created_at : null;
+
+    return {
+      total,
+      success,
+      failed,
+      last24hLogs: last24hLogs.length,
+      last24hSuccess,
+      last24hFailed,
+      successRate,
+      lastRunAt,
+    };
   }, [logs]);
 
   const failedRecipients = useMemo(() => {
@@ -166,6 +259,11 @@ export default function ReportAdminPage() {
 
   const recentFailures = useMemo(
     () => logs.filter((l) => l.status === "failed").slice(0, 10),
+    [logs]
+  );
+
+  const recentSuccesses = useMemo(
+    () => logs.filter((l) => l.status === "success").slice(0, 10),
     [logs]
   );
 
@@ -190,7 +288,7 @@ export default function ReportAdminPage() {
         <div style={{ ...cardStyle, padding: 26, marginBottom: 24 }}>
           <h2 style={sectionTitleStyle}>Report Admin Dashboard</h2>
           <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
-            Trigger report runs manually and monitor delivery performance.
+            Trigger report runs manually, retry failures, and monitor delivery health.
           </p>
 
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -208,6 +306,22 @@ export default function ReportAdminPage() {
               disabled={runningWeekly}
             >
               {runningWeekly ? "Running Weekly..." : "Run Weekly Reports Now"}
+            </button>
+
+            <button
+              style={secondaryButtonStyle}
+              onClick={retryFailedReports}
+              disabled={retryingFailed}
+            >
+              {retryingFailed ? "Retrying Failed..." : "Retry Failed Reports"}
+            </button>
+
+            <button
+              style={dangerButtonStyle}
+              onClick={clearOldFailedLogs}
+              disabled={cleaningFailed}
+            >
+              {cleaningFailed ? "Cleaning..." : "Clear Old Failed Logs"}
             </button>
 
             <button style={secondaryButtonStyle} onClick={loadLogs}>
@@ -228,13 +342,45 @@ export default function ReportAdminPage() {
             { label: "Total Logs", value: summary.total },
             { label: "Success", value: summary.success },
             { label: "Failed", value: summary.failed },
-            { label: "Today", value: summary.todayRuns },
+            { label: "Success Rate", value: `${summary.successRate}%` },
           ].map((item, index) => (
             <div key={index} style={{ ...cardStyle, padding: 24 }}>
               <div style={{ color: "#64748b", fontSize: 14, marginBottom: 10 }}>
                 {item.label}
               </div>
               <div style={{ fontSize: 34, fontWeight: 800, lineHeight: 1.1 }}>
+                {item.value}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+            gap: 20,
+            marginBottom: 24,
+          }}
+        >
+          {[
+            { label: "Last 24h Runs", value: summary.last24hLogs },
+            { label: "Last 24h Success", value: summary.last24hSuccess },
+            { label: "Last 24h Failed", value: summary.last24hFailed },
+            { label: "Last Run", value: formatDateTime(summary.lastRunAt) },
+          ].map((item, index) => (
+            <div key={index} style={{ ...cardStyle, padding: 24 }}>
+              <div style={{ color: "#64748b", fontSize: 14, marginBottom: 10 }}>
+                {item.label}
+              </div>
+              <div
+                style={{
+                  fontSize: index === 3 ? 18 : 30,
+                  fontWeight: 800,
+                  lineHeight: 1.2,
+                  wordBreak: "break-word",
+                }}
+              >
                 {item.value}
               </div>
             </div>
@@ -334,6 +480,41 @@ export default function ReportAdminPage() {
               </div>
             )}
           </div>
+        </div>
+
+        <div style={{ ...cardStyle, padding: 26, marginBottom: 24 }}>
+          <h2 style={sectionTitleStyle}>Recent Successes</h2>
+          <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
+            Latest successful report deliveries.
+          </p>
+
+          {recentSuccesses.length === 0 ? (
+            <p style={mutedTextStyle}>No recent successes found.</p>
+          ) : (
+            <div style={{ display: "grid", gap: 12 }}>
+              {recentSuccesses.map((log) => (
+                <div
+                  key={log.id}
+                  style={{
+                    border: "1px solid #bbf7d0",
+                    background: "#f0fdf4",
+                    borderRadius: 14,
+                    padding: 14,
+                  }}
+                >
+                  <div style={{ fontWeight: 800, color: "#166534", marginBottom: 6 }}>
+                    {log.email}
+                  </div>
+                  <div style={{ color: "#166534", fontSize: 14, marginBottom: 4 }}>
+                    {log.report_frequency} • {log.start_date} → {log.end_date}
+                  </div>
+                  <div style={{ color: "#166534", fontSize: 12 }}>
+                    {formatDateTime(log.created_at)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div style={{ ...cardStyle, padding: 26 }}>
