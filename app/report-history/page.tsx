@@ -37,6 +37,26 @@ const inputStyle: CSSProperties = {
   boxSizing: "border-box",
 };
 
+const primaryButtonStyle: CSSProperties = {
+  padding: "12px 16px",
+  borderRadius: 12,
+  border: "none",
+  background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+  color: "#fff",
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const secondaryButtonStyle: CSSProperties = {
+  padding: "12px 16px",
+  borderRadius: 12,
+  border: "1px solid #d1d5db",
+  background: "#fff",
+  color: "#111827",
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
 const sectionTitleStyle: CSSProperties = {
   fontSize: 28,
   fontWeight: 800,
@@ -61,6 +81,7 @@ export default function ReportHistoryPage() {
   const [logs, setLogs] = useState<ReportDeliveryLogRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [retrying, setRetrying] = useState(false);
 
   const [statusFilter, setStatusFilter] = useState<"all" | "success" | "failed">("all");
   const [frequencyFilter, setFrequencyFilter] = useState<"all" | "daily" | "weekly">("all");
@@ -105,6 +126,38 @@ export default function ReportHistoryPage() {
     };
   }, []);
 
+  async function retryFailedReports() {
+    setRetrying(true);
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/reports/retry", {
+        method: "POST",
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setMessage(result.error || "Failed to retry failed reports.");
+        return;
+      }
+
+      const retriedCount =
+        typeof result.retried === "number"
+          ? result.retried
+          : Array.isArray(result.results)
+            ? result.results.length
+            : 0;
+
+      setMessage(`Retry completed. Retried ${retriedCount} failed report(s).`);
+      await loadLogs();
+    } catch (err: any) {
+      setMessage(err.message || "Failed to retry failed reports.");
+    } finally {
+      setRetrying(false);
+    }
+  }
+
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
       const matchesStatus =
@@ -131,6 +184,8 @@ export default function ReportHistoryPage() {
       weekly: filteredLogs.filter((log) => log.report_frequency === "weekly").length,
     };
   }, [filteredLogs]);
+
+  const hasFailedLogs = filteredLogs.some((log) => log.status === "failed");
 
   return (
     <AppShell>
@@ -159,7 +214,7 @@ export default function ReportHistoryPage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1.4fr 180px 180px auto",
+              gridTemplateColumns: "1.4fr 180px 180px auto auto",
               gap: 12,
               alignItems: "end",
             }}
@@ -206,17 +261,21 @@ export default function ReportHistoryPage() {
 
             <button
               onClick={loadLogs}
-              style={{
-                padding: "12px 16px",
-                borderRadius: 12,
-                border: "none",
-                background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
-                color: "#fff",
-                fontWeight: 700,
-                cursor: "pointer",
-              }}
+              style={primaryButtonStyle}
             >
               Refresh
+            </button>
+
+            <button
+              onClick={retryFailedReports}
+              disabled={retrying || !hasFailedLogs}
+              style={{
+                ...secondaryButtonStyle,
+                opacity: retrying || !hasFailedLogs ? 0.6 : 1,
+                cursor: retrying || !hasFailedLogs ? "not-allowed" : "pointer",
+              }}
+            >
+              {retrying ? "Retrying..." : "Retry Failed"}
             </button>
           </div>
         </div>
