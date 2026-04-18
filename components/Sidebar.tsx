@@ -4,8 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CSSProperties } from "react";
 
+type UserRole = "admin" | "manager" | "viewer";
+
 type Props = {
   email?: string | null;
+  role?: UserRole | null;
   onSignOut: () => void;
   isMobile?: boolean;
   onNavigate?: () => void;
@@ -23,8 +26,16 @@ const mutedTextStyle: CSSProperties = {
   margin: 0,
 };
 
-export default function Sidebar({ email, onSignOut, isMobile, onNavigate }: Props) {
+export default function Sidebar({
+  email,
+  role,
+  onSignOut,
+  isMobile,
+  onNavigate,
+}: Props) {
   const pathname = usePathname();
+
+  const canManageReports = role === "admin" || role === "manager";
 
   function navStyle(href: string): CSSProperties {
     const active = pathname === href;
@@ -73,17 +84,49 @@ export default function Sidebar({ email, onSignOut, isMobile, onNavigate }: Prop
           Analytics
         </Link>
 
-        <Link href="/report-settings" style={navStyle("/report-settings")} onClick={onNavigate}>
-          Report Settings
+        <Link href="/fleet" style={navStyle("/fleet")} onClick={onNavigate}>
+          Fleet Dashboard
         </Link>
 
-        <Link href="/report-history" style={navStyle("/report-history")} onClick={onNavigate}>
-          Reports History
+        <Link href="/vehicles" style={navStyle("/vehicles")} onClick={onNavigate}>
+          Vehicles
         </Link>
 
-        <Link href="/report-admin" style={navStyle("/report-admin")} onClick={onNavigate}>
-          Report Admin
+        <Link href="/trips" style={navStyle("/trips")} onClick={onNavigate}>
+          Trips
         </Link>
+
+        <Link href="/vehicle-alerts" style={navStyle("/vehicle-alerts")} onClick={onNavigate}>
+          Vehicle Alerts
+        </Link>
+
+        {canManageReports && (
+          <>
+            <Link
+              href="/report-settings"
+              style={navStyle("/report-settings")}
+              onClick={onNavigate}
+            >
+              Report Settings
+            </Link>
+
+            <Link
+              href="/report-history"
+              style={navStyle("/report-history")}
+              onClick={onNavigate}
+            >
+              Reports History
+            </Link>
+
+            <Link
+              href="/report-admin"
+              style={navStyle("/report-admin")}
+              onClick={onNavigate}
+            >
+              Report Admin
+            </Link>
+          </>
+        )}
 
         <Link href="/batches" style={navStyle("/batches")} onClick={onNavigate}>
           Recent Batches
@@ -98,9 +141,15 @@ export default function Sidebar({ email, onSignOut, isMobile, onNavigate }: Prop
         <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 8 }}>
           Signed in as
         </div>
-        <div style={{ fontWeight: 700, wordBreak: "break-word", marginBottom: 12 }}>
+
+        <div style={{ fontWeight: 700, wordBreak: "break-word", marginBottom: 6 }}>
           {email || "Unknown"}
         </div>
+
+        <div style={{ fontSize: 13, color: "#64748b", marginBottom: 12, textTransform: "capitalize" }}>
+          Role: {role || "unknown"}
+        </div>
+
         <button
           onClick={onSignOut}
           style={{
