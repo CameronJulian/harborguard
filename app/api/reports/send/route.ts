@@ -32,6 +32,15 @@ function wrapText(text: string, maxLength: number) {
   return lines;
 }
 
+function escapeHtml(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function drawLineChart(params: {
   page: any;
   x: number;
@@ -411,8 +420,17 @@ export async function POST(req: Request) {
 
     const resend = new Resend(resendKey);
 
-    const body = await req.json();
-    const { startDate, endDate, email } = body;
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON body." },
+        { status: 400 }
+      );
+    }
+
+    const { startDate, endDate, email } = body ?? {};
 
     if (!startDate || !endDate || !email) {
       return NextResponse.json(
@@ -432,7 +450,10 @@ export async function POST(req: Request) {
       .order("created_at", { ascending: false });
 
     if (batchesError) {
-      return NextResponse.json({ error: batchesError.message }, { status: 500 });
+      return NextResponse.json(
+        { error: batchesError.message },
+        { status: 500 }
+      );
     }
 
     const { data: incidents, error: incidentsError } = await supabase
@@ -443,7 +464,10 @@ export async function POST(req: Request) {
       .order("created_at", { ascending: false });
 
     if (incidentsError) {
-      return NextResponse.json({ error: incidentsError.message }, { status: 500 });
+      return NextResponse.json(
+        { error: incidentsError.message },
+        { status: 500 }
+      );
     }
 
     const safeBatches = batches || [];
@@ -479,12 +503,12 @@ export async function POST(req: Request) {
       .map(
         (b) => `
           <tr>
-            <td style="padding:8px;border:1px solid #ddd;">${b.batch_code ?? ""}</td>
-            <td style="padding:8px;border:1px solid #ddd;">${b.vessel ?? ""}</td>
-            <td style="padding:8px;border:1px solid #ddd;">${b.species ?? ""}</td>
-            <td style="padding:8px;border:1px solid #ddd;">${b.catch_kg ?? ""}</td>
-            <td style="padding:8px;border:1px solid #ddd;">${b.storage_kg ?? ""}</td>
-            <td style="padding:8px;border:1px solid #ddd;">${b.status ?? ""}</td>
+            <td style="padding:8px;border:1px solid #ddd;">${escapeHtml(b.batch_code)}</td>
+            <td style="padding:8px;border:1px solid #ddd;">${escapeHtml(b.vessel)}</td>
+            <td style="padding:8px;border:1px solid #ddd;">${escapeHtml(b.species)}</td>
+            <td style="padding:8px;border:1px solid #ddd;">${escapeHtml(b.catch_kg)}</td>
+            <td style="padding:8px;border:1px solid #ddd;">${escapeHtml(b.storage_kg)}</td>
+            <td style="padding:8px;border:1px solid #ddd;">${escapeHtml(b.status)}</td>
           </tr>
         `
       )
@@ -495,10 +519,10 @@ export async function POST(req: Request) {
       .map(
         (i) => `
           <tr>
-            <td style="padding:8px;border:1px solid #ddd;">${i.incident_code ?? ""}</td>
-            <td style="padding:8px;border:1px solid #ddd;">${i.severity ?? ""}</td>
-            <td style="padding:8px;border:1px solid #ddd;">${i.status ?? ""}</td>
-            <td style="padding:8px;border:1px solid #ddd;">${i.summary ?? ""}</td>
+            <td style="padding:8px;border:1px solid #ddd;">${escapeHtml(i.incident_code)}</td>
+            <td style="padding:8px;border:1px solid #ddd;">${escapeHtml(i.severity)}</td>
+            <td style="padding:8px;border:1px solid #ddd;">${escapeHtml(i.status)}</td>
+            <td style="padding:8px;border:1px solid #ddd;">${escapeHtml(i.summary)}</td>
           </tr>
         `
       )
@@ -508,18 +532,18 @@ export async function POST(req: Request) {
       <div style="font-family:Arial,sans-serif;color:#111827;line-height:1.5;">
         <h2 style="margin-bottom:8px;">HarborGuard Analytics Report</h2>
         <p style="color:#6b7280;margin-top:0;">
-          Reporting period: <strong>${startDate}</strong> to <strong>${endDate}</strong>
+          Reporting period: <strong>${escapeHtml(startDate)}</strong> to <strong>${escapeHtml(endDate)}</strong>
         </p>
 
         <h3>Summary</h3>
         <ul>
-          <li>Total Catch: <strong>${totalCatch} kg</strong></li>
-          <li>Total Stored: <strong>${totalStored} kg</strong></li>
-          <li>Total Loss: <strong>${totalLoss} kg</strong></li>
-          <li>Flagged Batches: <strong>${flaggedCount}</strong></li>
-          <li>Review Batches: <strong>${reviewCount}</strong></li>
-          <li>Open Incidents: <strong>${openIncidents}</strong></li>
-          <li>Average Loss %: <strong>${avgLossPercent.toFixed(1)}%</strong></li>
+          <li>Total Catch: <strong>${escapeHtml(totalCatch)} kg</strong></li>
+          <li>Total Stored: <strong>${escapeHtml(totalStored)} kg</strong></li>
+          <li>Total Loss: <strong>${escapeHtml(totalLoss)} kg</strong></li>
+          <li>Flagged Batches: <strong>${escapeHtml(flaggedCount)}</strong></li>
+          <li>Review Batches: <strong>${escapeHtml(reviewCount)}</strong></li>
+          <li>Open Incidents: <strong>${escapeHtml(openIncidents)}</strong></li>
+          <li>Average Loss %: <strong>${escapeHtml(avgLossPercent.toFixed(1))}%</strong></li>
         </ul>
 
         <h3>Recent Batches</h3>
@@ -535,7 +559,10 @@ export async function POST(req: Request) {
             </tr>
           </thead>
           <tbody>
-            ${batchRows || `<tr><td colspan="6" style="padding:8px;border:1px solid #ddd;">No batches in selected period.</td></tr>`}
+            ${
+              batchRows ||
+              `<tr><td colspan="6" style="padding:8px;border:1px solid #ddd;">No batches in selected period.</td></tr>`
+            }
           </tbody>
         </table>
 
@@ -550,7 +577,10 @@ export async function POST(req: Request) {
             </tr>
           </thead>
           <tbody>
-            ${incidentRows || `<tr><td colspan="4" style="padding:8px;border:1px solid #ddd;">No incidents in selected period.</td></tr>`}
+            ${
+              incidentRows ||
+              `<tr><td colspan="4" style="padding:8px;border:1px solid #ddd;">No incidents in selected period.</td></tr>`
+            }
           </tbody>
         </table>
 
@@ -574,18 +604,26 @@ export async function POST(req: Request) {
       incidents: safeIncidents,
     });
 
-    const emailResult = await resend.emails.send({
-      from: "HarborGuard <onboarding@resend.dev>",
-      to: email,
-      subject: `HarborGuard Analytics Report (${startDate} to ${endDate})`,
-      html,
-      attachments: [
-        {
-          filename: `harborguard-analytics-${startDate}-to-${endDate}.pdf`,
-          content: pdfBuffer.toString("base64"),
-        },
-      ],
-    });
+    let emailResult: any;
+    try {
+      emailResult = await resend.emails.send({
+        from: "HarborGuard <onboarding@resend.dev>",
+        to: email,
+        subject: `HarborGuard Analytics Report (${startDate} to ${endDate})`,
+        html,
+        attachments: [
+          {
+            filename: `harborguard-analytics-${startDate}-to-${endDate}.pdf`,
+            content: pdfBuffer.toString("base64"),
+          },
+        ],
+      });
+    } catch (err: any) {
+      return NextResponse.json(
+        { error: err?.message || "Failed to send email via Resend." },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
