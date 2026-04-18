@@ -19,6 +19,16 @@ type ReportDeliveryLogRow = {
   created_at: string | null;
 };
 
+type ReportSubscriptionRow = {
+  id: string;
+  user_id: string | null;
+  email: string;
+  full_name: string | null;
+  is_enabled: boolean;
+  report_frequency: "daily" | "weekly";
+  created_at: string | null;
+};
+
 const cardStyle: CSSProperties = {
   background: "#ffffff",
   borderRadius: 20,
@@ -74,12 +84,15 @@ function formatDateTime(value: string | null) {
 
 export default function ReportAdminPage() {
   const [logs, setLogs] = useState<ReportDeliveryLogRow[]>([]);
+  const [subscriptions, setSubscriptions] = useState<ReportSubscriptionRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingSubscriptions, setLoadingSubscriptions] = useState(false);
   const [message, setMessage] = useState("");
   const [runningDaily, setRunningDaily] = useState(false);
   const [runningWeekly, setRunningWeekly] = useState(false);
   const [retryingFailed, setRetryingFailed] = useState(false);
   const [cleaningFailed, setCleaningFailed] = useState(false);
+  const [togglingSubscriptionId, setTogglingSubscriptionId] = useState<string | null>(null);
 
   async function loadLogs() {
     setLoading(true);
@@ -102,10 +115,29 @@ export default function ReportAdminPage() {
     setLoading(false);
   }
 
+  async function loadSubscriptions() {
+    setLoadingSubscriptions(true);
+
+    const { data, error } = await supabase
+      .from("report_subscriptions")
+      .select("id, user_id, email, full_name, is_enabled, report_frequency, created_at")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      setMessage(`Failed to load subscriptions: ${error.message}`);
+      setLoadingSubscriptions(false);
+      return;
+    }
+
+    setSubscriptions((data as ReportSubscriptionRow[]) || []);
+    setLoadingSubscriptions(false);
+  }
+
   useEffect(() => {
     loadLogs();
+    loadSubscriptions();
 
-    const channel = supabase
+    const logsChannel = supabase
       .channel("report-admin-live")
       .on(
         "postgres_changes",
@@ -114,8 +146,18 @@ export default function ReportAdminPage() {
       )
       .subscribe();
 
+    const subscriptionsChannel = supabase
+      .channel("report-subscriptions-admin-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "report_subscriptions" },
+        () => loadSubscriptions()
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(logsChannel);
+      supabase.removeChannel(subscriptionsChannel);
     };
   }, []);
 
@@ -213,6 +255,40 @@ export default function ReportAdminPage() {
     }
   }
 
+  async function toggleSubscription(subscription: ReportSubscriptionRow) {
+    setTogglingSubscriptionId(subscription.id);
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/reports/toggle-subscription", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          subscriptionId: subscription.id,
+          isEnabled: subscription.is_enabled,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setMessage(result.error || "Failed to toggle subscription.");
+        return;
+      }
+
+      setMessage(
+        `${subscription.email} is now ${result.newState ? "enabled" : "disabled"} for ${subscription.report_frequency} reports.`
+      );
+      await loadSubscriptions();
+    } catch (err: any) {
+      setMessage(err.message || "Failed to toggle subscription.");
+    } finally {
+      setTogglingSubscriptionId(null);
+    }
+  }
+
   const summary = useMemo(() => {
     const total = logs.length;
     const success = logs.filter((l) => l.status === "success").length;
@@ -226,8 +302,7 @@ export default function ReportAdminPage() {
 
     const last24hSuccess = last24hLogs.filter((l) => l.status === "success").length;
     const last24hFailed = last24hLogs.filter((l) => l.status === "failed").length;
-    const successRate =
-      total > 0 ? ((success / total) * 100).toFixed(1) : "0.0";
+    const successRate = total > 0 ? ((success / total) * 100).toFixed(1) : "0.0";
 
     const lastRunAt = logs.length > 0 ? logs[0].created_at : null;
 
@@ -288,7 +363,7 @@ export default function ReportAdminPage() {
         <div style={{ ...cardStyle, padding: 26, marginBottom: 24 }}>
           <h2 style={sectionTitleStyle}>Report Admin Dashboard</h2>
           <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
-            Trigger report runs manually, retry failures, and monitor delivery health.
+            Trigger report runs manually, retry failures, manage subscriptions, and monitor delivery health.
           </p>
 
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -324,7 +399,10 @@ export default function ReportAdminPage() {
               {cleaningFailed ? "Cleaning..." : "Clear Old Failed Logs"}
             </button>
 
-            <button style={secondaryButtonStyle} onClick={loadLogs}>
+            <button style={secondaryButtonStyle} onClick={() => {
+              loadLogs();
+              loadSubscriptions();
+            }}>
               Refresh Admin Data
             </button>
           </div>
@@ -385,6 +463,86 @@ export default function ReportAdminPage() {
               </div>
             </div>
           ))}
+        </div>
+
+        <div style={{ ...cardStyle, padding: 26, marginBottom: 24 }}>
+          <h2 style={sectionTitleStyle}>Report Subscriptions</h2>
+          <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
+            Enable or disable scheduled reports per user and frequency.
+          </p>
+
+          {loadingSubscriptions ? (
+            <p style={mutedTextStyle}>Loading subscriptions...</p>
+          ) : subscriptions.length === 0 ? (
+            <p style={mutedTextStyle}>No subscriptions found.</p>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
+                <thead>
+                  <tr>
+                    {["Email", "Name", "Frequency", "Enabled", "Action"].map((h) => (
+                      <th
+                        key={h}
+                        style={{
+                          textAlign: "left",
+                          padding: 14,
+                          borderBottom: "1px solid #e5e7eb",
+                          color: "#64748b",
+                          fontSize: 13,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.04em",
+                        }}
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {subscriptions.map((sub) => (
+                    <tr key={sub.id}>
+                      <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9", fontWeight: 700 }}>
+                        {sub.email}
+                      </td>
+                      <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
+                        {sub.full_name || "-"}
+                      </td>
+                      <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9", textTransform: "capitalize" }}>
+                        {sub.report_frequency}
+                      </td>
+                      <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
+                        <span
+                          style={{
+                            color: sub.is_enabled ? "#16a34a" : "#dc2626",
+                            fontWeight: 800,
+                          }}
+                        >
+                          {sub.is_enabled ? "Enabled" : "Disabled"}
+                        </span>
+                      </td>
+                      <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
+                        <button
+                          onClick={() => toggleSubscription(sub)}
+                          disabled={togglingSubscriptionId === sub.id}
+                          style={{
+                            ...secondaryButtonStyle,
+                            opacity: togglingSubscriptionId === sub.id ? 0.6 : 1,
+                            cursor: togglingSubscriptionId === sub.id ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          {togglingSubscriptionId === sub.id
+                            ? "Updating..."
+                            : sub.is_enabled
+                              ? "Disable"
+                              : "Enable"}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         <div
