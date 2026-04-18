@@ -1,6 +1,18 @@
 "use client";
 
 import { CSSProperties, useEffect, useMemo, useState } from "react";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+} from "recharts";
 import AppShell from "@/components/AppShell";
 import RoleGuard from "@/components/RoleGuard";
 import { supabase } from "@/lib/supabase";
@@ -82,6 +94,15 @@ function formatDateTime(value: string | null) {
   return new Date(value).toLocaleString();
 }
 
+function formatShortDate(value: string | null) {
+  if (!value) return "-";
+  const date = new Date(value);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 export default function ReportAdminPage() {
   const [logs, setLogs] = useState<ReportDeliveryLogRow[]>([]);
   const [subscriptions, setSubscriptions] = useState<ReportSubscriptionRow[]>([]);
@@ -103,7 +124,7 @@ export default function ReportAdminPage() {
         "id, subscription_id, user_id, email, full_name, report_frequency, start_date, end_date, status, error_message, created_at"
       )
       .order("created_at", { ascending: false })
-      .limit(150);
+      .limit(200);
 
     if (error) {
       setMessage(`Failed to load admin data: ${error.message}`);
@@ -342,6 +363,86 @@ export default function ReportAdminPage() {
     [logs]
   );
 
+  const statusChartData = useMemo(
+    () => [
+      { name: "Success", value: summary.success },
+      { name: "Failed", value: summary.failed },
+    ],
+    [summary.success, summary.failed]
+  );
+
+  const last7DaysTrend = useMemo(() => {
+    const days: Array<{
+      key: string;
+      label: string;
+      success: number;
+      failed: number;
+      total: number;
+    }> = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const day = new Date();
+      day.setHours(0, 0, 0, 0);
+      day.setDate(day.getDate() - i);
+
+      const nextDay = new Date(day);
+      nextDay.setDate(nextDay.getDate() + 1);
+
+      const key = day.toISOString().slice(0, 10);
+      const label = key.slice(5);
+      const matching = logs.filter((log) => {
+        if (!log.created_at) return false;
+        const created = new Date(log.created_at).getTime();
+        return created >= day.getTime() && created < nextDay.getTime();
+      });
+
+      const success = matching.filter((log) => log.status === "success").length;
+      const failed = matching.filter((log) => log.status === "failed").length;
+
+      days.push({
+        key,
+        label,
+        success,
+        failed,
+        total: matching.length,
+      });
+    }
+
+    return days;
+  }, [logs]);
+
+  const frequencyChartData = useMemo(
+    () => [
+      {
+        name: "Daily",
+        enabled: subscriptions.filter(
+          (sub) => sub.report_frequency === "daily" && sub.is_enabled
+        ).length,
+        disabled: subscriptions.filter(
+          (sub) => sub.report_frequency === "daily" && !sub.is_enabled
+        ).length,
+      },
+      {
+        name: "Weekly",
+        enabled: subscriptions.filter(
+          (sub) => sub.report_frequency === "weekly" && sub.is_enabled
+        ).length,
+        disabled: subscriptions.filter(
+          (sub) => sub.report_frequency === "weekly" && !sub.is_enabled
+        ).length,
+      },
+    ],
+    [subscriptions]
+  );
+
+  const failedRecipientsChartData = useMemo(
+    () => failedRecipients.slice(0, 6).map((item) => ({
+      email: item.email.length > 18 ? `${item.email.slice(0, 18)}...` : item.email,
+      count: item.count,
+    })),
+    [failedRecipients]
+  );
+
   return (
     <AppShell>
       <RoleGuard allowedRoles={["admin", "manager"]}>
@@ -399,10 +500,13 @@ export default function ReportAdminPage() {
               {cleaningFailed ? "Cleaning..." : "Clear Old Failed Logs"}
             </button>
 
-            <button style={secondaryButtonStyle} onClick={() => {
-              loadLogs();
-              loadSubscriptions();
-            }}>
+            <button
+              style={secondaryButtonStyle}
+              onClick={() => {
+                loadLogs();
+                loadSubscriptions();
+              }}
+            >
               Refresh Admin Data
             </button>
           </div>
@@ -465,6 +569,139 @@ export default function ReportAdminPage() {
           ))}
         </div>
 
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 24,
+            marginBottom: 24,
+          }}
+        >
+          <div style={{ ...cardStyle, padding: 26 }}>
+            <h2 style={sectionTitleStyle}>Delivery Status Mix</h2>
+            <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
+              Compare total successful and failed report deliveries.
+            </p>
+
+            <div
+              style={{
+                border: "1px solid #e5e7eb",
+                borderRadius: 16,
+                padding: 18,
+                height: 340,
+                background: "#fff",
+              }}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={statusChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="value" fill="#2563eb" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div style={{ ...cardStyle, padding: 26 }}>
+            <h2 style={sectionTitleStyle}>7-Day Delivery Trend</h2>
+            <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
+              Track success and failure volume over the last 7 days.
+            </p>
+
+            <div
+              style={{
+                border: "1px solid #e5e7eb",
+                borderRadius: 16,
+                padding: 18,
+                height: 340,
+                background: "#fff",
+              }}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={last7DaysTrend}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="label" />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="success" stroke="#16a34a" strokeWidth={3} />
+                  <Line type="monotone" dataKey="failed" stroke="#dc2626" strokeWidth={3} />
+                  <Line type="monotone" dataKey="total" stroke="#2563eb" strokeWidth={3} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 24,
+            marginBottom: 24,
+          }}
+        >
+          <div style={{ ...cardStyle, padding: 26 }}>
+            <h2 style={sectionTitleStyle}>Subscription Coverage</h2>
+            <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
+              See enabled versus disabled subscriptions by frequency.
+            </p>
+
+            <div
+              style={{
+                border: "1px solid #e5e7eb",
+                borderRadius: 16,
+                padding: 18,
+                height: 340,
+                background: "#fff",
+              }}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={frequencyChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="enabled" fill="#16a34a" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="disabled" fill="#dc2626" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div style={{ ...cardStyle, padding: 26 }}>
+            <h2 style={sectionTitleStyle}>Top Failed Recipients Chart</h2>
+            <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
+              Visualize recipients with the most failed report deliveries.
+            </p>
+
+            <div
+              style={{
+                border: "1px solid #e5e7eb",
+                borderRadius: 16,
+                padding: 18,
+                height: 340,
+                background: "#fff",
+              }}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={failedRecipientsChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="email" />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="count" fill="#dc2626" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
         <div style={{ ...cardStyle, padding: 26, marginBottom: 24 }}>
           <h2 style={sectionTitleStyle}>Report Subscriptions</h2>
           <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
@@ -480,7 +717,7 @@ export default function ReportAdminPage() {
               <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
                 <thead>
                   <tr>
-                    {["Email", "Name", "Frequency", "Enabled", "Action"].map((h) => (
+                    {["Email", "Name", "Frequency", "Enabled", "Created", "Action"].map((h) => (
                       <th
                         key={h}
                         style={{
@@ -519,6 +756,9 @@ export default function ReportAdminPage() {
                         >
                           {sub.is_enabled ? "Enabled" : "Disabled"}
                         </span>
+                      </td>
+                      <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
+                        {formatShortDate(sub.created_at)}
                       </td>
                       <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
                         <button
