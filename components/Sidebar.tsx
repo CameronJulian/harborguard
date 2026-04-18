@@ -88,6 +88,10 @@ export default function Sidebar({
           Fleet Dashboard
         </Link>
 
+        <Link href="/driver" style={navStyle("/driver")} onClick={onNavigate}>
+          Driver Emergency
+        </Link>
+
         <Link href="/vehicles" style={navStyle("/vehicles")} onClick={onNavigate}>
           Vehicles
         </Link>
@@ -146,7 +150,14 @@ export default function Sidebar({
           {email || "Unknown"}
         </div>
 
-        <div style={{ fontSize: 13, color: "#64748b", marginBottom: 12, textTransform: "capitalize" }}>
+        <div
+          style={{
+            fontSize: 13,
+            color: "#64748b",
+            marginBottom: 12,
+            textTransform: "capitalize",
+          }}
+        >
           Role: {role || "unknown"}
         </div>
 

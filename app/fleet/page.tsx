@@ -1,53 +1,83 @@
 "use client";
 
-import { CSSProperties, useEffect, useMemo, useState } from "react";
+import "leaflet/dist/leaflet.css";
+
+import dynamic from "next/dynamic";
+import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import AppShell from "@/components/AppShell";
 import { supabase } from "@/lib/supabase";
 
-type VehicleRow = {
-  id: string;
-  registration_number: string;
-  nickname: string | null;
-  make: string | null;
-  model: string | null;
-  driver_id: string | null;
-  is_active: boolean;
-  created_at: string | null;
-};
+const MapContainer = dynamic(
+  () => import("react-leaflet").then((mod) => mod.MapContainer),
+  { ssr: false }
+);
 
-type DriverRow = {
-  id: string;
-  full_name: string;
-};
+const TileLayer = dynamic(
+  () => import("react-leaflet").then((mod) => mod.TileLayer),
+  { ssr: false }
+);
 
-type TripRow = {
-  id: string;
-  vehicle_id: string | null;
-  driver_id: string | null;
-  origin_port: string;
-  destination_fishery: string;
-  status: string;
-  created_at: string | null;
-};
+const Marker = dynamic(
+  () => import("react-leaflet").then((mod) => mod.Marker),
+  { ssr: false }
+);
 
-type AlertRow = {
+const Popup = dynamic(
+  () => import("react-leaflet").then((mod) => mod.Popup),
+  { ssr: false }
+);
+
+type FleetAlert = {
   id: string;
-  vehicle_id: string | null;
-  alert_type: string;
+  alertType: string;
   severity: string;
   message: string;
-  is_resolved: boolean;
-  created_at: string | null;
+  createdAt: string | null;
 };
 
-type LocationRow = {
+type FleetVehicle = {
   id: string;
-  vehicle_id: string | null;
+  nickname: string | null;
+  registrationNumber: string;
+  make: string | null;
+  model: string | null;
+  driverId: string | null;
+  driverName: string | null;
+  isActive: boolean;
+  isOffline: boolean;
+  latitude: number | null;
+  longitude: number | null;
+  speedKmh: number;
+  heading: number;
+  source: string | null;
+  lastSeen: string | null;
+  openAlerts: FleetAlert[];
+};
+
+type FleetResponse = {
+  success: boolean;
+  fleet: FleetVehicle[];
+  summary: {
+    totalVehicles: number;
+    onlineVehicles: number;
+    offlineVehicles: number;
+    vehiclesWithAlerts: number;
+  };
+};
+
+type VehicleLocationInsert = {
+  id: string;
+  vehicle_id: string;
+  trip_id: string | null;
   latitude: number;
   longitude: number;
   speed_kmh: number | null;
+  heading: number | null;
   recorded_at: string | null;
+  source: string | null;
 };
+
+const capeTownCenter: [number, number] = [-33.9249, 18.4241];
 
 const cardStyle: CSSProperties = {
   background: "#ffffff",
@@ -72,126 +102,250 @@ function formatDateTime(value: string | null) {
   return new Date(value).toLocaleString();
 }
 
+async function createVehicleIcon(status: "online" | "offline" | "alert") {
+  const L = (await import("leaflet")).default;
+
+  const color =
+    status === "alert" ? "#dc2626" : status === "offline" ? "#64748b" : "#16a34a";
+
+  return L.divIcon({
+    className: "",
+    html: `
+      <div style="
+        width:18px;
+        height:18px;
+        border-radius:9999px;
+        background:${color};
+        border:3px solid white;
+        box-shadow:0 0 0 2px rgba(15,23,42,0.12);
+      "></div>
+    `,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
+    popupAnchor: [0, -10],
+  });
+}
+
+function computeOffline(lastSeen: string | null) {
+  if (!lastSeen) return true;
+  return Date.now() - new Date(lastSeen).getTime() > 15 * 60 * 1000;
+}
+
 export default function FleetDashboardPage() {
-  const [vehicles, setVehicles] = useState<VehicleRow[]>([]);
-  const [drivers, setDrivers] = useState<DriverRow[]>([]);
-  const [trips, setTrips] = useState<TripRow[]>([]);
-  const [alerts, setAlerts] = useState<AlertRow[]>([]);
-  const [locations, setLocations] = useState<LocationRow[]>([]);
+  const [fleet, setFleet] = useState<FleetVehicle[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [message, setMessage] = useState("");
+  const [vehicleIcons, setVehicleIcons] = useState<Record<string, any>>({});
+  const subscribedRef = useRef(false);
 
-  async function loadFleetData() {
-    setLoading(true);
+  async function loadFleet(showRefreshing = false) {
+    if (showRefreshing) setRefreshing(true);
+    else setLoading(true);
 
-    const [
-      vehiclesRes,
-      driversRes,
-      tripsRes,
-      alertsRes,
-      locationsRes,
-    ] = await Promise.all([
-      supabase
-        .from("vehicles")
-        .select("id, registration_number, nickname, make, model, driver_id, is_active, created_at")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("drivers")
-        .select("id, full_name"),
-      supabase
-        .from("vehicle_trips")
-        .select("id, vehicle_id, driver_id, origin_port, destination_fishery, status, created_at")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("vehicle_alerts")
-        .select("id, vehicle_id, alert_type, severity, message, is_resolved, created_at")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("vehicle_locations")
-        .select("id, vehicle_id, latitude, longitude, speed_kmh, recorded_at")
-        .order("recorded_at", { ascending: false }),
-    ]);
+    try {
+      const response = await fetch("/api/fleet/live", {
+        cache: "no-store",
+      });
 
-    setVehicles((vehiclesRes.data as VehicleRow[]) || []);
-    setDrivers((driversRes.data as DriverRow[]) || []);
-    setTrips((tripsRes.data as TripRow[]) || []);
-    setAlerts((alertsRes.data as AlertRow[]) || []);
-    setLocations((locationsRes.data as LocationRow[]) || []);
-    setLoading(false);
+      const result = (await response.json()) as FleetResponse | { error: string };
+
+      if (!response.ok) {
+        setMessage("error" in result ? result.error : "Failed to load fleet data.");
+        return;
+      }
+
+      setFleet((result as FleetResponse).fleet || []);
+      setMessage("");
+    } catch (err: any) {
+      setMessage(err.message || "Failed to load fleet data.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }
 
   useEffect(() => {
-    loadFleetData();
+    loadFleet();
   }, []);
 
-  const latestLocationByVehicle = useMemo(() => {
-    const map = new Map<string, LocationRow>();
-    for (const location of locations) {
-      if (!location.vehicle_id) continue;
-      if (!map.has(location.vehicle_id)) {
-        map.set(location.vehicle_id, location);
-      }
-    }
-    return map;
-  }, [locations]);
-
-  const driverNameById = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const driver of drivers) {
-      map.set(driver.id, driver.full_name);
-    }
-    return map;
-  }, [drivers]);
-
-  const openAlerts = alerts.filter((a) => !a.is_resolved);
-  const activeTrips = trips.filter((t) =>
-    ["scheduled", "en_route_to_port", "collecting", "en_route_to_fishery", "emergency"].includes(t.status)
+  const mapVehicles = useMemo(
+    () =>
+      fleet.filter(
+        (vehicle) =>
+          typeof vehicle.latitude === "number" &&
+          typeof vehicle.longitude === "number"
+      ),
+    [fleet]
   );
 
-  const offlineVehicles = vehicles.filter((vehicle) => {
-    const latest = latestLocationByVehicle.get(vehicle.id);
-    if (!latest?.recorded_at) return true;
-    const diffMs = Date.now() - new Date(latest.recorded_at).getTime();
-    return diffMs > 15 * 60 * 1000;
-  });
+  useEffect(() => {
+    let cancelled = false;
+
+    async function buildIcons() {
+      const nextIcons: Record<string, any> = {};
+
+      for (const vehicle of mapVehicles) {
+        const markerStatus =
+          vehicle.openAlerts.length > 0
+            ? "alert"
+            : vehicle.isOffline
+              ? "offline"
+              : "online";
+
+        nextIcons[vehicle.id] = await createVehicleIcon(markerStatus);
+      }
+
+      if (!cancelled) {
+        setVehicleIcons(nextIcons);
+      }
+    }
+
+    if (mapVehicles.length > 0) {
+      buildIcons();
+    } else {
+      setVehicleIcons({});
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mapVehicles]);
+
+  useEffect(() => {
+    if (subscribedRef.current) return;
+    subscribedRef.current = true;
+
+    const channel = supabase
+      .channel("vehicle-location-live")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "vehicle_locations",
+        },
+        (payload) => {
+          const row = payload.new as VehicleLocationInsert;
+
+          setFleet((current) => {
+            const exists = current.some((vehicle) => vehicle.id === row.vehicle_id);
+
+            if (!exists) {
+              return current;
+            }
+
+            return current.map((vehicle) => {
+              if (vehicle.id !== row.vehicle_id) return vehicle;
+
+              return {
+                ...vehicle,
+                latitude: row.latitude,
+                longitude: row.longitude,
+                speedKmh: row.speed_kmh ?? 0,
+                heading: row.heading ?? 0,
+                source: row.source ?? null,
+                lastSeen: row.recorded_at,
+                isOffline: computeOffline(row.recorded_at),
+              };
+            });
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+      subscribedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setFleet((current) =>
+        current.map((vehicle) => {
+          const isOffline = computeOffline(vehicle.lastSeen);
+          if (vehicle.isOffline === isOffline) return vehicle;
+          return { ...vehicle, isOffline };
+        })
+      );
+    }, 30000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const summary = useMemo(() => {
+    const totalVehicles = fleet.length;
+    const onlineVehicles = fleet.filter((v) => !v.isOffline).length;
+    const offlineVehicles = fleet.filter((v) => v.isOffline).length;
+    const vehiclesWithAlerts = fleet.filter((v) => v.openAlerts.length > 0).length;
+
+    return {
+      totalVehicles,
+      onlineVehicles,
+      offlineVehicles,
+      vehiclesWithAlerts,
+    };
+  }, [fleet]);
 
   return (
     <AppShell>
       <div style={{ ...cardStyle, padding: 26, marginBottom: 24 }}>
-        <h2 style={sectionTitleStyle}>Fleet Dashboard</h2>
+        <h2 style={sectionTitleStyle}>Live Fleet Map</h2>
         <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
-          Monitor bakkies, trips, locations, and vehicle safety alerts.
+          Real-time monitoring of all bakkies across Cape Town routes, ports, and fisheries.
         </p>
 
-        <button
-          onClick={loadFleetData}
-          style={{
-            padding: "12px 16px",
-            borderRadius: 12,
-            border: "none",
-            background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
-            color: "#fff",
-            fontWeight: 700,
-            cursor: "pointer",
-          }}
-        >
-          Refresh Fleet Data
-        </button>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <button
+            onClick={() => loadFleet(true)}
+            style={{
+              padding: "12px 16px",
+              borderRadius: 12,
+              border: "none",
+              background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+              color: "#fff",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            {refreshing ? "Refreshing..." : "Reload Fleet"}
+          </button>
+
+          <div style={{ color: "#64748b", fontSize: 14 }}>
+            Live updates enabled via Supabase Realtime
+          </div>
+        </div>
+
+        {message ? (
+          <div
+            style={{
+              marginTop: 16,
+              padding: 14,
+              borderRadius: 12,
+              background: "#fef2f2",
+              border: "1px solid #fecaca",
+              color: "#b91c1c",
+            }}
+          >
+            {message}
+          </div>
+        ) : null}
       </div>
 
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+          gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
           gap: 20,
           marginBottom: 24,
         }}
       >
         {[
-          { label: "Vehicles", value: vehicles.length },
-          { label: "Active Trips", value: activeTrips.length },
-          { label: "Open Alerts", value: openAlerts.length },
-          { label: "Offline Vehicles", value: offlineVehicles.length },
-          { label: "Drivers", value: drivers.length },
+          { label: "Total Vehicles", value: summary.totalVehicles },
+          { label: "Online", value: summary.onlineVehicles },
+          { label: "Offline", value: summary.offlineVehicles },
+          { label: "With Alerts", value: summary.vehiclesWithAlerts },
         ].map((item, index) => (
           <div key={index} style={{ ...cardStyle, padding: 24 }}>
             <div style={{ color: "#64748b", fontSize: 14, marginBottom: 10 }}>
@@ -207,179 +361,219 @@ export default function FleetDashboardPage() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "1.2fr 1fr",
+          gridTemplateColumns: "1.35fr 1fr",
           gap: 24,
           marginBottom: 24,
         }}
       >
-        <div style={{ ...cardStyle, padding: 26 }}>
-          <h2 style={sectionTitleStyle}>Live Vehicle Status</h2>
-          <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
-            Latest known state for each bakkie.
-          </p>
+        <div style={{ ...cardStyle, padding: 20 }}>
+          <div style={{ marginBottom: 12 }}>
+            <h2 style={{ ...sectionTitleStyle, marginBottom: 6 }}>Fleet Map</h2>
+            <p style={mutedTextStyle}>
+              Green = online, grey = offline, red = active alert.
+            </p>
+          </div>
 
-          {loading ? (
-            <p style={mutedTextStyle}>Loading vehicles...</p>
-          ) : vehicles.length === 0 ? (
-            <p style={mutedTextStyle}>No vehicles found.</p>
-          ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
-                <thead>
-                  <tr>
-                    {["Vehicle", "Driver", "Last Seen", "Speed", "Status"].map((h) => (
-                      <th
-                        key={h}
-                        style={{
-                          textAlign: "left",
-                          padding: 14,
-                          borderBottom: "1px solid #e5e7eb",
-                          color: "#64748b",
-                          fontSize: 13,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.04em",
-                        }}
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {vehicles.map((vehicle) => {
-                    const latest = latestLocationByVehicle.get(vehicle.id);
-                    const isOffline = !latest?.recorded_at
-                      ? true
-                      : Date.now() - new Date(latest.recorded_at).getTime() > 15 * 60 * 1000;
+          <div
+            style={{
+              borderRadius: 18,
+              overflow: "hidden",
+              border: "1px solid #e5e7eb",
+              height: 560,
+            }}
+          >
+            {loading ? (
+              <div
+                style={{
+                  height: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#64748b",
+                  background: "#f8fafc",
+                }}
+              >
+                Loading map...
+              </div>
+            ) : (
+              <MapContainer
+                center={capeTownCenter}
+                zoom={10}
+                style={{ height: "100%", width: "100%" }}
+              >
+                <TileLayer
+                  attribution="&copy; OpenStreetMap contributors"
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
 
-                    return (
-                      <tr key={vehicle.id}>
-                        <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9", fontWeight: 700 }}>
-                          {vehicle.nickname || vehicle.registration_number}
-                        </td>
-                        <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
-                          {vehicle.driver_id ? driverNameById.get(vehicle.driver_id) || "-" : "-"}
-                        </td>
-                        <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
-                          {formatDateTime(latest?.recorded_at || null)}
-                        </td>
-                        <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
-                          {latest?.speed_kmh ?? 0} km/h
-                        </td>
-                        <td
-                          style={{
-                            padding: 14,
-                            borderBottom: "1px solid #f1f5f9",
-                            color: isOffline ? "#dc2626" : "#16a34a",
-                            fontWeight: 800,
-                          }}
-                        >
-                          {isOffline ? "Offline" : "Online"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                {mapVehicles.map((vehicle) => {
+                  if (!vehicleIcons[vehicle.id]) return null;
+
+                  return (
+                    <Marker
+                      key={vehicle.id}
+                      position={[vehicle.latitude as number, vehicle.longitude as number]}
+                      icon={vehicleIcons[vehicle.id]}
+                    >
+                      <Popup>
+                        <div style={{ minWidth: 220 }}>
+                          <div style={{ fontWeight: 800, marginBottom: 6 }}>
+                            {vehicle.nickname || vehicle.registrationNumber}
+                          </div>
+                          <div style={{ marginBottom: 4 }}>
+                            <strong>Registration:</strong> {vehicle.registrationNumber}
+                          </div>
+                          <div style={{ marginBottom: 4 }}>
+                            <strong>Driver:</strong> {vehicle.driverName || "-"}
+                          </div>
+                          <div style={{ marginBottom: 4 }}>
+                            <strong>Speed:</strong> {vehicle.speedKmh || 0} km/h
+                          </div>
+                          <div style={{ marginBottom: 4 }}>
+                            <strong>Last Seen:</strong> {formatDateTime(vehicle.lastSeen)}
+                          </div>
+                          <div style={{ marginBottom: 4 }}>
+                            <strong>Status:</strong>{" "}
+                            {vehicle.openAlerts.length > 0
+                              ? "Alert"
+                              : vehicle.isOffline
+                                ? "Offline"
+                                : "Online"}
+                          </div>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  );
+                })}
+              </MapContainer>
+            )}
+          </div>
         </div>
 
-        <div style={{ ...cardStyle, padding: 26 }}>
-          <h2 style={sectionTitleStyle}>Latest Alerts</h2>
-          <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
-            Recent vehicle safety and tracking alerts.
-          </p>
+        <div style={{ display: "grid", gap: 24 }}>
+          <div style={{ ...cardStyle, padding: 24 }}>
+            <h2 style={{ ...sectionTitleStyle, marginBottom: 8 }}>Live Vehicle Feed</h2>
+            <p style={{ ...mutedTextStyle, marginBottom: 16 }}>
+              Current status of every tracked bakkie.
+            </p>
 
-          {loading ? (
-            <p style={mutedTextStyle}>Loading alerts...</p>
-          ) : openAlerts.length === 0 ? (
-            <p style={mutedTextStyle}>No open alerts.</p>
-          ) : (
-            <div style={{ display: "grid", gap: 12 }}>
-              {openAlerts.slice(0, 8).map((alert) => (
-                <div
-                  key={alert.id}
-                  style={{
-                    border: "1px solid #fecaca",
-                    background: "#fef2f2",
-                    borderRadius: 14,
-                    padding: 14,
-                  }}
-                >
-                  <div style={{ fontWeight: 800, color: "#991b1b", marginBottom: 6 }}>
-                    {alert.alert_type.replace(/_/g, " ")}
-                  </div>
-                  <div style={{ color: "#7f1d1d", fontSize: 14, marginBottom: 4 }}>
-                    Severity: {alert.severity}
-                  </div>
-                  <div style={{ color: "#7f1d1d", fontSize: 14, marginBottom: 4 }}>
-                    {alert.message}
-                  </div>
-                  <div style={{ color: "#991b1b", fontSize: 12 }}>
-                    {formatDateTime(alert.created_at)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+            <div style={{ display: "grid", gap: 12, maxHeight: 500, overflowY: "auto" }}>
+              {fleet.length === 0 ? (
+                <div style={{ color: "#64748b" }}>No vehicles found.</div>
+              ) : (
+                fleet.map((vehicle) => {
+                  const statusText =
+                    vehicle.openAlerts.length > 0
+                      ? "Alert"
+                      : vehicle.isOffline
+                        ? "Offline"
+                        : "Online";
 
-      <div style={{ ...cardStyle, padding: 26 }}>
-        <h2 style={sectionTitleStyle}>Active Trips</h2>
-        <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
-          Current fish collection and delivery movements.
-        </p>
+                  const statusColor =
+                    vehicle.openAlerts.length > 0
+                      ? "#dc2626"
+                      : vehicle.isOffline
+                        ? "#64748b"
+                        : "#16a34a";
 
-        {loading ? (
-          <p style={mutedTextStyle}>Loading trips...</p>
-        ) : activeTrips.length === 0 ? (
-          <p style={mutedTextStyle}>No active trips yet.</p>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1000 }}>
-              <thead>
-                <tr>
-                  {["Origin Port", "Destination Fishery", "Status", "Created"].map((h) => (
-                    <th
-                      key={h}
+                  return (
+                    <div
+                      key={vehicle.id}
                       style={{
-                        textAlign: "left",
+                        border: "1px solid #e5e7eb",
+                        borderRadius: 14,
                         padding: 14,
-                        borderBottom: "1px solid #e5e7eb",
-                        color: "#64748b",
-                        fontSize: 13,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.04em",
+                        background: "#fff",
                       }}
                     >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {activeTrips.map((trip) => (
-                  <tr key={trip.id}>
-                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9", fontWeight: 700 }}>
-                      {trip.origin_port}
-                    </td>
-                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
-                      {trip.destination_fishery}
-                    </td>
-                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9", textTransform: "capitalize" }}>
-                      {trip.status.replace(/_/g, " ")}
-                    </td>
-                    <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
-                      {formatDateTime(trip.created_at)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 12,
+                          marginBottom: 8,
+                        }}
+                      >
+                        <div style={{ fontWeight: 800 }}>
+                          {vehicle.nickname || vehicle.registrationNumber}
+                        </div>
+                        <div style={{ color: statusColor, fontWeight: 800 }}>
+                          {statusText}
+                        </div>
+                      </div>
+
+                      <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}>
+                        <strong>Reg:</strong> {vehicle.registrationNumber}
+                      </div>
+                      <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}>
+                        <strong>Driver:</strong> {vehicle.driverName || "-"}
+                      </div>
+                      <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}>
+                        <strong>Speed:</strong> {vehicle.speedKmh || 0} km/h
+                      </div>
+                      <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}>
+                        <strong>Coords:</strong> {vehicle.latitude ?? "-"}, {vehicle.longitude ?? "-"}
+                      </div>
+                      <div style={{ color: "#64748b", fontSize: 13 }}>
+                        Last seen: {formatDateTime(vehicle.lastSeen)}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
-        )}
+
+          <div style={{ ...cardStyle, padding: 24 }}>
+            <h2 style={{ ...sectionTitleStyle, marginBottom: 8 }}>Open Alerts</h2>
+            <p style={{ ...mutedTextStyle, marginBottom: 16 }}>
+              Vehicles needing immediate attention.
+            </p>
+
+            <div style={{ display: "grid", gap: 12 }}>
+              {fleet.flatMap((vehicle) =>
+                vehicle.openAlerts.map((alert) => ({
+                  vehicle,
+                  alert,
+                }))
+              ).length === 0 ? (
+                <div style={{ color: "#16a34a", fontWeight: 700 }}>
+                  No active alerts.
+                </div>
+              ) : (
+                fleet.flatMap((vehicle) =>
+                  vehicle.openAlerts.map((alert) => (
+                    <div
+                      key={alert.id}
+                      style={{
+                        border: "1px solid #fecaca",
+                        background: "#fef2f2",
+                        borderRadius: 14,
+                        padding: 14,
+                      }}
+                    >
+                      <div style={{ fontWeight: 800, color: "#991b1b", marginBottom: 6 }}>
+                        {vehicle.nickname || vehicle.registrationNumber}
+                      </div>
+                      <div style={{ color: "#7f1d1d", fontSize: 14, marginBottom: 4 }}>
+                        <strong>Type:</strong> {alert.alertType.replace(/_/g, " ")}
+                      </div>
+                      <div style={{ color: "#7f1d1d", fontSize: 14, marginBottom: 4 }}>
+                        <strong>Severity:</strong> {alert.severity}
+                      </div>
+                      <div style={{ color: "#7f1d1d", fontSize: 14, marginBottom: 4 }}>
+                        {alert.message}
+                      </div>
+                      <div style={{ color: "#991b1b", fontSize: 12 }}>
+                        {formatDateTime(alert.createdAt)}
+                      </div>
+                    </div>
+                  ))
+                )
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </AppShell>
   );
