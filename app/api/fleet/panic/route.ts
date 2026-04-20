@@ -41,6 +41,14 @@ export async function POST(req: Request) {
       );
     }
 
+    const { data: latestLocation } = await supabase
+      .from("vehicle_locations")
+      .select("latitude, longitude, recorded_at")
+      .eq("vehicle_id", vehicleId)
+      .order("recorded_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
     const { error: alertError } = await supabase
       .from("vehicle_alerts")
       .insert({
@@ -78,6 +86,26 @@ export async function POST(req: Request) {
         .from("vehicle_trips")
         .update({ status: "emergency" })
         .eq("id", activeTrip.id);
+    }
+
+    try {
+      await fetch(`${new URL(req.url).origin}/api/fleet/notify-alert`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          vehicleNickname: vehicle.nickname,
+          registrationNumber: vehicle.registration_number,
+          alertType: "panic",
+          severity: "critical",
+          message,
+          lastLatitude: latestLocation?.latitude ?? null,
+          lastLongitude: latestLocation?.longitude ?? null,
+        }),
+      });
+    } catch {
+      // do not fail panic flow if email sending fails
     }
 
     return NextResponse.json({

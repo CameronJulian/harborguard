@@ -27,6 +27,11 @@ const Popup = dynamic(
   { ssr: false }
 );
 
+const Polyline = dynamic(
+  () => import("react-leaflet").then((mod) => mod.Polyline),
+  { ssr: false }
+);
+
 type FleetAlert = {
   id: string;
   alertType: string;
@@ -34,6 +39,21 @@ type FleetAlert = {
   message: string;
   createdAt: string | null;
 };
+
+type RoutePoint = {
+  name?: string;
+  latitude: number;
+  longitude: number;
+};
+
+type ActiveTrip = {
+  id: string;
+  status: string;
+  originPort: string;
+  destinationFishery: string;
+  deviationThresholdKm: number;
+  routePoints: RoutePoint[];
+} | null;
 
 type FleetVehicle = {
   id: string;
@@ -52,6 +72,7 @@ type FleetVehicle = {
   source: string | null;
   lastSeen: string | null;
   openAlerts: FleetAlert[];
+  activeTrip: ActiveTrip;
 };
 
 type FleetResponse = {
@@ -108,6 +129,11 @@ async function createVehicleIcon(status: "online" | "offline" | "alert") {
   const color =
     status === "alert" ? "#dc2626" : status === "offline" ? "#64748b" : "#16a34a";
 
+  const animated =
+    status === "alert"
+      ? "animation:pulse-red 1s infinite;"
+      : "";
+
   return L.divIcon({
     className: "",
     html: `
@@ -118,6 +144,7 @@ async function createVehicleIcon(status: "online" | "offline" | "alert") {
         background:${color};
         border:3px solid white;
         box-shadow:0 0 0 2px rgba(15,23,42,0.12);
+        ${animated}
       "></div>
     `,
     iconSize: [18, 18],
@@ -186,8 +213,13 @@ export default function FleetDashboardPage() {
       const nextIcons: Record<string, any> = {};
 
       for (const vehicle of mapVehicles) {
-        const markerStatus =
-          vehicle.openAlerts.length > 0
+        const hasCriticalRouteAlert = vehicle.openAlerts.some(
+          (a) => a.alertType === "route_deviation" || a.alertType === "panic"
+        );
+
+        const markerStatus = hasCriticalRouteAlert
+          ? "alert"
+          : vehicle.openAlerts.length > 0
             ? "alert"
             : vehicle.isOffline
               ? "offline"
@@ -231,9 +263,7 @@ export default function FleetDashboardPage() {
           setFleet((current) => {
             const exists = current.some((vehicle) => vehicle.id === row.vehicle_id);
 
-            if (!exists) {
-              return current;
-            }
+            if (!exists) return current;
 
             return current.map((vehicle) => {
               if (vehicle.id !== row.vehicle_id) return vehicle;
@@ -290,6 +320,14 @@ export default function FleetDashboardPage() {
 
   return (
     <AppShell>
+      <style>{`
+        @keyframes pulse-red {
+          0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220,38,38,0.65); }
+          70% { transform: scale(1.18); box-shadow: 0 0 0 12px rgba(220,38,38,0); }
+          100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+        }
+      `}</style>
+
       <div style={{ ...cardStyle, padding: 26, marginBottom: 24 }}>
         <h2 style={sectionTitleStyle}>Live Fleet Map</h2>
         <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
@@ -370,7 +408,7 @@ export default function FleetDashboardPage() {
           <div style={{ marginBottom: 12 }}>
             <h2 style={{ ...sectionTitleStyle, marginBottom: 6 }}>Fleet Map</h2>
             <p style={mutedTextStyle}>
-              Green = online, grey = offline, red = active alert.
+              Green = online, grey = offline, red pulsing = off-route or active critical alert.
             </p>
           </div>
 
@@ -407,42 +445,74 @@ export default function FleetDashboardPage() {
                 />
 
                 {mapVehicles.map((vehicle) => {
-                  if (!vehicleIcons[vehicle.id]) return null;
+                  const trip = vehicle.activeTrip;
 
                   return (
-                    <Marker
-                      key={vehicle.id}
-                      position={[vehicle.latitude as number, vehicle.longitude as number]}
-                      icon={vehicleIcons[vehicle.id]}
-                    >
-                      <Popup>
-                        <div style={{ minWidth: 220 }}>
-                          <div style={{ fontWeight: 800, marginBottom: 6 }}>
-                            {vehicle.nickname || vehicle.registrationNumber}
-                          </div>
-                          <div style={{ marginBottom: 4 }}>
-                            <strong>Registration:</strong> {vehicle.registrationNumber}
-                          </div>
-                          <div style={{ marginBottom: 4 }}>
-                            <strong>Driver:</strong> {vehicle.driverName || "-"}
-                          </div>
-                          <div style={{ marginBottom: 4 }}>
-                            <strong>Speed:</strong> {vehicle.speedKmh || 0} km/h
-                          </div>
-                          <div style={{ marginBottom: 4 }}>
-                            <strong>Last Seen:</strong> {formatDateTime(vehicle.lastSeen)}
-                          </div>
-                          <div style={{ marginBottom: 4 }}>
-                            <strong>Status:</strong>{" "}
-                            {vehicle.openAlerts.length > 0
-                              ? "Alert"
-                              : vehicle.isOffline
-                                ? "Offline"
-                                : "Online"}
-                          </div>
-                        </div>
-                      </Popup>
-                    </Marker>
+                    <div key={vehicle.id}>
+                      {trip &&
+                        Array.isArray(trip.routePoints) &&
+                        trip.routePoints.length >= 2 && (
+                          <Polyline
+                            positions={trip.routePoints.map((point) => [
+                              point.latitude,
+                              point.longitude,
+                            ])}
+                            pathOptions={{
+                              color: "#2563eb",
+                              weight: 4,
+                              opacity: 0.7,
+                              dashArray: "8 8",
+                            }}
+                          />
+                        )}
+
+                      {vehicleIcons[vehicle.id] ? (
+                        <Marker
+                          position={[vehicle.latitude as number, vehicle.longitude as number]}
+                          icon={vehicleIcons[vehicle.id]}
+                        >
+                          <Popup>
+                            <div style={{ minWidth: 240 }}>
+                              <div style={{ fontWeight: 800, marginBottom: 6 }}>
+                                {vehicle.nickname || vehicle.registrationNumber}
+                              </div>
+                              <div style={{ marginBottom: 4 }}>
+                                <strong>Registration:</strong> {vehicle.registrationNumber}
+                              </div>
+                              <div style={{ marginBottom: 4 }}>
+                                <strong>Driver:</strong> {vehicle.driverName || "-"}
+                              </div>
+                              <div style={{ marginBottom: 4 }}>
+                                <strong>Speed:</strong> {vehicle.speedKmh || 0} km/h
+                              </div>
+                              <div style={{ marginBottom: 4 }}>
+                                <strong>Last Seen:</strong> {formatDateTime(vehicle.lastSeen)}
+                              </div>
+                              <div style={{ marginBottom: 4 }}>
+                                <strong>Status:</strong>{" "}
+                                {vehicle.openAlerts.length > 0
+                                  ? "Alert"
+                                  : vehicle.isOffline
+                                    ? "Offline"
+                                    : "Online"}
+                              </div>
+                              {trip ? (
+                                <>
+                                  <div style={{ marginBottom: 4 }}>
+                                    <strong>Route:</strong> {trip.originPort} →{" "}
+                                    {trip.destinationFishery}
+                                  </div>
+                                  <div style={{ marginBottom: 4 }}>
+                                    <strong>Deviation Threshold:</strong>{" "}
+                                    {trip.deviationThresholdKm} km
+                                  </div>
+                                </>
+                              ) : null}
+                            </div>
+                          </Popup>
+                        </Marker>
+                      ) : null}
+                    </div>
                   );
                 })}
               </MapContainer>
@@ -514,6 +584,12 @@ export default function FleetDashboardPage() {
                       <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}>
                         <strong>Coords:</strong> {vehicle.latitude ?? "-"}, {vehicle.longitude ?? "-"}
                       </div>
+                      {vehicle.activeTrip ? (
+                        <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}>
+                          <strong>Trip:</strong> {vehicle.activeTrip.originPort} →{" "}
+                          {vehicle.activeTrip.destinationFishery}
+                        </div>
+                      ) : null}
                       <div style={{ color: "#64748b", fontSize: 13 }}>
                         Last seen: {formatDateTime(vehicle.lastSeen)}
                       </div>

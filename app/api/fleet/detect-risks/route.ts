@@ -15,6 +15,79 @@ function minutesAgoIso(minutes: number) {
   return new Date(Date.now() - minutes * 60 * 1000).toISOString();
 }
 
+function toRadians(value: number) {
+  return (value * Math.PI) / 180;
+}
+
+function distanceKm(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number
+) {
+  const earthRadiusKm = 6371;
+  const dLat = toRadians(lat2 - lat1);
+  const dLng = toRadians(lng2 - lng1);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(lat1)) *
+      Math.cos(toRadians(lat2)) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusKm * c;
+}
+
+type RoutePoint = {
+  latitude: number;
+  longitude: number;
+  name?: string;
+};
+
+function getRouteDeviationKm(
+  latitude: number,
+  longitude: number,
+  routePoints: RoutePoint[]
+) {
+  if (!routePoints.length) return 0;
+
+  let minDistance = Number.POSITIVE_INFINITY;
+
+  for (const point of routePoints) {
+    const dist = distanceKm(latitude, longitude, point.latitude, point.longitude);
+    if (dist < minDistance) minDistance = dist;
+  }
+
+  return minDistance;
+}
+
+async function notifyCriticalAlert(params: {
+  vehicleNickname?: string | null;
+  registrationNumber?: string | null;
+  alertType: string;
+  severity: string;
+  message: string;
+  lastLatitude?: number | null;
+  lastLongitude?: number | null;
+}) {
+  const origin =
+    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
+  try {
+    await fetch(`${origin}/api/fleet/notify-alert`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(params),
+    });
+  } catch {
+    // do not fail risk detection if email notification fails
+  }
+}
+
 export async function POST() {
   try {
     const { data: vehicles, error: vehiclesError } = await supabase
@@ -126,13 +199,11 @@ export async function POST() {
 
       const previouslyMoving =
         latestLocations.length >= 2 &&
-        latestLocations.slice(1).some((row) => (row.speed_kmh ?? 0) >= MOVING_SPEED_THRESHOLD);
+        latestLocations
+          .slice(1)
+          .some((row) => (row.speed_kmh ?? 0) >= MOVING_SPEED_THRESHOLD);
 
-      if (
-        previouslyMoving &&
-        ageMinutes >= 10 &&
-        !openTypes.has("signal_loss")
-      ) {
+      if (previouslyMoving && ageMinutes >= 10 && !openTypes.has("signal_loss")) {
         const message = `${vehicle.nickname || vehicle.registration_number} lost signal after moving at speed. Possible tracking disruption.`;
 
         const { data: insertedAlert } = await supabase
@@ -147,7 +218,90 @@ export async function POST() {
           .select()
           .single();
 
-        if (insertedAlert) createdAlerts.push(insertedAlert);
+        if (insertedAlert) {
+          createdAlerts.push(insertedAlert);
+
+          await notifyCriticalAlert({
+            vehicleNickname: vehicle.nickname,
+            registrationNumber: vehicle.registration_number,
+            alertType: "signal_loss",
+            severity: "critical",
+            message,
+            lastLatitude: latest.latitude,
+            lastLongitude: latest.longitude,
+          });
+        }
+      }
+
+      const { data: activeTrip } = await supabase
+        .from("vehicle_trips")
+        .select("id, expected_route, deviation_threshold_km, status")
+        .eq("vehicle_id", vehicle.id)
+        .in("status", [
+          "scheduled",
+          "en_route_to_port",
+          "collecting",
+          "en_route_to_fishery",
+          "emergency",
+        ])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const routePoints = activeTrip?.expected_route?.points || [];
+      const deviationThresholdKm = Number(activeTrip?.deviation_threshold_km ?? 3);
+
+      if (
+        activeTrip &&
+        Array.isArray(routePoints) &&
+        routePoints.length > 0 &&
+        typeof latest.latitude === "number" &&
+        typeof latest.longitude === "number" &&
+        !openTypes.has("route_deviation")
+      ) {
+        const deviationKm = getRouteDeviationKm(
+          latest.latitude,
+          latest.longitude,
+          routePoints
+        );
+
+        if (deviationKm > deviationThresholdKm) {
+          const message = `${vehicle.nickname || vehicle.registration_number} is ${deviationKm.toFixed(
+            2
+          )} km away from the planned route.`;
+
+          const { data: insertedAlert } = await supabase
+            .from("vehicle_alerts")
+            .insert({
+              vehicle_id: vehicle.id,
+              trip_id: activeTrip.id,
+              alert_type: "route_deviation",
+              severity: "critical",
+              message,
+              is_resolved: false,
+            })
+            .select()
+            .single();
+
+          if (insertedAlert) {
+            createdAlerts.push(insertedAlert);
+
+            await notifyCriticalAlert({
+              vehicleNickname: vehicle.nickname,
+              registrationNumber: vehicle.registration_number,
+              alertType: "route_deviation",
+              severity: "critical",
+              message,
+              lastLatitude: latest.latitude,
+              lastLongitude: latest.longitude,
+            });
+          }
+
+          await supabase
+            .from("vehicle_trips")
+            .update({ status: "emergency" })
+            .eq("id", activeTrip.id);
+        }
       }
     }
 

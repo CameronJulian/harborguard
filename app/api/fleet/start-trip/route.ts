@@ -10,6 +10,10 @@ type StartTripBody = {
   vehicleId?: string;
   originPort?: string;
   destinationFishery?: string;
+  originLatitude?: number;
+  originLongitude?: number;
+  destinationLatitude?: number;
+  destinationLongitude?: number;
 };
 
 export async function POST(req: Request) {
@@ -40,6 +44,29 @@ export async function POST(req: Request) {
       );
     }
 
+    const hasRouteCoords =
+      typeof body.originLatitude === "number" &&
+      typeof body.originLongitude === "number" &&
+      typeof body.destinationLatitude === "number" &&
+      typeof body.destinationLongitude === "number";
+
+    const expectedRoute = hasRouteCoords
+      ? {
+          points: [
+            {
+              name: originPort,
+              latitude: body.originLatitude,
+              longitude: body.originLongitude,
+            },
+            {
+              name: destinationFishery,
+              latitude: body.destinationLatitude,
+              longitude: body.destinationLongitude,
+            },
+          ],
+        }
+      : null;
+
     const { data: trip, error: tripError } = await supabase
       .from("vehicle_trips")
       .insert({
@@ -49,6 +76,8 @@ export async function POST(req: Request) {
         destination_fishery: destinationFishery,
         planned_departure: new Date().toISOString(),
         status: "scheduled",
+        expected_route: expectedRoute,
+        deviation_threshold_km: 3,
       })
       .select()
       .single();

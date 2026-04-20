@@ -154,6 +154,10 @@ export default function DriverEmergencyPage() {
           vehicleId: selectedVehicleId,
           originPort,
           destinationFishery,
+          originLatitude: -33.9180,
+          originLongitude: 18.4233,
+          destinationLatitude: -33.7606,
+          destinationLongitude: 18.9647,
         }),
       });
 

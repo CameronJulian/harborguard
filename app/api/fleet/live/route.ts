@@ -43,47 +43,102 @@ type AlertRow = {
   created_at: string | null;
 };
 
+type TripRow = {
+  id: string;
+  vehicle_id: string | null;
+  status: string;
+  origin_port: string;
+  destination_fishery: string;
+  expected_route: {
+    points?: Array<{
+      name?: string;
+      latitude: number;
+      longitude: number;
+    }>;
+  } | null;
+  deviation_threshold_km: number | null;
+  created_at: string | null;
+};
+
 export async function GET() {
   try {
-    const [vehiclesRes, driversRes, locationsRes, alertsRes] = await Promise.all([
-      supabase
-        .from("vehicles")
-        .select("id, registration_number, nickname, make, model, driver_id, is_active, created_at")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("drivers")
-        .select("id, full_name"),
-      supabase
-        .from("vehicle_locations")
-        .select("id, vehicle_id, latitude, longitude, speed_kmh, heading, recorded_at, source")
-        .order("recorded_at", { ascending: false }),
-      supabase
-        .from("vehicle_alerts")
-        .select("id, vehicle_id, alert_type, severity, message, is_resolved, created_at")
-        .eq("is_resolved", false)
-        .order("created_at", { ascending: false }),
-    ]);
+    const [vehiclesRes, driversRes, locationsRes, alertsRes, tripsRes] =
+      await Promise.all([
+        supabase
+          .from("vehicles")
+          .select(
+            "id, registration_number, nickname, make, model, driver_id, is_active, created_at"
+          )
+          .order("created_at", { ascending: false }),
+        supabase.from("drivers").select("id, full_name"),
+        supabase
+          .from("vehicle_locations")
+          .select(
+            "id, vehicle_id, latitude, longitude, speed_kmh, heading, recorded_at, source"
+          )
+          .order("recorded_at", { ascending: false }),
+        supabase
+          .from("vehicle_alerts")
+          .select(
+            "id, vehicle_id, alert_type, severity, message, is_resolved, created_at"
+          )
+          .eq("is_resolved", false)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("vehicle_trips")
+          .select(
+            "id, vehicle_id, status, origin_port, destination_fishery, expected_route, deviation_threshold_km, created_at"
+          )
+          .in("status", [
+            "scheduled",
+            "en_route_to_port",
+            "collecting",
+            "en_route_to_fishery",
+            "emergency",
+          ])
+          .order("created_at", { ascending: false }),
+      ]);
 
     if (vehiclesRes.error) {
-      return NextResponse.json({ error: vehiclesRes.error.message }, { status: 500 });
+      return NextResponse.json(
+        { error: vehiclesRes.error.message },
+        { status: 500 }
+      );
     }
 
     if (driversRes.error) {
-      return NextResponse.json({ error: driversRes.error.message }, { status: 500 });
+      return NextResponse.json(
+        { error: driversRes.error.message },
+        { status: 500 }
+      );
     }
 
     if (locationsRes.error) {
-      return NextResponse.json({ error: locationsRes.error.message }, { status: 500 });
+      return NextResponse.json(
+        { error: locationsRes.error.message },
+        { status: 500 }
+      );
     }
 
     if (alertsRes.error) {
-      return NextResponse.json({ error: alertsRes.error.message }, { status: 500 });
+      return NextResponse.json(
+        { error: alertsRes.error.message },
+        { status: 500 }
+      );
+    }
+
+    if (tripsRes.error) {
+      return NextResponse.json(
+        { error: tripsRes.error.message },
+        { status: 500 }
+      );
     }
 
     const vehicles = (vehiclesRes.data || []) as VehicleRow[];
     const drivers = (driversRes.data || []) as DriverRow[];
     const locations = (locationsRes.data || []) as LocationRow[];
     const alerts = (alertsRes.data || []) as AlertRow[];
+    const trips = (tripsRes.data || []) as TripRow[];
 
     const driverNameById = new Map<string, string>();
     for (const driver of drivers) {
@@ -106,13 +161,24 @@ export async function GET() {
       openAlertsByVehicle.set(alert.vehicle_id, existing);
     }
 
+    const activeTripByVehicle = new Map<string, TripRow>();
+    for (const trip of trips) {
+      if (!trip.vehicle_id) continue;
+      if (!activeTripByVehicle.has(trip.vehicle_id)) {
+        activeTripByVehicle.set(trip.vehicle_id, trip);
+      }
+    }
+
     const fleet = vehicles.map((vehicle) => {
       const latestLocation = latestLocationByVehicle.get(vehicle.id) || null;
       const vehicleAlerts = openAlertsByVehicle.get(vehicle.id) || [];
+      const activeTrip = activeTripByVehicle.get(vehicle.id) || null;
       const lastSeen = latestLocation?.recorded_at || null;
       const isOffline = !lastSeen
         ? true
         : Date.now() - new Date(lastSeen).getTime() > 15 * 60 * 1000;
+
+      const routePoints = activeTrip?.expected_route?.points || [];
 
       return {
         id: vehicle.id,
@@ -121,7 +187,9 @@ export async function GET() {
         make: vehicle.make,
         model: vehicle.model,
         driverId: vehicle.driver_id,
-        driverName: vehicle.driver_id ? driverNameById.get(vehicle.driver_id) || null : null,
+        driverName: vehicle.driver_id
+          ? driverNameById.get(vehicle.driver_id) || null
+          : null,
         isActive: vehicle.is_active,
         isOffline,
         latitude: latestLocation?.latitude ?? null,
@@ -137,6 +205,18 @@ export async function GET() {
           message: alert.message,
           createdAt: alert.created_at,
         })),
+        activeTrip: activeTrip
+          ? {
+              id: activeTrip.id,
+              status: activeTrip.status,
+              originPort: activeTrip.origin_port,
+              destinationFishery: activeTrip.destination_fishery,
+              deviationThresholdKm: Number(
+                activeTrip.deviation_threshold_km ?? 3
+              ),
+              routePoints,
+            }
+          : null,
       };
     });
 
