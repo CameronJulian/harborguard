@@ -3,7 +3,14 @@
 import "leaflet/dist/leaflet.css";
 
 import dynamic from "next/dynamic";
-import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import {
+  CSSProperties,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useMap } from "react-leaflet";
 import { useSearchParams } from "next/navigation";
 import AppShell from "@/components/AppShell";
@@ -130,9 +137,9 @@ function toLocalDateTimeInput(value: string | null) {
   if (!value) return "";
   const date = new Date(value);
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
-    date.getHours()
-  )}:${pad(date.getMinutes())}`;
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+    date.getDate()
+  )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function severityColor(severity: string) {
@@ -200,7 +207,12 @@ async function createPlaybackIcon() {
 
 async function createAlertIcon(severity: string) {
   const L = (await import("leaflet")).default;
-  const color = severity === "critical" ? "#dc2626" : severity === "high" ? "#ea580c" : "#d97706";
+  const color =
+    severity === "critical"
+      ? "#dc2626"
+      : severity === "high"
+        ? "#ea580c"
+        : "#d97706";
 
   return L.divIcon({
     className: "",
@@ -220,7 +232,7 @@ async function createAlertIcon(severity: string) {
   });
 }
 
-export default function RouteReplayPage() {
+function RouteReplayContent() {
   const searchParams = useSearchParams();
 
   const [vehicles, setVehicles] = useState<FleetVehicle[]>([]);
@@ -498,13 +510,7 @@ export default function RouteReplayPage() {
       </div>
 
       <div style={{ ...cardStyle, padding: 24, marginBottom: 24 }}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1.2fr 1fr 1fr 180px",
-            gap: 14,
-          }}
-        >
+        <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 180px", gap: 14 }}>
           <select
             value={selectedVehicleId}
             onChange={(e) => {
@@ -526,34 +532,15 @@ export default function RouteReplayPage() {
             ))}
           </select>
 
-          <input
-            type="datetime-local"
-            value={start}
-            onChange={(e) => setStart(e.target.value)}
-            style={inputStyle}
-          />
-
-          <input
-            type="datetime-local"
-            value={end}
-            onChange={(e) => setEnd(e.target.value)}
-            style={inputStyle}
-          />
+          <input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} style={inputStyle} />
+          <input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} style={inputStyle} />
 
           <button onClick={() => loadReplay()} style={primaryButtonStyle} disabled={loading}>
             {loading ? "Loading..." : "Load Replay"}
           </button>
         </div>
 
-        <div
-          style={{
-            marginTop: 14,
-            display: "flex",
-            gap: 12,
-            alignItems: "center",
-            flexWrap: "wrap",
-          }}
-        >
+        <div style={{ marginTop: 14, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           <button onClick={handlePlay} style={primaryButtonStyle} disabled={loading || points.length < 2}>
             Play
           </button>
@@ -583,14 +570,7 @@ export default function RouteReplayPage() {
         </div>
 
         <div style={{ marginTop: 16 }}>
-          <div
-            style={{
-              height: 10,
-              borderRadius: 999,
-              background: "#e5e7eb",
-              overflow: "hidden",
-            }}
-          >
+          <div style={{ height: 10, borderRadius: 999, background: "#e5e7eb", overflow: "hidden" }}>
             <div
               style={{
                 width: `${progressPercent}%`,
@@ -600,15 +580,7 @@ export default function RouteReplayPage() {
               }}
             />
           </div>
-          <div
-            style={{
-              marginTop: 8,
-              display: "flex",
-              justifyContent: "space-between",
-              color: "#64748b",
-              fontSize: 13,
-            }}
-          >
+          <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", color: "#64748b", fontSize: 13 }}>
             <span>Progress: {progressPercent}%</span>
             <span>
               Frame {points.length === 0 ? 0 : playbackIndex + 1} / {points.length}
@@ -617,28 +589,13 @@ export default function RouteReplayPage() {
         </div>
 
         {message ? (
-          <div
-            style={{
-              marginTop: 16,
-              padding: 14,
-              borderRadius: 12,
-              background: "#f8fafc",
-              border: "1px solid #e2e8f0",
-              color: "#334155",
-            }}
-          >
+          <div style={{ marginTop: 16, padding: 14, borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", color: "#334155" }}>
             {message}
           </div>
         ) : null}
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1.35fr 1fr",
-          gap: 24,
-        }}
-      >
+      <div style={{ display: "grid", gridTemplateColumns: "1.35fr 1fr", gap: 24 }}>
         <div style={{ ...cardStyle, padding: 20 }}>
           <div style={{ marginBottom: 12 }}>
             <h2 style={{ fontSize: 28, margin: "0 0 6px 0" }}>
@@ -649,79 +606,32 @@ export default function RouteReplayPage() {
             </p>
           </div>
 
-          <div
-            style={{
-              borderRadius: 18,
-              overflow: "hidden",
-              border: "1px solid #e5e7eb",
-              height: 560,
-            }}
-          >
-            <MapContainer
-              center={mapCenter}
-              zoom={11}
-              style={{ height: "100%", width: "100%" }}
-            >
-              <TileLayer
-                attribution="&copy; OpenStreetMap contributors"
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
+          <div style={{ borderRadius: 18, overflow: "hidden", border: "1px solid #e5e7eb", height: 560 }}>
+            <MapContainer center={mapCenter} zoom={11} style={{ height: "100%", width: "100%" }}>
+              <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
               {currentPlaybackPoint && (
-                <MapAutoCenter
-                  position={[
-                    currentPlaybackPoint.latitude,
-                    currentPlaybackPoint.longitude,
-                  ]}
-                />
+                <MapAutoCenter position={[currentPlaybackPoint.latitude, currentPlaybackPoint.longitude]} />
               )}
 
               {polylinePositions.length >= 2 && (
-                <Polyline
-                  positions={polylinePositions}
-                  pathOptions={{
-                    color: "#93c5fd",
-                    weight: 5,
-                    opacity: 0.9,
-                  }}
-                />
+                <Polyline positions={polylinePositions} pathOptions={{ color: "#93c5fd", weight: 5, opacity: 0.9 }} />
               )}
 
               {visitedPositions.length >= 2 && (
-                <Polyline
-                  positions={visitedPositions}
-                  pathOptions={{
-                    color: "#1d4ed8",
-                    weight: 6,
-                    opacity: 1,
-                  }}
-                />
+                <Polyline positions={visitedPositions} pathOptions={{ color: "#1d4ed8", weight: 6, opacity: 1 }} />
               )}
 
               {replayAlertMarkers.map(({ alert, latitude, longitude }) =>
                 alertIcons[alert.id] ? (
-                  <Marker
-                    key={alert.id}
-                    position={[latitude, longitude]}
-                    icon={alertIcons[alert.id]}
-                  >
+                  <Marker key={alert.id} position={[latitude, longitude]} icon={alertIcons[alert.id]}>
                     <Popup>
                       <div style={{ minWidth: 220 }}>
-                        <div style={{ fontWeight: 800, marginBottom: 6 }}>
-                          {alertTypeLabel(alert.alert_type)}
-                        </div>
-                        <div style={{ marginBottom: 4 }}>
-                          <strong>Severity:</strong> {alert.severity}
-                        </div>
-                        <div style={{ marginBottom: 4 }}>
-                          <strong>Created:</strong> {formatDateTime(alert.created_at)}
-                        </div>
-                        <div style={{ marginBottom: 4 }}>
-                          {alert.message}
-                        </div>
-                        <div style={{ marginBottom: 4 }}>
-                          <strong>Status:</strong> {alert.is_resolved ? "Resolved" : "Open"}
-                        </div>
+                        <div style={{ fontWeight: 800, marginBottom: 6 }}>{alertTypeLabel(alert.alert_type)}</div>
+                        <div style={{ marginBottom: 4 }}><strong>Severity:</strong> {alert.severity}</div>
+                        <div style={{ marginBottom: 4 }}><strong>Created:</strong> {formatDateTime(alert.created_at)}</div>
+                        <div style={{ marginBottom: 4 }}>{alert.message}</div>
+                        <div style={{ marginBottom: 4 }}><strong>Status:</strong> {alert.is_resolved ? "Resolved" : "Open"}</div>
                       </div>
                     </Popup>
                   </Marker>
@@ -753,10 +663,7 @@ export default function RouteReplayPage() {
               ) : null}
 
               {currentPlaybackPoint && playbackIcon ? (
-                <Marker
-                  position={[currentPlaybackPoint.latitude, currentPlaybackPoint.longitude]}
-                  icon={playbackIcon}
-                >
+                <Marker position={[currentPlaybackPoint.latitude, currentPlaybackPoint.longitude]} icon={playbackIcon}>
                   <Popup>
                     <div>
                       <strong>Playback Position</strong>
@@ -777,43 +684,12 @@ export default function RouteReplayPage() {
             <h2 style={{ fontSize: 28, margin: "0 0 12px 0" }}>Replay Summary</h2>
 
             <div style={{ display: "grid", gap: 12 }}>
-              <div>
-                <div style={{ color: "#64748b", fontSize: 14 }}>Vehicle</div>
-                <div style={{ fontWeight: 800, fontSize: 20 }}>
-                  {vehicleLabel || "-"}
-                </div>
-              </div>
-
-              <div>
-                <div style={{ color: "#64748b", fontSize: 14 }}>Points Loaded</div>
-                <div style={{ fontWeight: 800, fontSize: 20 }}>{points.length}</div>
-              </div>
-
-              <div>
-                <div style={{ color: "#64748b", fontSize: 14 }}>Alerts Loaded</div>
-                <div style={{ fontWeight: 800, fontSize: 20 }}>{alerts.length}</div>
-              </div>
-
-              <div>
-                <div style={{ color: "#64748b", fontSize: 14 }}>Replay Start</div>
-                <div style={{ fontWeight: 700 }}>
-                  {formatDateTime(startPoint?.recorded_at || null)}
-                </div>
-              </div>
-
-              <div>
-                <div style={{ color: "#64748b", fontSize: 14 }}>Replay End</div>
-                <div style={{ fontWeight: 700 }}>
-                  {formatDateTime(endPoint?.recorded_at || null)}
-                </div>
-              </div>
-
-              <div>
-                <div style={{ color: "#64748b", fontSize: 14 }}>Current Playback Time</div>
-                <div style={{ fontWeight: 700 }}>
-                  {formatDateTime(currentPlaybackPoint?.recorded_at || null)}
-                </div>
-              </div>
+              <div><div style={{ color: "#64748b", fontSize: 14 }}>Vehicle</div><div style={{ fontWeight: 800, fontSize: 20 }}>{vehicleLabel || "-"}</div></div>
+              <div><div style={{ color: "#64748b", fontSize: 14 }}>Points Loaded</div><div style={{ fontWeight: 800, fontSize: 20 }}>{points.length}</div></div>
+              <div><div style={{ color: "#64748b", fontSize: 14 }}>Alerts Loaded</div><div style={{ fontWeight: 800, fontSize: 20 }}>{alerts.length}</div></div>
+              <div><div style={{ color: "#64748b", fontSize: 14 }}>Replay Start</div><div style={{ fontWeight: 700 }}>{formatDateTime(startPoint?.recorded_at || null)}</div></div>
+              <div><div style={{ color: "#64748b", fontSize: 14 }}>Replay End</div><div style={{ fontWeight: 700 }}>{formatDateTime(endPoint?.recorded_at || null)}</div></div>
+              <div><div style={{ color: "#64748b", fontSize: 14 }}>Current Playback Time</div><div style={{ fontWeight: 700 }}>{formatDateTime(currentPlaybackPoint?.recorded_at || null)}</div></div>
             </div>
           </div>
 
@@ -825,34 +701,13 @@ export default function RouteReplayPage() {
                 <div style={{ color: "#64748b" }}>No alerts in this replay range.</div>
               ) : (
                 alerts.map((alert) => (
-                  <div
-                    key={alert.id}
-                    style={{
-                      border: `1px solid ${alert.is_resolved ? "#bbf7d0" : "#fecaca"}`,
-                      borderRadius: 14,
-                      padding: 14,
-                      background: alert.is_resolved ? "#f0fdf4" : "#fff7ed",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontWeight: 800,
-                        marginBottom: 6,
-                        color: severityColor(alert.severity),
-                        textTransform: "capitalize",
-                      }}
-                    >
+                  <div key={alert.id} style={{ border: `1px solid ${alert.is_resolved ? "#bbf7d0" : "#fecaca"}`, borderRadius: 14, padding: 14, background: alert.is_resolved ? "#f0fdf4" : "#fff7ed" }}>
+                    <div style={{ fontWeight: 800, marginBottom: 6, color: severityColor(alert.severity), textTransform: "capitalize" }}>
                       {alertTypeLabel(alert.alert_type)}
                     </div>
-                    <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}>
-                      <strong>Time:</strong> {formatDateTime(alert.created_at)}
-                    </div>
-                    <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}>
-                      <strong>Severity:</strong> {alert.severity}
-                    </div>
-                    <div style={{ color: "#334155", fontSize: 14 }}>
-                      {alert.message}
-                    </div>
+                    <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}><strong>Time:</strong> {formatDateTime(alert.created_at)}</div>
+                    <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}><strong>Severity:</strong> {alert.severity}</div>
+                    <div style={{ color: "#334155", fontSize: 14 }}>{alert.message}</div>
                   </div>
                 ))
               )}
@@ -868,30 +723,14 @@ export default function RouteReplayPage() {
                   const isActive = index === playbackIndex;
 
                   return (
-                    <div
-                      key={point.id}
-                      style={{
-                        border: isActive ? "2px solid #2563eb" : "1px solid #e5e7eb",
-                        borderRadius: 14,
-                        padding: 14,
-                        background: isActive ? "#eff6ff" : "#fff",
-                      }}
-                    >
+                    <div key={point.id} style={{ border: isActive ? "2px solid #2563eb" : "1px solid #e5e7eb", borderRadius: 14, padding: 14, background: isActive ? "#eff6ff" : "#fff" }}>
                       <div style={{ fontWeight: 800, marginBottom: 6 }}>
                         Point {index + 1} {isActive ? "• Current" : ""}
                       </div>
-                      <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}>
-                        <strong>Time:</strong> {formatDateTime(point.recorded_at)}
-                      </div>
-                      <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}>
-                        <strong>Coords:</strong> {point.latitude}, {point.longitude}
-                      </div>
-                      <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}>
-                        <strong>Speed:</strong> {point.speed_kmh ?? 0} km/h
-                      </div>
-                      <div style={{ color: "#334155", fontSize: 14 }}>
-                        <strong>Source:</strong> {point.source || "-"}
-                      </div>
+                      <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}><strong>Time:</strong> {formatDateTime(point.recorded_at)}</div>
+                      <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}><strong>Coords:</strong> {point.latitude}, {point.longitude}</div>
+                      <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}><strong>Speed:</strong> {point.speed_kmh ?? 0} km/h</div>
+                      <div style={{ color: "#334155", fontSize: 14 }}><strong>Source:</strong> {point.source || "-"}</div>
                     </div>
                   );
                 })
@@ -901,5 +740,21 @@ export default function RouteReplayPage() {
         </div>
       </div>
     </AppShell>
+  );
+}
+
+export default function RouteReplayPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell>
+          <div style={{ ...cardStyle, padding: 24 }}>
+            Loading route replay...
+          </div>
+        </AppShell>
+      }
+    >
+      <RouteReplayContent />
+    </Suspense>
   );
 }
