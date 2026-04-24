@@ -1,6 +1,7 @@
 "use client";
 
 import { CSSProperties, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 
 type VehicleAlert = {
@@ -49,7 +50,14 @@ function severityColor(severity: string) {
   return "#2563eb";
 }
 
+function alertWindowIso(alertTime: string | null | undefined, minutesOffset: number) {
+  const base = alertTime ? new Date(alertTime).getTime() : Date.now();
+  return new Date(base + minutesOffset * 60 * 1000).toISOString();
+}
+
 export default function VehicleAlertsPage() {
+  const router = useRouter();
+
   const [alerts, setAlerts] = useState<VehicleAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("open");
@@ -117,6 +125,21 @@ export default function VehicleAlertsPage() {
     }
   }
 
+  function openReplay(alert: VehicleAlert) {
+    const params = new URLSearchParams();
+    params.set("vehicleId", alert.vehicle_id);
+
+    const start = alertWindowIso(alert.created_at, -30);
+    const end = alertWindowIso(alert.created_at, 30);
+
+    params.set("start", start);
+    params.set("end", end);
+    params.set("autoplay", "1");
+    params.set("focusAlert", alert.id);
+
+    router.push(`/route-replay?${params.toString()}`);
+  }
+
   const filteredAlerts = useMemo(() => {
     return alerts.filter((alert) => {
       const matchesFilter =
@@ -154,7 +177,7 @@ export default function VehicleAlertsPage() {
       <div style={{ ...cardStyle, padding: 24, marginBottom: 24 }}>
         <h1 style={{ fontSize: 34, margin: "0 0 8px 0" }}>Vehicle Alerts</h1>
         <p style={{ color: "#64748b", margin: 0 }}>
-          Review panic, offline, long-stop, and other fleet safety alerts.
+          Review panic, offline, long-stop, route deviation, and geofence alerts.
         </p>
       </div>
 
@@ -221,6 +244,10 @@ export default function VehicleAlertsPage() {
           </button>
         </div>
 
+        <div style={{ marginTop: 14, color: "#64748b", fontSize: 14 }}>
+          Click any alert card to jump straight into route replay around the alert time.
+        </div>
+
         {message ? (
           <div
             style={{
@@ -252,10 +279,12 @@ export default function VehicleAlertsPage() {
             return (
               <div
                 key={alert.id}
+                onClick={() => openReplay(alert)}
                 style={{
                   ...cardStyle,
                   padding: 22,
                   border: `1px solid ${alert.is_resolved ? "#d1fae5" : "#fee2e2"}`,
+                  cursor: "pointer",
                 }}
               >
                 <div
@@ -306,6 +335,7 @@ export default function VehicleAlertsPage() {
                       background: "#f0fdf4",
                       border: "1px solid #bbf7d0",
                     }}
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <div style={{ fontWeight: 700, marginBottom: 6 }}>
                       Resolved: {formatDateTime(alert.resolved_at)}
@@ -315,7 +345,10 @@ export default function VehicleAlertsPage() {
                     </div>
                   </div>
                 ) : (
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 180px", gap: 12 }}>
+                  <div
+                    style={{ display: "grid", gridTemplateColumns: "1fr 180px", gap: 12 }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <input
                       value={notesById[alert.id] || ""}
                       onChange={(e) =>

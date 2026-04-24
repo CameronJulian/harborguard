@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import twilio from "twilio";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+
+const twilioClient =
+  process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN
+    ? twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
+    : null;
 
 type NotifyAlertBody = {
   vehicleNickname?: string | null;
@@ -20,6 +26,17 @@ function titleCase(value: string) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function shouldSendSms(alertType: string, severity: string) {
+  return (
+    severity === "critical" ||
+    alertType === "panic" ||
+    alertType === "geofence_breach" ||
+    alertType === "route_deviation" ||
+    alertType === "offline" ||
+    alertType === "long_stop"
+  );
+}
+
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as NotifyAlertBody;
@@ -29,24 +46,25 @@ export async function POST(req: Request) {
       process.env.FLEET_ALERT_EMAIL ||
       process.env.ALERT_EMAIL;
 
-    if (!recipientEmail) {
-      return NextResponse.json(
-        { error: "No fleet alert recipient email is configured." },
-        { status: 400 }
-      );
-    }
-
     const alertType = body.alertType || "unknown";
     const severity = body.severity || "high";
-    const vehicleLabel =
-      body.vehicleNickname || body.registrationNumber || "Unknown vehicle";
 
-    const subject = `[HarborGuard] ${titleCase(alertType)} alert - ${vehicleLabel}`;
+    const vehicleLabel =
+      body.vehicleNickname && body.registrationNumber
+        ? `${body.vehicleNickname} (${body.registrationNumber})`
+        : body.vehicleNickname || body.registrationNumber || "Unknown vehicle";
 
     const coords =
       typeof body.lastLatitude === "number" && typeof body.lastLongitude === "number"
         ? `${body.lastLatitude}, ${body.lastLongitude}`
         : "Not available";
+
+    const mapsUrl =
+      typeof body.lastLatitude === "number" && typeof body.lastLongitude === "number"
+        ? `https://maps.google.com/?q=${body.lastLatitude},${body.lastLongitude}`
+        : null;
+
+    const subject = `[HarborGuard] ${titleCase(alertType)} alert - ${vehicleLabel}`;
 
     const html = `
       <div style="font-family: Arial, sans-serif; color: #0f172a; line-height: 1.6;">
@@ -79,6 +97,12 @@ export async function POST(req: Request) {
             <td style="padding: 8px; border: 1px solid #e5e7eb;">${coords}</td>
           </tr>
           <tr>
+            <td style="padding: 8px; border: 1px solid #e5e7eb; font-weight: 700;">Map</td>
+            <td style="padding: 8px; border: 1px solid #e5e7eb;">
+              ${mapsUrl ? `<a href="${mapsUrl}">Open location in Google Maps</a>` : "-"}
+            </td>
+          </tr>
+          <tr>
             <td style="padding: 8px; border: 1px solid #e5e7eb; font-weight: 700;">Triggered At</td>
             <td style="padding: 8px; border: 1px solid #e5e7eb;">${new Date().toLocaleString()}</td>
           </tr>
@@ -90,21 +114,84 @@ export async function POST(req: Request) {
       </div>
     `;
 
-    const { data, error } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || "HarborGuard <onboarding@resend.dev>",
-      to: recipientEmail,
-      subject,
-      html,
-    });
+    let emailData: any = null;
+    let smsData: any = null;
+    let emailError: string | null = null;
+    let smsError: string | null = null;
 
-    if (error) {
-      return NextResponse.json({ error: error.message || "Failed to send email." }, { status: 500 });
+    if (recipientEmail) {
+      const { data, error } = await resend.emails.send({
+        from:
+          process.env.RESEND_FROM_EMAIL ||
+          "HarborGuard <onboarding@resend.dev>",
+        to: recipientEmail,
+        subject,
+        html,
+      });
+
+      if (error) {
+        emailError = error.message || "Failed to send email.";
+      } else {
+        emailData = data;
+      }
+    }
+
+    if (
+      shouldSendSms(alertType, severity) &&
+      twilioClient &&
+      process.env.TWILIO_SMS_FROM &&
+      process.env.TWILIO_SMS_TO
+    ) {
+      try {
+        const smsBody =
+          `HARBORGUARD ALERT\n` +
+          `${titleCase(alertType)} - ${titleCase(severity)}\n` +
+          `Vehicle: ${vehicleLabel}\n` +
+          `Message: ${body.message || "-"}\n` +
+          `Coords: ${coords}` +
+          (mapsUrl ? `\nMap: ${mapsUrl}` : "");
+
+        smsData = await twilioClient.messages.create({
+          body: smsBody,
+          from: process.env.TWILIO_SMS_FROM,
+          to: process.env.TWILIO_SMS_TO,
+        });
+      } catch (err: any) {
+        smsError = err.message || "Failed to send SMS.";
+      }
+    }
+
+    if (!emailData && !smsData) {
+      return NextResponse.json(
+        {
+          error:
+            emailError ||
+            smsError ||
+            "No notification channel is configured. Check email or Twilio environment variables.",
+          channels: {
+            email: false,
+            sms: false,
+          },
+        },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
       success: true,
-      message: "Fleet alert notification sent successfully.",
-      data,
+      message: "Fleet alert notification processed.",
+      channels: {
+        email: !!emailData,
+        sms: !!smsData,
+      },
+      data: {
+        email: emailData,
+        smsSid: smsData?.sid || null,
+      },
+      warnings: {
+        email: emailError,
+        sms: smsError,
+      },
     });
   } catch (err: any) {
     return NextResponse.json(

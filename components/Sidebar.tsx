@@ -92,6 +92,14 @@ export default function Sidebar({
           Driver Emergency
         </Link>
 
+        <Link href="/route-replay" style={navStyle("/route-replay")} onClick={onNavigate}>
+          Route Replay
+        </Link>
+
+        <Link href="/geofences" style={navStyle("/geofences")} onClick={onNavigate}>
+          Geofence Management
+        </Link>
+
         <Link href="/vehicles" style={navStyle("/vehicles")} onClick={onNavigate}>
           Vehicles
         </Link>

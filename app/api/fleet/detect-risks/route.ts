@@ -30,7 +30,7 @@ function getDistanceMeters(
   return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-async function sendAlertEmail(params: {
+async function notifyAlert(params: {
   vehicleNickname?: string | null;
   registrationNumber?: string | null;
   alertType: string;
@@ -39,8 +39,7 @@ async function sendAlertEmail(params: {
   lastLatitude?: number | null;
   lastLongitude?: number | null;
 }) {
-  const siteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
   try {
     await fetch(`${siteUrl}/api/fleet/notify-alert`, {
@@ -51,8 +50,33 @@ async function sendAlertEmail(params: {
       body: JSON.stringify(params),
     });
   } catch {
-    // do not fail risk detection if email sending fails
+    // Do not fail risk detection if notification sending fails.
   }
+}
+
+async function createAlert(params: {
+  vehicleId: string;
+  alertType: string;
+  severity: string;
+  message: string;
+}) {
+  const { data, error } = await supabase
+    .from("vehicle_alerts")
+    .insert({
+      vehicle_id: params.vehicleId,
+      alert_type: params.alertType,
+      severity: params.severity,
+      message: params.message,
+      is_resolved: false,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    return null;
+  }
+
+  return data;
 }
 
 export async function POST() {
@@ -93,11 +117,11 @@ export async function POST() {
 
       if (latestError || !latest) continue;
 
-      const now = Date.now();
       const lastSeen = latest.recorded_at
         ? new Date(latest.recorded_at).getTime()
         : 0;
-      const minutes = (now - lastSeen) / (1000 * 60);
+
+      const minutes = (Date.now() - lastSeen) / (1000 * 60);
 
       const { data: openAlerts, error: openAlertsError } = await supabase
         .from("vehicle_alerts")
@@ -112,20 +136,25 @@ export async function POST() {
       if (minutes >= OFFLINE_MINUTES && !openTypes.has("offline")) {
         const message = `${vehicle.nickname || vehicle.registration_number} (${vehicle.registration_number}) offline for ${Math.floor(minutes)} minutes`;
 
-        const { data } = await supabase
-          .from("vehicle_alerts")
-          .insert({
-            vehicle_id: vehicle.id,
-            alert_type: "offline",
+        const alert = await createAlert({
+          vehicleId: vehicle.id,
+          alertType: "offline",
+          severity: "high",
+          message,
+        });
+
+        if (alert) {
+          createdAlerts.push(alert);
+
+          await notifyAlert({
+            vehicleNickname: vehicle.nickname,
+            registrationNumber: vehicle.registration_number,
+            alertType: "offline",
             severity: "high",
             message,
-            is_resolved: false,
-          })
-          .select()
-          .single();
-
-        if (data) {
-          createdAlerts.push(data);
+            lastLatitude: latest.latitude,
+            lastLongitude: latest.longitude,
+          });
         }
       }
 
@@ -136,20 +165,25 @@ export async function POST() {
       ) {
         const message = `${vehicle.nickname || vehicle.registration_number} (${vehicle.registration_number}) stationary too long`;
 
-        const { data } = await supabase
-          .from("vehicle_alerts")
-          .insert({
-            vehicle_id: vehicle.id,
-            alert_type: "long_stop",
+        const alert = await createAlert({
+          vehicleId: vehicle.id,
+          alertType: "long_stop",
+          severity: "medium",
+          message,
+        });
+
+        if (alert) {
+          createdAlerts.push(alert);
+
+          await notifyAlert({
+            vehicleNickname: vehicle.nickname,
+            registrationNumber: vehicle.registration_number,
+            alertType: "long_stop",
             severity: "medium",
             message,
-            is_resolved: false,
-          })
-          .select()
-          .single();
-
-        if (data) {
-          createdAlerts.push(data);
+            lastLatitude: latest.latitude,
+            lastLongitude: latest.longitude,
+          });
         }
       }
 
@@ -172,22 +206,17 @@ export async function POST() {
       if (!insideAny && !openTypes.has("geofence_breach")) {
         const message = `${vehicle.nickname || vehicle.registration_number} (${vehicle.registration_number}) is outside allowed zone`;
 
-        const { data } = await supabase
-          .from("vehicle_alerts")
-          .insert({
-            vehicle_id: vehicle.id,
-            alert_type: "geofence_breach",
-            severity: "critical",
-            message,
-            is_resolved: false,
-          })
-          .select()
-          .single();
+        const alert = await createAlert({
+          vehicleId: vehicle.id,
+          alertType: "geofence_breach",
+          severity: "critical",
+          message,
+        });
 
-        if (data) {
-          createdAlerts.push(data);
+        if (alert) {
+          createdAlerts.push(alert);
 
-          await sendAlertEmail({
+          await notifyAlert({
             vehicleNickname: vehicle.nickname,
             registrationNumber: vehicle.registration_number,
             alertType: "geofence_breach",
@@ -207,7 +236,7 @@ export async function POST() {
     });
   } catch (err: any) {
     return NextResponse.json(
-      { error: err.message || "Failed" },
+      { error: err.message || "Risk detection failed." },
       { status: 500 }
     );
   }
