@@ -111,6 +111,11 @@ export default function Sidebar({
         <Link href="/vehicle-alerts" style={navStyle("/vehicle-alerts")} onClick={onNavigate}>
           Vehicle Alerts
         </Link>
+		
+		
+		<Link href="/risk-dashboard" style={navStyle("/risk-dashboard")} onClick={onNavigate}>
+  Risk Dashboard
+</Link>
 
         {canManageReports && (
           <>
