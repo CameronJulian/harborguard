@@ -12,14 +12,19 @@ type PanicBody = {
   message?: string;
 };
 
+function getBaseUrl(req: Request) {
+  return process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin;
+}
+
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as PanicBody;
 
-    const vehicleId = body.vehicleId;
-    const tripId = body.tripId ?? null;
-    const message =
-      body.message?.trim() || "Driver triggered panic alert. Possible hijack or emergency.";
+    const vehicleId = String(body.vehicleId || "").trim();
+    const requestedTripId = body.tripId ? String(body.tripId).trim() : null;
+    const panicMessage =
+      body.message?.trim() ||
+      "Driver triggered panic alert. Possible hijack or emergency.";
 
     if (!vehicleId) {
       return NextResponse.json(
@@ -32,7 +37,7 @@ export async function POST(req: Request) {
       .from("vehicles")
       .select("id, nickname, registration_number")
       .eq("id", vehicleId)
-      .single();
+      .maybeSingle();
 
     if (vehicleError || !vehicle) {
       return NextResponse.json(
@@ -49,24 +54,6 @@ export async function POST(req: Request) {
       .limit(1)
       .maybeSingle();
 
-    const { error: alertError } = await supabase
-      .from("vehicle_alerts")
-      .insert({
-        vehicle_id: vehicleId,
-        trip_id: tripId,
-        alert_type: "panic",
-        severity: "critical",
-        message,
-        is_resolved: false,
-      });
-
-    if (alertError) {
-      return NextResponse.json(
-        { error: alertError.message },
-        { status: 500 }
-      );
-    }
-
     const { data: activeTrip } = await supabase
       .from("vehicle_trips")
       .select("id, status")
@@ -76,20 +63,46 @@ export async function POST(req: Request) {
         "en_route_to_port",
         "collecting",
         "en_route_to_fishery",
+        "emergency",
       ])
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (activeTrip) {
+    const finalTripId = requestedTripId || activeTrip?.id || null;
+
+    const { data: insertedAlert, error: alertError } = await supabase
+      .from("vehicle_alerts")
+      .insert({
+        vehicle_id: vehicleId,
+        trip_id: finalTripId,
+        alert_type: "panic",
+        severity: "critical",
+        message: panicMessage,
+        is_resolved: false,
+      })
+      .select()
+      .single();
+
+    if (alertError) {
+      return NextResponse.json(
+        { error: alertError.message },
+        { status: 500 }
+      );
+    }
+
+    if (activeTrip && activeTrip.status !== "emergency") {
       await supabase
         .from("vehicle_trips")
         .update({ status: "emergency" })
         .eq("id", activeTrip.id);
     }
 
+    let notificationResult: any = null;
+    let notificationError: string | null = null;
+
     try {
-      await fetch(`${new URL(req.url).origin}/api/fleet/notify-alert`, {
+      const notifyResponse = await fetch(`${getBaseUrl(req)}/api/fleet/notify-alert`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -99,13 +112,21 @@ export async function POST(req: Request) {
           registrationNumber: vehicle.registration_number,
           alertType: "panic",
           severity: "critical",
-          message,
+          message: panicMessage,
           lastLatitude: latestLocation?.latitude ?? null,
           lastLongitude: latestLocation?.longitude ?? null,
         }),
       });
-    } catch {
-      // do not fail panic flow if email sending fails
+
+      notificationResult = await notifyResponse.json().catch(() => null);
+
+      if (!notifyResponse.ok) {
+        notificationError =
+          notificationResult?.error || "Panic alert created, but notification failed.";
+      }
+    } catch (err: any) {
+      notificationError =
+        err.message || "Panic alert created, but notification failed.";
     }
 
     return NextResponse.json({
@@ -116,7 +137,13 @@ export async function POST(req: Request) {
         nickname: vehicle.nickname,
         registrationNumber: vehicle.registration_number,
       },
-      activeTripId: activeTrip?.id || tripId || null,
+      alert: insertedAlert,
+      activeTripId: finalTripId,
+      notification: {
+        sent: !notificationError,
+        result: notificationResult,
+        error: notificationError,
+      },
     });
   } catch (err: any) {
     return NextResponse.json(
