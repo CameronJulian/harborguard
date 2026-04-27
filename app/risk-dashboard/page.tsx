@@ -44,6 +44,18 @@ function formatAlertType(value?: string | null) {
   return (value || "unknown_alert").replace(/_/g, " ").toUpperCase();
 }
 
+function vehicleTitle(vehicle: FleetVehicle) {
+  return vehicle.registrationNumber || vehicle.nickname || "Unknown Vehicle";
+}
+
+function vehicleSubtitle(vehicle: FleetVehicle) {
+  if (vehicle.nickname && vehicle.registrationNumber) {
+    return `Nickname: ${vehicle.nickname}`;
+  }
+
+  return vehicle.nickname ? `Nickname: ${vehicle.nickname}` : "Nickname: -";
+}
+
 function riskLabel(vehicle: FleetVehicle) {
   const alerts = vehicle.openAlerts || [];
   if (alerts.some((a) => a.severity === "critical")) return "Critical";
@@ -108,9 +120,7 @@ export default function RiskDashboardPage() {
       }
 
       setMessage(
-        `Risk detection complete. New alerts created: ${
-          result.createdCount || 0
-        }`
+        `Risk detection complete. New alerts created: ${result.createdCount || 0}`
       );
       await loadFleet();
     } catch (err: any) {
@@ -195,14 +205,10 @@ export default function RiskDashboardPage() {
           },
         ].map((item) => (
           <div key={item.label} style={{ ...cardStyle, padding: 20 }}>
-            <div
-              style={{ color: "#64748b", fontSize: 14, marginBottom: 8 }}
-            >
+            <div style={{ color: "#64748b", fontSize: 14, marginBottom: 8 }}>
               {item.label}
             </div>
-            <div
-              style={{ fontSize: 34, fontWeight: 900, color: item.color }}
-            >
+            <div style={{ fontSize: 34, fontWeight: 900, color: item.color }}>
               {item.value}
             </div>
           </div>
@@ -306,20 +312,20 @@ export default function RiskDashboardPage() {
                   >
                     <div>
                       <div style={{ fontSize: 22, fontWeight: 900 }}>
-                        {vehicle.nickname || vehicle.registrationNumber}
+                        {vehicleTitle(vehicle)}
                       </div>
+
                       <div style={{ color: "#64748b", fontSize: 14 }}>
-                        Reg: {vehicle.registrationNumber}
+                        {vehicleSubtitle(vehicle)}
                       </div>
+
                       <div style={{ color: "#64748b", fontSize: 14 }}>
                         Driver: {vehicle.driverName || "-"}
                       </div>
                     </div>
 
                     <div>
-                      <div style={{ color: "#64748b", fontSize: 14 }}>
-                        Risk
-                      </div>
+                      <div style={{ color: "#64748b", fontSize: 14 }}>Risk</div>
                       <div style={{ fontWeight: 900, color }}>{label}</div>
                     </div>
 

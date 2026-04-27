@@ -6,59 +6,12 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-type VehicleRow = {
-  id: string;
-  registration_number: string;
-  nickname: string | null;
-  make: string | null;
-  model: string | null;
-  driver_id: string | null;
-  is_active: boolean;
-  created_at: string | null;
-};
-
-type DriverRow = {
-  id: string;
-  full_name: string;
-};
-
-type LocationRow = {
-  id: string;
-  vehicle_id: string | null;
-  latitude: number;
-  longitude: number;
-  speed_kmh: number | null;
-  heading: number | null;
-  recorded_at: string | null;
-  source: string | null;
-};
-
-type AlertRow = {
-  id: string;
-  vehicle_id: string | null;
-  alert_type: string;
-  severity: string;
-  message: string;
-  is_resolved: boolean;
-  created_at: string | null;
-};
-
-type TripRow = {
-  id: string;
-  vehicle_id: string | null;
-  status: string;
-  origin_port: string;
-  destination_fishery: string;
-  expected_route: {
-    points?: Array<{
-      name?: string;
-      latitude: number;
-      longitude: number;
-    }>;
-  } | null;
-  deviation_threshold_km: number | null;
-  created_at: string | null;
-};
+function normalizeRegistration(value: string | null | undefined) {
+  return String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "");
+}
 
 export async function GET() {
   try {
@@ -66,29 +19,25 @@ export async function GET() {
       await Promise.all([
         supabase
           .from("vehicles")
-          .select(
-            "id, registration_number, nickname, make, model, driver_id, is_active, created_at"
-          )
+          .select("*")
           .order("created_at", { ascending: false }),
+
         supabase.from("drivers").select("id, full_name"),
+
         supabase
           .from("vehicle_locations")
-          .select(
-            "id, vehicle_id, latitude, longitude, speed_kmh, heading, recorded_at, source"
-          )
+          .select("*")
           .order("recorded_at", { ascending: false }),
+
         supabase
           .from("vehicle_alerts")
-          .select(
-            "id, vehicle_id, alert_type, severity, message, is_resolved, created_at"
-          )
+          .select("*")
           .eq("is_resolved", false)
           .order("created_at", { ascending: false }),
+
         supabase
           .from("vehicle_trips")
-          .select(
-            "id, vehicle_id, status, origin_port, destination_fishery, expected_route, deviation_threshold_km, created_at"
-          )
+          .select("*")
           .in("status", [
             "scheduled",
             "en_route_to_port",
@@ -99,122 +48,119 @@ export async function GET() {
           .order("created_at", { ascending: false }),
       ]);
 
-    if (vehiclesRes.error) {
-      return NextResponse.json(
-        { error: vehiclesRes.error.message },
-        { status: 500 }
-      );
-    }
+    if (vehiclesRes.error) throw vehiclesRes.error;
+    if (driversRes.error) throw driversRes.error;
+    if (locationsRes.error) throw locationsRes.error;
+    if (alertsRes.error) throw alertsRes.error;
+    if (tripsRes.error) throw tripsRes.error;
 
-    if (driversRes.error) {
-      return NextResponse.json(
-        { error: driversRes.error.message },
-        { status: 500 }
-      );
-    }
+    const driverMap = new Map(
+      (driversRes.data || []).map((d) => [d.id, d.full_name])
+    );
 
-    if (locationsRes.error) {
-      return NextResponse.json(
-        { error: locationsRes.error.message },
-        { status: 500 }
-      );
-    }
+    const uniqueVehiclesMap = new Map<string, any>();
 
-    if (alertsRes.error) {
-      return NextResponse.json(
-        { error: alertsRes.error.message },
-        { status: 500 }
-      );
-    }
+    for (const vehicle of vehiclesRes.data || []) {
+      const registrationKey = normalizeRegistration(vehicle.registration_number);
+      const key = registrationKey || vehicle.id;
 
-    if (tripsRes.error) {
-      return NextResponse.json(
-        { error: tripsRes.error.message },
-        { status: 500 }
-      );
-    }
+      if (!uniqueVehiclesMap.has(key)) {
+        uniqueVehiclesMap.set(key, vehicle);
+        continue;
+      }
 
-    const vehicles = (vehiclesRes.data || []) as VehicleRow[];
-    const drivers = (driversRes.data || []) as DriverRow[];
-    const locations = (locationsRes.data || []) as LocationRow[];
-    const alerts = (alertsRes.data || []) as AlertRow[];
-    const trips = (tripsRes.data || []) as TripRow[];
+      const existing = uniqueVehiclesMap.get(key);
 
-    const driverNameById = new Map<string, string>();
-    for (const driver of drivers) {
-      driverNameById.set(driver.id, driver.full_name);
-    }
+      const existingDate = existing?.created_at
+        ? new Date(existing.created_at).getTime()
+        : 0;
 
-    const latestLocationByVehicle = new Map<string, LocationRow>();
-    for (const location of locations) {
-      if (!location.vehicle_id) continue;
-      if (!latestLocationByVehicle.has(location.vehicle_id)) {
-        latestLocationByVehicle.set(location.vehicle_id, location);
+      const currentDate = vehicle?.created_at
+        ? new Date(vehicle.created_at).getTime()
+        : 0;
+
+      if (currentDate > existingDate) {
+        uniqueVehiclesMap.set(key, vehicle);
       }
     }
 
-    const openAlertsByVehicle = new Map<string, AlertRow[]>();
-    for (const alert of alerts) {
-      if (!alert.vehicle_id) continue;
-      const existing = openAlertsByVehicle.get(alert.vehicle_id) || [];
-      existing.push(alert);
-      openAlertsByVehicle.set(alert.vehicle_id, existing);
-    }
+    const uniqueVehicles = Array.from(uniqueVehiclesMap.values());
+    const allowedVehicleIds = new Set(uniqueVehicles.map((vehicle) => vehicle.id));
 
-    const activeTripByVehicle = new Map<string, TripRow>();
-    for (const trip of trips) {
-      if (!trip.vehicle_id) continue;
-      if (!activeTripByVehicle.has(trip.vehicle_id)) {
-        activeTripByVehicle.set(trip.vehicle_id, trip);
+    const latestLocationMap = new Map<string, any>();
+    for (const loc of locationsRes.data || []) {
+      if (!loc.vehicle_id || !allowedVehicleIds.has(loc.vehicle_id)) continue;
+
+      if (!latestLocationMap.has(loc.vehicle_id)) {
+        latestLocationMap.set(loc.vehicle_id, loc);
       }
     }
 
-    const fleet = vehicles.map((vehicle) => {
-      const latestLocation = latestLocationByVehicle.get(vehicle.id) || null;
-      const vehicleAlerts = openAlertsByVehicle.get(vehicle.id) || [];
-      const activeTrip = activeTripByVehicle.get(vehicle.id) || null;
-      const lastSeen = latestLocation?.recorded_at || null;
+    const alertsMap = new Map<string, any[]>();
+    for (const alert of alertsRes.data || []) {
+      if (!alert.vehicle_id || !allowedVehicleIds.has(alert.vehicle_id)) continue;
+
+      const list = alertsMap.get(alert.vehicle_id) || [];
+      list.push(alert);
+      alertsMap.set(alert.vehicle_id, list);
+    }
+
+    const tripMap = new Map<string, any>();
+    for (const trip of tripsRes.data || []) {
+      if (!trip.vehicle_id || !allowedVehicleIds.has(trip.vehicle_id)) continue;
+
+      if (!tripMap.has(trip.vehicle_id)) {
+        tripMap.set(trip.vehicle_id, trip);
+      }
+    }
+
+    const fleet = uniqueVehicles.map((vehicle) => {
+      const loc = latestLocationMap.get(vehicle.id);
+      const alerts = alertsMap.get(vehicle.id) || [];
+      const trip = tripMap.get(vehicle.id);
+
+      const lastSeen = loc?.recorded_at || null;
       const isOffline = !lastSeen
         ? true
         : Date.now() - new Date(lastSeen).getTime() > 15 * 60 * 1000;
-
-      const routePoints = activeTrip?.expected_route?.points || [];
 
       return {
         id: vehicle.id,
         nickname: vehicle.nickname,
         registrationNumber: vehicle.registration_number,
-        make: vehicle.make,
-        model: vehicle.model,
-        driverId: vehicle.driver_id,
+        make: vehicle.make ?? null,
+        model: vehicle.model ?? null,
+        driverId: vehicle.driver_id ?? null,
         driverName: vehicle.driver_id
-          ? driverNameById.get(vehicle.driver_id) || null
+          ? driverMap.get(vehicle.driver_id) || null
           : null,
-        isActive: vehicle.is_active,
+
+        isActive: vehicle.is_active ?? true,
         isOffline,
-        latitude: latestLocation?.latitude ?? null,
-        longitude: latestLocation?.longitude ?? null,
-        speedKmh: latestLocation?.speed_kmh ?? 0,
-        heading: latestLocation?.heading ?? 0,
-        source: latestLocation?.source ?? null,
+        latitude: loc?.latitude ?? null,
+        longitude: loc?.longitude ?? null,
+        speedKmh: loc?.speed_kmh ?? 0,
+        heading: loc?.heading ?? 0,
+        source: loc?.source ?? null,
         lastSeen,
-        openAlerts: vehicleAlerts.map((alert) => ({
-          id: alert.id,
-          alertType: alert.alert_type,
-          severity: alert.severity,
-          message: alert.message,
-          createdAt: alert.created_at,
+
+        openAlerts: alerts.map((a) => ({
+          id: a.id,
+          alert_type: a.alert_type || "unknown_alert",
+          severity: a.severity || "medium",
+          message: a.message || "No message",
+          created_at: a.created_at,
+          is_resolved: a.is_resolved ?? false,
         })),
-        activeTrip: activeTrip
+
+        activeTrip: trip
           ? {
-              id: activeTrip.id,
-              status: activeTrip.status,
-              originPort: activeTrip.origin_port,
-              destinationFishery: activeTrip.destination_fishery,
-              deviationThresholdKm: Number(
-                activeTrip.deviation_threshold_km ?? 3
-              ),
-              routePoints,
+              id: trip.id,
+              status: trip.status,
+              originPort: trip.origin_port,
+              destinationFishery: trip.destination_fishery,
+              deviationThresholdKm: Number(trip.deviation_threshold_km ?? 3),
+              routePoints: trip.expected_route?.points || [],
             }
           : null,
       };
@@ -232,7 +178,7 @@ export async function GET() {
     });
   } catch (err: any) {
     return NextResponse.json(
-      { error: err.message || "Failed to load live fleet data." },
+      { error: err.message || "Failed to load fleet data." },
       { status: 500 }
     );
   }
