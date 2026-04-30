@@ -42,7 +42,7 @@ async function notifyAlert(params: {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
   try {
-    await fetch(`${siteUrl}/api/fleet/notify-alert`, {
+    await fetch(siteUrl + "/api/fleet/notify-alert", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -51,6 +51,21 @@ async function notifyAlert(params: {
     });
   } catch {
     // Do not fail risk detection if notification sending fails.
+  }
+}
+
+async function createIncident(alert: any) {
+  try {
+    await supabase.from("incidents").insert({
+      vehicle_id: alert.vehicle_id,
+      alert_id: alert.id,
+      type: alert.alert_type,
+      severity: alert.severity,
+      status: "open",
+      description: alert.message,
+    });
+  } catch {
+    // Do not block risk detection if incident creation fails.
   }
 }
 
@@ -72,8 +87,12 @@ async function createAlert(params: {
     .select()
     .single();
 
-  if (error) {
+  if (error || !data) {
     return null;
+  }
+
+  if (data.severity === "critical" || data.severity === "high") {
+    await createIncident(data);
   }
 
   return data;
@@ -92,14 +111,14 @@ export async function POST() {
       );
     }
 
-    const { data: geofences, error: geofenceError } = await supabase
+    const { data: geofences, error: geofencesError } = await supabase
       .from("geofences")
       .select("*")
       .eq("is_active", true);
 
-    if (geofenceError) {
+    if (geofencesError) {
       return NextResponse.json(
-        { error: geofenceError.message },
+        { error: geofencesError.message },
         { status: 500 }
       );
     }
@@ -115,7 +134,9 @@ export async function POST() {
         .limit(1)
         .maybeSingle();
 
-      if (latestError || !latest) continue;
+      if (latestError || !latest) {
+        continue;
+      }
 
       const lastSeen = latest.recorded_at
         ? new Date(latest.recorded_at).getTime()
@@ -129,12 +150,18 @@ export async function POST() {
         .eq("vehicle_id", vehicle.id)
         .eq("is_resolved", false);
 
-      if (openAlertsError) continue;
+      if (openAlertsError) {
+        continue;
+      }
 
       const openTypes = new Set((openAlerts || []).map((a) => a.alert_type));
 
       if (minutes >= OFFLINE_MINUTES && !openTypes.has("offline")) {
-        const message = `${vehicle.nickname || vehicle.registration_number} (${vehicle.registration_number}) offline for ${Math.floor(minutes)} minutes`;
+        const message =
+          String(vehicle.registration_number || "Unknown vehicle") +
+          " offline for " +
+          Math.floor(minutes) +
+          " minutes";
 
         const alert = await createAlert({
           vehicleId: vehicle.id,
@@ -163,7 +190,9 @@ export async function POST() {
         minutes >= LONG_STOP_MINUTES &&
         !openTypes.has("long_stop")
       ) {
-        const message = `${vehicle.nickname || vehicle.registration_number} (${vehicle.registration_number}) stationary too long`;
+        const message =
+          String(vehicle.registration_number || "Unknown vehicle") +
+          " stationary too long";
 
         const alert = await createAlert({
           vehicleId: vehicle.id,
@@ -204,7 +233,9 @@ export async function POST() {
       }
 
       if (!insideAny && !openTypes.has("geofence_breach")) {
-        const message = `${vehicle.nickname || vehicle.registration_number} (${vehicle.registration_number}) is outside allowed zone`;
+        const message =
+          String(vehicle.registration_number || "Unknown vehicle") +
+          " outside allowed zone";
 
         const alert = await createAlert({
           vehicleId: vehicle.id,
