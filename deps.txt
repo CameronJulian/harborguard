@@ -1,0 +1,25 @@
+harborguard@0.1.0 C:\Users\cameron\harborguard
++-- @emnapi/runtime@1.9.0 extraneous
++-- @supabase/supabase-js@2.99.1
++-- @types/leaflet@1.9.21
++-- @types/node@20.19.37
++-- @types/react-dom@19.2.3
++-- @types/react@19.2.14
++-- chartjs-node-canvas@5.0.0
++-- eslint-config-next@16.1.6
++-- eslint@9.39.4
++-- jspdf-autotable@5.0.7
++-- jspdf@4.2.1
++-- leaflet@1.9.4
++-- lucide-react@0.577.0
++-- next@16.1.6
++-- pdf-lib@1.17.1
++-- react-dom@19.2.3
++-- react-leaflet@5.0.0
++-- react@19.2.3
++-- recharts@3.8.0
++-- resend@6.9.4
++-- twilio@6.0.0
++-- typescript@5.9.3
+`-- zod@4.3.6
+

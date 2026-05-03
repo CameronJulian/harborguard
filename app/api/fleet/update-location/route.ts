@@ -6,6 +6,10 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+const STOP_SPEED_KMH = 3;
+const STOP_MINUTES = 5;
+const MIN_SLOW_POINTS = 3;
+
 type UpdateLocationBody = {
   vehicleId?: string;
   tripId?: string | null;
@@ -48,10 +52,7 @@ export async function POST(req: Request) {
     const requestedStatus = body.status;
 
     if (!vehicleId) {
-      return NextResponse.json(
-        { error: "vehicleId is required." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "vehicleId is required." }, { status: 400 });
     }
 
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
@@ -62,17 +63,11 @@ export async function POST(req: Request) {
     }
 
     if (latitude < -90 || latitude > 90) {
-      return NextResponse.json(
-        { error: "Latitude must be between -90 and 90." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Latitude must be between -90 and 90." }, { status: 400 });
     }
 
     if (longitude < -180 || longitude > 180) {
-      return NextResponse.json(
-        { error: "Longitude must be between -180 and 180." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Longitude must be between -180 and 180." }, { status: 400 });
     }
 
     const { data: vehicle, error: vehicleError } = await supabase
@@ -90,24 +85,19 @@ export async function POST(req: Request) {
 
     const now = new Date().toISOString();
 
-    const { error: locationError } = await supabase
-      .from("vehicle_locations")
-      .insert({
-        vehicle_id: vehicleId,
-        trip_id: tripId,
-        latitude,
-        longitude,
-        speed_kmh: speedKmh,
-        heading,
-        recorded_at: now,
-        source,
-      });
+    const { error: locationError } = await supabase.from("vehicle_locations").insert({
+      vehicle_id: vehicleId,
+      trip_id: tripId,
+      latitude,
+      longitude,
+      speed_kmh: speedKmh,
+      heading,
+      recorded_at: now,
+      source,
+    });
 
     if (locationError) {
-      return NextResponse.json(
-        { error: locationError.message },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: locationError.message }, { status: 500 });
     }
 
     const { data: activeTrip } = await supabase
@@ -125,6 +115,8 @@ export async function POST(req: Request) {
       .limit(1)
       .maybeSingle();
 
+    const activeTripId = activeTrip?.id || tripId || null;
+
     if (activeTrip) {
       if (activeTrip.status === "scheduled") {
         await supabase
@@ -135,18 +127,65 @@ export async function POST(req: Request) {
           })
           .eq("id", activeTrip.id);
       } else if (requestedStatus && requestedStatus !== activeTrip.status) {
-        const updates: Record<string, string> = {
-          status: requestedStatus,
-        };
+        const updates: Record<string, string> = { status: requestedStatus };
 
         if (requestedStatus === "delivered") {
           updates.actual_arrival = now;
         }
 
+        await supabase.from("vehicle_trips").update(updates).eq("id", activeTrip.id);
+      }
+    }
+
+    // Automatic stop detection
+    if (speedKmh <= STOP_SPEED_KMH) {
+      const since = new Date(Date.now() - STOP_MINUTES * 60 * 1000).toISOString();
+
+      const { data: recentSlowPoints } = await supabase
+        .from("vehicle_locations")
+        .select("id")
+        .eq("vehicle_id", vehicleId)
+        .gte("recorded_at", since)
+        .lte("speed_kmh", STOP_SPEED_KMH);
+
+      if ((recentSlowPoints || []).length >= MIN_SLOW_POINTS) {
+        const { data: openStop } = await supabase
+          .from("vehicle_stops")
+          .select("id")
+          .eq("vehicle_id", vehicleId)
+          .is("ended_at", null)
+          .maybeSingle();
+
+        if (!openStop) {
+          await supabase.from("vehicle_stops").insert({
+            vehicle_id: vehicleId,
+            trip_id: activeTripId,
+            latitude,
+            longitude,
+            started_at: since,
+          });
+        }
+      }
+    } else {
+      const { data: openStop } = await supabase
+        .from("vehicle_stops")
+        .select("id, started_at")
+        .eq("vehicle_id", vehicleId)
+        .is("ended_at", null)
+        .maybeSingle();
+
+      if (openStop) {
+        const durationSeconds = Math.floor(
+          (Date.now() - new Date(openStop.started_at).getTime()) / 1000
+        );
+
         await supabase
-          .from("vehicle_trips")
-          .update(updates)
-          .eq("id", activeTrip.id);
+          .from("vehicle_stops")
+          .update({
+            ended_at: now,
+            duration_seconds: durationSeconds,
+          })
+          .eq("id", openStop.id);
       }
     }
 
@@ -166,7 +205,7 @@ export async function POST(req: Request) {
         source,
         recordedAt: now,
       },
-      activeTripId: activeTrip?.id || tripId || null,
+      activeTripId,
     });
   } catch (err: any) {
     return NextResponse.json(

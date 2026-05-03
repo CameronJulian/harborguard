@@ -117,6 +117,10 @@ export default function Sidebar({
   Risk Dashboard
 </Link>
 
+<Link href="/command-center" style={navStyle("/command-center")} onClick={onNavigate}>
+  Command Center
+</Link>
+
         {canManageReports && (
           <>
             <Link
