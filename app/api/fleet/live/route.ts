@@ -17,85 +17,41 @@ function toNumber(value: unknown) {
   return NaN;
 }
 
-function cleanRoutePoints(route: LocationPoint[]) {
-  return route
-    .map((p) => {
-      const lat = toNumber(p.latitude);
-      const lng = toNumber(p.longitude);
-
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
-
-      return [lat, lng] as [number, number];
-    })
-    .filter((p): p is [number, number] => p !== null);
+// 🔥 NEW: reduce number of points BEFORE snapping
+function reduceRoute(points: [number, number][], step = 5) {
+  return points.filter((_, i) => i % step === 0);
 }
 
-function reduceRoutePoints(points: [number, number][], maxPoints = 25) {
-  if (points.length <= maxPoints) return points;
-
-  const step = Math.ceil(points.length / maxPoints);
-  const reduced = points.filter((_, index) => index % step === 0);
-
-  const last = points[points.length - 1];
-  const reducedLast = reduced[reduced.length - 1];
-
-  if (last && reducedLast && (last[0] !== reducedLast[0] || last[1] !== reducedLast[1])) {
-    reduced.push(last);
-  }
-
-  return reduced;
-}
-
-async function snapRouteToRoads(points: [number, number][]) {
-  const apiKey = process.env.ORS_API_KEY;
-
-  if (!apiKey || points.length < 2) {
-    return points;
-  }
+// 🔥 NEW: snap route to roads using ORS
+async function snapToRoad(route: [number, number][]) {
+  if (!process.env.ORS_API_KEY) return route;
 
   try {
-    const reducedPoints = reduceRoutePoints(points);
-
     const response = await fetch(
       "https://api.openrouteservice.org/v2/directions/driving-car/geojson",
       {
         method: "POST",
         headers: {
-          Authorization: apiKey,
+          Authorization: process.env.ORS_API_KEY,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          coordinates: reducedPoints.map(([lat, lng]) => [lng, lat]),
-          instructions: false,
-          preference: "recommended",
+          coordinates: route.map(([lat, lng]) => [lng, lat]),
         }),
       }
     );
 
-    if (!response.ok) {
-      return points;
-    }
+    const data = await response.json();
 
-    const result = await response.json();
+    const snapped =
+      data?.features?.[0]?.geometry?.coordinates?.map(
+        ([lng, lat]: [number, number]) => [lat, lng]
+      ) || route;
 
-    const coordinates =
-      result?.features?.[0]?.geometry?.coordinates || [];
-
-    const snappedPoints = coordinates
-      .map((point: [number, number]) => {
-        const lng = toNumber(point[0]);
-        const lat = toNumber(point[1]);
-
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-
-        return [lat, lng] as [number, number];
-      })
-      .filter((p: [number, number] | null): p is [number, number] => p !== null);
-
-    return snappedPoints.length > 1 ? snappedPoints : points;
-  } catch {
-    return points;
+    return snapped;
+  } catch (err) {
+    console.error("ORS snapping failed:", err);
+    return route;
   }
 }
 
@@ -124,7 +80,7 @@ export async function GET() {
           .select("latitude, longitude")
           .eq("vehicle_id", vehicle.id)
           .order("recorded_at", { ascending: true })
-          .limit(100);
+          .limit(200); // 👈 slightly higher buffer
 
         const { data: stops } = await supabase
           .from("vehicle_stops")
@@ -133,8 +89,23 @@ export async function GET() {
           .order("started_at", { ascending: false })
           .limit(10);
 
-        const rawRoutePoints = cleanRoutePoints(route || []);
-        const snappedRoutePoints = await snapRouteToRoads(rawRoutePoints);
+        const routePoints = (route || [])
+          .map((p: LocationPoint) => {
+            const lat = toNumber(p.latitude);
+            const lng = toNumber(p.longitude);
+
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+            if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+
+            return [lat, lng] as [number, number];
+          })
+          .filter((p): p is [number, number] => p !== null);
+
+        // 🔥 STEP 1: reduce points
+        const reducedRoute = reduceRoute(routePoints, 5);
+
+        // 🔥 STEP 2: snap to roads
+        const snappedRoute = await snapToRoad(reducedRoute);
 
         return {
           id: vehicle.id,
@@ -147,8 +118,7 @@ export async function GET() {
           heading: latest?.heading,
           lastSeen: latest?.recorded_at,
 
-          route: snappedRoutePoints,
-          rawRoute: rawRoutePoints,
+          route: snappedRoute,
           stops: stops || [],
         };
       })
