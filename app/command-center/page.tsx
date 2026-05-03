@@ -85,6 +85,21 @@ function cleanLatLng(latitude: unknown, longitude: unknown): [number, number] | 
   return [lat, lng];
 }
 
+function lerp(a: number, b: number, t: number) {
+  return a + (b - a) * t;
+}
+
+function interpolatePosition(
+  start: [number, number],
+  end: [number, number],
+  t: number
+): [number, number] {
+  return [
+    lerp(start[0], end[0], t),
+    lerp(start[1], end[1], t),
+  ];
+}
+
 function formatDateTime(value?: string | null) {
   if (!value) return "-";
   return new Date(value).toLocaleString();
@@ -143,6 +158,10 @@ export default function CommandCenterPage() {
   const [fleet, setFleet] = useState<FleetVehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [animatedPositions, setAnimatedPositions] = useState<
+  Record<string, [number, number]>
+>({});
+  
   const [icons, setIcons] = useState<Record<string, any>>({});
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
   const [showRoutes, setShowRoutes] = useState(true);
@@ -261,7 +280,55 @@ export default function CommandCenterPage() {
     return () => {
       cancelled = true;
     };
-  }, [fleet, selectedVehicleId]);
+  }, [fleet, selectedVehicleId]);useEffect(() => {
+  const interval = setInterval(() => {
+    setAnimatedPositions((prev) => {
+      const next: Record<string, [number, number]> = {};
+
+      fleet.forEach((vehicle) => {
+        const coords = cleanLatLng(vehicle.latitude, vehicle.longitude);
+        if (!coords) return;
+
+        const previous = prev[vehicle.id];
+
+        if (!previous) {
+          next[vehicle.id] = coords;
+        } else {
+          next[vehicle.id] = interpolatePosition(previous, coords, 0.2);
+        }
+      });
+
+      return next;
+    });
+  }, 100);
+
+  return () => clearInterval(interval);
+}, [fleet]);
+  
+  useEffect(() => {
+  const interval = setInterval(() => {
+    setAnimatedPositions((prev) => {
+      const next: Record<string, [number, number]> = {};
+
+      fleet.forEach((vehicle) => {
+        const coords = cleanLatLng(vehicle.latitude, vehicle.longitude);
+        if (!coords) return;
+
+        const previous = prev[vehicle.id];
+
+        if (!previous) {
+          next[vehicle.id] = coords;
+        } else {
+          next[vehicle.id] = interpolatePosition(previous, coords, 0.2);
+        }
+      });
+
+      return next;
+    });
+  }, 100);
+
+  return () => clearInterval(interval);
+}, [fleet]);
 
   const vehiclesWithLocation = useMemo(
     () => fleet.filter((v) => cleanLatLng(v.latitude, v.longitude)),
@@ -433,7 +500,11 @@ export default function CommandCenterPage() {
                       );
                     })}
 
-                    <Marker position={coords} icon={icon} eventHandlers={{ click: () => setSelectedVehicleId(vehicle.id) }}>
+                    <Marker
+  position={animatedPositions[vehicle.id] || coords}
+  icon={icon}
+  eventHandlers={{ click: () => setSelectedVehicleId(vehicle.id) }}
+>
                       <Popup>
                         <div style={{ minWidth: 250 }}>
                           <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 6 }}>{vehicle.registrationNumber}</div>
