@@ -102,7 +102,7 @@ export async function GET() {
           .filter((p): p is [number, number] => p !== null);
 
         // 🔥 STEP 1: reduce points
-        const reducedRoute = reduceRoute(routePoints, 5);
+        const reducedRoute = reduceRoute(routePoints, 8);
 
         // 🔥 STEP 2: snap to roads
         const snappedRoute = await snapToRoad(reducedRoute);
