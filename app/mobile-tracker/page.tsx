@@ -7,7 +7,30 @@ export default function MobileTrackerPage() {
   const [tracking, setTracking] = useState(false);
   const [message, setMessage] = useState("Ready.");
   const [lastLocation, setLastLocation] = useState<any>(null);
+
   const watchIdRef = useRef<number | null>(null);
+  const lastSentRef = useRef<any>(null);
+
+  // ===== CONFIG (tune this later if needed)
+  const MIN_DISTANCE_METERS = 10;   // ignore tiny jitter
+  const MAX_ACCURACY_METERS = 50;   // ignore bad GPS
+  const MAX_SPEED_KMH = 180;        // ignore teleport spikes
+
+  function getDistanceMeters(a: any, b: any) {
+    const R = 6371e3;
+    const φ1 = (a.lat * Math.PI) / 180;
+    const φ2 = (b.lat * Math.PI) / 180;
+    const Δφ = ((b.lat - a.lat) * Math.PI) / 180;
+    const Δλ = ((b.lng - a.lng) * Math.PI) / 180;
+
+    const x =
+      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) *
+      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+    return R * c;
+  }
 
   function stopTracking() {
     if (watchIdRef.current !== null) {
@@ -26,7 +49,7 @@ export default function MobileTrackerPage() {
     }
 
     if (!navigator.geolocation) {
-      setMessage("GPS is not supported on this device.");
+      setMessage("GPS not supported.");
       return;
     }
 
@@ -35,14 +58,46 @@ export default function MobileTrackerPage() {
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const accuracy = position.coords.accuracy || 999;
         const speedKmh = position.coords.speed
           ? position.coords.speed * 3.6
           : 0;
 
+        // ===== FILTER 1: Accuracy check
+        if (accuracy > MAX_ACCURACY_METERS) {
+          setMessage("Ignoring low-accuracy GPS...");
+          return;
+        }
+
+        const current = { lat, lng };
+
+        // ===== FILTER 2: Distance check
+        if (lastSentRef.current) {
+          const distance = getDistanceMeters(lastSentRef.current, current);
+
+          if (distance < MIN_DISTANCE_METERS) {
+            // ignore jitter
+            return;
+          }
+
+          // ===== FILTER 3: Speed sanity (anti teleport)
+          const timeDiff =
+            (Date.now() - lastSentRef.current.time) / 1000;
+
+          const calcSpeed = (distance / timeDiff) * 3.6;
+
+          if (calcSpeed > MAX_SPEED_KMH) {
+            setMessage("Ignoring GPS spike...");
+            return;
+          }
+        }
+
         const payload = {
           vehicleId: vehicleId.trim(),
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
+          latitude: lat,
+          longitude: lng,
           speedKmh,
           heading: position.coords.heading || 0,
           source: "mobile",
@@ -51,26 +106,31 @@ export default function MobileTrackerPage() {
         setLastLocation(payload);
 
         try {
-          const response = await fetch("/api/fleet/update-location", {
+          const res = await fetch("/api/fleet/update-location", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           });
 
-          const result = await response.json();
+          const result = await res.json();
 
-          if (!response.ok) {
+          if (!res.ok) {
             setMessage(result.error || "Failed to send location.");
             return;
           }
 
+          // ✅ Save last good point
+          lastSentRef.current = {
+            lat,
+            lng,
+            time: Date.now(),
+          };
+
           setMessage(
-            `Live tracking active. Last update: ${new Date().toLocaleTimeString()}`
+            `Tracking active. ${new Date().toLocaleTimeString()}`
           );
         } catch (err: any) {
-          setMessage(err.message || "Failed to send location.");
+          setMessage(err.message || "Network error.");
         }
       },
       (error) => {
@@ -78,8 +138,8 @@ export default function MobileTrackerPage() {
       },
       {
         enableHighAccuracy: true,
-        maximumAge: 5000,
-        timeout: 15000,
+        maximumAge: 2000,
+        timeout: 10000,
       }
     );
   }
@@ -95,7 +155,7 @@ export default function MobileTrackerPage() {
         padding: 24,
         background: "#020617",
         color: "#fff",
-        fontFamily: "Arial, sans-serif",
+        fontFamily: "Arial",
       }}
     >
       <div
@@ -103,113 +163,45 @@ export default function MobileTrackerPage() {
           maxWidth: 520,
           margin: "0 auto",
           background: "#0f172a",
-          border: "1px solid #1e293b",
           borderRadius: 24,
           padding: 24,
         }}
       >
-        <h1 style={{ fontSize: 28, marginTop: 0 }}>HarborGuard Tracker</h1>
+        <h1>HarborGuard Tracker</h1>
 
         <p style={{ color: "#94a3b8" }}>
-          Keep this page open on the driver phone while the bakkie is moving.
+          Keep this open while driving.
         </p>
-
-        <label style={{ display: "block", marginBottom: 8, fontWeight: 800 }}>
-          Vehicle ID
-        </label>
 
         <input
           value={vehicleId}
           onChange={(e) => setVehicleId(e.target.value)}
-          placeholder="Paste vehicle UUID here"
+          placeholder="Vehicle ID"
           disabled={tracking}
-          style={{
-            width: "100%",
-            boxSizing: "border-box",
-            padding: 14,
-            borderRadius: 12,
-            border: "1px solid #334155",
-            background: "#020617",
-            color: "#fff",
-            marginBottom: 16,
-          }}
+          style={{ width: "100%", padding: 12, marginBottom: 12 }}
         />
 
         {!tracking ? (
-          <button
-            onClick={startTracking}
-            style={{
-              width: "100%",
-              border: "none",
-              borderRadius: 14,
-              padding: 16,
-              background: "#16a34a",
-              color: "#fff",
-              fontWeight: 900,
-              fontSize: 16,
-            }}
-          >
-            Start Live Tracking
-          </button>
+          <button onClick={startTracking}>Start</button>
         ) : (
-          <button
-            onClick={stopTracking}
-            style={{
-              width: "100%",
-              border: "none",
-              borderRadius: 14,
-              padding: 16,
-              background: "#dc2626",
-              color: "#fff",
-              fontWeight: 900,
-              fontSize: 16,
-            }}
-          >
-            Stop Tracking
-          </button>
+          <button onClick={stopTracking}>Stop</button>
         )}
 
-        <div
-          style={{
-            marginTop: 18,
-            padding: 14,
-            borderRadius: 14,
-            background: tracking ? "#052e16" : "#1e293b",
-            border: tracking ? "1px solid #16a34a" : "1px solid #334155",
-          }}
-        >
-          <strong>Status:</strong> {tracking ? "Tracking active" : "Not tracking"}
+        <div style={{ marginTop: 12 }}>
+          <strong>Status:</strong> {tracking ? "Tracking" : "Idle"}
           <br />
           {message}
         </div>
 
-        {lastLocation ? (
-          <div
-            style={{
-              marginTop: 18,
-              padding: 14,
-              borderRadius: 14,
-              background: "#020617",
-              border: "1px solid #334155",
-              fontSize: 14,
-            }}
-          >
-            <strong>Last GPS:</strong>
-            <br />
+        {lastLocation && (
+          <div style={{ marginTop: 12 }}>
             Lat: {lastLocation.latitude}
             <br />
             Lng: {lastLocation.longitude}
             <br />
             Speed: {Math.round(lastLocation.speedKmh)} km/h
-            <br />
-            Heading: {Math.round(lastLocation.heading || 0)}°
           </div>
-        ) : null}
-
-        <p style={{ color: "#94a3b8", fontSize: 13, marginTop: 18 }}>
-          Note: browser tracking works while the page is open. True 24/7 background
-          tracking needs a mobile app or GPS hardware device.
-        </p>
+        )}
       </div>
     </main>
   );
