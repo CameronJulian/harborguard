@@ -366,20 +366,47 @@ export default function CommandCenterPage() {
                 const icon = icons[vehicle.id];
                 const coords = cleanLatLng(vehicle.latitude, vehicle.longitude);
                 const routePoints = cleanRoute(vehicle.route);
+                const selected = selectedVehicleId === vehicle.id;
 
                 if (!icon || !coords) return null;
 
                 return (
                   <Fragment key={vehicle.id}>
                     {showRoutes && routePoints.length > 1 ? (
-                      <Polyline
-                        positions={routePoints}
-                        pathOptions={{
-                          color: selectedVehicleId === vehicle.id ? "#2563eb" : "#1d4ed8",
-                          weight: selectedVehicleId === vehicle.id ? 6 : 4,
-                          opacity: selectedVehicleId === vehicle.id ? 0.95 : 0.75,
-                        }}
-                      />
+                      <>
+                        <Polyline
+                          positions={routePoints}
+                          pathOptions={{
+                            color: "#0f172a",
+                            weight: selected ? 10 : 7,
+                            opacity: selected ? 0.18 : 0.12,
+                            lineJoin: "round",
+                            lineCap: "round",
+                          }}
+                        />
+
+                        <Polyline
+                          positions={routePoints}
+                          pathOptions={{
+                            color: selected ? "#2563eb" : "#3b82f6",
+                            weight: selected ? 5 : 3,
+                            opacity: selected ? 0.98 : 0.85,
+                            lineJoin: "round",
+                            lineCap: "round",
+                          }}
+                        />
+
+                        <Polyline
+                          positions={routePoints}
+                          pathOptions={{
+                            color: "#bfdbfe",
+                            weight: selected ? 2 : 1,
+                            opacity: selected ? 0.95 : 0.75,
+                            lineJoin: "round",
+                            lineCap: "round",
+                          }}
+                        />
+                      </>
                     ) : null}
 
                     {showStops && (vehicle.stops || []).map((stop) => {
@@ -390,7 +417,7 @@ export default function CommandCenterPage() {
                         <CircleMarker
                           key={stop.id}
                           center={stopCoords}
-                          radius={selectedVehicleId === vehicle.id ? 8 : 6}
+                          radius={selected ? 8 : 6}
                           pathOptions={{ color: "#7c3aed", fillColor: "#a855f7", fillOpacity: 0.65, weight: 2 }}
                         >
                           <Popup>
