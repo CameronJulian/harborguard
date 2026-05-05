@@ -94,10 +94,7 @@ function interpolatePosition(
   end: [number, number],
   t: number
 ): [number, number] {
-  return [
-    lerp(start[0], end[0], t),
-    lerp(start[1], end[1], t),
-  ];
+  return [lerp(start[0], end[0], t), lerp(start[1], end[1], t)];
 }
 
 function formatDateTime(value?: string | null) {
@@ -134,6 +131,21 @@ function riskColor(risk: string) {
   return "#16a34a";
 }
 
+function replayHref(vehicle: FleetVehicle) {
+  const replayDate = vehicle.lastSeen ? new Date(vehicle.lastSeen) : new Date();
+
+  const startDate = new Date(replayDate);
+  startDate.setHours(0, 0, 0, 0);
+
+  const endDate = new Date(replayDate);
+  endDate.setHours(23, 59, 59, 999);
+
+  const start = encodeURIComponent(startDate.toISOString());
+  const end = encodeURIComponent(endDate.toISOString());
+
+  return `/route-replay?vehicleId=${vehicle.id}&start=${start}&end=${end}&autoplay=1`;
+}
+
 async function createVehicleIcon(risk: string, selected: boolean) {
   const L = (await import("leaflet")).default;
   const color = riskColor(risk);
@@ -158,10 +170,7 @@ export default function CommandCenterPage() {
   const [fleet, setFleet] = useState<FleetVehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
-  const [animatedPositions, setAnimatedPositions] = useState<
-  Record<string, [number, number]>
->({});
-  
+  const [animatedPositions, setAnimatedPositions] = useState<Record<string, [number, number]>>({});
   const [icons, setIcons] = useState<Record<string, any>>({});
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
   const [showRoutes, setShowRoutes] = useState(true);
@@ -191,10 +200,12 @@ export default function CommandCenterPage() {
     try {
       const response = await fetch("/api/fleet/detect-risks", { method: "POST" });
       const result = await response.json();
+
       if (!response.ok) {
         setMessage(result.error || "Risk detection failed.");
         return;
       }
+
       setMessage(`Risk detection complete. New alerts: ${result.createdCount || 0}`);
       await loadFleet();
     } catch (err: any) {
@@ -215,6 +226,7 @@ export default function CommandCenterPage() {
       });
 
       const result = await response.json();
+
       if (!response.ok) {
         setMessage(result.error || "Panic escalation failed.");
         return;
@@ -229,6 +241,7 @@ export default function CommandCenterPage() {
 
   async function resolveFirstAlert(vehicle: FleetVehicle) {
     const alert = vehicle.openAlerts?.[0];
+
     if (!alert?.id) {
       setMessage("No alert available to resolve.");
       return;
@@ -247,6 +260,7 @@ export default function CommandCenterPage() {
       });
 
       const result = await response.json();
+
       if (!response.ok) {
         setMessage(result.error || "Alert resolve failed.");
         return;
@@ -270,65 +284,48 @@ export default function CommandCenterPage() {
 
     async function buildIcons() {
       const next: Record<string, any> = {};
+
       for (const vehicle of fleet) {
-        next[vehicle.id] = await createVehicleIcon(vehicleRisk(vehicle), selectedVehicleId === vehicle.id);
+        next[vehicle.id] = await createVehicleIcon(
+          vehicleRisk(vehicle),
+          selectedVehicleId === vehicle.id
+        );
       }
+
       if (!cancelled) setIcons(next);
     }
 
     buildIcons();
+
     return () => {
       cancelled = true;
     };
-  }, [fleet, selectedVehicleId]);useEffect(() => {
-  const interval = setInterval(() => {
-    setAnimatedPositions((prev) => {
-      const next: Record<string, [number, number]> = {};
+  }, [fleet, selectedVehicleId]);
 
-      fleet.forEach((vehicle) => {
-        const coords = cleanLatLng(vehicle.latitude, vehicle.longitude);
-        if (!coords) return;
-
-        const previous = prev[vehicle.id];
-
-        if (!previous) {
-          next[vehicle.id] = coords;
-        } else {
-          next[vehicle.id] = interpolatePosition(previous, coords, 0.2);
-        }
-      });
-
-      return next;
-    });
-  }, 100);
-
-  return () => clearInterval(interval);
-}, [fleet]);
-  
   useEffect(() => {
-  const interval = setInterval(() => {
-    setAnimatedPositions((prev) => {
-      const next: Record<string, [number, number]> = {};
+    const interval = setInterval(() => {
+      setAnimatedPositions((prev) => {
+        const next: Record<string, [number, number]> = {};
 
-      fleet.forEach((vehicle) => {
-        const coords = cleanLatLng(vehicle.latitude, vehicle.longitude);
-        if (!coords) return;
+        fleet.forEach((vehicle) => {
+          const coords = cleanLatLng(vehicle.latitude, vehicle.longitude);
+          if (!coords) return;
 
-        const previous = prev[vehicle.id];
+          const previous = prev[vehicle.id];
 
-        if (!previous) {
-          next[vehicle.id] = coords;
-        } else {
-          next[vehicle.id] = interpolatePosition(previous, coords, 0.2);
-        }
+          if (!previous) {
+            next[vehicle.id] = coords;
+          } else {
+            next[vehicle.id] = interpolatePosition(previous, coords, 0.2);
+          }
+        });
+
+        return next;
       });
+    }, 100);
 
-      return next;
-    });
-  }, 100);
-
-  return () => clearInterval(interval);
-}, [fleet]);
+    return () => clearInterval(interval);
+  }, [fleet]);
 
   const vehiclesWithLocation = useMemo(
     () => fleet.filter((v) => cleanLatLng(v.latitude, v.longitude)),
@@ -441,38 +438,9 @@ export default function CommandCenterPage() {
                   <Fragment key={vehicle.id}>
                     {showRoutes && routePoints.length > 1 ? (
                       <>
-                        <Polyline
-                          positions={routePoints}
-                          pathOptions={{
-                            color: "#0f172a",
-                            weight: selected ? 10 : 7,
-                            opacity: selected ? 0.18 : 0.12,
-                            lineJoin: "round",
-                            lineCap: "round",
-                          }}
-                        />
-
-                        <Polyline
-                          positions={routePoints}
-                          pathOptions={{
-                            color: selected ? "#2563eb" : "#3b82f6",
-                            weight: selected ? 5 : 3,
-                            opacity: selected ? 0.98 : 0.85,
-                            lineJoin: "round",
-                            lineCap: "round",
-                          }}
-                        />
-
-                        <Polyline
-                          positions={routePoints}
-                          pathOptions={{
-                            color: "#bfdbfe",
-                            weight: selected ? 2 : 1,
-                            opacity: selected ? 0.95 : 0.75,
-                            lineJoin: "round",
-                            lineCap: "round",
-                          }}
-                        />
+                        <Polyline positions={routePoints} pathOptions={{ color: "#0f172a", weight: selected ? 10 : 7, opacity: selected ? 0.18 : 0.12, lineJoin: "round", lineCap: "round" }} />
+                        <Polyline positions={routePoints} pathOptions={{ color: selected ? "#2563eb" : "#3b82f6", weight: selected ? 5 : 3, opacity: selected ? 0.98 : 0.85, lineJoin: "round", lineCap: "round" }} />
+                        <Polyline positions={routePoints} pathOptions={{ color: "#bfdbfe", weight: selected ? 2 : 1, opacity: selected ? 0.95 : 0.75, lineJoin: "round", lineCap: "round" }} />
                       </>
                     ) : null}
 
@@ -481,12 +449,7 @@ export default function CommandCenterPage() {
                       if (!stopCoords) return null;
 
                       return (
-                        <CircleMarker
-                          key={stop.id}
-                          center={stopCoords}
-                          radius={selected ? 8 : 6}
-                          pathOptions={{ color: "#7c3aed", fillColor: "#a855f7", fillOpacity: 0.65, weight: 2 }}
-                        >
+                        <CircleMarker key={stop.id} center={stopCoords} radius={selected ? 8 : 6} pathOptions={{ color: "#7c3aed", fillColor: "#a855f7", fillOpacity: 0.65, weight: 2 }}>
                           <Popup>
                             <div style={{ minWidth: 180 }}>
                               <strong>Stop detected</strong>
@@ -500,11 +463,7 @@ export default function CommandCenterPage() {
                       );
                     })}
 
-                    <Marker
-  position={animatedPositions[vehicle.id] || coords}
-  icon={icon}
-  eventHandlers={{ click: () => setSelectedVehicleId(vehicle.id) }}
->
+                    <Marker position={animatedPositions[vehicle.id] || coords} icon={icon} eventHandlers={{ click: () => setSelectedVehicleId(vehicle.id) }}>
                       <Popup>
                         <div style={{ minWidth: 250 }}>
                           <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 6 }}>{vehicle.registrationNumber}</div>
@@ -517,8 +476,12 @@ export default function CommandCenterPage() {
                           <div style={{ marginTop: 8 }}><strong>Route Points:</strong> {routePoints.length}<br /><strong>Stops:</strong> {vehicle.stops?.length || 0}</div>
 
                           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                            <Link href={`/route-replay?vehicleId=${vehicle.id}&autoplay=1`} style={{ textDecoration: "none", borderRadius: 10, background: "#2563eb", color: "#fff", padding: "8px 10px", fontWeight: 800 }}>Replay</Link>
-                            <button onClick={() => triggerPanic(vehicle)} style={{ borderRadius: 10, background: "#dc2626", color: "#fff", padding: "8px 10px", fontWeight: 800, border: "none", cursor: "pointer" }}>Panic</button>
+                            <Link href={replayHref(vehicle)} style={{ textDecoration: "none", borderRadius: 10, background: "#2563eb", color: "#fff", padding: "8px 10px", fontWeight: 800 }}>
+                              Replay
+                            </Link>
+                            <button onClick={() => triggerPanic(vehicle)} style={{ borderRadius: 10, background: "#dc2626", color: "#fff", padding: "8px 10px", fontWeight: 800, border: "none", cursor: "pointer" }}>
+                              Panic
+                            </button>
                           </div>
                         </div>
                       </Popup>
@@ -583,12 +546,23 @@ export default function CommandCenterPage() {
                     ) : null}
 
                     <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-                      <Link href={`/route-replay?vehicleId=${vehicle.id}&autoplay=1`} style={{ textDecoration: "none", borderRadius: 10, background: "#2563eb", color: "#fff", padding: "8px 10px", fontWeight: 800, fontSize: 13 }}>Replay</Link>
-                      <button onClick={(e) => { e.stopPropagation(); triggerPanic(vehicle); }} style={{ borderRadius: 10, background: "#dc2626", color: "#fff", padding: "8px 10px", fontWeight: 800, border: "none", cursor: "pointer", fontSize: 13 }}>Panic</button>
+                      <Link href={replayHref(vehicle)} onClick={(e) => e.stopPropagation()} style={{ textDecoration: "none", borderRadius: 10, background: "#2563eb", color: "#fff", padding: "8px 10px", fontWeight: 800, fontSize: 13 }}>
+                        Replay
+                      </Link>
+
+                      <button onClick={(e) => { e.stopPropagation(); triggerPanic(vehicle); }} style={{ borderRadius: 10, background: "#dc2626", color: "#fff", padding: "8px 10px", fontWeight: 800, border: "none", cursor: "pointer", fontSize: 13 }}>
+                        Panic
+                      </button>
+
                       {alerts.length > 0 ? (
-                        <button onClick={(e) => { e.stopPropagation(); resolveFirstAlert(vehicle); }} style={{ borderRadius: 10, border: "1px solid #16a34a", color: "#16a34a", padding: "8px 10px", fontWeight: 800, background: "#fff", cursor: "pointer", fontSize: 13 }}>Resolve</button>
+                        <button onClick={(e) => { e.stopPropagation(); resolveFirstAlert(vehicle); }} style={{ borderRadius: 10, border: "1px solid #16a34a", color: "#16a34a", padding: "8px 10px", fontWeight: 800, background: "#fff", cursor: "pointer", fontSize: 13 }}>
+                          Resolve
+                        </button>
                       ) : null}
-                      <Link href="/risk-dashboard" style={{ textDecoration: "none", borderRadius: 10, border: "1px solid #cbd5e1", color: "#0f172a", padding: "8px 10px", fontWeight: 800, fontSize: 13 }}>Risk Details</Link>
+
+                      <Link href="/risk-dashboard" onClick={(e) => e.stopPropagation()} style={{ textDecoration: "none", borderRadius: 10, border: "1px solid #cbd5e1", color: "#0f172a", padding: "8px 10px", fontWeight: 800, fontSize: 13 }}>
+                        Risk Details
+                      </Link>
                     </div>
                   </div>
                 );
