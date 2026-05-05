@@ -373,14 +373,21 @@ function RouteReplayContent() {
 
     stopPlaybackTimer();
 
-   const step =
-  playbackSpeedMs >= 1400
-    ? 0.00005
-    : playbackSpeedMs >= 900
-      ? 0.0001
-      : playbackSpeedMs >= 450
-        ? 0.0002
-        : 0.0004;
+   const duration = playbackSpeedMs; // total time in ms
+
+const start = Date.now();
+
+timerRef.current = setInterval(() => {
+  const elapsed = Date.now() - start;
+  const progress = Math.min(elapsed / duration, 1);
+
+  setProgress(progress);
+
+  if (progress >= 1) {
+    setIsPlaying(false);
+    stopPlaybackTimer();
+  }
+}, 50);
 
     timerRef.current = setInterval(() => {
       setProgress((current) => {
