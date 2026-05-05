@@ -161,6 +161,20 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
+function getPlaybackDurationMs(speedValue: number, pointCount: number) {
+  const base =
+    speedValue >= 1400
+      ? 120000
+      : speedValue >= 900
+        ? 90000
+        : speedValue >= 450
+          ? 60000
+          : 35000;
+
+  const pointBonus = Math.min(pointCount * 120, 90000);
+  return base + pointBonus;
+}
+
 function findNearestPointForAlert(alert: ReplayAlert, points: ReplayPoint[]) {
   if (!alert.created_at || points.length === 0) return null;
 
@@ -204,15 +218,12 @@ function interpolateReplayPoint(
 
   if (!current || !next) return current || null;
 
-  const latitude =
-    current.latitude + (next.latitude - current.latitude) * segmentProgress;
-  const longitude =
-    current.longitude + (next.longitude - current.longitude) * segmentProgress;
-
   return {
     ...current,
-    latitude,
-    longitude,
+    latitude:
+      current.latitude + (next.latitude - current.latitude) * segmentProgress,
+    longitude:
+      current.longitude + (next.longitude - current.longitude) * segmentProgress,
     heading: next.heading ?? current.heading,
     speed_kmh: next.speed_kmh ?? current.speed_kmh,
   };
@@ -302,11 +313,13 @@ function RouteReplayContent() {
 
   const [progress, setProgress] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackSpeedMs, setPlaybackSpeedMs] = useState(900);
+  const [playbackSpeedMs, setPlaybackSpeedMs] = useState(1400);
   const [playbackIcon, setPlaybackIcon] = useState<any>(null);
   const [alertIcons, setAlertIcons] = useState<Record<string, any>>({});
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const playStartedAtRef = useRef(0);
+  const playStartedProgressRef = useRef(0);
 
   useEffect(() => {
     createPlaybackIcon().then(setPlaybackIcon);
@@ -340,9 +353,7 @@ function RouteReplayContent() {
           setSelectedVehicleId((current) => current || fleet[0].id);
         }
       } catch (err: unknown) {
-        setMessage(
-          err instanceof Error ? err.message : "Failed to load vehicles."
-        );
+        setMessage(err instanceof Error ? err.message : "Failed to load vehicles.");
       }
     }
 
@@ -373,33 +384,26 @@ function RouteReplayContent() {
 
     stopPlaybackTimer();
 
-   const duration = playbackSpeedMs;
-const start = Date.now();
-
-timerRef.current = setInterval(() => {
-  const elapsed = Date.now() - start;
-  const progress = Math.min(elapsed / duration, 1);
-
-  setProgress(progress);
-
-  if (progress >= 1) {
-    setIsPlaying(false);
-    stopPlaybackTimer();
-  }
-}, 50);
+    const durationMs = getPlaybackDurationMs(playbackSpeedMs, points.length);
+    playStartedAtRef.current = Date.now();
+    playStartedProgressRef.current = progress;
 
     timerRef.current = setInterval(() => {
-      setProgress((current) => {
-        const next = current + step;
+      const elapsed = Date.now() - playStartedAtRef.current;
+      const remainingProgress = 1 - playStartedProgressRef.current;
+      const next =
+        playStartedProgressRef.current +
+        (elapsed / durationMs) * remainingProgress;
 
-        if (next >= 1) {
-          setIsPlaying(false);
-          return 1;
-        }
+      if (next >= 1) {
+        setProgress(1);
+        setIsPlaying(false);
+        stopPlaybackTimer();
+        return;
+      }
 
-        return next;
-      });
-    }, 16);
+      setProgress(next);
+    }, 50);
 
     return () => {
       stopPlaybackTimer();
@@ -532,6 +536,7 @@ timerRef.current = setInterval(() => {
 
   const startPoint = points[0] || null;
   const endPoint = points.length > 0 ? points[points.length - 1] : null;
+
   const currentPlaybackPoint = useMemo(
     () => interpolateReplayPoint(points, progress),
     [points, progress]
@@ -684,7 +689,10 @@ timerRef.current = setInterval(() => {
               setProgress(Number(e.target.value) / 1000);
             }}
             disabled={points.length === 0}
-            style={{ width: "100%", cursor: points.length === 0 ? "not-allowed" : "pointer" }}
+            style={{
+              width: "100%",
+              cursor: points.length === 0 ? "not-allowed" : "pointer",
+            }}
           />
 
           <div style={{ height: 10, borderRadius: 999, background: "#e5e7eb", overflow: "hidden", marginTop: 8 }}>
