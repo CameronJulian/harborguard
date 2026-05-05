@@ -373,8 +373,7 @@ function RouteReplayContent() {
 
     stopPlaybackTimer();
 
-   const duration = playbackSpeedMs; // total time in ms
-
+   const duration = playbackSpeedMs;
 const start = Date.now();
 
 timerRef.current = setInterval(() => {
