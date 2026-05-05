@@ -62,7 +62,7 @@ async function snapReplayToRoads(points: ReplayPoint[]) {
 
   const cleanPoints = points
     .map(cleanPoint)
-    .filter((p): p is ReplayPoint & { latitude: number; longitude: number } => p !== null);
+.filter((p): p is NonNullable<typeof p> => p !== null);
 
   if (cleanPoints.length < 2) {
     return points;
