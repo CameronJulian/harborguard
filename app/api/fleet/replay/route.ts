@@ -18,13 +18,18 @@ type ReplayPoint = {
   source: string | null;
 };
 
-function toNumber(value: unknown) {
+type CleanReplayPoint = ReplayPoint & {
+  latitude: number;
+  longitude: number;
+};
+
+function toNumber(value: unknown): number {
   if (typeof value === "number") return value;
   if (typeof value === "string" && value.trim() !== "") return Number(value);
   return NaN;
 }
 
-function cleanPoint(point: ReplayPoint) {
+function cleanPoint(point: ReplayPoint): CleanReplayPoint | null {
   const lat = toNumber(point.latitude);
   const lng = toNumber(point.longitude);
 
@@ -39,7 +44,7 @@ function cleanPoint(point: ReplayPoint) {
   };
 }
 
-function reducePoints<T>(points: T[], maxPoints = 50) {
+function reducePoints<T>(points: T[], maxPoints = 50): T[] {
   if (points.length <= maxPoints) return points;
 
   const step = Math.ceil(points.length / maxPoints);
@@ -53,19 +58,17 @@ function reducePoints<T>(points: T[], maxPoints = 50) {
   return reduced;
 }
 
-async function snapReplayToRoads(points: ReplayPoint[]) {
+async function snapReplayToRoads(
+  points: CleanReplayPoint[]
+): Promise<CleanReplayPoint[]> {
   const apiKey = process.env.ORS_API_KEY;
 
   if (!apiKey || points.length < 2) {
     return points;
   }
 
-  const cleanPoints = points
-  .map(cleanPoint)
-  .filter((p) => p !== null) as (ReplayPoint & {
-    latitude: number;
-    longitude: number;
-  })[];
+  const cleanPoints = points.map(cleanPoint).filter((p): p is CleanReplayPoint => p !== null);
+
   if (cleanPoints.length < 2) {
     return points;
   }
@@ -94,21 +97,23 @@ async function snapReplayToRoads(points: ReplayPoint[]) {
     }
 
     const result = await response.json();
-    const coords = result?.features?.[0]?.geometry?.coordinates || [];
+    const coords = result?.features?.[0]?.geometry?.coordinates;
 
     if (!Array.isArray(coords) || coords.length < 2) {
       return points;
     }
 
     return coords
-      .map((coord: [number, number], index: number) => {
+      .map((coord: unknown, index: number): CleanReplayPoint | null => {
+        if (!Array.isArray(coord) || coord.length < 2) return null;
+
         const lng = toNumber(coord[0]);
         const lat = toNumber(coord[1]);
 
         if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
 
         const nearestOriginal =
-          reducedPoints[Math.min(index, reducedPoints.length - 1)] ||
+          reducedPoints[Math.min(index, reducedPoints.length - 1)] ??
           cleanPoints[cleanPoints.length - 1];
 
         return {
@@ -119,7 +124,7 @@ async function snapReplayToRoads(points: ReplayPoint[]) {
           source: "map_matched",
         };
       })
-      .filter((p): p is ReplayPoint => p !== null);
+      .filter((p): p is CleanReplayPoint => p !== null);
   } catch {
     return points;
   }
@@ -192,11 +197,11 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: vehicleError.message }, { status: 500 });
     }
 
-    const rawPoints = (points || [])
+    const rawPoints = ((points || []) as ReplayPoint[])
       .map(cleanPoint)
-      .filter((p): p is ReplayPoint & { latitude: number; longitude: number } => p !== null);
+      .filter((p): p is CleanReplayPoint => p !== null);
 
-    const matchedPoints = await snapReplayToRoads(rawPoints as ReplayPoint[]);
+    const matchedPoints = await snapReplayToRoads(rawPoints);
 
     return NextResponse.json({
       success: true,
@@ -207,12 +212,14 @@ export async function GET(req: Request) {
       points: matchedPoints,
       rawPoints,
       alerts: alerts || [],
-      mapMatched: matchedPoints.length !== rawPoints.length || matchedPoints.some((p) => p.source === "map_matched"),
+      mapMatched:
+        matchedPoints.length !== rawPoints.length ||
+        matchedPoints.some((p) => p.source === "map_matched"),
     });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message || "Failed to load route replay." },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : "Failed to load route replay.";
+
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
