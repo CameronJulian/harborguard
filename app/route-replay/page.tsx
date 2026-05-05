@@ -135,8 +135,12 @@ function formatDateTime(value: string | null) {
 
 function toLocalDateTimeInput(value: string | null) {
   if (!value) return "";
+
   const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
   const pad = (n: number) => String(n).padStart(2, "0");
+
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
     date.getDate()
   )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
@@ -153,6 +157,10 @@ function alertTypeLabel(value: string) {
   return value.replace(/_/g, " ");
 }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
 function findNearestPointForAlert(alert: ReplayAlert, points: ReplayPoint[]) {
   if (!alert.created_at || points.length === 0) return null;
 
@@ -162,7 +170,12 @@ function findNearestPointForAlert(alert: ReplayAlert, points: ReplayPoint[]) {
 
   for (const point of points) {
     if (!point.recorded_at) continue;
-    const diff = Math.abs(new Date(point.recorded_at).getTime() - alertMs);
+
+    const pointMs = new Date(point.recorded_at).getTime();
+    if (Number.isNaN(pointMs)) continue;
+
+    const diff = Math.abs(pointMs - alertMs);
+
     if (diff < minDiff) {
       minDiff = diff;
       closest = point;
@@ -172,12 +185,53 @@ function findNearestPointForAlert(alert: ReplayAlert, points: ReplayPoint[]) {
   return closest;
 }
 
+function interpolateReplayPoint(
+  points: ReplayPoint[],
+  progress: number
+): ReplayPoint | null {
+  if (points.length === 0) return null;
+  if (points.length === 1) return points[0];
+
+  const safeProgress = clamp(progress, 0, 1);
+  const totalSegments = points.length - 1;
+  const exactIndex = safeProgress * totalSegments;
+  const lowerIndex = Math.floor(exactIndex);
+  const upperIndex = Math.min(lowerIndex + 1, points.length - 1);
+  const segmentProgress = exactIndex - lowerIndex;
+
+  const current = points[lowerIndex];
+  const next = points[upperIndex];
+
+  if (!current || !next) return current || null;
+
+  const latitude =
+    current.latitude + (next.latitude - current.latitude) * segmentProgress;
+  const longitude =
+    current.longitude + (next.longitude - current.longitude) * segmentProgress;
+
+  return {
+    ...current,
+    latitude,
+    longitude,
+    heading: next.heading ?? current.heading,
+    speed_kmh: next.speed_kmh ?? current.speed_kmh,
+  };
+}
+
+function progressToIndex(points: ReplayPoint[], progress: number) {
+  if (points.length <= 1) return 0;
+  return Math.min(
+    Math.round(clamp(progress, 0, 1) * (points.length - 1)),
+    points.length - 1
+  );
+}
+
 function MapAutoCenter({ position }: { position: [number, number] }) {
   const map = useMap();
 
   useEffect(() => {
     map.flyTo(position, map.getZoom(), {
-      duration: 0.6,
+      duration: 0.45,
     });
   }, [position, map]);
 
@@ -191,16 +245,16 @@ async function createPlaybackIcon() {
     className: "",
     html: `
       <div style="
-        width:22px;
-        height:22px;
+        width:24px;
+        height:24px;
         border-radius:9999px;
         background:#2563eb;
         border:4px solid white;
-        box-shadow:0 0 0 2px rgba(37,99,235,0.25), 0 8px 18px rgba(15,23,42,0.22);
+        box-shadow:0 0 0 3px rgba(37,99,235,0.25), 0 8px 18px rgba(15,23,42,0.22);
       "></div>
     `,
-    iconSize: [22, 22],
-    iconAnchor: [11, 11],
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
     popupAnchor: [0, -12],
   });
 }
@@ -246,7 +300,7 @@ function RouteReplayContent() {
   const [vehicleLabel, setVehicleLabel] = useState("");
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
-  const [playbackIndex, setPlaybackIndex] = useState(0);
+  const [progress, setProgress] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackSpeedMs, setPlaybackSpeedMs] = useState(900);
   const [playbackIcon, setPlaybackIcon] = useState<any>(null);
@@ -285,8 +339,10 @@ function RouteReplayContent() {
         if (fleet.length > 0 && !searchParams.get("vehicleId")) {
           setSelectedVehicleId((current) => current || fleet[0].id);
         }
-      } catch (err: any) {
-        setMessage(err.message || "Failed to load vehicles.");
+      } catch (err: unknown) {
+        setMessage(
+          err instanceof Error ? err.message : "Failed to load vehicles."
+        );
       }
     }
 
@@ -317,15 +373,27 @@ function RouteReplayContent() {
 
     stopPlaybackTimer();
 
+    const step =
+      playbackSpeedMs >= 1400
+        ? 0.0012
+        : playbackSpeedMs >= 900
+          ? 0.002
+          : playbackSpeedMs >= 450
+            ? 0.004
+            : 0.008;
+
     timerRef.current = setInterval(() => {
-      setPlaybackIndex((current) => {
-        if (current >= points.length - 1) {
+      setProgress((current) => {
+        const next = current + step;
+
+        if (next >= 1) {
           setIsPlaying(false);
-          return current;
+          return 1;
         }
-        return current + 1;
+
+        return next;
       });
-    }, playbackSpeedMs);
+    }, 16);
 
     return () => {
       stopPlaybackTimer();
@@ -337,9 +405,11 @@ function RouteReplayContent() {
 
     async function buildAlertIcons() {
       const next: Record<string, any> = {};
+
       for (const alert of alerts) {
         next[alert.id] = await createAlertIcon(alert.severity);
       }
+
       if (!cancelled) setAlertIcons(next);
     }
 
@@ -367,7 +437,7 @@ function RouteReplayContent() {
       setAlerts([]);
       setVehicleLabel("");
       setIsPlaying(false);
-      setPlaybackIndex(0);
+      setProgress(0);
       return;
     }
 
@@ -377,7 +447,7 @@ function RouteReplayContent() {
     setAlerts([]);
     setVehicleLabel("");
     setIsPlaying(false);
-    setPlaybackIndex(0);
+    setProgress(0);
 
     try {
       const params = new URLSearchParams();
@@ -410,15 +480,15 @@ function RouteReplayContent() {
       setPoints(replayPoints);
       setAlerts(replayAlerts);
       setVehicleLabel(label);
-      setPlaybackIndex(0);
+      setProgress(0);
 
       if (replayPoints.length === 0) {
         setMessage("No route points found for the selected vehicle and time range.");
       } else if (autoPlay) {
         setIsPlaying(true);
       }
-    } catch (err: any) {
-      setMessage(err.message || "Failed to load replay.");
+    } catch (err: unknown) {
+      setMessage(err instanceof Error ? err.message : "Failed to load replay.");
     } finally {
       setLoading(false);
       setHasLoadedOnce(true);
@@ -433,8 +503,8 @@ function RouteReplayContent() {
 
     setMessage("");
 
-    if (playbackIndex >= points.length - 1) {
-      setPlaybackIndex(0);
+    if (progress >= 1) {
+      setProgress(0);
     }
 
     setIsPlaying(true);
@@ -446,7 +516,7 @@ function RouteReplayContent() {
 
   function handleReset() {
     setIsPlaying(false);
-    setPlaybackIndex(0);
+    setProgress(0);
   }
 
   const polylinePositions = useMemo(
@@ -456,15 +526,29 @@ function RouteReplayContent() {
 
   const startPoint = points[0] || null;
   const endPoint = points.length > 0 ? points[points.length - 1] : null;
-  const currentPlaybackPoint = points[playbackIndex] || null;
-
-  const visitedPositions = useMemo(
-    () =>
-      points
-        .slice(0, playbackIndex + 1)
-        .map((point) => [point.latitude, point.longitude] as [number, number]),
-    [points, playbackIndex]
+  const currentPlaybackPoint = useMemo(
+    () => interpolateReplayPoint(points, progress),
+    [points, progress]
   );
+
+  const playbackIndex = useMemo(
+    () => progressToIndex(points, progress),
+    [points, progress]
+  );
+
+  const visitedPositions = useMemo(() => {
+    if (points.length === 0) return [];
+
+    const base = points
+      .slice(0, playbackIndex + 1)
+      .map((point) => [point.latitude, point.longitude] as [number, number]);
+
+    if (currentPlaybackPoint) {
+      base.push([currentPlaybackPoint.latitude, currentPlaybackPoint.longitude]);
+    }
+
+    return base;
+  }, [points, playbackIndex, currentPlaybackPoint]);
 
   const replayAlertMarkers = useMemo(
     () =>
@@ -491,14 +575,16 @@ function RouteReplayContent() {
     if (currentPlaybackPoint) {
       return [currentPlaybackPoint.latitude, currentPlaybackPoint.longitude];
     }
+
     if (startPoint) {
       return [startPoint.latitude, startPoint.longitude];
     }
+
     return [-33.9249, 18.4241];
   }, [currentPlaybackPoint, startPoint]);
 
   const progressPercent =
-    points.length > 1 ? Math.round((playbackIndex / (points.length - 1)) * 100) : 0;
+    points.length > 1 ? Math.round(clamp(progress, 0, 1) * 100) : 0;
 
   return (
     <AppShell>
@@ -520,7 +606,8 @@ function RouteReplayContent() {
               setVehicleLabel("");
               setMessage("");
               setIsPlaying(false);
-              setPlaybackIndex(0);
+              setProgress(0);
+              setHasLoadedOnce(false);
             }}
             style={inputStyle}
           >
@@ -532,8 +619,19 @@ function RouteReplayContent() {
             ))}
           </select>
 
-          <input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} style={inputStyle} />
-          <input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} style={inputStyle} />
+          <input
+            type="datetime-local"
+            value={start}
+            onChange={(e) => setStart(e.target.value)}
+            style={inputStyle}
+          />
+
+          <input
+            type="datetime-local"
+            value={end}
+            onChange={(e) => setEnd(e.target.value)}
+            style={inputStyle}
+          />
 
           <button onClick={() => loadReplay()} style={primaryButtonStyle} disabled={loading}>
             {loading ? "Loading..." : "Load Replay"}
@@ -565,21 +663,35 @@ function RouteReplayContent() {
           </select>
 
           <div style={{ color: "#64748b", fontSize: 14 }}>
-            Leave dates empty to load full route history.
+            Dates are passed from Command Center when using Replay.
           </div>
         </div>
 
         <div style={{ marginTop: 16 }}>
-          <div style={{ height: 10, borderRadius: 999, background: "#e5e7eb", overflow: "hidden" }}>
+          <input
+            type="range"
+            min="0"
+            max="1000"
+            value={Math.round(progress * 1000)}
+            onChange={(e) => {
+              setIsPlaying(false);
+              setProgress(Number(e.target.value) / 1000);
+            }}
+            disabled={points.length === 0}
+            style={{ width: "100%", cursor: points.length === 0 ? "not-allowed" : "pointer" }}
+          />
+
+          <div style={{ height: 10, borderRadius: 999, background: "#e5e7eb", overflow: "hidden", marginTop: 8 }}>
             <div
               style={{
                 width: `${progressPercent}%`,
                 height: "100%",
                 background: "linear-gradient(90deg, #2563eb 0%, #1d4ed8 100%)",
-                transition: "width 120ms linear",
+                transition: "width 80ms linear",
               }}
             />
           </div>
+
           <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", color: "#64748b", fontSize: 13 }}>
             <span>Progress: {progressPercent}%</span>
             <span>
@@ -607,7 +719,7 @@ function RouteReplayContent() {
           </div>
 
           <div style={{ borderRadius: 18, overflow: "hidden", border: "1px solid #e5e7eb", height: 560 }}>
-            <MapContainer center={mapCenter} zoom={11} style={{ height: "100%", width: "100%" }}>
+            <MapContainer center={mapCenter} zoom={13} style={{ height: "100%", width: "100%" }}>
               <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
               {currentPlaybackPoint && (
@@ -663,7 +775,10 @@ function RouteReplayContent() {
               ) : null}
 
               {currentPlaybackPoint && playbackIcon ? (
-                <Marker position={[currentPlaybackPoint.latitude, currentPlaybackPoint.longitude]} icon={playbackIcon}>
+                <Marker
+                  position={[currentPlaybackPoint.latitude, currentPlaybackPoint.longitude]}
+                  icon={playbackIcon}
+                >
                   <Popup>
                     <div>
                       <strong>Playback Position</strong>
@@ -671,6 +786,8 @@ function RouteReplayContent() {
                       {formatDateTime(currentPlaybackPoint.recorded_at)}
                       <br />
                       Speed: {currentPlaybackPoint.speed_kmh ?? 0} km/h
+                      <br />
+                      Heading: {currentPlaybackPoint.heading ?? 0}°
                     </div>
                   </Popup>
                 </Marker>
@@ -684,12 +801,35 @@ function RouteReplayContent() {
             <h2 style={{ fontSize: 28, margin: "0 0 12px 0" }}>Replay Summary</h2>
 
             <div style={{ display: "grid", gap: 12 }}>
-              <div><div style={{ color: "#64748b", fontSize: 14 }}>Vehicle</div><div style={{ fontWeight: 800, fontSize: 20 }}>{vehicleLabel || "-"}</div></div>
-              <div><div style={{ color: "#64748b", fontSize: 14 }}>Points Loaded</div><div style={{ fontWeight: 800, fontSize: 20 }}>{points.length}</div></div>
-              <div><div style={{ color: "#64748b", fontSize: 14 }}>Alerts Loaded</div><div style={{ fontWeight: 800, fontSize: 20 }}>{alerts.length}</div></div>
-              <div><div style={{ color: "#64748b", fontSize: 14 }}>Replay Start</div><div style={{ fontWeight: 700 }}>{formatDateTime(startPoint?.recorded_at || null)}</div></div>
-              <div><div style={{ color: "#64748b", fontSize: 14 }}>Replay End</div><div style={{ fontWeight: 700 }}>{formatDateTime(endPoint?.recorded_at || null)}</div></div>
-              <div><div style={{ color: "#64748b", fontSize: 14 }}>Current Playback Time</div><div style={{ fontWeight: 700 }}>{formatDateTime(currentPlaybackPoint?.recorded_at || null)}</div></div>
+              <div>
+                <div style={{ color: "#64748b", fontSize: 14 }}>Vehicle</div>
+                <div style={{ fontWeight: 800, fontSize: 20 }}>{vehicleLabel || "-"}</div>
+              </div>
+
+              <div>
+                <div style={{ color: "#64748b", fontSize: 14 }}>Points Loaded</div>
+                <div style={{ fontWeight: 800, fontSize: 20 }}>{points.length}</div>
+              </div>
+
+              <div>
+                <div style={{ color: "#64748b", fontSize: 14 }}>Alerts Loaded</div>
+                <div style={{ fontWeight: 800, fontSize: 20 }}>{alerts.length}</div>
+              </div>
+
+              <div>
+                <div style={{ color: "#64748b", fontSize: 14 }}>Replay Start</div>
+                <div style={{ fontWeight: 700 }}>{formatDateTime(startPoint?.recorded_at || null)}</div>
+              </div>
+
+              <div>
+                <div style={{ color: "#64748b", fontSize: 14 }}>Replay End</div>
+                <div style={{ fontWeight: 700 }}>{formatDateTime(endPoint?.recorded_at || null)}</div>
+              </div>
+
+              <div>
+                <div style={{ color: "#64748b", fontSize: 14 }}>Current Playback Time</div>
+                <div style={{ fontWeight: 700 }}>{formatDateTime(currentPlaybackPoint?.recorded_at || null)}</div>
+              </div>
             </div>
           </div>
 
@@ -701,12 +841,24 @@ function RouteReplayContent() {
                 <div style={{ color: "#64748b" }}>No alerts in this replay range.</div>
               ) : (
                 alerts.map((alert) => (
-                  <div key={alert.id} style={{ border: `1px solid ${alert.is_resolved ? "#bbf7d0" : "#fecaca"}`, borderRadius: 14, padding: 14, background: alert.is_resolved ? "#f0fdf4" : "#fff7ed" }}>
+                  <div
+                    key={alert.id}
+                    style={{
+                      border: `1px solid ${alert.is_resolved ? "#bbf7d0" : "#fecaca"}`,
+                      borderRadius: 14,
+                      padding: 14,
+                      background: alert.is_resolved ? "#f0fdf4" : "#fff7ed",
+                    }}
+                  >
                     <div style={{ fontWeight: 800, marginBottom: 6, color: severityColor(alert.severity), textTransform: "capitalize" }}>
                       {alertTypeLabel(alert.alert_type)}
                     </div>
-                    <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}><strong>Time:</strong> {formatDateTime(alert.created_at)}</div>
-                    <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}><strong>Severity:</strong> {alert.severity}</div>
+                    <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}>
+                      <strong>Time:</strong> {formatDateTime(alert.created_at)}
+                    </div>
+                    <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}>
+                      <strong>Severity:</strong> {alert.severity}
+                    </div>
                     <div style={{ color: "#334155", fontSize: 14 }}>{alert.message}</div>
                   </div>
                 ))
@@ -723,14 +875,30 @@ function RouteReplayContent() {
                   const isActive = index === playbackIndex;
 
                   return (
-                    <div key={point.id} style={{ border: isActive ? "2px solid #2563eb" : "1px solid #e5e7eb", borderRadius: 14, padding: 14, background: isActive ? "#eff6ff" : "#fff" }}>
+                    <div
+                      key={point.id}
+                      style={{
+                        border: isActive ? "2px solid #2563eb" : "1px solid #e5e7eb",
+                        borderRadius: 14,
+                        padding: 14,
+                        background: isActive ? "#eff6ff" : "#fff",
+                      }}
+                    >
                       <div style={{ fontWeight: 800, marginBottom: 6 }}>
                         Point {index + 1} {isActive ? "• Current" : ""}
                       </div>
-                      <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}><strong>Time:</strong> {formatDateTime(point.recorded_at)}</div>
-                      <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}><strong>Coords:</strong> {point.latitude}, {point.longitude}</div>
-                      <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}><strong>Speed:</strong> {point.speed_kmh ?? 0} km/h</div>
-                      <div style={{ color: "#334155", fontSize: 14 }}><strong>Source:</strong> {point.source || "-"}</div>
+                      <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}>
+                        <strong>Time:</strong> {formatDateTime(point.recorded_at)}
+                      </div>
+                      <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}>
+                        <strong>Coords:</strong> {point.latitude}, {point.longitude}
+                      </div>
+                      <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}>
+                        <strong>Speed:</strong> {point.speed_kmh ?? 0} km/h
+                      </div>
+                      <div style={{ color: "#334155", fontSize: 14 }}>
+                        <strong>Source:</strong> {point.source || "-"}
+                      </div>
                     </div>
                   );
                 })
