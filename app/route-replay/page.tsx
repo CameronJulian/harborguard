@@ -373,14 +373,14 @@ function RouteReplayContent() {
 
     stopPlaybackTimer();
 
-    const step =
+   const step =
   playbackSpeedMs >= 1400
-    ? 0.00025
+    ? 0.00005
     : playbackSpeedMs >= 900
-      ? 0.00045
+      ? 0.0001
       : playbackSpeedMs >= 450
-        ? 0.0009
-        : 0.0018;
+        ? 0.0002
+        : 0.0004;
 
     timerRef.current = setInterval(() => {
       setProgress((current) => {

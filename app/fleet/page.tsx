@@ -3,7 +3,7 @@
 import "leaflet/dist/leaflet.css";
 
 import dynamic from "next/dynamic";
-import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { CSSProperties, Fragment, useEffect, useMemo, useRef, useState } from "react";
 import AppShell from "@/components/AppShell";
 import { supabase } from "@/lib/supabase";
 
@@ -123,16 +123,28 @@ function formatDateTime(value: string | null) {
   return new Date(value).toLocaleString();
 }
 
+function isValidLatLng(latitude: unknown, longitude: unknown) {
+  if (typeof latitude !== "number" || typeof longitude !== "number") return false;
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return false;
+  if (latitude < -90 || latitude > 90) return false;
+  if (longitude < -180 || longitude > 180) return false;
+  if (latitude === 0 && longitude === 0) return false;
+  return true;
+}
+
+function cleanRoutePoints(points: RoutePoint[] | undefined) {
+  return (points || [])
+    .filter((point) => isValidLatLng(point.latitude, point.longitude))
+    .map((point) => [point.latitude, point.longitude] as [number, number]);
+}
+
 async function createVehicleIcon(status: "online" | "offline" | "alert") {
   const L = (await import("leaflet")).default;
 
   const color =
     status === "alert" ? "#dc2626" : status === "offline" ? "#64748b" : "#16a34a";
 
-  const animated =
-    status === "alert"
-      ? "animation:pulse-red 1s infinite;"
-      : "";
+  const animated = status === "alert" ? "animation:pulse-red 1s infinite;" : "";
 
   return L.divIcon({
     className: "",
@@ -155,7 +167,11 @@ async function createVehicleIcon(status: "online" | "offline" | "alert") {
 
 function computeOffline(lastSeen: string | null) {
   if (!lastSeen) return true;
-  return Date.now() - new Date(lastSeen).getTime() > 15 * 60 * 1000;
+
+  const lastSeenMs = new Date(lastSeen).getTime();
+  if (Number.isNaN(lastSeenMs)) return true;
+
+  return Date.now() - lastSeenMs > 15 * 60 * 1000;
 }
 
 export default function FleetDashboardPage() {
@@ -184,8 +200,8 @@ export default function FleetDashboardPage() {
 
       setFleet((result as FleetResponse).fleet || []);
       setMessage("");
-    } catch (err: any) {
-      setMessage(err.message || "Failed to load fleet data.");
+    } catch (err: unknown) {
+      setMessage(err instanceof Error ? err.message : "Failed to load fleet data.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -198,10 +214,8 @@ export default function FleetDashboardPage() {
 
   const mapVehicles = useMemo(
     () =>
-      fleet.filter(
-        (vehicle) =>
-          typeof vehicle.latitude === "number" &&
-          typeof vehicle.longitude === "number"
+      fleet.filter((vehicle) =>
+        isValidLatLng(vehicle.latitude, vehicle.longitude)
       ),
     [fleet]
   );
@@ -213,13 +227,13 @@ export default function FleetDashboardPage() {
       const nextIcons: Record<string, any> = {};
 
       for (const vehicle of mapVehicles) {
-        const hasCriticalRouteAlert = vehicle.openAlerts.some(
+        const hasCriticalRouteAlert = (vehicle.openAlerts || []).some(
           (a) => a.alertType === "route_deviation" || a.alertType === "panic"
         );
 
         const markerStatus = hasCriticalRouteAlert
           ? "alert"
-          : vehicle.openAlerts.length > 0
+          : (vehicle.openAlerts || []).length > 0
             ? "alert"
             : vehicle.isOffline
               ? "offline"
@@ -308,7 +322,7 @@ export default function FleetDashboardPage() {
     const totalVehicles = fleet.length;
     const onlineVehicles = fleet.filter((v) => !v.isOffline).length;
     const offlineVehicles = fleet.filter((v) => v.isOffline).length;
-    const vehiclesWithAlerts = fleet.filter((v) => v.openAlerts.length > 0).length;
+    const vehiclesWithAlerts = fleet.filter((v) => (v.openAlerts || []).length > 0).length;
 
     return {
       totalVehicles,
@@ -317,6 +331,17 @@ export default function FleetDashboardPage() {
       vehiclesWithAlerts,
     };
   }, [fleet]);
+
+  const openAlertRows = useMemo(
+    () =>
+      fleet.flatMap((vehicle) =>
+        (vehicle.openAlerts || []).map((alert) => ({
+          vehicle,
+          alert,
+        }))
+      ),
+    [fleet]
+  );
 
   return (
     <AppShell>
@@ -384,8 +409,8 @@ export default function FleetDashboardPage() {
           { label: "Online", value: summary.onlineVehicles },
           { label: "Offline", value: summary.offlineVehicles },
           { label: "With Alerts", value: summary.vehiclesWithAlerts },
-        ].map((item, index) => (
-          <div key={index} style={{ ...cardStyle, padding: 24 }}>
+        ].map((item) => (
+          <div key={item.label} style={{ ...cardStyle, padding: 24 }}>
             <div style={{ color: "#64748b", fontSize: 14, marginBottom: 10 }}>
               {item.label}
             </div>
@@ -446,25 +471,21 @@ export default function FleetDashboardPage() {
 
                 {mapVehicles.map((vehicle) => {
                   const trip = vehicle.activeTrip;
+                  const routePositions = cleanRoutePoints(trip?.routePoints);
 
                   return (
-                    <div key={vehicle.id}>
-                      {trip &&
-                        Array.isArray(trip.routePoints) &&
-                        trip.routePoints.length >= 2 && (
-                          <Polyline
-                            positions={trip.routePoints.map((point) => [
-                              point.latitude,
-                              point.longitude,
-                            ])}
-                            pathOptions={{
-                              color: "#2563eb",
-                              weight: 4,
-                              opacity: 0.7,
-                              dashArray: "8 8",
-                            }}
-                          />
-                        )}
+                    <Fragment key={vehicle.id}>
+                      {trip && routePositions.length >= 2 ? (
+                        <Polyline
+                          positions={routePositions}
+                          pathOptions={{
+                            color: "#2563eb",
+                            weight: 4,
+                            opacity: 0.7,
+                            dashArray: "8 8",
+                          }}
+                        />
+                      ) : null}
 
                       {vehicleIcons[vehicle.id] ? (
                         <Marker
@@ -490,12 +511,13 @@ export default function FleetDashboardPage() {
                               </div>
                               <div style={{ marginBottom: 4 }}>
                                 <strong>Status:</strong>{" "}
-                                {vehicle.openAlerts.length > 0
+                                {(vehicle.openAlerts || []).length > 0
                                   ? "Alert"
                                   : vehicle.isOffline
                                     ? "Offline"
                                     : "Online"}
                               </div>
+
                               {trip ? (
                                 <>
                                   <div style={{ marginBottom: 4 }}>
@@ -512,7 +534,7 @@ export default function FleetDashboardPage() {
                           </Popup>
                         </Marker>
                       ) : null}
-                    </div>
+                    </Fragment>
                   );
                 })}
               </MapContainer>
@@ -533,14 +555,14 @@ export default function FleetDashboardPage() {
               ) : (
                 fleet.map((vehicle) => {
                   const statusText =
-                    vehicle.openAlerts.length > 0
+                    (vehicle.openAlerts || []).length > 0
                       ? "Alert"
                       : vehicle.isOffline
                         ? "Offline"
                         : "Online";
 
                   const statusColor =
-                    vehicle.openAlerts.length > 0
+                    (vehicle.openAlerts || []).length > 0
                       ? "#dc2626"
                       : vehicle.isOffline
                         ? "#64748b"
@@ -584,12 +606,14 @@ export default function FleetDashboardPage() {
                       <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}>
                         <strong>Coords:</strong> {vehicle.latitude ?? "-"}, {vehicle.longitude ?? "-"}
                       </div>
+
                       {vehicle.activeTrip ? (
                         <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}>
                           <strong>Trip:</strong> {vehicle.activeTrip.originPort} →{" "}
                           {vehicle.activeTrip.destinationFishery}
                         </div>
                       ) : null}
+
                       <div style={{ color: "#64748b", fontSize: 13 }}>
                         Last seen: {formatDateTime(vehicle.lastSeen)}
                       </div>
@@ -607,45 +631,38 @@ export default function FleetDashboardPage() {
             </p>
 
             <div style={{ display: "grid", gap: 12 }}>
-              {fleet.flatMap((vehicle) =>
-                vehicle.openAlerts.map((alert) => ({
-                  vehicle,
-                  alert,
-                }))
-              ).length === 0 ? (
+              {openAlertRows.length === 0 ? (
                 <div style={{ color: "#16a34a", fontWeight: 700 }}>
                   No active alerts.
                 </div>
               ) : (
-                fleet.flatMap((vehicle) =>
-                  vehicle.openAlerts.map((alert) => (
-                    <div
-                      key={alert.id}
-                      style={{
-                        border: "1px solid #fecaca",
-                        background: "#fef2f2",
-                        borderRadius: 14,
-                        padding: 14,
-                      }}
-                    >
-                      <div style={{ fontWeight: 800, color: "#991b1b", marginBottom: 6 }}>
-                        {vehicle.nickname || vehicle.registrationNumber}
-                      </div>
-                      <div style={{ color: "#7f1d1d", fontSize: 14, marginBottom: 4 }}>
-                        <strong>Type:</strong> {alert.alertType.replace(/_/g, " ")}
-                      </div>
-                      <div style={{ color: "#7f1d1d", fontSize: 14, marginBottom: 4 }}>
-                        <strong>Severity:</strong> {alert.severity}
-                      </div>
-                      <div style={{ color: "#7f1d1d", fontSize: 14, marginBottom: 4 }}>
-                        {alert.message}
-                      </div>
-                      <div style={{ color: "#991b1b", fontSize: 12 }}>
-                        {formatDateTime(alert.createdAt)}
-                      </div>
+                openAlertRows.map(({ vehicle, alert }) => (
+                  <div
+                    key={alert.id}
+                    style={{
+                      border: "1px solid #fecaca",
+                      background: "#fef2f2",
+                      borderRadius: 14,
+                      padding: 14,
+                    }}
+                  >
+                    <div style={{ fontWeight: 800, color: "#991b1b", marginBottom: 6 }}>
+                      {vehicle.nickname || vehicle.registrationNumber}
                     </div>
-                  ))
-                )
+                    <div style={{ color: "#7f1d1d", fontSize: 14, marginBottom: 4 }}>
+                      <strong>Type:</strong> {alert.alertType.replace(/_/g, " ")}
+                    </div>
+                    <div style={{ color: "#7f1d1d", fontSize: 14, marginBottom: 4 }}>
+                      <strong>Severity:</strong> {alert.severity}
+                    </div>
+                    <div style={{ color: "#7f1d1d", fontSize: 14, marginBottom: 4 }}>
+                      {alert.message}
+                    </div>
+                    <div style={{ color: "#991b1b", fontSize: 12 }}>
+                      {formatDateTime(alert.createdAt)}
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </div>
