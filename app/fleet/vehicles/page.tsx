@@ -14,6 +14,10 @@ type Vehicle = {
   created_at: string;
 };
 
+type VehiclesResponse = {
+  vehicles: Vehicle[];
+};
+
 const cardStyle: CSSProperties = {
   background: "#ffffff",
   borderRadius: 20,
@@ -24,16 +28,33 @@ const cardStyle: CSSProperties = {
 export default function VehiclesPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     async function loadVehicles() {
       try {
-        const response = await fetch("/fleet/vehicles");
-        const result = await response.json();
+        setLoading(true);
+        setError("");
 
-        setVehicles(result.vehicles || []);
+        const response = await fetch("/api/fleet/vehicles", {
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to load vehicles");
+        }
+
+        const result: VehiclesResponse = await response.json();
+
+        setVehicles(Array.isArray(result.vehicles) ? result.vehicles : []);
       } catch (err) {
         console.error(err);
+
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to load vehicles"
+        );
       } finally {
         setLoading(false);
       }
@@ -44,8 +65,19 @@ export default function VehiclesPage() {
 
   return (
     <AppShell>
-      <div style={{ ...cardStyle, padding: 24, marginBottom: 24 }}>
-        <h1 style={{ fontSize: 34, marginBottom: 8 }}>
+      <div
+        style={{
+          ...cardStyle,
+          padding: 24,
+          marginBottom: 24,
+        }}
+      >
+        <h1
+          style={{
+            fontSize: 34,
+            marginBottom: 8,
+          }}
+        >
           Vehicles
         </h1>
 
@@ -55,7 +87,25 @@ export default function VehiclesPage() {
       </div>
 
       {loading ? (
-        <div style={{ color: "#64748b" }}>Loading vehicles...</div>
+        <div style={{ color: "#64748b" }}>
+          Loading vehicles...
+        </div>
+      ) : error ? (
+        <div
+          style={{
+            padding: 16,
+            borderRadius: 12,
+            background: "#fee2e2",
+            color: "#991b1b",
+            marginBottom: 24,
+          }}
+        >
+          {error}
+        </div>
+      ) : vehicles.length === 0 ? (
+        <div style={{ color: "#64748b" }}>
+          No vehicles found.
+        </div>
       ) : (
         <div
           style={{
@@ -86,7 +136,8 @@ export default function VehiclesPage() {
                       fontWeight: 800,
                     }}
                   >
-                    {vehicle.nickname || vehicle.registration_number}
+                    {vehicle.nickname ||
+                      vehicle.registration_number}
                   </div>
 
                   <div style={{ color: "#64748b" }}>
@@ -107,24 +158,52 @@ export default function VehiclesPage() {
                     fontWeight: 700,
                   }}
                 >
-                  {vehicle.is_active ? "Active" : "Inactive"}
+                  {vehicle.is_active
+                    ? "Active"
+                    : "Inactive"}
                 </div>
               </div>
 
-              <div style={{ color: "#334155", marginBottom: 6 }}>
-                <strong>Make:</strong> {vehicle.make || "-"}
+              <div
+                style={{
+                  color: "#334155",
+                  marginBottom: 6,
+                }}
+              >
+                <strong>Make:</strong>{" "}
+                {vehicle.make || "-"}
               </div>
 
-              <div style={{ color: "#334155", marginBottom: 6 }}>
-                <strong>Model:</strong> {vehicle.model || "-"}
+              <div
+                style={{
+                  color: "#334155",
+                  marginBottom: 6,
+                }}
+              >
+                <strong>Model:</strong>{" "}
+                {vehicle.model || "-"}
               </div>
 
-              <div style={{ color: "#334155", marginBottom: 6 }}>
-                <strong>Driver ID:</strong> {vehicle.driver_id || "-"}
+              <div
+                style={{
+                  color: "#334155",
+                  marginBottom: 6,
+                }}
+              >
+                <strong>Driver ID:</strong>{" "}
+                {vehicle.driver_id || "-"}
               </div>
 
-              <div style={{ color: "#64748b", fontSize: 14 }}>
-                Added: {new Date(vehicle.created_at).toLocaleString()}
+              <div
+                style={{
+                  color: "#64748b",
+                  fontSize: 14,
+                }}
+              >
+                Added:{" "}
+                {new Date(
+                  vehicle.created_at
+                ).toLocaleString()}
               </div>
             </div>
           ))}
