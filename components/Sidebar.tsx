@@ -100,9 +100,13 @@ export default function Sidebar({
           Geofence Management
         </Link>
 
-        <Link href="/vehicles" style={navStyle("/vehicles")} onClick={onNavigate}>
-          Vehicles
-        </Link>
+        <Link
+  href="/fleet/vehicles"
+  style={navStyle("/fleet/vehicles")}
+  onClick={onNavigate}
+>
+  Vehicles
+</Link>
 
         <Link href="/trips" style={navStyle("/trips")} onClick={onNavigate}>
           Trips
