@@ -630,7 +630,7 @@ export async function POST(req: Request) {
       message: "Email report with PDF attachment sent successfully.",
       emailResult,
     });
-  } catch (err: any) {
+  }   } catch (err: any) {
     console.error("REPORT SEND ERROR:", err);
 
     return NextResponse.json(
@@ -638,4 +638,11 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
+}
+
+export async function GET() {
+  return NextResponse.json(
+    { error: "Method not allowed. Use POST to send reports." },
+    { status: 405 }
+  );
 }
