@@ -625,12 +625,12 @@ export async function POST(req: Request) {
       );
     }
 
-    return NextResponse.json({
+       return NextResponse.json({
       success: true,
       message: "Email report with PDF attachment sent successfully.",
       emailResult,
     });
-  }   } catch (err: any) {
+  } catch (err: any) {
     console.error("REPORT SEND ERROR:", err);
 
     return NextResponse.json(
