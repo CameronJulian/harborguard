@@ -177,30 +177,46 @@ export default function DriverEmergencyPage() {
     }
   }
 
-  async function sendLocation(latitude: number, longitude: number, speedKmh = 0) {
-    if (!selectedVehicleId) return;
+  async function sendLocation(
+  latitude: number,
+  longitude: number,
+  speedKmh = 0,
+  heading = 0
+) {
+  if (!selectedVehicleId) return;
 
-    try {
-      await fetch("/api/fleet/update-location", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          vehicleId: selectedVehicleId,
-          tripId,
-          latitude,
-          longitude,
-          speedKmh,
-          heading: 0,
-          source: "mobile",
-          status: "en_route_to_port",
-        }),
-      });
-    } catch {
-      // keep silent here; page status remains visible
+  try {
+    const response = await fetch("/api/fleet/update-location", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        vehicleId: selectedVehicleId,
+        tripId,
+        latitude,
+        longitude,
+        speedKmh,
+        heading,
+        source: "mobile",
+        status: "en_route_to_port",
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      setStatusMessage(result.error || "Failed to update live location.");
+      return;
     }
+
+    setStatusMessage(
+      `LIVE • ${speedKmh.toFixed(1)} km/h • ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`
+    );
+  } catch {
+    setStatusMessage("Connection lost. Retrying GPS sync...");
   }
+}
 
   function startSharingLocation() {
     if (!selectedVehicleId) {
@@ -222,8 +238,14 @@ export default function DriverEmergencyPage() {
       async (position) => {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
-        const speedMs = position.coords.speed ?? 0;
-        const speedKmh = speedMs > 0 ? speedMs * 3.6 : 0;
+const speedMs = position.coords.speed ?? 0;
+const speedKmh = speedMs > 0 ? speedMs * 3.6 : 0;
+
+const heading =
+  position.coords.heading != null &&
+  !Number.isNaN(position.coords.heading)
+    ? position.coords.heading
+    : 0;
 
         setCurrentLat(lat);
         setCurrentLng(lng);
