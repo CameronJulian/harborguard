@@ -1,12 +1,26 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-const ORGANIZATION_ID = "1fe53de7-8483-4767-a63e-3265e4dcb33d";
-
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+const CURRENT_USER_ID = "c721cc9d-cced-4787-9d29-b4734c55086f";
+
+async function getOrganizationId(userId: string) {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("organization_id")
+    .eq("id", userId)
+    .single();
+
+  if (error || !data?.organization_id) {
+    throw new Error("Organization not found.");
+  }
+
+  return data.organization_id;
+}
 
 function calculateThreatProbability(params: {
   speed: number;
@@ -64,10 +78,12 @@ function getDistanceMeters(
 
 export async function GET() {
   try {
+    const organizationId = await getOrganizationId(CURRENT_USER_ID);
+
     const { data: vehicles, error: vehiclesError } = await supabase
       .from("vehicles")
       .select("*")
-      .eq("organization_id", ORGANIZATION_ID);
+      .eq("organization_id", organizationId);
 
     if (vehiclesError) {
       return NextResponse.json(
@@ -79,7 +95,7 @@ export async function GET() {
     const { data: incidents, error: incidentsError } = await supabase
       .from("road_incidents")
       .select("*")
-      .eq("organization_id", ORGANIZATION_ID);
+      .eq("organization_id", organizationId);
 
     if (incidentsError) {
       return NextResponse.json(
@@ -105,7 +121,7 @@ export async function GET() {
         .from("vehicle_alerts")
         .select("*")
         .eq("vehicle_id", vehicle.id)
-        .eq("organization_id", ORGANIZATION_ID)
+        .eq("organization_id", organizationId)
         .eq("is_resolved", false);
 
       const openAlerts = alerts || [];
