@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-const ORGANIZATION_ID = "1fe53de7-8483-4767-a63e-3265e4dcb33d";
-
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -12,10 +10,26 @@ if (!supabaseUrl || !serviceRoleKey) {
 
 const supabase = createClient(supabaseUrl || "", serviceRoleKey || "");
 
+const CURRENT_USER_ID = "c721cc9d-cced-4787-9d29-b4734c55086f";
+
 type LocationPoint = {
   latitude: number | string | null;
   longitude: number | string | null;
 };
+
+async function getOrganizationId(userId: string) {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("organization_id")
+    .eq("id", userId)
+    .single();
+
+  if (error || !data?.organization_id) {
+    throw new Error("Organization not found.");
+  }
+
+  return data.organization_id;
+}
 
 function toNumber(value: unknown) {
   if (typeof value === "number") return value;
@@ -72,10 +86,12 @@ export async function GET() {
       );
     }
 
+    const organizationId = await getOrganizationId(CURRENT_USER_ID);
+
     const { data: vehicles, error: vehiclesError } = await supabase
       .from("vehicles")
       .select("id, nickname, registration_number")
-      .eq("organization_id", ORGANIZATION_ID);
+      .eq("organization_id", organizationId);
 
     if (vehiclesError) {
       console.error("vehiclesError:", vehiclesError.message);
