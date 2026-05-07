@@ -28,6 +28,14 @@ type FleetAlert = {
   created_at?: string | null;
 };
 
+type DriverScore = {
+  score: number;
+  level: "Low" | "Medium" | "High" | "Critical";
+  speedingRisk: number;
+  alertRisk: number;
+  offlineRisk: number;
+};
+
 const cardStyle: CSSProperties = {
   background: "#ffffff",
   borderRadius: 20,
@@ -76,6 +84,69 @@ function severityToColor(severity?: string | null) {
   if (severity === "high") return "#ea580c";
   if (severity === "medium") return "#d97706";
   return "#2563eb";
+}
+
+function calculateDriverScore(vehicle: FleetVehicle): DriverScore {
+  let score = 100;
+
+  const speed = vehicle.speedKmh || 0;
+  const alerts = vehicle.openAlerts || [];
+
+  let speedingRisk = 0;
+  let alertRisk = 0;
+  let offlineRisk = 0;
+
+  // Speed penalties
+  if (speed > 120) {
+    score -= 35;
+    speedingRisk = 35;
+  } else if (speed > 100) {
+    score -= 20;
+    speedingRisk = 20;
+  } else if (speed > 80) {
+    score -= 10;
+    speedingRisk = 10;
+  }
+
+  // Alert penalties
+  alerts.forEach((alert) => {
+    if (alert.severity === "critical") {
+      score -= 30;
+      alertRisk += 30;
+    } else if (alert.severity === "high") {
+      score -= 20;
+      alertRisk += 20;
+    } else if (alert.severity === "medium") {
+      score -= 10;
+      alertRisk += 10;
+    }
+  });
+
+  // Offline penalty
+  if (vehicle.isOffline) {
+    score -= 15;
+    offlineRisk = 15;
+  }
+
+  score = Math.max(score, 0);
+
+  let level: DriverScore["level"] = "Low";
+
+  if (score < 40) {
+    level = "Critical";
+  } else if (score < 60) {
+    level = "High";
+  } else if (score < 80) {
+    level = "Medium";
+  }
+
+  return {
+    score,
+    level,
+    speedingRisk,
+    alertRisk,
+    offlineRisk,
+  };
 }
 
 export default function RiskDashboardPage() {
@@ -286,6 +357,7 @@ export default function RiskDashboardPage() {
         ) : (
           <div style={{ display: "grid", gap: 14 }}>
             {fleet.map((vehicle) => {
+				const driverScore = calculateDriverScore(vehicle);
               const label = riskLabel(vehicle);
               const color = riskColor(label);
               const alerts = vehicle.openAlerts || [];
@@ -333,6 +405,33 @@ export default function RiskDashboardPage() {
                       <div style={{ color: "#64748b", fontSize: 14 }}>
                         Speed
                       </div>
+					  
+					  <div>
+  <div style={{ color: "#64748b", fontSize: 14 }}>
+    Driver Score
+  </div>
+
+  <div
+    style={{
+      fontWeight: 900,
+      fontSize: 22,
+      color:
+        driverScore.level === "Critical"
+          ? "#dc2626"
+          : driverScore.level === "High"
+          ? "#ea580c"
+          : driverScore.level === "Medium"
+          ? "#d97706"
+          : "#16a34a",
+    }}
+  >
+    {driverScore.score}/100
+  </div>
+
+  <div style={{ fontSize: 12, color: "#64748b" }}>
+    {driverScore.level} Risk
+  </div>
+</div>
                       <div style={{ fontWeight: 800 }}>
                         {vehicle.speedKmh ?? 0} km/h
                       </div>
