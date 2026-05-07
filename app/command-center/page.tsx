@@ -56,6 +56,16 @@ type FleetStop = {
   duration_seconds?: number | null;
 };
 
+type RoadIncident = {
+  id: string;
+  type: string;
+  title: string;
+  latitude: number;
+  longitude: number;
+  severity: string;
+  radius_meters: number;
+};
+
 type FleetVehicle = {
   id: string;
   nickname: string | null;
@@ -306,6 +316,7 @@ async function createVehicleIcon(
 
 export default function CommandCenterPage() {
   const [fleet, setFleet] = useState<FleetVehicle[]>([]);
+  const [incidents, setIncidents] = useState<RoadIncident[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [animatedPositions, setAnimatedPositions] = useState<
@@ -336,6 +347,22 @@ export default function CommandCenterPage() {
       setLoading(false);
     }
   }
+  
+  async function loadIncidents() {
+  try {
+    const response = await fetch("/api/road-incidents", { cache: "no-store" });
+    const result = await response.json();
+
+    if (!response.ok) {
+      setMessage(result.error || "Failed to load road incidents.");
+      return;
+    }
+
+    setIncidents(result.incidents || []);
+  } catch (err: any) {
+    setMessage(err.message || "Failed to load road incidents.");
+  }
+}
 
   async function runRiskDetection() {
     setMessage("Running risk detection...");
@@ -420,9 +447,13 @@ export default function CommandCenterPage() {
   }
 
   useEffect(() => {
-    loadFleet();
+loadFleet();
+loadIncidents();
 
-    const interval = setInterval(loadFleet, 5000);
+const interval = setInterval(() => {
+  loadFleet();
+  loadIncidents();
+}, 5000);
 
     return () => clearInterval(interval);
   }, []);
@@ -693,6 +724,44 @@ export default function CommandCenterPage() {
               />
 
               <MapFollower position={selectedPosition} enabled={followSelected} />
+			  
+			  {incidents.map((incident) => {
+  const coords = cleanLatLng(incident.latitude, incident.longitude);
+  if (!coords) return null;
+
+  const color =
+    incident.severity === "critical"
+      ? "#dc2626"
+      : incident.severity === "high"
+        ? "#ea580c"
+        : "#d97706";
+
+  return (
+    <CircleMarker
+      key={incident.id}
+      center={coords}
+      radius={14}
+      pathOptions={{
+        color,
+        fillColor: color,
+        fillOpacity: 0.35,
+        weight: 3,
+      }}
+    >
+      <Popup>
+        <div style={{ minWidth: 220 }}>
+          <strong>{incident.title}</strong>
+          <br />
+          Type: {incident.type}
+          <br />
+          Severity: {incident.severity}
+          <br />
+          Radius: {incident.radius_meters}m
+        </div>
+      </Popup>
+    </CircleMarker>
+  );
+})}
 
               {vehiclesWithLocation.map((vehicle) => {
                 const risk = vehicleRisk(vehicle);

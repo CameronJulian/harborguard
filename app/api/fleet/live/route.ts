@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !serviceRoleKey) {
+  console.error("Missing Supabase environment variables.");
+}
+
+const supabase = createClient(supabaseUrl || "", serviceRoleKey || "");
 
 type LocationPoint = {
   latitude: number | string | null;
@@ -17,14 +21,12 @@ function toNumber(value: unknown) {
   return NaN;
 }
 
-// 🔥 NEW: reduce number of points BEFORE snapping
-function reduceRoute(points: [number, number][], step = 5) {
+function reduceRoute(points: [number, number][], step = 8) {
   return points.filter((_, i) => i % step === 0);
 }
 
-// 🔥 NEW: snap route to roads using ORS
 async function snapToRoad(route: [number, number][]) {
-  if (!process.env.ORS_API_KEY) return route;
+  if (!process.env.ORS_API_KEY || route.length < 2) return route;
 
   try {
     const response = await fetch(
@@ -41,14 +43,18 @@ async function snapToRoad(route: [number, number][]) {
       }
     );
 
+    if (!response.ok) {
+      console.error("ORS snapping failed:", response.status, await response.text());
+      return route;
+    }
+
     const data = await response.json();
 
-    const snapped =
+    return (
       data?.features?.[0]?.geometry?.coordinates?.map(
-        ([lng, lat]: [number, number]) => [lat, lng]
-      ) || route;
-
-    return snapped;
+        ([lng, lat]: [number, number]) => [lat, lng] as [number, number]
+      ) || route
+    );
   } catch (err) {
     console.error("ORS snapping failed:", err);
     return route;
@@ -57,17 +63,25 @@ async function snapToRoad(route: [number, number][]) {
 
 export async function GET() {
   try {
+    if (!supabaseUrl || !serviceRoleKey) {
+      return NextResponse.json(
+        { error: "Missing Supabase environment variables." },
+        { status: 500 }
+      );
+    }
+
     const { data: vehicles, error: vehiclesError } = await supabase
       .from("vehicles")
       .select("id, nickname, registration_number");
 
     if (vehiclesError) {
+      console.error("vehiclesError:", vehiclesError.message);
       return NextResponse.json({ error: vehiclesError.message }, { status: 500 });
     }
 
     const fleet = await Promise.all(
       (vehicles || []).map(async (vehicle) => {
-        const { data: latest } = await supabase
+        const { data: latest, error: latestError } = await supabase
           .from("vehicle_locations")
           .select("*")
           .eq("vehicle_id", vehicle.id)
@@ -75,19 +89,31 @@ export async function GET() {
           .limit(1)
           .maybeSingle();
 
-        const { data: route } = await supabase
+        if (latestError) {
+          console.error("latestError:", latestError.message);
+        }
+
+        const { data: route, error: routeError } = await supabase
           .from("vehicle_locations")
           .select("latitude, longitude")
           .eq("vehicle_id", vehicle.id)
           .order("recorded_at", { ascending: true })
-          .limit(200); // 👈 slightly higher buffer
+          .limit(200);
 
-        const { data: stops } = await supabase
+        if (routeError) {
+          console.error("routeError:", routeError.message);
+        }
+
+        const { data: stops, error: stopsError } = await supabase
           .from("vehicle_stops")
           .select("*")
           .eq("vehicle_id", vehicle.id)
           .order("started_at", { ascending: false })
           .limit(10);
+
+        if (stopsError) {
+          console.error("stopsError:", stopsError.message);
+        }
 
         const routePoints = (route || [])
           .map((p: LocationPoint) => {
@@ -101,10 +127,7 @@ export async function GET() {
           })
           .filter((p): p is [number, number] => p !== null);
 
-        // 🔥 STEP 1: reduce points
         const reducedRoute = reduceRoute(routePoints, 8);
-
-        // 🔥 STEP 2: snap to roads
         const snappedRoute = await snapToRoad(reducedRoute);
 
         return {
@@ -112,11 +135,11 @@ export async function GET() {
           nickname: vehicle.nickname,
           registrationNumber: vehicle.registration_number,
 
-          latitude: latest?.latitude,
-          longitude: latest?.longitude,
-          speedKmh: latest?.speed_kmh,
-          heading: latest?.heading,
-          lastSeen: latest?.recorded_at,
+          latitude: latest?.latitude ?? null,
+          longitude: latest?.longitude ?? null,
+          speedKmh: latest?.speed_kmh ?? null,
+          heading: latest?.heading ?? null,
+          lastSeen: latest?.recorded_at ?? null,
 
           route: snappedRoute,
           stops: stops || [],
@@ -125,10 +148,12 @@ export async function GET() {
     );
 
     return NextResponse.json({ fleet });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message || "Failed to load fleet." },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    console.error("Fleet live API failed:", err);
+
+    const message =
+      err instanceof Error ? err.message : "Failed to load fleet.";
+
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
