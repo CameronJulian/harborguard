@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+const ORGANIZATION_ID = "1fe53de7-8483-4767-a63e-3265e4dcb33d";
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -32,11 +34,13 @@ export async function GET() {
         created_at,
         resolved_at,
         resolution_notes,
+        organization_id,
         vehicle:vehicles (
           nickname,
           registration_number
         )
       `)
+      .eq("organization_id", ORGANIZATION_ID)
       .order("created_at", { ascending: false });
 
     if (error) {

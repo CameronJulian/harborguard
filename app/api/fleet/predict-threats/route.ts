@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+const ORGANIZATION_ID = "1fe53de7-8483-4767-a63e-3265e4dcb33d";
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -23,7 +25,6 @@ function calculateThreatProbability(params: {
   score += params.criticalAlerts * 20;
 
   if (params.isOffline) score += 15;
-
   if (params.nearIncident) score += 25;
 
   score = Math.min(score, 100);
@@ -47,7 +48,6 @@ function getDistanceMeters(
   lon2: number
 ) {
   const R = 6371000;
-
   const toRad = (v: number) => (v * Math.PI) / 180;
 
   const dLat = toRad(lat2 - lat1);
@@ -64,13 +64,29 @@ function getDistanceMeters(
 
 export async function GET() {
   try {
-    const { data: vehicles } = await supabase
+    const { data: vehicles, error: vehiclesError } = await supabase
       .from("vehicles")
-      .select("*");
+      .select("*")
+      .eq("organization_id", ORGANIZATION_ID);
 
-    const { data: incidents } = await supabase
+    if (vehiclesError) {
+      return NextResponse.json(
+        { error: vehiclesError.message },
+        { status: 500 }
+      );
+    }
+
+    const { data: incidents, error: incidentsError } = await supabase
       .from("road_incidents")
-      .select("*");
+      .select("*")
+      .eq("organization_id", ORGANIZATION_ID);
+
+    if (incidentsError) {
+      return NextResponse.json(
+        { error: incidentsError.message },
+        { status: 500 }
+      );
+    }
 
     const predictions: any[] = [];
 
@@ -89,6 +105,7 @@ export async function GET() {
         .from("vehicle_alerts")
         .select("*")
         .eq("vehicle_id", vehicle.id)
+        .eq("organization_id", ORGANIZATION_ID)
         .eq("is_resolved", false);
 
       const openAlerts = alerts || [];
@@ -101,9 +118,7 @@ export async function GET() {
         ? new Date(latest.recorded_at).getTime()
         : 0;
 
-      const minutesOffline =
-        (Date.now() - lastSeen) / (1000 * 60);
-
+      const minutesOffline = (Date.now() - lastSeen) / (1000 * 60);
       const isOffline = minutesOffline >= 15;
 
       let nearIncident = false;
@@ -145,6 +160,7 @@ export async function GET() {
     }
 
     return NextResponse.json({
+      success: true,
       predictions,
     });
   } catch (err: any) {
