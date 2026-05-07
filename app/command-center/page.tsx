@@ -147,6 +147,32 @@ function formatDateTime(value?: string | null) {
   return new Date(value).toLocaleString();
 }
 
+function calculateDistanceMeters(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+) {
+  const R = 6371e3;
+
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+  const a =
+    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) *
+      Math.cos(φ2) *
+      Math.sin(Δλ / 2) *
+      Math.sin(Δλ / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
+}
+
 function secondsSince(value?: string | null) {
   if (!value) return 9999;
 
@@ -965,6 +991,23 @@ const interval = setInterval(() => {
                 const selected = selectedVehicleId === vehicle.id;
                 const routePoints = cleanRoute(vehicle.route);
                 const status = movementStatus(vehicle);
+				const nearbyIncidents = incidents.filter((incident) => {
+  const coords = cleanLatLng(
+    vehicle.latitude,
+    vehicle.longitude
+  );
+
+  if (!coords) return false;
+
+  const distance = calculateDistanceMeters(
+    coords[0],
+    coords[1],
+    incident.latitude,
+    incident.longitude
+  );
+
+  return distance <= incident.radius_meters;
+});
 
                 return (
                   <div
