@@ -36,6 +36,19 @@ type DriverScore = {
   offlineRisk: number;
 };
 
+type ThreatPrediction = {
+  vehicleId: string;
+  registrationNumber: string;
+  nickname?: string | null;
+  probability: number;
+  level: string;
+  speed: number;
+  openAlerts: number;
+  criticalAlerts: number;
+  nearIncident: boolean;
+  isOffline: boolean;
+};
+
 const cardStyle: CSSProperties = {
   background: "#ffffff",
   borderRadius: 20,
@@ -153,6 +166,7 @@ export default function RiskDashboardPage() {
   const [fleet, setFleet] = useState<FleetVehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [predictions, setPredictions] = useState<ThreatPrediction[]>([]);
 
   async function loadFleet() {
     setLoading(true);
@@ -174,6 +188,28 @@ export default function RiskDashboardPage() {
       setLoading(false);
     }
   }
+  async function loadPredictions() {
+  try {
+    const response = await fetch("/api/fleet/predict-threats", {
+      cache: "no-store",
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      return;
+    }
+
+    const sorted = (result.predictions || []).sort(
+      (a: ThreatPrediction, b: ThreatPrediction) =>
+        b.probability - a.probability
+    );
+
+    setPredictions(sorted);
+  } catch {
+    // silent fail
+  }
+}
 
   async function runRiskDetection() {
     setMessage("Running risk detection...");
@@ -201,8 +237,12 @@ export default function RiskDashboardPage() {
 
   useEffect(() => {
     loadFleet();
+	loadPredictions();
 
-    const interval = setInterval(loadFleet, 15000);
+const interval = setInterval(() => {
+  loadFleet();
+  loadPredictions();
+}, 15000);
     return () => clearInterval(interval);
   }, []);
 
