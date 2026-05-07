@@ -133,11 +133,18 @@ export async function GET(request: Request) {
       );
     }
 
-    const authHeader =
-      request.headers.get("authorization");
+   const authHeader = request.headers.get("authorization");
+const cookieHeader = request.headers.get("cookie") || "";
 
-    const accessToken =
-      authHeader?.replace("Bearer ", "");
+const cookieToken = cookieHeader
+  .split(";")
+  .map((cookie) => cookie.trim())
+  .find((cookie) => cookie.startsWith("sb-access-token="))
+  ?.replace("sb-access-token=", "");
+
+const accessToken =
+  authHeader?.replace("Bearer ", "") ||
+  (cookieToken ? decodeURIComponent(cookieToken) : undefined);
 
     if (!accessToken) {
       return NextResponse.json(
