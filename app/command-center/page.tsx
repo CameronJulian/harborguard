@@ -38,6 +38,10 @@ const CircleMarker = dynamic(
   () => import("react-leaflet").then((m) => m.CircleMarker),
   { ssr: false }
 );
+const HeatmapLayer = dynamic<any>(
+  () => import("react-leaflet-heatmap-layer-v3"),
+  { ssr: false }
+);
 
 type FleetAlert = {
   id?: string;
@@ -352,6 +356,7 @@ export default function CommandCenterPage() {
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
   const [showRoutes, setShowRoutes] = useState(true);
   const [showStops, setShowStops] = useState(true);
+  const [showHeatmap, setShowHeatmap] = useState(true);
   const [followSelected, setFollowSelected] = useState(true);
   const [search, setSearch] = useState("");
 
@@ -691,6 +696,17 @@ const interval = setInterval(() => {
               color: "#7c3aed",
             }}
           >
+		  
+		  <button
+  onClick={() => setShowHeatmap((v) => !v)}
+  style={{
+    ...buttonStyle,
+    background: showHeatmap ? "#fef3c7" : "#fff",
+    color: "#d97706",
+  }}
+>
+  {showHeatmap ? "Hide Heatmap" : "Show Heatmap"}
+</button>
             {showStops ? "Hide Stops" : "Show Stops"}
           </button>
 
@@ -750,6 +766,24 @@ const interval = setInterval(() => {
               />
 
               <MapFollower position={selectedPosition} enabled={followSelected} />
+			  
+			  {showHeatmap && incidents.length > 0 && (
+  <HeatmapLayer
+    points={incidents.map((incident) => ({
+      lat: incident.latitude,
+      lng: incident.longitude,
+      intensity:
+        incident.severity === "critical"
+          ? 1
+          : incident.severity === "high"
+            ? 0.75
+            : 0.45,
+    }))}
+    longitudeExtractor={(p: any) => p.lng}
+    latitudeExtractor={(p: any) => p.lat}
+    intensityExtractor={(p: any) => p.intensity}
+  />
+)}
 			  
 			  {incidents.map((incident) => {
   const coords = cleanLatLng(incident.latitude, incident.longitude);
@@ -1079,6 +1113,42 @@ const interval = setInterval(() => {
                         ))}
                       </div>
                     ) : null}
+					
+					{nearbyIncidents.length > 0 && (
+  <div
+    style={{
+      marginTop: 12,
+      padding: 12,
+      borderRadius: 14,
+      background: "rgba(220, 38, 38, 0.12)",
+      border: "1px solid rgba(220,38,38,0.35)",
+      display: "grid",
+      gap: 8,
+    }}
+  >
+    <div
+      style={{
+        fontWeight: 800,
+        color: "#dc2626",
+      }}
+    >
+      Threat Alerts
+    </div>
+
+    {nearbyIncidents.map((incident) => (
+      <div
+        key={incident.id}
+        style={{
+          color: "#991b1b",
+          fontSize: 14,
+          lineHeight: 1.5,
+        }}
+      >
+        ⚠ {incident.title} ({incident.severity})
+      </div>
+    ))}
+  </div>
+)}
 
                     <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
                       <Link

@@ -20,6 +20,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-leaflet": "^5.0.0",
+    "react-leaflet-heatmap-layer-v3": "^3.0.3-beta-1",
     "recharts": "^3.8.0",
     "resend": "^6.9.4",
     "twilio": "^6.0.0",
