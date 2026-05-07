@@ -347,6 +347,7 @@ async function createVehicleIcon(
 export default function CommandCenterPage() {
   const [fleet, setFleet] = useState<FleetVehicle[]>([]);
   const [incidents, setIncidents] = useState<RoadIncident[]>([]);
+  const [threatFeed, setThreatFeed] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [animatedPositions, setAnimatedPositions] = useState<
@@ -392,6 +393,25 @@ export default function CommandCenterPage() {
     setIncidents(result.incidents || []);
   } catch (err: any) {
     setMessage(err.message || "Failed to load road incidents.");
+  }
+}
+async function loadThreatFeed() {
+  try {
+    const response = await fetch("/api/fleet/predict-threats", {
+      cache: "no-store",
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) return;
+
+    const sorted = (result.predictions || []).sort(
+      (a: any, b: any) => b.probability - a.probability
+    );
+
+    setThreatFeed(sorted);
+  } catch {
+    // silent fail
   }
 }
 
@@ -477,17 +497,19 @@ export default function CommandCenterPage() {
     }
   }
 
-  useEffect(() => {
-loadFleet();
-loadIncidents();
-
-const interval = setInterval(() => {
+ useEffect(() => {
   loadFleet();
   loadIncidents();
-}, 5000);
+  loadThreatFeed();
 
-    return () => clearInterval(interval);
-  }, []);
+  const interval = setInterval(() => {
+    loadFleet();
+    loadIncidents();
+    loadThreatFeed();
+  }, 5000);
+
+  return () => clearInterval(interval);
+}, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -741,6 +763,150 @@ const interval = setInterval(() => {
           </div>
         ) : null}
       </div>
+	  <div style={{ ...cardStyle, padding: 24, marginBottom: 24 }}>
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 18,
+      flexWrap: "wrap",
+      gap: 12,
+    }}
+  >
+    <div>
+      <h2 style={{ fontSize: 30, margin: 0 }}>
+        AI Threat Intelligence
+      </h2>
+
+      <div style={{ color: "#64748b", marginTop: 4 }}>
+        Predictive operational threat monitoring.
+      </div>
+    </div>
+
+    <div
+      style={{
+        padding: "10px 16px",
+        borderRadius: 9999,
+        background: "#fee2e2",
+        color: "#b91c1c",
+        fontWeight: 900,
+      }}
+    >
+      {
+        threatFeed.filter(
+          (t) => t.level === "Critical"
+        ).length
+      }{" "}
+      Critical Threats
+    </div>
+  </div>
+
+  {threatFeed.length === 0 ? (
+    <div style={{ color: "#64748b" }}>
+      No predictive threats detected.
+    </div>
+  ) : (
+    <div style={{ display: "grid", gap: 14 }}>
+      {threatFeed.slice(0, 5).map((threat, index) => (
+        <div
+          key={index}
+          style={{
+            borderRadius: 16,
+            padding: 18,
+            border:
+              threat.level === "Critical"
+                ? "2px solid #dc2626"
+                : threat.level === "High"
+                ? "2px solid #ea580c"
+                : "1px solid #e5e7eb",
+            background:
+              threat.level === "Critical"
+                ? "#fff5f5"
+                : threat.level === "High"
+                ? "#fff7ed"
+                : "#ffffff",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 20,
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  fontSize: 22,
+                  fontWeight: 900,
+                }}
+              >
+                {threat.registrationNumber}
+              </div>
+
+              <div style={{ color: "#64748b" }}>
+                {threat.nickname || "Fleet Vehicle"}
+              </div>
+            </div>
+
+            <div>
+              <div
+                style={{
+                  color: "#64748b",
+                  fontSize: 13,
+                }}
+              >
+                Threat Probability
+              </div>
+
+              <div
+                style={{
+                  fontSize: 36,
+                  fontWeight: 900,
+                  color:
+                    threat.level === "Critical"
+                      ? "#dc2626"
+                      : threat.level === "High"
+                      ? "#ea580c"
+                      : threat.level === "Medium"
+                      ? "#d97706"
+                      : "#16a34a",
+                }}
+              >
+                {threat.probability}%
+              </div>
+            </div>
+          </div>
+
+          <div
+            style={{
+              marginTop: 14,
+              display: "grid",
+              gap: 6,
+              color: "#475569",
+              fontSize: 14,
+            }}
+          >
+            <div>• Speed: {threat.speed} km/h</div>
+            <div>• Open Alerts: {threat.openAlerts}</div>
+            <div>
+              • Critical Alerts: {threat.criticalAlerts}
+            </div>
+            <div>
+              • Near Incident Zone:{" "}
+              {threat.nearIncident ? "Yes" : "No"}
+            </div>
+            <div>
+              • Offline: {threat.isOffline ? "Yes" : "No"}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 24 }}>
         <div style={{ ...cardStyle, padding: 20 }}>
