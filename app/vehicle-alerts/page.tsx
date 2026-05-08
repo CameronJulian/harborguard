@@ -15,6 +15,14 @@ type VehicleAlert = {
   created_at: string | null;
   resolved_at?: string | null;
   resolution_notes?: string | null;
+
+  intelligence?: {
+    summary?: string;
+    probableCause?: string;
+    recommendedAction?: string;
+    riskNarrative?: string;
+  };
+
   vehicle?: {
     nickname?: string | null;
     registration_number?: string | null;
@@ -326,6 +334,55 @@ export default function VehicleAlertsPage() {
                 <div style={{ color: "#334155", marginBottom: 14 }}>
                   {alert.message}
                 </div>
+				{alert.intelligence ? (
+  <div
+    style={{
+      marginBottom: 18,
+      padding: 18,
+      borderRadius: 14,
+      background: "#f8fafc",
+      border: "1px solid #dbeafe",
+    }}
+  >
+    <div
+      style={{
+        fontWeight: 800,
+        marginBottom: 10,
+        color: "#1d4ed8",
+      }}
+    >
+      AI Incident Intelligence
+    </div>
+
+    <div style={{ marginBottom: 10 }}>
+      <strong>Summary:</strong>{" "}
+      {alert.intelligence.summary}
+    </div>
+
+    <div style={{ marginBottom: 10 }}>
+      <strong>Probable Cause:</strong>{" "}
+      {alert.intelligence.probableCause}
+    </div>
+
+    <div style={{ marginBottom: 10 }}>
+      <strong>Recommended Action:</strong>{" "}
+      {alert.intelligence.recommendedAction}
+    </div>
+
+    <div
+      style={{
+        padding: 14,
+        borderRadius: 12,
+        background: "#eff6ff",
+        border: "1px solid #bfdbfe",
+        color: "#1e3a8a",
+        fontWeight: 600,
+      }}
+    >
+      {alert.intelligence.riskNarrative}
+    </div>
+  </div>
+) : null}
 
                 {alert.is_resolved ? (
                   <div
