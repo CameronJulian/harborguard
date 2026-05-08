@@ -1,75 +1,23 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !serviceRoleKey) {
-  console.error("Missing Supabase environment variables.");
-}
-
-const supabase = createClient(
-  supabaseUrl || "",
-  serviceRoleKey || ""
-);
+import { requireOrganization } from "@/lib/server-auth";
 
 type LocationPoint = {
   latitude: number | string | null;
   longitude: number | string | null;
 };
 
-async function getOrganizationId(accessToken: string) {
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser(accessToken);
-
-  if (authError || !user) {
-    throw new Error("Unauthorized");
-  }
-
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("organization_id")
-    .eq("id", user.id)
-    .single();
-
-  if (error || !data?.organization_id) {
-    throw new Error("Organization not found.");
-  }
-
-  return data.organization_id;
-}
-
 function toNumber(value: unknown) {
   if (typeof value === "number") return value;
-
-  if (
-    typeof value === "string" &&
-    value.trim() !== ""
-  ) {
-    return Number(value);
-  }
-
+  if (typeof value === "string" && value.trim() !== "") return Number(value);
   return NaN;
 }
 
-function reduceRoute(
-  points: [number, number][],
-  step = 8
-) {
+function reduceRoute(points: [number, number][], step = 8) {
   return points.filter((_, i) => i % step === 0);
 }
 
-async function snapToRoad(
-  route: [number, number][]
-) {
-  if (
-    !process.env.ORS_API_KEY ||
-    route.length < 2
-  ) {
-    return route;
-  }
+async function snapToRoad(route: [number, number][]) {
+  if (!process.env.ORS_API_KEY || route.length < 2) return route;
 
   try {
     const response = await fetch(
@@ -77,26 +25,17 @@ async function snapToRoad(
       {
         method: "POST",
         headers: {
-          Authorization:
-            process.env.ORS_API_KEY,
-          "Content-Type":
-            "application/json",
+          Authorization: process.env.ORS_API_KEY,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          coordinates: route.map(
-            ([lat, lng]) => [lng, lat]
-          ),
+          coordinates: route.map(([lat, lng]) => [lng, lat]),
         }),
       }
     );
 
     if (!response.ok) {
-      console.error(
-        "ORS snapping failed:",
-        response.status,
-        await response.text()
-      );
-
+      console.error("ORS snapping failed:", response.status, await response.text());
       return route;
     }
 
@@ -104,279 +43,86 @@ async function snapToRoad(
 
     return (
       data?.features?.[0]?.geometry?.coordinates?.map(
-        ([lng, lat]: [number, number]) =>
-          [lat, lng] as [number, number]
+        ([lng, lat]: [number, number]) => [lat, lng] as [number, number]
       ) || route
     );
   } catch (err) {
-    console.error(
-      "ORS snapping failed:",
-      err
-    );
-
+    console.error("ORS snapping failed:", err);
     return route;
   }
 }
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    if (
-      !supabaseUrl ||
-      !serviceRoleKey
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Missing Supabase environment variables.",
-        },
-        { status: 500 }
-      );
-    }
+    const { supabase, organizationId } = await requireOrganization();
 
-   const authHeader = request.headers.get("authorization");
-const cookieHeader = request.headers.get("cookie") || "";
-
-const cookieToken = cookieHeader
-  .split(";")
-  .map((cookie) => cookie.trim())
-  .find((cookie) => cookie.startsWith("sb-access-token="))
-  ?.replace("sb-access-token=", "");
-
-const accessToken =
-  authHeader?.replace("Bearer ", "") ||
-  (cookieToken ? decodeURIComponent(cookieToken) : undefined);
-
-    if (!accessToken) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    const organizationId =
-      await getOrganizationId(
-        accessToken
-      );
-
-    const {
-      data: vehicles,
-      error: vehiclesError,
-    } = await supabase
+    const { data: vehicles, error: vehiclesError } = await supabase
       .from("vehicles")
-      .select(
-        "id, nickname, registration_number"
-      )
-      .eq(
-        "organization_id",
-        organizationId
-      );
+      .select("id, nickname, registration_number")
+      .eq("organization_id", organizationId);
 
     if (vehiclesError) {
-      console.error(
-        "vehiclesError:",
-        vehiclesError.message
-      );
-
-      return NextResponse.json(
-        {
-          error:
-            vehiclesError.message,
-        },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: vehiclesError.message }, { status: 500 });
     }
 
     const fleet = await Promise.all(
-      (vehicles || []).map(
-        async (vehicle) => {
-          const {
-            data: latest,
-            error: latestError,
-          } = await supabase
-            .from(
-              "vehicle_locations"
-            )
-            .select("*")
-            .eq(
-              "vehicle_id",
-              vehicle.id
-            )
-            .order("recorded_at", {
-              ascending: false,
-            })
-            .limit(1)
-            .maybeSingle();
+      (vehicles || []).map(async (vehicle) => {
+        const { data: latest } = await supabase
+          .from("vehicle_locations")
+          .select("*")
+          .eq("vehicle_id", vehicle.id)
+          .order("recorded_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-          if (latestError) {
-            console.error(
-              "latestError:",
-              latestError.message
-            );
-          }
+        const { data: route } = await supabase
+          .from("vehicle_locations")
+          .select("latitude, longitude")
+          .eq("vehicle_id", vehicle.id)
+          .order("recorded_at", { ascending: true })
+          .limit(200);
 
-          const {
-            data: route,
-            error: routeError,
-          } = await supabase
-            .from(
-              "vehicle_locations"
-            )
-            .select(
-              "latitude, longitude"
-            )
-            .eq(
-              "vehicle_id",
-              vehicle.id
-            )
-            .order("recorded_at", {
-              ascending: true,
-            })
-            .limit(200);
+        const { data: stops } = await supabase
+          .from("vehicle_stops")
+          .select("*")
+          .eq("vehicle_id", vehicle.id)
+          .order("started_at", { ascending: false })
+          .limit(10);
 
-          if (routeError) {
-            console.error(
-              "routeError:",
-              routeError.message
-            );
-          }
+        const routePoints = (route || [])
+          .map((p: LocationPoint) => {
+            const lat = toNumber(p.latitude);
+            const lng = toNumber(p.longitude);
 
-          const {
-            data: stops,
-            error: stopsError,
-          } = await supabase
-            .from("vehicle_stops")
-            .select("*")
-            .eq(
-              "vehicle_id",
-              vehicle.id
-            )
-            .order("started_at", {
-              ascending: false,
-            })
-            .limit(10);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+            if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
 
-          if (stopsError) {
-            console.error(
-              "stopsError:",
-              stopsError.message
-            );
-          }
+            return [lat, lng] as [number, number];
+          })
+          .filter((p): p is [number, number] => p !== null);
 
-          const routePoints = (
-            route || []
-          )
-            .map(
-              (p: LocationPoint) => {
-                const lat =
-                  toNumber(
-                    p.latitude
-                  );
+        const snappedRoute = await snapToRoad(reduceRoute(routePoints, 8));
 
-                const lng =
-                  toNumber(
-                    p.longitude
-                  );
-
-                if (
-                  !Number.isFinite(
-                    lat
-                  ) ||
-                  !Number.isFinite(
-                    lng
-                  )
-                ) {
-                  return null;
-                }
-
-                if (
-                  lat < -90 ||
-                  lat > 90 ||
-                  lng < -180 ||
-                  lng > 180
-                ) {
-                  return null;
-                }
-
-                return [
-                  lat,
-                  lng,
-                ] as [
-                  number,
-                  number
-                ];
-              }
-            )
-            .filter(
-              (
-                p
-              ): p is [
-                number,
-                number
-              ] => p !== null
-            );
-
-          const reducedRoute =
-            reduceRoute(
-              routePoints,
-              8
-            );
-
-          const snappedRoute =
-            await snapToRoad(
-              reducedRoute
-            );
-
-          return {
-            id: vehicle.id,
-            nickname:
-              vehicle.nickname,
-            registrationNumber:
-              vehicle.registration_number,
-
-            latitude:
-              latest?.latitude ??
-              null,
-
-            longitude:
-              latest?.longitude ??
-              null,
-
-            speedKmh:
-              latest?.speed_kmh ??
-              null,
-
-            heading:
-              latest?.heading ??
-              null,
-
-            lastSeen:
-              latest?.recorded_at ??
-              null,
-
-            route: snappedRoute,
-            stops: stops || [],
-          };
-        }
-      )
+        return {
+          id: vehicle.id,
+          nickname: vehicle.nickname,
+          registrationNumber: vehicle.registration_number,
+          latitude: latest?.latitude ?? null,
+          longitude: latest?.longitude ?? null,
+          speedKmh: latest?.speed_kmh ?? null,
+          heading: latest?.heading ?? null,
+          lastSeen: latest?.recorded_at ?? null,
+          route: snappedRoute,
+          stops: stops || [],
+        };
+      })
     );
 
-    return NextResponse.json({
-      fleet,
-    });
+    return NextResponse.json({ fleet });
   } catch (err: unknown) {
-    console.error(
-      "Fleet live API failed:",
-      err
-    );
+    const message = err instanceof Error ? err.message : "Failed to load fleet.";
+    const status = message === "Unauthorized" ? 401 : 500;
 
-    const message =
-      err instanceof Error
-        ? err.message
-        : "Failed to load fleet.";
-
-    return NextResponse.json(
-      { error: message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: message }, { status });
   }
 }
