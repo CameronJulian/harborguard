@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -6,13 +6,36 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const CURRENT_USER_ID = "c721cc9d-cced-4787-9d29-b4734c55086f";
+function getAccessToken(request: NextRequest) {
+  const authHeader = request.headers.get("authorization");
+  const cookieHeader = request.headers.get("cookie") || "";
 
-async function getOrganizationId(userId: string) {
+  const cookieToken = cookieHeader
+    .split(";")
+    .map((cookie) => cookie.trim())
+    .find((cookie) => cookie.startsWith("sb-access-token="))
+    ?.replace("sb-access-token=", "");
+
+  return (
+    authHeader?.replace("Bearer ", "") ||
+    (cookieToken ? decodeURIComponent(cookieToken) : undefined)
+  );
+}
+
+async function getOrganizationId(accessToken: string) {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser(accessToken);
+
+  if (userError || !user) {
+    throw new Error("Unauthorized");
+  }
+
   const { data, error } = await supabase
     .from("profiles")
     .select("organization_id")
-    .eq("id", userId)
+    .eq("id", user.id)
     .single();
 
   if (error || !data?.organization_id) {
@@ -76,9 +99,18 @@ function getDistanceMeters(
   return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const organizationId = await getOrganizationId(CURRENT_USER_ID);
+    const accessToken = getAccessToken(request);
+
+    if (!accessToken) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const organizationId = await getOrganizationId(accessToken);
 
     const { data: vehicles, error: vehiclesError } = await supabase
       .from("vehicles")

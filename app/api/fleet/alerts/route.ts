@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -6,13 +6,20 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const CURRENT_USER_ID = "c721cc9d-cced-4787-9d29-b4734c55086f";
+async function getOrganizationId(accessToken: string) {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser(accessToken);
 
-async function getOrganizationId(userId: string) {
+  if (userError || !user) {
+    throw new Error("Unauthorized");
+  }
+
   const { data, error } = await supabase
     .from("profiles")
     .select("organization_id")
-    .eq("id", userId)
+    .eq("id", user.id)
     .single();
 
   if (error || !data?.organization_id) {
@@ -35,11 +42,37 @@ function severityWeight(severity?: string | null) {
   return 1;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const organizationId = await getOrganizationId(
-      CURRENT_USER_ID
-    );
+    const authHeader =
+      request.headers.get("authorization");
+
+    const cookieHeader =
+      request.headers.get("cookie") || "";
+
+    const cookieToken = cookieHeader
+      .split(";")
+      .map((cookie) => cookie.trim())
+      .find((cookie) =>
+        cookie.startsWith("sb-access-token=")
+      )
+      ?.replace("sb-access-token=", "");
+
+    const accessToken =
+      authHeader?.replace("Bearer ", "") ||
+      (cookieToken
+        ? decodeURIComponent(cookieToken)
+        : undefined);
+
+    if (!accessToken) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const organizationId =
+      await getOrganizationId(accessToken);
 
     const { data, error } = await supabase
       .from("vehicle_alerts")
@@ -61,7 +94,9 @@ export async function GET() {
         )
       `)
       .eq("organization_id", organizationId)
-      .order("created_at", { ascending: false });
+      .order("created_at", {
+        ascending: false,
+      });
 
     if (error) {
       return NextResponse.json(
@@ -81,10 +116,12 @@ export async function GET() {
           acc[vehicleId] = {
             vehicleId,
             registrationNumber:
-              alert.vehicle?.registration_number ||
+              alert.vehicle
+                ?.registration_number ||
               "Unknown Vehicle",
             nickname:
-              alert.vehicle?.nickname || null,
+              alert.vehicle?.nickname ||
+              null,
             openAlerts: 0,
             resolvedAlerts: 0,
             maxSeverity:
@@ -95,16 +132,19 @@ export async function GET() {
         }
 
         if (alert.is_resolved) {
-          acc[vehicleId].resolvedAlerts += 1;
+          acc[vehicleId]
+            .resolvedAlerts += 1;
         } else {
-          acc[vehicleId].openAlerts += 1;
+          acc[vehicleId]
+            .openAlerts += 1;
         }
 
         const weight = severityWeight(
           alert.severity
         );
 
-        acc[vehicleId].escalationScore +=
+        acc[vehicleId]
+          .escalationScore +=
           alert.is_resolved
             ? weight
             : weight * 2;
@@ -124,19 +164,23 @@ export async function GET() {
           title: timelineTitle(
             alert.alert_type
           ),
-          alertType: alert.alert_type,
+          alertType:
+            alert.alert_type,
           severity:
             alert.severity || "low",
           message:
             alert.message ||
             "No message provided.",
-          createdAt: alert.created_at,
-          resolvedAt: alert.resolved_at,
+          createdAt:
+            alert.created_at,
+          resolvedAt:
+            alert.resolved_at,
           isResolved: Boolean(
             alert.is_resolved
           ),
           resolutionNotes:
-            alert.resolution_notes || null,
+            alert.resolution_notes ||
+            null,
         });
 
         return acc;
