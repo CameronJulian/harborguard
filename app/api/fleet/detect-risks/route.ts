@@ -75,6 +75,53 @@ async function createAlert(params: {
   severity: string;
   message: string;
 }) {
+  const { data: historicalAlerts } = await supabase
+    .from("vehicle_alerts")
+    .select("id, severity, created_at")
+    .eq("vehicle_id", params.vehicleId)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  const previousCount = historicalAlerts?.length || 0;
+
+  const criticalCount =
+    historicalAlerts?.filter((a) => a.severity === "critical").length || 0;
+
+  let threatScore = 0;
+
+  if (params.severity === "critical") threatScore += 45;
+  else if (params.severity === "high") threatScore += 30;
+  else if (params.severity === "medium") threatScore += 15;
+
+  threatScore += previousCount * 2;
+  threatScore += criticalCount * 6;
+  threatScore = Math.min(threatScore, 100);
+
+  let behavioralRisk = "low";
+
+  if (threatScore >= 75) behavioralRisk = "critical";
+  else if (threatScore >= 50) behavioralRisk = "high";
+  else if (threatScore >= 25) behavioralRisk = "medium";
+
+  let probableCause = "Operational anomaly detected.";
+
+  if (params.alertType.includes("offline")) {
+    probableCause = "Possible tracker tampering or prolonged signal loss.";
+  }
+
+  if (params.alertType.includes("long_stop")) {
+    probableCause = "Vehicle stationary beyond operational threshold.";
+  }
+
+  if (params.alertType.includes("geofence")) {
+    probableCause = "Vehicle deviated from approved operational area.";
+  }
+
+  const intelligenceNarrative =
+    `Behavioral risk classified as ${behavioralRisk.toUpperCase()} ` +
+    `with threat confidence score ${threatScore}/100. ` +
+    probableCause;
+
   const { data, error } = await supabase
     .from("vehicle_alerts")
     .insert({
@@ -83,6 +130,9 @@ async function createAlert(params: {
       severity: params.severity,
       message: params.message,
       is_resolved: false,
+      intelligence_score: threatScore,
+      behavioral_risk: behavioralRisk,
+      intelligence_narrative: intelligenceNarrative,
     })
     .select()
     .single();
@@ -97,7 +147,6 @@ async function createAlert(params: {
 
   return data;
 }
-
 export async function POST() {
   try {
     const { data: vehicles, error: vehiclesError } = await supabase
