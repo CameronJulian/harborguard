@@ -1,33 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-async function getOrganizationId(accessToken: string) {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser(accessToken);
-
-  if (userError || !user) {
-    throw new Error("Unauthorized");
-  }
-
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("organization_id")
-    .eq("id", user.id)
-    .single();
-
-  if (error || !data?.organization_id) {
-    throw new Error("Organization not found.");
-  }
-
-  return data.organization_id;
-}
+import { NextResponse } from "next/server";
+import { requireOrganization } from "@/lib/server-auth";
 
 function timelineTitle(alertType?: string | null) {
   return (alertType || "unknown_alert")
@@ -42,37 +14,63 @@ function severityWeight(severity?: string | null) {
   return 1;
 }
 
-export async function GET(request: NextRequest) {
+function generateNarrative(alert: any) {
+  const type = alert.alert_type || "unknown";
+  const severity = alert.severity || "low";
+  const vehicle =
+    alert.vehicle?.registration_number ||
+    "Unknown Vehicle";
+
+  let probableCause =
+    "Operational anomaly detected.";
+
+  let recommendedAction =
+    "Monitor vehicle telemetry.";
+
+  if (type.includes("speed")) {
+    probableCause =
+      "Driver exceeded recommended speed threshold.";
+    recommendedAction =
+      "Review driver behavior and enforce speed compliance.";
+  }
+
+  if (type.includes("panic")) {
+    probableCause =
+      "Possible hijacking, driver distress, or emergency activation.";
+    recommendedAction =
+      "Immediately contact driver and dispatch response team.";
+  }
+
+  if (type.includes("offline")) {
+    probableCause =
+      "Tracker connectivity interruption or power loss.";
+    recommendedAction =
+      "Verify device connectivity and inspect tracker hardware.";
+  }
+
+  if (type.includes("geofence")) {
+    probableCause =
+      "Vehicle entered or exited a restricted operational zone.";
+    recommendedAction =
+      "Review geofence activity and confirm route authorization.";
+  }
+
+  const riskNarrative = `${vehicle} triggered a ${severity.toUpperCase()} ${timelineTitle(
+    type
+  )} event. ${probableCause}`;
+
+  return {
+    summary: `${timelineTitle(type)} detected for ${vehicle}.`,
+    probableCause,
+    recommendedAction,
+    riskNarrative,
+  };
+}
+
+export async function GET() {
   try {
-    const authHeader =
-      request.headers.get("authorization");
-
-    const cookieHeader =
-      request.headers.get("cookie") || "";
-
-    const cookieToken = cookieHeader
-      .split(";")
-      .map((cookie) => cookie.trim())
-      .find((cookie) =>
-        cookie.startsWith("sb-access-token=")
-      )
-      ?.replace("sb-access-token=", "");
-
-    const accessToken =
-      authHeader?.replace("Bearer ", "") ||
-      (cookieToken
-        ? decodeURIComponent(cookieToken)
-        : undefined);
-
-    if (!accessToken) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    const organizationId =
-      await getOrganizationId(accessToken);
+    const { supabase, organizationId } =
+      await requireOrganization();
 
     const { data, error } = await supabase
       .from("vehicle_alerts")
@@ -105,7 +103,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const alerts = data || [];
+    const alerts = (data || []).map(
+      (alert: any) => ({
+        ...alert,
+        intelligence:
+          generateNarrative(alert),
+      })
+    );
 
     const timelines = alerts.reduce(
       (acc: any, alert: any) => {
@@ -181,6 +185,9 @@ export async function GET(request: NextRequest) {
           resolutionNotes:
             alert.resolution_notes ||
             null,
+
+          intelligence:
+            alert.intelligence,
         });
 
         return acc;
