@@ -236,15 +236,24 @@ export default function RiskDashboardPage() {
   }
 
   useEffect(() => {
-    loadFleet();
-	loadPredictions();
-
-const interval = setInterval(() => {
   loadFleet();
   loadPredictions();
-}, 15000);
-    return () => clearInterval(interval);
-  }, []);
+
+  const interval = setInterval(async () => {
+    try {
+      await fetch("/api/fleet/detect-risks", {
+        method: "POST",
+      });
+
+      await loadFleet();
+      await loadPredictions();
+    } catch (err) {
+      console.error(err);
+    }
+  }, 15000);
+
+  return () => clearInterval(interval);
+}, []);
 
   const summary = useMemo(() => {
     const totalVehicles = fleet.length;
@@ -270,6 +279,121 @@ const interval = setInterval(() => {
 
   return (
     <AppShell>
+	<div style={{ ...cardStyle, padding: 24, marginBottom: 24 }}>
+  <h2 style={{ fontSize: 28, margin: "0 0 18px 0" }}>
+    AI Predictive Threat Feed
+  </h2>
+
+  {predictions.length === 0 ? (
+    <div style={{ color: "#64748b" }}>
+      No predictive threats detected.
+    </div>
+  ) : (
+    <div style={{ display: "grid", gap: 14 }}>
+      {predictions.slice(0, 5).map((prediction) => (
+        <div
+          key={prediction.vehicleId}
+          style={{
+            borderRadius: 16,
+            padding: 18,
+            border:
+              prediction.level === "Critical"
+                ? "2px solid #dc2626"
+                : prediction.level === "High"
+                ? "2px solid #ea580c"
+                : "1px solid #e5e7eb",
+            background:
+              prediction.level === "Critical"
+                ? "#fff5f5"
+                : prediction.level === "High"
+                ? "#fff7ed"
+                : "#ffffff",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 20,
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  fontSize: 22,
+                  fontWeight: 900,
+                }}
+              >
+                {prediction.registrationNumber}
+              </div>
+
+              <div style={{ color: "#64748b" }}>
+                {prediction.nickname || "Fleet Vehicle"}
+              </div>
+            </div>
+
+            <div>
+              <div style={{ color: "#64748b", fontSize: 13 }}>
+                Threat Probability
+              </div>
+
+              <div
+                style={{
+                  fontSize: 34,
+                  fontWeight: 900,
+                  color:
+                    prediction.level === "Critical"
+                      ? "#dc2626"
+                      : prediction.level === "High"
+                      ? "#ea580c"
+                      : prediction.level === "Medium"
+                      ? "#d97706"
+                      : "#16a34a",
+                }}
+              >
+                {prediction.probability}%
+              </div>
+            </div>
+
+            <div style={{ minWidth: 240 }}>
+              <div
+                style={{
+                  fontWeight: 800,
+                  marginBottom: 8,
+                }}
+              >
+                Risk Factors
+              </div>
+
+              <div style={{ fontSize: 14, color: "#475569" }}>
+                • Speed: {prediction.speed} km/h
+              </div>
+
+              <div style={{ fontSize: 14, color: "#475569" }}>
+                • Open Alerts: {prediction.openAlerts}
+              </div>
+
+              <div style={{ fontSize: 14, color: "#475569" }}>
+                • Critical Alerts: {prediction.criticalAlerts}
+              </div>
+
+              <div style={{ fontSize: 14, color: "#475569" }}>
+                • Near Incident Zone:{" "}
+                {prediction.nearIncident ? "Yes" : "No"}
+              </div>
+
+              <div style={{ fontSize: 14, color: "#475569" }}>
+                • Offline: {prediction.isOffline ? "Yes" : "No"}
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
       <div style={{ ...cardStyle, padding: 24, marginBottom: 24 }}>
         <h1 style={{ fontSize: 34, margin: "0 0 8px 0" }}>
           Fleet Risk Dashboard
