@@ -17,6 +17,7 @@ function severityWeight(severity?: string | null) {
 function generateNarrative(alert: any) {
   const type = alert.alert_type || "unknown";
   const severity = alert.severity || "low";
+
   const vehicle =
     alert.vehicle?.registration_number ||
     "Unknown Vehicle";
@@ -27,43 +28,102 @@ function generateNarrative(alert: any) {
   let recommendedAction =
     "Monitor vehicle telemetry.";
 
+  let threatScore = 10;
+
+  const severityBonus =
+    severity === "critical"
+      ? 40
+      : severity === "high"
+      ? 30
+      : severity === "medium"
+      ? 20
+      : 10;
+
+  threatScore += severityBonus;
+
   if (type.includes("speed")) {
     probableCause =
       "Driver exceeded recommended speed threshold.";
+
     recommendedAction =
       "Review driver behavior and enforce speed compliance.";
+
+    threatScore += 15;
   }
 
   if (type.includes("panic")) {
     probableCause =
       "Possible hijacking, driver distress, or emergency activation.";
+
     recommendedAction =
       "Immediately contact driver and dispatch response team.";
+
+    threatScore += 35;
   }
 
   if (type.includes("offline")) {
     probableCause =
       "Tracker connectivity interruption or power loss.";
+
     recommendedAction =
       "Verify device connectivity and inspect tracker hardware.";
+
+    threatScore += 20;
   }
 
   if (type.includes("geofence")) {
     probableCause =
       "Vehicle entered or exited a restricted operational zone.";
+
     recommendedAction =
       "Review geofence activity and confirm route authorization.";
+
+    threatScore += 25;
   }
 
-  const riskNarrative = `${vehicle} triggered a ${severity.toUpperCase()} ${timelineTitle(
-    type
-  )} event. ${probableCause}`;
+  if (type.includes("route_anomaly")) {
+    probableCause =
+      "Vehicle movement deviated abnormally from expected route behavior.";
+
+    recommendedAction =
+      "Investigate potential hijacking, spoofing, or unauthorized route deviation.";
+
+    threatScore += 40;
+  }
+
+  threatScore = Math.min(threatScore, 100);
+
+  let dangerLevel = "LOW";
+
+  if (threatScore >= 85)
+    dangerLevel = "EXTREME";
+
+  else if (threatScore >= 70)
+    dangerLevel = "CRITICAL";
+
+  else if (threatScore >= 50)
+    dangerLevel = "HIGH";
+
+  else if (threatScore >= 30)
+    dangerLevel = "MEDIUM";
+
+  const riskNarrative =
+    `${vehicle} triggered a ${dangerLevel} threat classification ` +
+    `with AI threat score ${threatScore}/100. ${probableCause}`;
 
   return {
-    summary: `${timelineTitle(type)} detected for ${vehicle}.`,
+    summary:
+      `${timelineTitle(type)} detected for ${vehicle}.`,
+
     probableCause,
+
     recommendedAction,
+
     riskNarrative,
+
+    threatScore,
+
+    dangerLevel,
   };
 }
 
@@ -188,6 +248,11 @@ export async function GET() {
 
           intelligence:
             alert.intelligence,
+			threatScore:
+  alert.intelligence?.threatScore || 0,
+
+dangerLevel:
+  alert.intelligence?.dangerLevel || "LOW",
         });
 
         return acc;
