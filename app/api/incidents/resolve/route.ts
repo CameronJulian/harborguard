@@ -11,6 +11,43 @@ const schema = z.object({
   id: z.string().min(1, "Incident id is required."),
 });
 
+function getAccessToken(req: Request) {
+  const authHeader = req.headers.get("authorization");
+  const cookieHeader = req.headers.get("cookie") || "";
+
+  const cookieToken = cookieHeader
+    .split(";")
+    .map((cookie) => cookie.trim())
+    .find((cookie) => cookie.startsWith("sb-access-token="))
+    ?.replace("sb-access-token=", "");
+
+  return (
+    authHeader?.replace("Bearer ", "").trim() ||
+    (cookieToken ? decodeURIComponent(cookieToken) : undefined)
+  );
+}
+
+function generateIncidentReport(incident: any, actorName: string) {
+  const code = incident.incident_code || incident.id;
+  const type = incident.type || "operational incident";
+  const severity = incident.severity || "unknown";
+  const description = incident.description || "No description provided.";
+
+  return {
+    title: `Incident ${code} resolved`,
+    summary: `Incident ${code} was resolved by ${actorName}.`,
+    operationalNarrative: `A ${severity.toUpperCase()} ${type} incident was reviewed and marked as resolved. ${description}`,
+    probableCause:
+      severity === "critical"
+        ? "High-severity operational deviation or safety risk detected."
+        : "Operational exception detected and reviewed.",
+    resolutionAction:
+      "Incident status was updated to Resolved and logged for audit tracking.",
+    complianceNote:
+      "Resolution was recorded with user attribution for operational traceability.",
+  };
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -18,13 +55,11 @@ export async function POST(req: Request) {
       id: String(body.id ?? "").trim(),
     });
 
-    const authHeader = req.headers.get("authorization");
+    const token = getAccessToken(req);
 
-    if (!authHeader) {
+    if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const token = authHeader.replace("Bearer ", "").trim();
 
     const {
       data: { user },
@@ -37,7 +72,7 @@ export async function POST(req: Request) {
 
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("full_name, role")
+      .select("full_name, role, organization_id")
       .eq("id", user.id)
       .single();
 
@@ -57,7 +92,7 @@ export async function POST(req: Request) {
 
     const { data: incident, error: fetchError } = await supabase
       .from("incidents")
-      .select("id, status, incident_code")
+      .select("*")
       .eq("id", id)
       .single();
 
@@ -68,10 +103,21 @@ export async function POST(req: Request) {
       );
     }
 
+    if (incident.organization_id && incident.organization_id !== profile.organization_id) {
+      return NextResponse.json(
+        { error: "Permission denied" },
+        { status: 403 }
+      );
+    }
+
+    const actorName = profile.full_name || user.email || "Unknown User";
+    const report = generateIncidentReport(incident, actorName);
+
     if (incident.status === "Resolved") {
       return NextResponse.json({
         success: true,
         message: "Incident is already resolved.",
+        report,
       });
     }
 
@@ -87,18 +133,19 @@ export async function POST(req: Request) {
       );
     }
 
-    const actorName = profile.full_name || user.email || "Unknown User";
-
     const { error: auditError } = await supabase.from("audit_logs").insert({
       actor_name: actorName,
-      action: "Resolved incident",
+      action: `Resolved incident with AI report: ${report.summary}`,
       batch_code: incident.incident_code ?? null,
-      risk: "Low",
+      risk: incident.severity || "Low",
     });
 
     if (auditError) {
       return NextResponse.json(
-        { error: `Incident resolved, but audit log failed: ${auditError.message}` },
+        {
+          error: `Incident resolved, but audit log failed: ${auditError.message}`,
+          report,
+        },
         { status: 500 }
       );
     }
@@ -106,6 +153,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       message: "Incident resolved successfully.",
+      report,
     });
   } catch (error: any) {
     console.error("API /api/incidents/resolve error:", error);
