@@ -15,6 +15,9 @@ type VehicleAlert = {
   created_at: string | null;
   resolved_at?: string | null;
   resolution_notes?: string | null;
+  intelligence_score?: number | null;
+behavioral_risk?: string | null;
+intelligence_narrative?: string | null;
 
   intelligence?: {
     summary?: string;
@@ -334,6 +337,34 @@ export default function VehicleAlertsPage() {
                 <div style={{ color: "#334155", marginBottom: 14 }}>
                   {alert.message}
                 </div>
+				
+				{alert.intelligence_score !== null && alert.intelligence_score !== undefined ? (
+  <div
+    style={{
+      marginBottom: 18,
+      padding: 18,
+      borderRadius: 14,
+      background: "#fff7ed",
+      border: "1px solid #fed7aa",
+    }}
+  >
+    <div style={{ fontWeight: 900, marginBottom: 10, color: "#c2410c" }}>
+      Behavioral Threat Intelligence
+    </div>
+
+    <div style={{ marginBottom: 8 }}>
+      <strong>Threat Score:</strong> {alert.intelligence_score}/100
+    </div>
+
+    <div style={{ marginBottom: 8, textTransform: "capitalize" }}>
+      <strong>Behavioral Risk:</strong> {alert.behavioral_risk || "low"}
+    </div>
+
+    <div style={{ color: "#7c2d12", fontWeight: 600 }}>
+      {alert.intelligence_narrative || "No behavioral intelligence available."}
+    </div>
+  </div>
+) : null}
 				{alert.intelligence ? (
   <div
     style={{
