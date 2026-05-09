@@ -226,6 +226,61 @@ export default function DashboardPage() {
     const top = Object.entries(vesselMap).sort((a, b) => b[1] - a[1])[0];
     return top ? `${top[0]} (${top[1]})` : "No flagged vessels";
   }, [batches]);
+  const operationalReadiness = useMemo(() => {
+  const riskPenalty =
+    flaggedCount * 8 +
+    openIncidents * 10 +
+    averageLossPercent * 1.5;
+
+  return Math.max(
+    0,
+    Math.min(100, Math.round(100 - riskPenalty))
+  );
+}, [
+  flaggedCount,
+  openIncidents,
+  averageLossPercent,
+]);
+
+const readinessStatus =
+  operationalReadiness >= 85
+    ? "OPTIMAL"
+    : operationalReadiness >= 70
+    ? "STABLE"
+    : operationalReadiness >= 50
+    ? "ELEVATED"
+    : "CRITICAL";
+
+const aiOperationalNarrative = useMemo(() => {
+  if (operationalReadiness < 50) {
+    return "AI systems detected elevated operational instability requiring immediate intervention.";
+  }
+
+  if (operationalReadiness < 70) {
+    return "Fleet operations show moderate risk indicators and require enhanced monitoring.";
+  }
+
+  if (operationalReadiness < 85) {
+    return "Fleet operations remain stable with manageable operational risk.";
+  }
+
+  return "Fleet operations are currently performing within optimal intelligence thresholds.";
+}, [operationalReadiness]);
+
+const executiveRiskIndex = useMemo(() => {
+  return Math.min(
+    100,
+    Math.round(
+      flaggedCount * 12 +
+        openIncidents * 15 +
+        averageLossPercent
+    )
+  );
+}, [
+  flaggedCount,
+  openIncidents,
+  averageLossPercent,
+]);
 
   const trendData = useMemo(
     () =>
@@ -362,7 +417,167 @@ export default function DashboardPage() {
           {message}
         </div>
       ) : null}
+<div
+  style={{
+    marginBottom: 24,
+    borderRadius: 24,
+    padding: 28,
+    background:
+      operationalReadiness < 50
+        ? "linear-gradient(135deg,#7f1d1d,#991b1b)"
+        : operationalReadiness < 70
+        ? "linear-gradient(135deg,#9a3412,#c2410c)"
+        : "linear-gradient(135deg,#0f172a,#1e293b)",
+    color: "#fff",
+    boxShadow:
+      "0 25px 50px rgba(15,23,42,0.35)",
+  }}
+>
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      flexWrap: "wrap",
+      gap: 20,
+    }}
+  >
+    <div>
+      <div
+        style={{
+          fontSize: 14,
+          opacity: 0.8,
+          marginBottom: 8,
+          fontWeight: 700,
+        }}
+      >
+        EXECUTIVE AI WAR-ROOM
+      </div>
 
+      <div
+        style={{
+          fontSize: 44,
+          fontWeight: 900,
+          lineHeight: 1,
+        }}
+      >
+        {readinessStatus}
+      </div>
+
+      <div
+        style={{
+          marginTop: 14,
+          maxWidth: 700,
+          fontSize: 16,
+          lineHeight: 1.6,
+          opacity: 0.92,
+        }}
+      >
+        {aiOperationalNarrative}
+      </div>
+    </div>
+
+    <div
+      style={{
+        textAlign: "right",
+      }}
+    >
+      <div
+        style={{
+          fontSize: 13,
+          opacity: 0.75,
+          marginBottom: 8,
+          fontWeight: 700,
+        }}
+      >
+        OPERATIONAL READINESS
+      </div>
+
+      <div
+        style={{
+          fontSize: 72,
+          fontWeight: 900,
+          lineHeight: 1,
+        }}
+      >
+        {operationalReadiness}
+      </div>
+
+      <div
+        style={{
+          fontSize: 15,
+          opacity: 0.85,
+        }}
+      >
+        /100 AI Score
+      </div>
+    </div>
+  </div>
+
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns:
+        isMobile
+          ? "1fr"
+          : "repeat(4,minmax(0,1fr))",
+      gap: 18,
+      marginTop: 28,
+    }}
+  >
+    {[
+      {
+        label: "Executive Risk Index",
+        value: `${executiveRiskIndex}/100`,
+      },
+      {
+        label: "Open Incidents",
+        value: openIncidents,
+      },
+      {
+        label: "Flagged Operations",
+        value: flaggedCount,
+      },
+      {
+        label: "Average Loss %",
+        value: `${formatOneDecimal(
+          averageLossPercent
+        )}%`,
+      },
+    ].map((item, index) => (
+      <div
+        key={index}
+        style={{
+          background:
+            "rgba(255,255,255,0.08)",
+          border:
+            "1px solid rgba(255,255,255,0.1)",
+          borderRadius: 18,
+          padding: 20,
+        }}
+      >
+        <div
+          style={{
+            fontSize: 13,
+            opacity: 0.8,
+            marginBottom: 10,
+          }}
+        >
+          {item.label}
+        </div>
+
+        <div
+          style={{
+            fontSize: 34,
+            fontWeight: 900,
+          }}
+        >
+          {item.value}
+        </div>
+      </div>
+    ))}
+  </div>
+</div>
       {recentHighRisk.length > 0 && (
         <div
           onClick={() => {
