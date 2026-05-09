@@ -909,15 +909,17 @@ const operationalColor =
           </button>
 
           <button
-            onClick={() => setShowStops((v) => !v)}
-            style={{
-              ...buttonStyle,
-              background: showStops ? "#faf5ff" : "#fff",
-              color: "#7c3aed",
-            }}
-          >
-		  
-		  <button
+  onClick={() => setShowStops((v) => !v)}
+  style={{
+    ...buttonStyle,
+    background: showStops ? "#faf5ff" : "#fff",
+    color: "#7c3aed",
+  }}
+>
+  {showStops ? "Hide Stops" : "Show Stops"}
+</button>
+
+<button
   onClick={() => setShowHeatmap((v) => !v)}
   style={{
     ...buttonStyle,
@@ -927,8 +929,6 @@ const operationalColor =
 >
   {showHeatmap ? "Hide Heatmap" : "Show Heatmap"}
 </button>
-            {showStops ? "Hide Stops" : "Show Stops"}
-          </button>
 
           <button
             onClick={() => setFollowSelected((v) => !v)}
