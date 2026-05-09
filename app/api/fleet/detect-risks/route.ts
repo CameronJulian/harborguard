@@ -186,6 +186,7 @@ export async function POST() {
       if (latestError || !latest) {
         continue;
       }
+	 
 
       const lastSeen = latest.recorded_at
         ? new Date(latest.recorded_at).getTime()
@@ -204,6 +205,91 @@ export async function POST() {
       }
 
       const openTypes = new Set((openAlerts || []).map((a) => a.alert_type));
+	  
+	   const { data: recentLocations } = await supabase
+  .from("vehicle_locations")
+  .select("latitude, longitude, recorded_at")
+  .eq("vehicle_id", vehicle.id)
+  .order("recorded_at", {
+    ascending: false,
+  })
+  .limit(5);
+
+if (
+  recentLocations &&
+  recentLocations.length >= 2
+) {
+  const newest = recentLocations[0];
+  const previous = recentLocations[1];
+
+  const jumpDistance =
+    getDistanceMeters(
+      newest.latitude,
+      newest.longitude,
+      previous.latitude,
+      previous.longitude
+    );
+
+  const newestTime = new Date(
+    newest.recorded_at
+  ).getTime();
+
+  const previousTime = new Date(
+    previous.recorded_at
+  ).getTime();
+
+  const minutesBetween =
+    (newestTime - previousTime) /
+    (1000 * 60);
+
+  const estimatedSpeed =
+    minutesBetween > 0
+      ? (jumpDistance / 1000) /
+        (minutesBetween / 60)
+      : 0;
+
+  if (
+    estimatedSpeed > 180 &&
+    !openTypes.has(
+      "route_anomaly"
+    )
+  ) {
+    const message =
+      String(
+        vehicle.registration_number ||
+          "Unknown vehicle"
+      ) +
+      " abnormal route deviation detected";
+
+    const alert =
+      await createAlert({
+        vehicleId: vehicle.id,
+        alertType:
+          "route_anomaly",
+        severity: "critical",
+        message,
+      });
+
+    if (alert) {
+      createdAlerts.push(alert);
+
+      await notifyAlert({
+        vehicleNickname:
+          vehicle.nickname,
+        registrationNumber:
+          vehicle.registration_number,
+        alertType:
+          "route_anomaly",
+        severity: "critical",
+        message,
+        lastLatitude:
+          latest.latitude,
+        lastLongitude:
+          latest.longitude,
+      });
+    }
+  }
+}
 
       if (minutes >= OFFLINE_MINUTES && !openTypes.has("offline")) {
         const message =
