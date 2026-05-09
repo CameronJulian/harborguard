@@ -621,6 +621,45 @@ async function loadThreatFeed() {
       stops: fleet.reduce((total, v) => total + (v.stops?.length || 0), 0),
     };
   }, [fleet, vehiclesWithLocation]);
+  
+  const globalThreatScore = useMemo(() => {
+  if (threatFeed.length === 0) return 0;
+
+  const total = threatFeed.reduce(
+    (sum, threat) =>
+      sum + Number(threat.probability || 0),
+    0
+  );
+
+  return Math.round(total / threatFeed.length);
+}, [threatFeed]);
+
+const topThreatVehicles = useMemo(() => {
+  return [...threatFeed]
+    .sort(
+      (a, b) =>
+        b.probability - a.probability
+    )
+    .slice(0, 5);
+}, [threatFeed]);
+
+const operationalStatus =
+  globalThreatScore >= 80
+    ? "CRITICAL"
+    : globalThreatScore >= 60
+    ? "HIGH ALERT"
+    : globalThreatScore >= 40
+    ? "ELEVATED"
+    : "STABLE";
+
+const operationalColor =
+  globalThreatScore >= 80
+    ? "#dc2626"
+    : globalThreatScore >= 60
+    ? "#ea580c"
+    : globalThreatScore >= 40
+    ? "#d97706"
+    : "#16a34a";
 
   return (
     <AppShell>
@@ -644,6 +683,165 @@ async function loadThreatFeed() {
           Live GPS command map with route trails, stop detection, risk alerts, replay, and emergency escalation.
         </p>
       </div>
+	  <div
+  style={{
+    ...cardStyle,
+    padding: 24,
+    marginBottom: 24,
+    background:
+      globalThreatScore >= 80
+        ? "linear-gradient(135deg,#7f1d1d,#991b1b)"
+        : globalThreatScore >= 60
+        ? "linear-gradient(135deg,#9a3412,#c2410c)"
+        : "linear-gradient(135deg,#0f172a,#1e293b)",
+    color: "#fff",
+  }}
+>
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      gap: 24,
+      flexWrap: "wrap",
+      alignItems: "center",
+    }}
+  >
+    <div>
+      <div
+        style={{
+          fontSize: 14,
+          opacity: 0.85,
+          marginBottom: 8,
+        }}
+      >
+        AI OPERATIONAL STATUS
+      </div>
+
+      <div
+        style={{
+          fontSize: 42,
+          fontWeight: 900,
+          lineHeight: 1,
+        }}
+      >
+        {operationalStatus}
+      </div>
+
+      <div
+        style={{
+          marginTop: 12,
+          fontSize: 16,
+          opacity: 0.92,
+        }}
+      >
+        Fleet-wide autonomous threat intelligence.
+      </div>
+    </div>
+
+    <div
+      style={{
+        textAlign: "right",
+      }}
+    >
+      <div
+        style={{
+          fontSize: 14,
+          opacity: 0.85,
+          marginBottom: 8,
+        }}
+      >
+        GLOBAL THREAT SCORE
+      </div>
+
+      <div
+        style={{
+          fontSize: 72,
+          fontWeight: 900,
+          color: "#fff",
+          lineHeight: 1,
+        }}
+      >
+        {globalThreatScore}
+      </div>
+
+      <div
+        style={{
+          fontSize: 15,
+          opacity: 0.85,
+        }}
+      >
+        /100 Risk Index
+      </div>
+    </div>
+  </div>
+
+  <div
+    style={{
+      marginTop: 24,
+      display: "grid",
+      gridTemplateColumns:
+        "repeat(auto-fit,minmax(220px,1fr))",
+      gap: 14,
+    }}
+  >
+    {topThreatVehicles.map((threat, index) => (
+      <div
+        key={index}
+        style={{
+          background: "rgba(255,255,255,0.08)",
+          border:
+            "1px solid rgba(255,255,255,0.12)",
+          borderRadius: 16,
+          padding: 16,
+        }}
+      >
+        <div
+          style={{
+            fontWeight: 900,
+            fontSize: 18,
+          }}
+        >
+          {threat.registrationNumber}
+        </div>
+
+        <div
+          style={{
+            opacity: 0.82,
+            marginTop: 4,
+            fontSize: 14,
+          }}
+        >
+          {threat.nickname || "Fleet Vehicle"}
+        </div>
+
+        <div
+          style={{
+            marginTop: 14,
+            fontSize: 36,
+            fontWeight: 900,
+          }}
+        >
+          {threat.probability}%
+        </div>
+
+        <div
+          style={{
+            marginTop: 4,
+            color:
+              threat.level === "Critical"
+                ? "#fecaca"
+                : threat.level === "High"
+                ? "#fdba74"
+                : "#fde68a",
+            fontWeight: 800,
+          }}
+        >
+          {threat.level}
+        </div>
+      </div>
+    ))}
+  </div>
+</div>
 
       <div
         style={{
