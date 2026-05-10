@@ -316,6 +316,8 @@ function RouteReplayContent() {
   const [playbackSpeedMs, setPlaybackSpeedMs] = useState(1400);
   const [playbackIcon, setPlaybackIcon] = useState<any>(null);
   const [alertIcons, setAlertIcons] = useState<Record<string, any>>({});
+  const [timelineNarrative, setTimelineNarrative] = useState("");
+const [timelineThreatLevel, setTimelineThreatLevel] = useState("LOW");
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const playStartedAtRef = useRef(0);
@@ -593,12 +595,227 @@ function RouteReplayContent() {
 
     return [-33.9249, 18.4241];
   }, [currentPlaybackPoint, startPoint]);
+useEffect(() => {
+  if (points.length === 0) {
+    setTimelineNarrative("");
+    setTimelineThreatLevel("LOW");
+    return;
+  }
 
+  const highSpeedMoments = points.filter(
+    (p) => (p.speed_kmh || 0) > 110
+  ).length;
+
+  const criticalAlerts = alerts.filter(
+    (a) => a.severity === "critical"
+  ).length;
+
+  const highAlerts = alerts.filter(
+    (a) => a.severity === "high"
+  ).length;
+
+  const stopMoments = points.filter(
+    (p) => (p.speed_kmh || 0) < 5
+  ).length;
+
+  const routeStressScore =
+    highSpeedMoments * 4 +
+    criticalAlerts * 18 +
+    highAlerts * 10 +
+    stopMoments;
+
+  if (routeStressScore >= 90) {
+    setTimelineThreatLevel("CRITICAL");
+
+    setTimelineNarrative(
+      "AI forensic analysis detected extreme operational instability across this replay timeline with probable coordinated threat indicators."
+    );
+  } else if (routeStressScore >= 60) {
+    setTimelineThreatLevel("HIGH");
+
+    setTimelineNarrative(
+      "AI replay analysis detected elevated operational anomalies and high-risk movement behavior."
+    );
+  } else if (routeStressScore >= 30) {
+    setTimelineThreatLevel("MEDIUM");
+
+    setTimelineNarrative(
+      "Replay intelligence detected moderate route anomalies requiring operational review."
+    );
+  } else {
+    setTimelineThreatLevel("LOW");
+
+    setTimelineNarrative(
+      "Replay analysis indicates stable operational movement patterns."
+    );
+  }
+}, [points, alerts]);
   const progressPercent =
     points.length > 1 ? Math.round(clamp(progress, 0, 1) * 100) : 0;
 
   return (
     <AppShell>
+	<div
+  style={{
+    ...cardStyle,
+    padding: 28,
+    marginBottom: 24,
+    background:
+      timelineThreatLevel === "CRITICAL"
+        ? "linear-gradient(135deg,#7f1d1d,#991b1b)"
+        : timelineThreatLevel === "HIGH"
+        ? "linear-gradient(135deg,#9a3412,#c2410c)"
+        : timelineThreatLevel === "MEDIUM"
+        ? "linear-gradient(135deg,#1e3a8a,#2563eb)"
+        : "linear-gradient(135deg,#0f172a,#1e293b)",
+    color: "#fff",
+  }}
+>
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      flexWrap: "wrap",
+      gap: 20,
+    }}
+  >
+    <div>
+      <div
+        style={{
+          fontSize: 14,
+          opacity: 0.8,
+          marginBottom: 8,
+          fontWeight: 700,
+        }}
+      >
+        AI FORENSIC REPLAY ENGINE
+      </div>
+
+      <div
+        style={{
+          fontSize: 44,
+          fontWeight: 900,
+          lineHeight: 1,
+        }}
+      >
+        {timelineThreatLevel}
+      </div>
+
+      <div
+        style={{
+          marginTop: 14,
+          maxWidth: 760,
+          fontSize: 16,
+          lineHeight: 1.7,
+          opacity: 0.92,
+        }}
+      >
+        {timelineNarrative}
+      </div>
+    </div>
+
+    <div
+      style={{
+        textAlign: "right",
+      }}
+    >
+      <div
+        style={{
+          fontSize: 13,
+          opacity: 0.75,
+          marginBottom: 8,
+          fontWeight: 700,
+        }}
+      >
+        REPLAY ANALYTICS
+      </div>
+
+      <div
+        style={{
+          fontSize: 72,
+          fontWeight: 900,
+          lineHeight: 1,
+        }}
+      >
+        {points.length}
+      </div>
+
+      <div
+        style={{
+          fontSize: 15,
+          opacity: 0.85,
+        }}
+      >
+        telemetry frames
+      </div>
+    </div>
+  </div>
+
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns:
+        "repeat(auto-fit,minmax(220px,1fr))",
+      gap: 18,
+      marginTop: 28,
+    }}
+  >
+    {[
+      {
+        label: "Critical Alerts",
+        value: alerts.filter(
+          (a) => a.severity === "critical"
+        ).length,
+      },
+      {
+        label: "High Risk Alerts",
+        value: alerts.filter(
+          (a) => a.severity === "high"
+        ).length,
+      },
+      {
+        label: "Playback Progress",
+        value: `${progressPercent}%`,
+      },
+      {
+        label: "Operational Events",
+        value: alerts.length,
+      },
+    ].map((item, index) => (
+      <div
+        key={index}
+        style={{
+          background:
+            "rgba(255,255,255,0.08)",
+          border:
+            "1px solid rgba(255,255,255,0.1)",
+          borderRadius: 18,
+          padding: 20,
+        }}
+      >
+        <div
+          style={{
+            fontSize: 13,
+            opacity: 0.8,
+            marginBottom: 10,
+          }}
+        >
+          {item.label}
+        </div>
+
+        <div
+          style={{
+            fontSize: 36,
+            fontWeight: 900,
+          }}
+        >
+          {item.value}
+        </div>
+      </div>
+    ))}
+  </div>
+</div>
       <div style={{ ...cardStyle, padding: 24, marginBottom: 24 }}>
         <h1 style={{ fontSize: 34, margin: "0 0 8px 0" }}>Route Replay</h1>
         <p style={{ color: "#64748b", margin: 0 }}>
