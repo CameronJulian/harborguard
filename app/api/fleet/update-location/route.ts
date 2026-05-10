@@ -1,10 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { requireOrganization, requireRole } from "@/lib/server-auth";
 
 const STOP_SPEED_KMH = 3;
 const STOP_MINUTES = 5;
@@ -37,7 +32,10 @@ function parseNumber(value: unknown) {
   return NaN;
 }
 
-function getDistanceMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+function getDistanceMeters(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number }
+) {
   const R = 6371e3;
   const p1 = (a.lat * Math.PI) / 180;
   const p2 = (b.lat * Math.PI) / 180;
@@ -46,44 +44,74 @@ function getDistanceMeters(a: { lat: number; lng: number }, b: { lat: number; ln
 
   const x =
     Math.sin(dp / 2) * Math.sin(dp / 2) +
-    Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) * Math.sin(dl / 2);
+    Math.cos(p1) *
+      Math.cos(p2) *
+      Math.sin(dl / 2) *
+      Math.sin(dl / 2);
 
   return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
 }
 
 export async function POST(req: Request) {
   try {
+    const { supabase, organizationId, role } = await requireOrganization();
+
+    requireRole(role, ["owner", "admin", "operator"]);
+
     const body = (await req.json()) as UpdateLocationBody;
 
     const vehicleId = body.vehicleId;
     const tripId = body.tripId ?? null;
     const latitude = parseNumber(body.latitude);
     const longitude = parseNumber(body.longitude);
-    const speedKmh = Number.isFinite(parseNumber(body.speedKmh)) ? parseNumber(body.speedKmh) : 0;
-    const heading = Number.isFinite(parseNumber(body.heading)) ? parseNumber(body.heading) : 0;
+    const speedKmh = Number.isFinite(parseNumber(body.speedKmh))
+      ? parseNumber(body.speedKmh)
+      : 0;
+    const heading = Number.isFinite(parseNumber(body.heading))
+      ? parseNumber(body.heading)
+      : 0;
     const source = body.source || "mobile";
     const requestedStatus = body.status;
 
     if (!vehicleId) {
-      return NextResponse.json({ error: "vehicleId is required." }, { status: 400 });
+      return NextResponse.json(
+        { error: "vehicleId is required." },
+        { status: 400 }
+      );
     }
 
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      return NextResponse.json({ error: "Valid latitude and longitude are required." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Valid latitude and longitude are required." },
+        { status: 400 }
+      );
     }
 
     if (latitude < -90 || latitude > 90) {
-      return NextResponse.json({ error: "Latitude must be between -90 and 90." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Latitude must be between -90 and 90." },
+        { status: 400 }
+      );
     }
 
     if (longitude < -180 || longitude > 180) {
-      return NextResponse.json({ error: "Longitude must be between -180 and 180." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Longitude must be between -180 and 180." },
+        { status: 400 }
+      );
     }
 
     const { data: vehicle, error: vehicleError } = await supabase
       .from("vehicles")
-      .select("id, is_active, nickname, registration_number")
+      .select(`
+        id,
+        is_active,
+        nickname,
+        registration_number,
+        organization_id
+      `)
       .eq("id", vehicleId)
+      .eq("organization_id", organizationId)
       .single();
 
     if (vehicleError || !vehicle) {
@@ -99,6 +127,7 @@ export async function POST(req: Request) {
       .from("vehicle_locations")
       .select("latitude, longitude, recorded_at")
       .eq("vehicle_id", vehicleId)
+      .eq("organization_id", organizationId)
       .order("recorded_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -114,10 +143,14 @@ export async function POST(req: Request) {
         );
 
         const timeDiffSeconds =
-          (new Date(now).getTime() - new Date(lastPoint.recorded_at).getTime()) / 1000;
+          (new Date(now).getTime() -
+            new Date(lastPoint.recorded_at).getTime()) /
+          1000;
 
         const calculatedSpeedKmh =
-          timeDiffSeconds > 0 ? (distance / timeDiffSeconds) * 3.6 : 0;
+          timeDiffSeconds > 0
+            ? (distance / timeDiffSeconds) * 3.6
+            : 0;
 
         if (distance < MIN_DISTANCE_METERS) {
           return NextResponse.json({
@@ -137,25 +170,32 @@ export async function POST(req: Request) {
       }
     }
 
-    const { error: locationError } = await supabase.from("vehicle_locations").insert({
-      vehicle_id: vehicleId,
-      trip_id: tripId,
-      latitude,
-      longitude,
-      speed_kmh: speedKmh,
-      heading,
-      recorded_at: now,
-      source,
-    });
+    const { error: locationError } = await supabase
+      .from("vehicle_locations")
+      .insert({
+        organization_id: organizationId,
+        vehicle_id: vehicleId,
+        trip_id: tripId,
+        latitude,
+        longitude,
+        speed_kmh: speedKmh,
+        heading,
+        recorded_at: now,
+        source,
+      });
 
     if (locationError) {
-      return NextResponse.json({ error: locationError.message }, { status: 500 });
+      return NextResponse.json(
+        { error: locationError.message },
+        { status: 500 }
+      );
     }
 
     const { data: activeTrip } = await supabase
       .from("vehicle_trips")
       .select("id, status")
       .eq("vehicle_id", vehicleId)
+      .eq("organization_id", organizationId)
       .in("status", [
         "scheduled",
         "en_route_to_port",
@@ -177,25 +217,35 @@ export async function POST(req: Request) {
             status: requestedStatus || "en_route_to_port",
             actual_departure: now,
           })
-          .eq("id", activeTrip.id);
+          .eq("id", activeTrip.id)
+          .eq("organization_id", organizationId);
       } else if (requestedStatus && requestedStatus !== activeTrip.status) {
-        const updates: Record<string, string> = { status: requestedStatus };
+        const updates: Record<string, string> = {
+          status: requestedStatus,
+        };
 
         if (requestedStatus === "delivered") {
           updates.actual_arrival = now;
         }
 
-        await supabase.from("vehicle_trips").update(updates).eq("id", activeTrip.id);
+        await supabase
+          .from("vehicle_trips")
+          .update(updates)
+          .eq("id", activeTrip.id)
+          .eq("organization_id", organizationId);
       }
     }
 
     if (speedKmh <= STOP_SPEED_KMH) {
-      const since = new Date(Date.now() - STOP_MINUTES * 60 * 1000).toISOString();
+      const since = new Date(
+        Date.now() - STOP_MINUTES * 60 * 1000
+      ).toISOString();
 
       const { data: recentSlowPoints } = await supabase
         .from("vehicle_locations")
         .select("id")
         .eq("vehicle_id", vehicleId)
+        .eq("organization_id", organizationId)
         .gte("recorded_at", since)
         .lte("speed_kmh", STOP_SPEED_KMH);
 
@@ -204,11 +254,13 @@ export async function POST(req: Request) {
           .from("vehicle_stops")
           .select("id")
           .eq("vehicle_id", vehicleId)
+          .eq("organization_id", organizationId)
           .is("ended_at", null)
           .maybeSingle();
 
         if (!openStop) {
           await supabase.from("vehicle_stops").insert({
+            organization_id: organizationId,
             vehicle_id: vehicleId,
             trip_id: activeTripId,
             latitude,
@@ -222,6 +274,7 @@ export async function POST(req: Request) {
         .from("vehicle_stops")
         .select("id, started_at")
         .eq("vehicle_id", vehicleId)
+        .eq("organization_id", organizationId)
         .is("ended_at", null)
         .maybeSingle();
 
@@ -236,7 +289,8 @@ export async function POST(req: Request) {
             ended_at: now,
             duration_seconds: durationSeconds,
           })
-          .eq("id", openStop.id);
+          .eq("id", openStop.id)
+          .eq("organization_id", organizationId);
       }
     }
 
@@ -259,9 +313,14 @@ export async function POST(req: Request) {
       activeTripId,
     });
   } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message || "Failed to update vehicle location." },
-      { status: 500 }
-    );
+    const message = err.message || "Failed to update vehicle location.";
+    const status =
+      message === "Unauthorized"
+        ? 401
+        : message === "Permission denied"
+        ? 403
+        : 500;
+
+    return NextResponse.json({ error: message }, { status });
   }
 }
