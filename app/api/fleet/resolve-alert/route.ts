@@ -1,10 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { requireOrganization, requireRole } from "@/lib/server-auth";
 
 type ResolveAlertBody = {
   alertId?: string;
@@ -13,6 +8,10 @@ type ResolveAlertBody = {
 
 export async function POST(req: Request) {
   try {
+    const { supabase, organizationId, role } = await requireOrganization();
+
+    requireRole(role, ["owner", "admin", "operator"]);
+
     const body = (await req.json()) as ResolveAlertBody;
 
     const alertId = body.alertId;
@@ -28,8 +27,9 @@ export async function POST(req: Request) {
 
     const { data: alert, error: alertError } = await supabase
       .from("vehicle_alerts")
-      .select("id, vehicle_id, is_resolved")
+      .select("id, vehicle_id, is_resolved, organization_id")
       .eq("id", alertId)
+      .eq("organization_id", organizationId)
       .single();
 
     if (alertError || !alert) {
@@ -53,7 +53,8 @@ export async function POST(req: Request) {
         resolved_at: new Date().toISOString(),
         resolution_notes: resolutionNotes,
       })
-      .eq("id", alertId);
+      .eq("id", alertId)
+      .eq("organization_id", organizationId);
 
     if (updateError) {
       return NextResponse.json(
@@ -67,9 +68,12 @@ export async function POST(req: Request) {
       message: "Alert resolved successfully.",
     });
   } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message || "Failed to resolve alert." },
-      { status: 500 }
-    );
+    const message = err.message || "Failed to resolve alert.";
+    const status =
+      message === "Unauthorized" ? 401 :
+      message === "Permission denied" ? 403 :
+      500;
+
+    return NextResponse.json({ error: message }, { status });
   }
 }
