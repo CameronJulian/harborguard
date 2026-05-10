@@ -1,16 +1,23 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { requireOrganization, requireRole } from "@/lib/server-auth";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getStatus(error: any) {
+  const message = error?.message || "";
+
+  if (message === "Unauthorized") return 401;
+  if (message === "Permission denied") return 403;
+
+  return 500;
+}
 
 export async function GET() {
   try {
+    const { supabase, organizationId } = await requireOrganization();
+
     const { data, error } = await supabase
       .from("geofences")
       .select("*")
+      .eq("organization_id", organizationId)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -24,13 +31,17 @@ export async function GET() {
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || "Failed to load geofences." },
-      { status: 500 }
+      { status: getStatus(err) }
     );
   }
 }
 
 export async function POST(req: Request) {
   try {
+    const { supabase, organizationId, role } = await requireOrganization();
+
+    requireRole(role, ["owner", "admin", "operator"]);
+
     const body = await req.json();
 
     const name = String(body.name || "").trim();
@@ -38,7 +49,12 @@ export async function POST(req: Request) {
     const centerLng = Number(body.center_lng);
     const radiusMeters = Number(body.radius_meters);
 
-    if (!name || Number.isNaN(centerLat) || Number.isNaN(centerLng) || Number.isNaN(radiusMeters)) {
+    if (
+      !name ||
+      Number.isNaN(centerLat) ||
+      Number.isNaN(centerLng) ||
+      Number.isNaN(radiusMeters)
+    ) {
       return NextResponse.json(
         { error: "Missing or invalid geofence fields." },
         { status: 400 }
@@ -48,6 +64,7 @@ export async function POST(req: Request) {
     const { data, error } = await supabase
       .from("geofences")
       .insert({
+        organization_id: organizationId,
         name,
         center_lat: centerLat,
         center_lng: centerLng,
@@ -68,13 +85,17 @@ export async function POST(req: Request) {
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || "Failed to create geofence." },
-      { status: 500 }
+      { status: getStatus(err) }
     );
   }
 }
 
 export async function PATCH(req: Request) {
   try {
+    const { supabase, organizationId, role } = await requireOrganization();
+
+    requireRole(role, ["owner", "admin", "operator"]);
+
     const body = await req.json();
 
     const id = String(body.id || "").trim();
@@ -93,6 +114,7 @@ export async function PATCH(req: Request) {
         is_active: isActive,
       })
       .eq("id", id)
+      .eq("organization_id", organizationId)
       .select()
       .single();
 
@@ -107,13 +129,17 @@ export async function PATCH(req: Request) {
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || "Failed to update geofence." },
-      { status: 500 }
+      { status: getStatus(err) }
     );
   }
 }
 
 export async function DELETE(req: Request) {
   try {
+    const { supabase, organizationId, role } = await requireOrganization();
+
+    requireRole(role, ["owner", "admin"]);
+
     const url = new URL(req.url);
     const id = url.searchParams.get("id");
 
@@ -127,7 +153,8 @@ export async function DELETE(req: Request) {
     const { error } = await supabase
       .from("geofences")
       .delete()
-      .eq("id", id);
+      .eq("id", id)
+      .eq("organization_id", organizationId);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -139,7 +166,7 @@ export async function DELETE(req: Request) {
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || "Failed to delete geofence." },
-      { status: 500 }
+      { status: getStatus(err) }
     );
   }
 }
