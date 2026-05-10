@@ -1,12 +1,9 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { requireOrganization, requireRole } from "@/lib/server-auth";
 import { Resend } from "resend";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+
 
 function formatDateTime(value: string | null) {
   if (!value) return "-";
@@ -409,6 +406,13 @@ async function buildAnalyticsPdf(params: {
 
 export async function POST(req: Request) {
   try {
+	  const {
+  supabase,
+  organizationId,
+  role,
+} = await requireOrganization();
+
+requireRole(role, ["owner", "admin"]);
     const resendKey = process.env.RESEND_API_KEY;
 
     if (!resendKey) {
@@ -444,9 +448,10 @@ export async function POST(req: Request) {
 
     const { data: batches, error: batchesError } = await supabase
       .from("batches")
-      .select("batch_code, vessel, species, catch_kg, storage_kg, status, created_at")
-      .gte("created_at", start)
-      .lte("created_at", end)
+.select("batch_code, vessel, species, catch_kg, storage_kg, status, created_at")
+.eq("organization_id", organizationId)
+.gte("created_at", start)
+.lte("created_at", end)
       .order("created_at", { ascending: false });
 
     if (batchesError) {
@@ -458,9 +463,10 @@ export async function POST(req: Request) {
 
     const { data: incidents, error: incidentsError } = await supabase
       .from("incidents")
-      .select("incident_code, severity, status, summary, created_at")
-      .gte("created_at", start)
-      .lte("created_at", end)
+.select("incident_code, severity, status, summary, created_at")
+.eq("organization_id", organizationId)
+.gte("created_at", start)
+.lte("created_at", end)
       .order("created_at", { ascending: false });
 
     if (incidentsError) {
@@ -628,7 +634,8 @@ export async function POST(req: Request) {
        return NextResponse.json({
       success: true,
       message: "Email report with PDF attachment sent successfully.",
-      emailResult,
+      organizationId,
+emailResult,
     });
   } catch (err: any) {
     console.error("REPORT SEND ERROR:", err);
