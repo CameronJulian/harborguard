@@ -116,7 +116,14 @@ async function createAlert(params: {
   if (params.alertType.includes("geofence")) {
     probableCause = "Vehicle deviated from approved operational area.";
   }
-
+if (
+  params.alertType.includes(
+    "driver_fatigue"
+  )
+) {
+  probableCause =
+    "AI behavioral monitoring detected probable driver fatigue indicators.";
+}
   const intelligenceNarrative =
     `Behavioral risk classified as ${behavioralRisk.toUpperCase()} ` +
     `with threat confidence score ${threatScore}/100. ` +
@@ -205,6 +212,28 @@ export async function POST() {
       }
 
       const openTypes = new Set((openAlerts || []).map((a) => a.alert_type));
+	  const currentHour = new Date().getHours();
+
+const fatigueRiskWindow =
+  currentHour >= 23 || currentHour <= 5;
+
+const lowMovement =
+  (latest.speed_kmh ?? 0) < 8;
+
+const prolongedOperation =
+  minutes <= 5;
+
+const fatigueProbability =
+  (fatigueRiskWindow ? 40 : 0) +
+  (lowMovement ? 20 : 0) +
+  (prolongedOperation ? 15 : 0) +
+  Math.min(
+    25,
+    (latest.speed_kmh ?? 0) > 100 ? 25 : 0
+  );
+
+const fatigueDetected =
+  fatigueProbability >= 60;
 	  
 	   const { data: recentLocations } = await supabase
   .from("vehicle_locations")
@@ -290,7 +319,52 @@ if (
     }
   }
 }
+if (
+  fatigueDetected &&
+  !openTypes.has("driver_fatigue")
+) {
+  const message =
+    String(
+      vehicle.registration_number ||
+        "Unknown vehicle"
+    ) +
+    " driver fatigue risk detected";
 
+  const alert =
+    await createAlert({
+      vehicleId: vehicle.id,
+      alertType: "driver_fatigue",
+      severity:
+        fatigueProbability >= 80
+          ? "critical"
+          : "high",
+      message,
+    });
+
+  if (alert) {
+    createdAlerts.push(alert);
+
+    await notifyAlert({
+      vehicleNickname:
+        vehicle.nickname,
+      registrationNumber:
+        vehicle.registration_number,
+      alertType:
+        "driver_fatigue",
+      severity:
+        fatigueProbability >= 80
+          ? "critical"
+          : "high",
+      message:
+        message +
+        ` (AI fatigue probability ${fatigueProbability}%)`,
+      lastLatitude:
+        latest.latitude,
+      lastLongitude:
+        latest.longitude,
+    });
+  }
+}
       if (minutes >= OFFLINE_MINUTES && !openTypes.has("offline")) {
         const message =
           String(vehicle.registration_number || "Unknown vehicle") +
