@@ -18,6 +18,16 @@ const protectedRoutes = [
   "/vehicle-alerts",
 ];
 
+function hasAuthSession(request: NextRequest) {
+  return request.cookies.getAll().some((cookie) => {
+    return (
+      cookie.name === "sb-access-token" ||
+      cookie.name.includes("auth-token") ||
+      cookie.name.startsWith("sb-")
+    );
+  });
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -29,19 +39,18 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const hasSupabaseSession =
-    request.cookies.get("sb-access-token") ||
-    request.cookies
-      .getAll()
-      .some((cookie) => cookie.name.includes("auth-token"));
-
-  if (!hasSupabaseSession) {
+  if (!hasAuthSession(request)) {
     const loginUrl = new URL("/", request.url);
     loginUrl.searchParams.set("redirectedFrom", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+
+  response.headers.set("x-harborguard-protected-route", "true");
+  response.headers.set("x-harborguard-enterprise-gateway", "active");
+
+  return response;
 }
 
 export const config = {
