@@ -24,6 +24,8 @@ type NotifyAlertBody = {
   recipientEmail?: string | null;
   intelligenceScore?: number | null;
   behavioralRisk?: string | null;
+  broadcastGroup?: string | null;
+whatsAppRecipients?: string[] | null;
 };
 
 function titleCase(value: string) {
@@ -45,6 +47,19 @@ function shouldSendSms(
     alertType === "route_deviation" ||
     alertType === "offline" ||
     alertType === "long_stop"
+  );
+}
+
+function shouldSendWhatsApp(
+  alertType: string,
+  severity: string
+) {
+  return (
+    severity === "critical" ||
+    severity === "high" ||
+    alertType === "panic" ||
+    alertType === "driver_fatigue" ||
+    alertType === "geofence_breach"
   );
 }
 
@@ -274,6 +289,8 @@ export async function POST(req: Request) {
 
     let emailData: any = null;
     let smsData: any = null;
+	let whatsappData: any[] = [];
+let whatsappError: string | null = null;
     let emailError: string | null = null;
     let smsError: string | null = null;
 
@@ -329,14 +346,75 @@ export async function POST(req: Request) {
           "Failed to send SMS.";
       }
     }
+	if (
+  shouldSendWhatsApp(alertType, severity) &&
+  twilioClient &&
+  process.env.TWILIO_WHATSAPP_FROM
+) {
+  try {
+    const recipients =
+      body.whatsAppRecipients ||
+      (
+        process.env
+          .TWILIO_WHATSAPP_TO || ""
+      )
+        .split(",")
+        .map((v) => v.trim())
+        .filter(Boolean);
 
-    if (!emailData && !smsData) {
+    const whatsAppBody =
+      `🚨 HARBORGUARD ${escalation.level}\n\n` +
+      `Alert: ${titleCase(alertType)}\n` +
+      `Severity: ${titleCase(severity)}\n` +
+      `Vehicle: ${vehicleLabel}\n` +
+      `AI Score: ${intelligenceScore}/100\n` +
+      `Behavioral Risk: ${
+        body.behavioralRisk || "-"
+      }\n` +
+      `Message: ${
+        body.message || "-"
+      }\n` +
+      `Coordinates: ${coords}` +
+      (mapsUrl
+        ? `\n\nMap: ${mapsUrl}`
+        : "");
+
+    for (const recipient of recipients) {
+      const result =
+        await twilioClient.messages.create({
+          body: whatsAppBody,
+          from:
+            process.env
+              .TWILIO_WHATSAPP_FROM,
+          to: recipient.startsWith(
+            "whatsapp:"
+          )
+            ? recipient
+            : `whatsapp:${recipient}`,
+        });
+
+      whatsappData.push(result);
+    }
+  } catch (err: any) {
+    whatsappError =
+      err.message ||
+      "Failed to send WhatsApp alerts.";
+  }
+}
+
+      if (
+      !emailData &&
+      !smsData &&
+      whatsappData.length === 0
+    ) {
       return NextResponse.json(
         {
-          error:
-            emailError ||
-            smsError ||
-            "No notification channel configured.",
+          error: "Failed to send notifications.",
+          warnings: {
+            email: emailError,
+            sms: smsError,
+            whatsapp: whatsappError,
+          },
         },
         { status: 500 }
       );
@@ -344,25 +422,23 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      escalationLevel:
-        escalation.level,
-      message:
-        "Autonomous escalation workflow executed.",
+      escalationLevel: escalation.level,
+      message: "Autonomous escalation workflow executed.",
       channels: {
         email: !!emailData,
         sms: !!smsData,
+        whatsapp: whatsappData.length > 0,
       },
       warnings: {
         email: emailError,
         sms: smsError,
+        whatsapp: whatsappError,
       },
     });
   } catch (err: any) {
     return NextResponse.json(
       {
-        error:
-          err.message ||
-          "Escalation workflow failed.",
+        error: err.message || "Escalation workflow failed.",
       },
       { status: 500 }
     );
