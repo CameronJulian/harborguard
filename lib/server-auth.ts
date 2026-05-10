@@ -35,7 +35,16 @@ export async function requireOrganization() {
   const { data: profile, error: profileError } =
     await supabase
       .from("profiles")
-      .select("organization_id")
+      .select(`
+        id,
+        full_name,
+        role,
+        organization_id,
+        organization:organizations (
+          id,
+          name
+        )
+      `)
       .eq("id", user.id)
       .single();
 
@@ -46,6 +55,20 @@ export async function requireOrganization() {
   return {
     supabase,
     user,
+    profile,
     organizationId: profile.organization_id,
+    organization: Array.isArray(profile.organization)
+      ? profile.organization[0] || null
+      : profile.organization || null,
+    role: profile.role || "viewer",
   };
+}
+
+export function requireRole(
+  role: string | null | undefined,
+  allowedRoles: string[]
+) {
+  if (!role || !allowedRoles.includes(role)) {
+    throw new Error("Permission denied");
+  }
 }
