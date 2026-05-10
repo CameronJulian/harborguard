@@ -170,7 +170,55 @@ export async function GET(request: NextRequest) {
       const isOffline = minutesOffline >= 15;
 
       let nearIncident = false;
+	  
+	  let predictedGeofenceRisk = 0;
+let predictedBreach = false;
 
+const { data: geofences } = await supabase
+  .from("geofences")
+  .select("*")
+  .eq("organization_id", organizationId)
+  .eq("is_active", true);
+
+for (const zone of geofences || []) {
+  const distance = getDistanceMeters(
+    latest.latitude,
+    latest.longitude,
+    zone.center_lat,
+    zone.center_lng
+  );
+
+  const speed = latest.speed_kmh || 0;
+
+  if (
+    distance <= zone.radius_meters * 1.5 &&
+    speed > 80
+  ) {
+    predictedGeofenceRisk += 25;
+  }
+
+  if (
+    distance <= zone.radius_meters * 1.2 &&
+    speed > 100
+  ) {
+    predictedGeofenceRisk += 35;
+  }
+
+  if (
+    distance <= zone.radius_meters &&
+    speed > 120
+  ) {
+    predictedGeofenceRisk += 45;
+  }
+}
+
+predictedGeofenceRisk = Math.min(
+  100,
+  predictedGeofenceRisk
+);
+
+predictedBreach =
+  predictedGeofenceRisk >= 60;
       for (const incident of incidents || []) {
         const distance = getDistanceMeters(
           latest.latitude,
@@ -185,20 +233,38 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      const prediction = calculateThreatProbability({
-        speed: latest.speed_kmh || 0,
-        openAlerts: openAlerts.length,
-        criticalAlerts,
-        isOffline,
-        nearIncident,
-      });
+      const basePrediction =
+  calculateThreatProbability({
+    speed: latest.speed_kmh || 0,
+    openAlerts: openAlerts.length,
+    criticalAlerts,
+    isOffline,
+    nearIncident,
+  });
+
+const adjustedProbability = Math.min(
+  100,
+  basePrediction.probability +
+    predictedGeofenceRisk
+);
+
+let adjustedLevel = "Low";
+
+if (adjustedProbability >= 75)
+  adjustedLevel = "Critical";
+else if (adjustedProbability >= 50)
+  adjustedLevel = "High";
+else if (adjustedProbability >= 25)
+  adjustedLevel = "Medium";
 
       predictions.push({
         vehicleId: vehicle.id,
         registrationNumber: vehicle.registration_number,
         nickname: vehicle.nickname,
-        probability: prediction.probability,
-        level: prediction.level,
+probability: adjustedProbability,
+level: adjustedLevel,
+predictedGeofenceRisk,
+predictedBreach,
         speed: latest.speed_kmh || 0,
         openAlerts: openAlerts.length,
         criticalAlerts,
