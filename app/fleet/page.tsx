@@ -258,65 +258,75 @@ export default function FleetDashboardPage() {
     };
   }, [mapVehicles]);
 
+  
+
   useEffect(() => {
-    if (subscribedRef.current) return;
-    subscribedRef.current = true;
+  let channel: any;
 
-    const channel = supabase
-      .channel("vehicle-location-live")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "vehicle_locations",
-        },
-        (payload) => {
-          const row = payload.new as VehicleLocationInsert;
+  async function setupRealtime() {
+    try {
+      if (subscribedRef.current) return;
 
-          setFleet((current) => {
-            const exists = current.some((vehicle) => vehicle.id === row.vehicle_id);
+      subscribedRef.current = true;
 
-            if (!exists) return current;
+      channel = supabase
+        .channel("vehicle-location-live")
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "vehicle_locations",
+          },
+          (payload) => {
+            const row = payload.new as VehicleLocationInsert;
 
-            return current.map((vehicle) => {
-              if (vehicle.id !== row.vehicle_id) return vehicle;
+            setFleet((current) => {
+              const exists = current.some(
+                (vehicle) => vehicle.id === row.vehicle_id
+              );
 
-              return {
-                ...vehicle,
-                latitude: row.latitude,
-                longitude: row.longitude,
-                speedKmh: row.speed_kmh ?? 0,
-                heading: row.heading ?? 0,
-                source: row.source ?? null,
-                lastSeen: row.recorded_at,
-                isOffline: computeOffline(row.recorded_at),
-              };
+              if (!exists) return current;
+
+              return current.map((vehicle) => {
+                if (vehicle.id !== row.vehicle_id)
+                  return vehicle;
+
+                return {
+                  ...vehicle,
+                  latitude: row.latitude,
+                  longitude: row.longitude,
+                  speedKmh: row.speed_kmh ?? 0,
+                  heading: row.heading ?? 0,
+                  source: row.source ?? null,
+                  lastSeen: row.recorded_at,
+                  isOffline: computeOffline(
+                    row.recorded_at
+                  ),
+                };
+              });
             });
-          });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-      subscribedRef.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setFleet((current) =>
-        current.map((vehicle) => {
-          const isOffline = computeOffline(vehicle.lastSeen);
-          if (vehicle.isOffline === isOffline) return vehicle;
-          return { ...vehicle, isOffline };
-        })
+          }
+        )
+        .subscribe();
+    } catch (err) {
+      console.error(
+        "Realtime subscription failed:",
+        err
       );
-    }, 30000);
+    }
+  }
 
-    return () => clearInterval(timer);
-  }, []);
+  setupRealtime();
+
+  return () => {
+    if (channel) {
+      supabase.removeChannel(channel);
+    }
+
+    subscribedRef.current = false;
+  };
+}, []);
 
   const summary = useMemo(() => {
     const totalVehicles = fleet.length;
