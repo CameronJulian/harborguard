@@ -660,13 +660,16 @@ export default function FleetDashboardPage() {
                       {vehicle.nickname || vehicle.registrationNumber}
                     </div>
                     <div style={{ color: "#7f1d1d", fontSize: 14, marginBottom: 4 }}>
-                      <strong>Type:</strong> {alert.alertType.replace(/_/g, " ")}
+                     <strong>Type:</strong>{" "}
+{String(
+  alert.alertType || "unknown_alert"
+).replace(/_/g, " ")}
                     </div>
                     <div style={{ color: "#7f1d1d", fontSize: 14, marginBottom: 4 }}>
-                      <strong>Severity:</strong> {alert.severity}
+                      <strong>Severity:</strong> {alert.severity || "unknown"}
                     </div>
                     <div style={{ color: "#7f1d1d", fontSize: 14, marginBottom: 4 }}>
-                      {alert.message}
+                      {alert.message || "No alert message available."}
                     </div>
                     <div style={{ color: "#991b1b", fontSize: 12 }}>
                       {formatDateTime(alert.createdAt)}
