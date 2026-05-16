@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import AppShell from "@/components/AppShell";
+import PremiumGate from "@/components/PremiumGate";
+import { canAccessPremiumFeatures } from "@/lib/subscription";
 
 type FleetVehicle = {
   id: string;
@@ -166,8 +168,48 @@ export default function RiskDashboardPage() {
   const [fleet, setFleet] = useState<FleetVehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
-  const [predictions, setPredictions] = useState<ThreatPrediction[]>([]);
+  
+  
+  const [premiumAllowed, setPremiumAllowed] =
+  useState(true);
 
+const [subscriptionLoaded, setSubscriptionLoaded] =
+  useState(false);
+  const [predictions, setPredictions] = useState<ThreatPrediction[]>([]);
+  
+async function loadSubscriptionStatus() {
+  try {
+    const response = await fetch(
+      "/api/fleet/vehicles",
+      {
+        cache: "no-store",
+      }
+    );
+
+    if (!response.ok) {
+      setPremiumAllowed(false);
+      setSubscriptionLoaded(true);
+      return;
+    }
+
+    const result = await response.json();
+
+    const subscription =
+      result.subscription;
+
+    const allowed =
+      canAccessPremiumFeatures(
+        subscription?.subscription_status,
+        subscription?.trial_ends_at
+      );
+
+    setPremiumAllowed(allowed);
+  } catch {
+    setPremiumAllowed(false);
+  } finally {
+    setSubscriptionLoaded(true);
+  }
+}
   async function loadFleet() {
     setLoading(true);
     setMessage("");
@@ -236,6 +278,7 @@ export default function RiskDashboardPage() {
   }
 
   useEffect(() => {
+	  loadSubscriptionStatus();
   loadFleet();
   loadPredictions();
 
@@ -320,8 +363,22 @@ const anomalyForecast = useMemo(() => {
     };
   }, [fleet]);
 
+  if (
+  subscriptionLoaded &&
+  !premiumAllowed
+) {
   return (
     <AppShell>
+      <PremiumGate
+        title="Predictive Threat Intelligence"
+        description="AI anomaly forecasting, threat prediction, behavioral scoring, and operational risk intelligence require HarborGuard Professional."
+      />
+    </AppShell>
+  );
+}
+
+return (
+  <AppShell>
 	
 	
 	<div
