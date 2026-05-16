@@ -4,7 +4,7 @@ import { useEffect } from "react";
 
 export default function PushNotificationManager() {
   useEffect(() => {
-    async function registerServiceWorker() {
+    async function setupPush() {
       if (!("serviceWorker" in navigator)) {
         return;
       }
@@ -23,14 +23,9 @@ export default function PushNotificationManager() {
         const permission =
           await Notification.requestPermission();
 
-        console.log(
-          "Notification permission:",
-          permission
-        );
-
         if (permission !== "granted") {
           console.log(
-            "Notifications not granted."
+            "Notification permission denied."
           );
           return;
         }
@@ -38,6 +33,33 @@ export default function PushNotificationManager() {
         console.log(
           "Push notifications enabled."
         );
+
+        setTimeout(async () => {
+          try {
+            const response = await fetch(
+              "/api/push/test",
+              {
+                method: "POST",
+              }
+            );
+
+            const data =
+              await response.json();
+
+            registration.showNotification(
+              data.notification.title,
+              {
+                body: data.notification.body,
+                icon: "/icon.png",
+              }
+            );
+          } catch (err) {
+            console.error(
+              "Test notification failed:",
+              err
+            );
+          }
+        }, 4000);
       } catch (err) {
         console.error(
           "Push setup failed:",
@@ -46,7 +68,7 @@ export default function PushNotificationManager() {
       }
     }
 
-    registerServiceWorker();
+    setupPush();
   }, []);
 
   return null;
