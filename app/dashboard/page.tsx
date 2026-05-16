@@ -792,7 +792,16 @@ const executiveRiskIndex = useMemo(() => {
         ].map((item, index) => (
           <div key={index} style={{ ...cardStyle, padding: 26 }}>
             <div style={{ color: "#64748b", fontSize: 15, marginBottom: 12 }}>{item.label}</div>
-            <div style={{ fontSize: 38, fontWeight: 800, lineHeight: 1.1 }}>{item.value}</div>
+            <div
+  style={{
+    fontSize: 38,
+    fontWeight: 800,
+    lineHeight: 1.1,
+    color: "#0f172a",
+  }}
+>
+  {item.value}
+</div>
           </div>
         ))}
       </div>
