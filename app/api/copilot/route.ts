@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
+import { requirePremiumAccess } from "@/lib/require-premium";
 
 function getVehicleRegistration(vehicle: any) {
   if (Array.isArray(vehicle)) {
@@ -96,6 +97,20 @@ function buildRecommendation(alerts: any[]) {
 export async function POST(req: Request) {
   try {
     const { supabase, organizationId } = await requireOrganization();
+	const premium =
+  await requirePremiumAccess(
+    organizationId
+  );
+
+if (!premium.allowed) {
+  return NextResponse.json(
+    {
+      error:
+        "Professional subscription required.",
+    },
+    { status: 403 }
+  );
+}
     const body = await req.json();
 
     const rawQuestion = String(body.question || "").trim();
