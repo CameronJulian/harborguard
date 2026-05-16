@@ -3,6 +3,8 @@
 import "leaflet/dist/leaflet.css";
 
 import dynamic from "next/dynamic";
+import PremiumGate from "@/components/PremiumGate";
+import { canAccessPremiumFeatures } from "@/lib/subscription";
 import {
   CSSProperties,
   Suspense,
@@ -310,7 +312,11 @@ function RouteReplayContent() {
   const [message, setMessage] = useState("");
   const [vehicleLabel, setVehicleLabel] = useState("");
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+const [premiumAllowed, setPremiumAllowed] =
+  useState(true);
 
+const [subscriptionLoaded, setSubscriptionLoaded] =
+  useState(false);
   const [progress, setProgress] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackSpeedMs, setPlaybackSpeedMs] = useState(1400);
@@ -358,7 +364,7 @@ const [timelineThreatLevel, setTimelineThreatLevel] = useState("LOW");
         setMessage(err instanceof Error ? err.message : "Failed to load vehicles.");
       }
     }
-
+loadSubscriptionStatus();
     loadVehicles();
   }, [searchParams]);
 
@@ -439,6 +445,39 @@ const [timelineThreatLevel, setTimelineThreatLevel] = useState("LOW");
       timerRef.current = null;
     }
   }
+  async function loadSubscriptionStatus() {
+  try {
+    const response = await fetch(
+      "/api/fleet/vehicles",
+      {
+        cache: "no-store",
+      }
+    );
+
+    if (!response.ok) {
+      setPremiumAllowed(false);
+      setSubscriptionLoaded(true);
+      return;
+    }
+
+    const result = await response.json();
+
+    const subscription =
+      result.subscription;
+
+    const allowed =
+      canAccessPremiumFeatures(
+        subscription?.subscription_status,
+        subscription?.trial_ends_at
+      );
+
+    setPremiumAllowed(allowed);
+  } catch {
+    setPremiumAllowed(false);
+  } finally {
+    setSubscriptionLoaded(true);
+  }
+}
 
   async function loadReplay(vehicleIdOverride?: string, autoPlay = false) {
     const vehicleId = vehicleIdOverride || selectedVehicleId;
@@ -653,8 +692,22 @@ useEffect(() => {
   const progressPercent =
     points.length > 1 ? Math.round(clamp(progress, 0, 1) * 100) : 0;
 
+ if (
+  subscriptionLoaded &&
+  !premiumAllowed
+) {
   return (
     <AppShell>
+      <PremiumGate
+        title="Professional Route Replay"
+        description="Replay telemetry, AI forensic movement analysis, and animated route intelligence are available on HarborGuard Professional."
+      />
+    </AppShell>
+  );
+}
+
+return (
+  <AppShell>
 	<div
   style={{
     ...cardStyle,
