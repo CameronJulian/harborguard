@@ -216,27 +216,137 @@ export default function Home() {
       </main>
     );
   }
-
+const isMobile =
+  typeof window !== "undefined" &&
+  window.innerWidth < 980;
   return (
     <main style={pageStyle}>
+     <div
+  style={{
+    maxWidth: 1450,
+    margin: "0 auto",
+    padding: "70px 24px",
+    display: "grid",
+    gridTemplateColumns: isMobile
+  ? "1fr"
+  : "1.2fr 0.8fr",
+    gap: 40,
+    alignItems: "center",
+    minHeight: "100vh",
+  }}
+>
+
+<div>
+  <div
+    style={{
+      display: "inline-flex",
+      padding: "8px 14px",
+      borderRadius: 999,
+      background: "#dbeafe",
+      color: "#1d4ed8",
+      fontWeight: 700,
+      marginBottom: 20,
+    }}
+  >
+    AI Fleet Intelligence Platform
+  </div>
+
+  <h1
+    style={{
+      fontSize: 72,
+      lineHeight: 1,
+      margin: "0 0 24px 0",
+      fontWeight: 900,
+    }}
+  >
+    HarborGuard
+  </h1>
+
+  <p
+    style={{
+      fontSize: 24,
+      color: "#475569",
+      maxWidth: 720,
+      lineHeight: 1.6,
+      marginBottom: 32,
+    }}
+  >
+    Enterprise-grade maritime fleet intelligence,
+    predictive threat analytics, AI incident
+    monitoring, route replay intelligence, and
+    operational visibility for modern fish supply
+    chain operations.
+  </p>
+
+  <div
+    style={{
+      display: "flex",
+      gap: 16,
+      marginBottom: 40,
+    }}
+  >
+    <a
+      href="/billing"
+      style={{
+        ...primaryButtonStyle,
+        textDecoration: "none",
+      }}
+    >
+      View Pricing
+    </a>
+
+    <a
+      href="/dashboard"
+      style={{
+        ...secondaryButtonStyle,
+        textDecoration: "none",
+      }}
+    >
+      Live Demo
+    </a>
+  </div>
+
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+      gap: 18,
+      maxWidth: 800,
+    }}
+  >
+    {[
+      "AI Threat Detection",
+      "Route Replay Intelligence",
+      "Real-Time Fleet Monitoring",
+      "Executive Reporting",
+      "Mobile PWA Access",
+      "Push Notifications",
+    ].map((feature) => (
       <div
+        key={feature}
         style={{
-          maxWidth: 1450,
-          margin: "0 auto",
-          paddingLeft: 20,
-          paddingRight: 20,
-          paddingTop: 70,
-          display: "flex",
-          justifyContent: "center",
+          ...cardStyle,
+          padding: 20,
+          fontWeight: 700,
         }}
       >
+        ✓ {feature}
+      </div>
+    ))}
+  </div>
+</div>
         <div style={{ ...cardStyle, width: "100%", maxWidth: 500, padding: 36 }}>
           <div style={{ marginBottom: 28 }}>
-            <h1 style={{ fontSize: 52, margin: "0 0 10px 0", lineHeight: 1.02 }}>
-              HarborGuard
-            </h1>
+            <h2
+  style={{
+    fontSize: 34,
+    margin: "0 0 10px 0",
+  }}
+>
+  Welcome Back
+</h2>
             <p style={{ ...mutedTextStyle, fontSize: 20 }}>
-              Sign in to access the Fish Supply Chain Monitoring System.
+              Access your HarborGuard command center.
             </p>
           </div>
 
