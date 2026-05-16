@@ -2,7 +2,7 @@
 
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import PremiumGate from "@/components/PremiumGate";
-import { canAccessPremiumFeatures } from "@/lib/subscription";
+
 import {
   ResponsiveContainer,
   BarChart,
@@ -90,6 +90,18 @@ const mutedTextStyle: CSSProperties = {
   color: "#64748b",
   margin: 0,
 };
+function canAccessPremiumFeatures(
+  status?: string | null,
+  trialEndsAt?: string | null
+) {
+  if (status === "active") return true;
+
+  if (status === "trialing" && trialEndsAt) {
+    return new Date(trialEndsAt) > new Date();
+  }
+
+  return false;
+}
 
 function formatDateTime(value: string | null) {
   if (!value) return "-";

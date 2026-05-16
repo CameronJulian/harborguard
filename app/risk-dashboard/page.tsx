@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { CSSProperties, useEffect, useMemo, useState } from "react";
-import AppShell from "@/components/AppShell";
 import PremiumGate from "@/components/PremiumGate";
-import { canAccessPremiumFeatures } from "@/lib/subscription";
+import AppShell from "@/components/AppShell";
+
+
 
 type FleetVehicle = {
   id: string;
@@ -57,6 +58,18 @@ const cardStyle: CSSProperties = {
   boxShadow: "0 12px 32px rgba(15, 23, 42, 0.08)",
   border: "1px solid #e5e7eb",
 };
+function canAccessPremiumFeatures(
+  status?: string | null,
+  trialEndsAt?: string | null
+) {
+  if (status === "active") return true;
+
+  if (status === "trialing" && trialEndsAt) {
+    return new Date(trialEndsAt) > new Date();
+  }
+
+  return false;
+}
 
 function formatDateTime(value?: string | null) {
   if (!value) return "-";
