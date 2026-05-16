@@ -1,6 +1,8 @@
 "use client";
 
 import { CSSProperties, FormEvent, useEffect, useMemo, useState } from "react";
+import TrialBanner from "@/components/TrialBanner";
+import { requireOrganization } from "@/lib/server-auth";
 import {
   LineChart,
   Line,
@@ -98,7 +100,8 @@ export default function DashboardPage() {
   const [incidents, setIncidents] = useState<IncidentRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-
+const [trialEndsAt, setTrialEndsAt] =
+  useState<string | null>(null);
   const [vessel, setVessel] = useState("");
   const [species, setSpecies] = useState("");
   const [catchKg, setCatchKg] = useState("");
@@ -113,6 +116,7 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
+	  loadSubscription();
     loadAll();
 
     const batchChannel = supabase
@@ -143,6 +147,33 @@ export default function DashboardPage() {
     };
   }, []);
 
+
+async function loadSubscription() {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session?.access_token) return;
+
+  const response = await fetch(
+    "/api/fleet/vehicles",
+    {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    }
+  );
+
+  if (!response.ok) return;
+
+  const result = await response.json();
+
+  if (result.subscription?.trial_ends_at) {
+    setTrialEndsAt(
+      result.subscription.trial_ends_at
+    );
+  }
+}
   async function loadAll() {
     const { data: batchData } = await supabase
       .from("batches")
@@ -403,6 +434,9 @@ const executiveRiskIndex = useMemo(() => {
 
   return (
     <AppShell>
+	<TrialBanner
+  trialEndsAt={trialEndsAt}
+/>
       {message ? (
         <div
           style={{
