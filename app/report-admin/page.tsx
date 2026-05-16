@@ -1,6 +1,8 @@
 "use client";
 
 import { CSSProperties, useEffect, useMemo, useState } from "react";
+import PremiumGate from "@/components/PremiumGate";
+import { canAccessPremiumFeatures } from "@/lib/subscription";
 import {
   ResponsiveContainer,
   BarChart,
@@ -110,11 +112,48 @@ export default function ReportAdminPage() {
   const [loadingSubscriptions, setLoadingSubscriptions] = useState(false);
   const [message, setMessage] = useState("");
   const [runningDaily, setRunningDaily] = useState(false);
+  const [premiumAllowed, setPremiumAllowed] =
+  useState(true);
+
+const [subscriptionLoaded, setSubscriptionLoaded] =
+  useState(false);
   const [runningWeekly, setRunningWeekly] = useState(false);
   const [retryingFailed, setRetryingFailed] = useState(false);
   const [cleaningFailed, setCleaningFailed] = useState(false);
   const [togglingSubscriptionId, setTogglingSubscriptionId] = useState<string | null>(null);
+async function loadSubscriptionStatus() {
+  try {
+    const response = await fetch(
+      "/api/fleet/vehicles",
+      {
+        cache: "no-store",
+      }
+    );
 
+    if (!response.ok) {
+      setPremiumAllowed(false);
+      setSubscriptionLoaded(true);
+      return;
+    }
+
+    const result = await response.json();
+
+    const subscription =
+      result.subscription;
+
+    const allowed =
+      canAccessPremiumFeatures(
+        subscription?.subscription_status,
+        subscription?.trial_ends_at
+      );
+
+    setPremiumAllowed(allowed);
+  } catch {
+    setPremiumAllowed(false);
+  } finally {
+    setSubscriptionLoaded(true);
+  }
+}
   async function loadLogs() {
     setLoading(true);
 
@@ -155,6 +194,7 @@ export default function ReportAdminPage() {
   }
 
   useEffect(() => {
+	  loadSubscriptionStatus();
     loadLogs();
     loadSubscriptions();
 
@@ -443,8 +483,22 @@ export default function ReportAdminPage() {
     [failedRecipients]
   );
 
+  if (
+  subscriptionLoaded &&
+  !premiumAllowed
+) {
   return (
     <AppShell>
+      <PremiumGate
+        title="Executive Reporting Suite"
+        description="Automated intelligence reports, operational analytics, scheduled executive summaries, and enterprise reporting controls require HarborGuard Professional."
+      />
+    </AppShell>
+  );
+}
+
+return (
+  <AppShell>
       <RoleGuard allowedRoles={["admin", "manager"]}>
         {message ? (
           <div
