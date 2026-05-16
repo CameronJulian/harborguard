@@ -90,27 +90,101 @@ export default function Home() {
   }, [router]);
 
   async function handleSignUp(e: FormEvent) {
-    e.preventDefault();
-    setMessage("");
+  e.preventDefault();
 
-    const { data, error } = await supabase.auth.signUp({
+  setMessage("");
+
+  const { data, error } =
+    await supabase.auth.signUp({
       email,
       password,
     });
 
-    if (error) {
-      setMessage(`Sign up failed: ${error.message}`);
-      return;
-    }
+  if (error) {
+    setMessage(
+      `Sign up failed: ${error.message}`
+    );
 
-    if (data.session) {
-      saveSessionCookies(data.session);
-      router.replace(getRedirectPath());
-      return;
-    }
-
-    setMessage("Sign up successful. Check your email if confirmation is enabled.");
+    return;
   }
+
+  const user = data.user;
+
+  if (!user) {
+    setMessage("User creation failed.");
+
+    return;
+  }
+
+  const trialEndsAt = new Date(
+    Date.now() +
+      14 * 24 * 60 * 60 * 1000
+  ).toISOString();
+
+  const { data: organization, error: orgError } =
+    await supabase
+      .from("organizations")
+      .insert({
+        name:
+          email.split("@")[0] +
+          "'s Organization",
+
+        subscription_status:
+          "trialing",
+
+        subscription_plan:
+          "starter",
+
+        trial_ends_at:
+          trialEndsAt,
+      })
+      .select()
+      .single();
+
+  if (orgError || !organization) {
+    setMessage(
+      `Organization creation failed: ${
+        orgError?.message ||
+        "Unknown error"
+      }`
+    );
+
+    return;
+  }
+
+  const { error: profileError } =
+    await supabase
+      .from("profiles")
+      .insert({
+        id: user.id,
+        email: user.email,
+        role: "admin",
+        organization_id:
+          organization.id,
+      });
+
+  if (profileError) {
+    setMessage(
+      `Profile creation failed: ${profileError.message}`
+    );
+
+    return;
+  }
+
+  if (data.session) {
+    saveSessionCookies(data.session);
+
+    router.replace(
+      getRedirectPath()
+    );
+
+    return;
+  }
+
+  setMessage(
+    "Sign up successful. Check your email if confirmation is enabled."
+  );
+}
 
   async function handleSignIn(e: FormEvent) {
     e.preventDefault();
