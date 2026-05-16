@@ -4,6 +4,11 @@ import { CSSProperties, FormEvent, useEffect, useMemo, useState } from "react";
 import TrialBanner from "@/components/TrialBanner";
 import { requireOrganization } from "@/lib/server-auth";
 import {
+  demoVehicles,
+  demoAlerts,
+  demoMetrics,
+} from "@/lib/demo-data";
+import {
   LineChart,
   Line,
   XAxis,
@@ -549,7 +554,139 @@ const executiveRiskIndex = useMemo(() => {
   </div>
 
   <div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: 20,
+    marginBottom: 32,
+  }}
+>
+  {[
+    {
+      label: "Active Vehicles",
+      value: demoMetrics.activeVehicles,
+    },
+    {
+      label: "Active Trips",
+      value: demoMetrics.activeTrips,
+    },
+    {
+      label: "Incidents Today",
+      value: demoMetrics.incidentsToday,
+    },
+    {
+      label: "AI Threat Score",
+      value: `${demoMetrics.aiThreatScore}%`,
+    },
+  ].map((metric) => (
+    <div
+      key={metric.label}
+      style={{
+        background: "#fff",
+        borderRadius: 24,
+        padding: 24,
+        border: "1px solid #e2e8f0",
+      }}
+    >
+      <div
+        style={{
+          color: "#64748b",
+          marginBottom: 10,
+          fontSize: 14,
+        }}
+      >
+        {metric.label}
+      </div>
+
+      <div
+        style={{
+          fontSize: 40,
+          fontWeight: 900,
+        }}
+      >
+        {metric.value}
+      </div>
+    </div>
+  ))}
+</div>
+<div
+  style={{
+    background: "#fff",
+    borderRadius: 24,
+    padding: 24,
+    border: "1px solid #e2e8f0",
+    marginBottom: 32,
+  }}
+>
+  <h2
     style={{
+      marginTop: 0,
+      marginBottom: 20,
+      fontSize: 28,
+    }}
+  >
+    Live Fleet Activity
+  </h2>
+
+  <div style={{ display: "grid", gap: 16 }}>
+    {demoVehicles.map((vehicle) => (
+      <div
+        key={vehicle.id}
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: 18,
+          borderRadius: 18,
+          background: "#f8fafc",
+        }}
+      >
+        <div>
+          <div style={{ fontWeight: 800 }}>
+            {vehicle.name}
+          </div>
+
+          <div
+            style={{
+              color: "#64748b",
+              marginTop: 4,
+            }}
+          >
+            {vehicle.location}
+          </div>
+        </div>
+
+        <div
+          style={{
+            textAlign: "right",
+          }}
+        >
+          <div style={{ fontWeight: 700 }}>
+            {vehicle.speed} km/h
+          </div>
+
+          <div
+            style={{
+              marginTop: 4,
+              color:
+                vehicle.risk === "high"
+                  ? "#dc2626"
+                  : vehicle.risk === "medium"
+                  ? "#ca8a04"
+                  : "#16a34a",
+              fontWeight: 700,
+            }}
+          >
+            {vehicle.risk.toUpperCase()} RISK
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+</div>
+
+<div
+  style={{
       display: "grid",
       gridTemplateColumns:
         isMobile
@@ -659,7 +796,71 @@ const executiveRiskIndex = useMemo(() => {
           </div>
         ))}
       </div>
+<div
+  style={{
+    background: "#fff",
+    borderRadius: 24,
+    padding: 24,
+    border: "1px solid #e2e8f0",
+  }}
+>
+  <h2
+    style={{
+      marginTop: 0,
+      marginBottom: 20,
+      fontSize: 28,
+    }}
+  >
+    AI Threat Alerts
+  </h2>
 
+  <div style={{ display: "grid", gap: 16 }}>
+    {demoAlerts.map((alert) => (
+      <div
+        key={alert.id}
+        style={{
+          borderRadius: 18,
+          padding: 18,
+          background:
+            alert.severity === "critical"
+              ? "#fef2f2"
+              : alert.severity === "high"
+              ? "#fff7ed"
+              : "#eff6ff",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+          }}
+        >
+          <div style={{ fontWeight: 800 }}>
+            {alert.title}
+          </div>
+
+          <div
+            style={{
+              fontWeight: 700,
+              textTransform: "uppercase",
+            }}
+          >
+            {alert.severity}
+          </div>
+        </div>
+
+        <div
+          style={{
+            marginTop: 8,
+            color: "#64748b",
+          }}
+        >
+          {alert.vehicle} • {alert.time}
+        </div>
+      </div>
+    ))}
+  </div>
+</div>
       <div
         style={{
           display: "grid",
