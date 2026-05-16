@@ -39,6 +39,7 @@ export default function Sidebar({
 
   function navStyle(href: string): CSSProperties {
     const active = pathname === href;
+
     return {
       display: "block",
       width: "100%",
@@ -80,6 +81,10 @@ export default function Sidebar({
           Dashboard
         </Link>
 
+        <Link href="/billing" style={navStyle("/billing")} onClick={onNavigate}>
+          Billing
+        </Link>
+
         <Link href="/analytics" style={navStyle("/analytics")} onClick={onNavigate}>
           Analytics
         </Link>
@@ -100,13 +105,9 @@ export default function Sidebar({
           Geofence Management
         </Link>
 
-        <Link
-  href="/fleet/vehicles"
-  style={navStyle("/fleet/vehicles")}
-  onClick={onNavigate}
->
-  Vehicles
-</Link>
+        <Link href="/fleet/vehicles" style={navStyle("/fleet/vehicles")} onClick={onNavigate}>
+          Vehicles
+        </Link>
 
         <Link href="/trips" style={navStyle("/trips")} onClick={onNavigate}>
           Trips
@@ -115,39 +116,26 @@ export default function Sidebar({
         <Link href="/vehicle-alerts" style={navStyle("/vehicle-alerts")} onClick={onNavigate}>
           Vehicle Alerts
         </Link>
-		
-		
-		<Link href="/risk-dashboard" style={navStyle("/risk-dashboard")} onClick={onNavigate}>
-  Risk Dashboard
-</Link>
 
-<Link href="/command-center" style={navStyle("/command-center")} onClick={onNavigate}>
-  Command Center
-</Link>
+        <Link href="/risk-dashboard" style={navStyle("/risk-dashboard")} onClick={onNavigate}>
+          Risk Dashboard
+        </Link>
+
+        <Link href="/command-center" style={navStyle("/command-center")} onClick={onNavigate}>
+          Command Center
+        </Link>
 
         {canManageReports && (
           <>
-            <Link
-              href="/report-settings"
-              style={navStyle("/report-settings")}
-              onClick={onNavigate}
-            >
+            <Link href="/report-settings" style={navStyle("/report-settings")} onClick={onNavigate}>
               Report Settings
             </Link>
 
-            <Link
-              href="/report-history"
-              style={navStyle("/report-history")}
-              onClick={onNavigate}
-            >
+            <Link href="/report-history" style={navStyle("/report-history")} onClick={onNavigate}>
               Reports History
             </Link>
 
-            <Link
-              href="/report-admin"
-              style={navStyle("/report-admin")}
-              onClick={onNavigate}
-            >
+            <Link href="/report-admin" style={navStyle("/report-admin")} onClick={onNavigate}>
               Report Admin
             </Link>
           </>
