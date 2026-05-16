@@ -1,49 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { requireOrganization } from "@/lib/server-auth";
+import { requirePremiumAccess } from "@/lib/require-premium";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
-function getAccessToken(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
-  const cookieHeader = request.headers.get("cookie") || "";
 
-  const cookieToken = cookieHeader
-    .split(";")
-    .map((cookie) => cookie.trim())
-    .find((cookie) => cookie.startsWith("sb-access-token="))
-    ?.replace("sb-access-token=", "");
 
-  return (
-    authHeader?.replace("Bearer ", "") ||
-    (cookieToken ? decodeURIComponent(cookieToken) : undefined)
-  );
-}
 
-async function getOrganizationId(accessToken: string) {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser(accessToken);
 
-  if (userError || !user) {
-    throw new Error("Unauthorized");
-  }
-
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("organization_id")
-    .eq("id", user.id)
-    .single();
-
-  if (error || !data?.organization_id) {
-    throw new Error("Organization not found.");
-  }
-
-  return data.organization_id;
-}
 
 function calculateThreatProbability(params: {
   speed: number;
@@ -101,16 +64,25 @@ function getDistanceMeters(
 
 export async function GET(request: NextRequest) {
   try {
-    const accessToken = getAccessToken(request);
+    const {
+  supabase,
+  organizationId,
+} = await requireOrganization();
 
-    if (!accessToken) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+const premium =
+  await requirePremiumAccess(
+    organizationId
+  );
 
-    const organizationId = await getOrganizationId(accessToken);
+if (!premium.allowed) {
+  return NextResponse.json(
+    {
+      error:
+        "Professional subscription required for predictive AI.",
+    },
+    { status: 403 }
+  );
+}
 
     const { data: vehicles, error: vehiclesError } = await supabase
       .from("vehicles")
