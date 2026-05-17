@@ -1,7 +1,6 @@
 "use client";
 import PremiumGate from "@/components/PremiumGate";
-import { requireOrganization } from "@/lib/server-auth";
-import { canAccessPremiumFeatures } from "@/lib/subscription";
+
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import {
   LineChart,
@@ -109,7 +108,18 @@ function formatDisplayDate(dateString: string | null) {
   if (!dateString) return "-";
   return new Date(dateString).toLocaleString();
 }
+function canAccessPremiumFeatures(
+  status?: string | null,
+  trialEndsAt?: string | null
+) {
+  if (status === "active") return true;
 
+  if (status === "trialing" && trialEndsAt) {
+    return new Date(trialEndsAt) > new Date();
+  }
+
+  return false;
+}
 export default function AnalyticsPage() {
 	const organization = {
   subscription_status: "trialing",
