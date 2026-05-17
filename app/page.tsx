@@ -156,12 +156,14 @@ export default function Home() {
     await supabase
       .from("profiles")
       .insert({
-        id: user.id,
-        email: user.email,
-        role: "manager",
-        organization_id:
-          organization.id,
-      });
+  id: user.id,
+  email: user.email,
+  full_name:
+    email.split("@")[0],
+  role: "manager",
+  organization_id:
+    organization.id,
+});
 
   if (profileError) {
     setMessage(
