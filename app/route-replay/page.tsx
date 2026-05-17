@@ -1,7 +1,7 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
-
+import { canAccessPremiumFeatures } from "@/lib/subscription";
 import dynamic from "next/dynamic";
 import PremiumGate from "@/components/PremiumGate";
 
@@ -41,18 +41,7 @@ const Polyline = dynamic(
   () => import("react-leaflet").then((mod) => mod.Polyline),
   { ssr: false }
 );
-function canAccessPremiumFeatures(
-  status?: string | null,
-  trialEndsAt?: string | null
-) {
-  if (status === "active") return true;
 
-  if (status === "trialing" && trialEndsAt) {
-    return new Date(trialEndsAt) > new Date();
-  }
-
-  return false;
-}
 
 type FleetVehicle = {
   id: string;
