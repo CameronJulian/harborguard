@@ -1,5 +1,7 @@
 "use client";
-
+import PremiumGate from "@/components/PremiumGate";
+import { requireOrganization } from "@/lib/server-auth";
+import { canAccessPremiumFeatures } from "@/lib/subscription";
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import {
   LineChart,
@@ -109,6 +111,36 @@ function formatDisplayDate(dateString: string | null) {
 }
 
 export default function AnalyticsPage() {
+	const organization = {
+  subscription_status: "trialing",
+  subscription_plan: "starter",
+  trial_ends_at: new Date(
+    Date.now() + 7 * 24 * 60 * 60 * 1000
+  ).toISOString(),
+};
+
+const hasPremiumAccess =
+  canAccessPremiumFeatures(
+    organization.subscription_status,
+    organization.trial_ends_at
+  );
+
+if (!hasPremiumAccess) {
+  return (
+    <AppShell>
+      <PremiumGate
+        title="Advanced Analytics"
+        description="Upgrade to HarborGuard Professional to unlock executive analytics, vessel intelligence, reporting exports, and operational insights."
+        currentPlan={
+          organization.subscription_plan
+        }
+        trialEndsAt={
+          organization.trial_ends_at
+        }
+      />
+    </AppShell>
+  );
+}
   const [isMobile, setIsMobile] = useState(false);
   const [batches, setBatches] = useState<BatchRow[]>([]);
   const [incidents, setIncidents] = useState<IncidentRow[]>([]);
