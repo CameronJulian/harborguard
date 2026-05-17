@@ -41,9 +41,12 @@ export async function requireOrganization() {
         role,
         organization_id,
         organization:organizations (
-          id,
-          name
-        )
+  id,
+  name,
+  subscription_status,
+  subscription_plan,
+  trial_ends_at
+)
       `)
       .eq("id", user.id)
       .single();
