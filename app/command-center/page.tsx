@@ -1,7 +1,8 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
-
+import PremiumGate from "@/components/PremiumGate";
+import { canAccessPremiumFeatures } from "@/lib/subscription";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import {
@@ -345,6 +346,34 @@ async function createVehicleIcon(
 }
 
 export default function CommandCenterPage() {
+	const organization = {
+  subscription_status: "trialing",
+  subscription_plan: "starter",
+  trial_ends_at: new Date(
+    Date.now() + 7 * 24 * 60 * 60 * 1000
+  ).toISOString(),
+};
+
+const hasPremiumAccess =
+  canAccessPremiumFeatures(
+    organization.subscription_status,
+    organization.trial_ends_at
+  );
+
+if (!hasPremiumAccess) {
+  return (
+    <PremiumGate
+      title="Command Center"
+      description="Upgrade to HarborGuard Professional to unlock the live operational command center, AI fleet monitoring, and realtime incident coordination."
+      currentPlan={
+        organization.subscription_plan
+      }
+      trialEndsAt={
+        organization.trial_ends_at
+      }
+    />
+  );
+}
   const [fleet, setFleet] = useState<FleetVehicle[]>([]);
   const [incidents, setIncidents] = useState<RoadIncident[]>([]);
   const [threatFeed, setThreatFeed] = useState<any[]>([]);
