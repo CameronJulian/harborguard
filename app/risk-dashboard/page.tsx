@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import PremiumGate from "@/components/PremiumGate";
+
+import { canAccessPremiumFeatures } from "@/lib/subscription";
 import AppShell from "@/components/AppShell";
 
 
@@ -58,18 +60,7 @@ const cardStyle: CSSProperties = {
   boxShadow: "0 12px 32px rgba(15, 23, 42, 0.08)",
   border: "1px solid #e5e7eb",
 };
-function canAccessPremiumFeatures(
-  status?: string | null,
-  trialEndsAt?: string | null
-) {
-  if (status === "active") return true;
 
-  if (status === "trialing" && trialEndsAt) {
-    return new Date(trialEndsAt) > new Date();
-  }
-
-  return false;
-}
 
 function formatDateTime(value?: string | null) {
   if (!value) return "-";
@@ -178,6 +169,34 @@ function calculateDriverScore(vehicle: FleetVehicle): DriverScore {
 }
 
 export default function RiskDashboardPage() {
+	const organization = {
+  subscription_status: "trialing",
+  subscription_plan: "starter",
+  trial_ends_at: new Date(
+    Date.now() + 7 * 24 * 60 * 60 * 1000
+  ).toISOString(),
+};
+
+const hasPremiumAccess =
+  canAccessPremiumFeatures(
+    organization.subscription_status,
+    organization.trial_ends_at
+  );
+
+if (!hasPremiumAccess) {
+  return (
+    <PremiumGate
+      title="Risk Intelligence Dashboard"
+      description="Upgrade to HarborGuard Professional to unlock AI-powered operational risk intelligence, predictive threat analysis, and fleet anomaly detection."
+      currentPlan={
+        organization.subscription_plan
+      }
+      trialEndsAt={
+        organization.trial_ends_at
+      }
+    />
+  );
+}
   const [fleet, setFleet] = useState<FleetVehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
