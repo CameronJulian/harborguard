@@ -1,12 +1,32 @@
 type Props = {
   title?: string;
   description?: string;
+  currentPlan?: string | null;
+  trialEndsAt?: string | null;
 };
+
+function getDaysRemaining(trialEndsAt?: string | null) {
+  if (!trialEndsAt) return null;
+
+  const diff =
+    new Date(trialEndsAt).getTime() - Date.now();
+
+  const days = Math.ceil(
+    diff / (1000 * 60 * 60 * 24)
+  );
+
+  return days > 0 ? days : 0;
+}
 
 export default function PremiumGate({
   title = "Professional Feature",
   description = "Upgrade to HarborGuard Professional to access this feature.",
+  currentPlan,
+  trialEndsAt,
 }: Props) {
+  const daysRemaining =
+    getDaysRemaining(trialEndsAt);
+
   return (
     <div
       className="
@@ -30,6 +50,36 @@ export default function PremiumGate({
         {description}
       </p>
 
+      {currentPlan && (
+        <div
+          className="
+            mb-4
+            text-sm
+            font-medium
+            text-gray-600
+          "
+        >
+          Current Plan:{" "}
+          <span className="font-bold capitalize">
+            {currentPlan}
+          </span>
+        </div>
+      )}
+
+      {daysRemaining !== null && (
+        <div
+          className="
+            mb-6
+            text-sm
+            text-orange-700
+            font-semibold
+          "
+        >
+          Trial ends in {daysRemaining} day
+          {daysRemaining === 1 ? "" : "s"}
+        </div>
+      )}
+
       <a
         href="/billing"
         className="
@@ -40,6 +90,8 @@ export default function PremiumGate({
           py-3
           text-white
           font-semibold
+          hover:opacity-90
+          transition
         "
       >
         Upgrade to Professional
