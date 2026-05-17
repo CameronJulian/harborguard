@@ -60,20 +60,23 @@ export default function InstallPrompt() {
   return (
     <div
       style={{
+        
+        
+       
         position: "fixed",
-        left: 16,
-        right: 16,
-        bottom: 16,
-        zIndex: 9999,
-        background: "#0f172a",
-        color: "#fff",
-        borderRadius: 18,
-        padding: 16,
-        boxShadow: "0 20px 40px rgba(15,23,42,0.35)",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        gap: 14,
+right: 24,
+bottom: 24,
+zIndex: 9999,
+maxWidth: 420,
+background: "#0f172a",
+color: "#fff",
+borderRadius: 18,
+padding: 16,
+boxShadow: "0 20px 40px rgba(15,23,42,0.35)",
+display: "flex",
+justifyContent: "space-between",
+alignItems: "center",
+gap: 14,
       }}
     >
       <div>
