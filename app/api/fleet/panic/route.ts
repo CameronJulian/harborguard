@@ -1,10 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { requireOrganization } from "@/lib/server-auth";
 
 type PanicBody = {
   vehicleId?: string;
@@ -18,6 +13,8 @@ function getBaseUrl(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const { supabase, organizationId } = await requireOrganization();
+
     const body = (await req.json()) as PanicBody;
 
     const vehicleId = String(body.vehicleId || "").trim();
@@ -37,6 +34,7 @@ export async function POST(req: Request) {
       .from("vehicles")
       .select("id, nickname, registration_number")
       .eq("id", vehicleId)
+      .eq("organization_id", organizationId)
       .maybeSingle();
 
     if (vehicleError || !vehicle) {
@@ -50,6 +48,7 @@ export async function POST(req: Request) {
       .from("vehicle_locations")
       .select("latitude, longitude, recorded_at")
       .eq("vehicle_id", vehicleId)
+      .eq("organization_id", organizationId)
       .order("recorded_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -58,6 +57,7 @@ export async function POST(req: Request) {
       .from("vehicle_trips")
       .select("id, status")
       .eq("vehicle_id", vehicleId)
+      .eq("organization_id", organizationId)
       .in("status", [
         "scheduled",
         "en_route_to_port",
@@ -80,53 +80,61 @@ export async function POST(req: Request) {
         severity: "critical",
         message: panicMessage,
         is_resolved: false,
+        organization_id: organizationId,
       })
       .select()
       .single();
 
     if (alertError) {
-      return NextResponse.json(
-        { error: alertError.message },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: alertError.message }, { status: 500 });
     }
 
     if (activeTrip && activeTrip.status !== "emergency") {
       await supabase
         .from("vehicle_trips")
         .update({ status: "emergency" })
-        .eq("id", activeTrip.id);
+        .eq("id", activeTrip.id)
+        .eq("organization_id", organizationId);
     }
 
-    let notificationResult: any = null;
+    let notificationResult: unknown = null;
     let notificationError: string | null = null;
 
     try {
-      const notifyResponse = await fetch(`${getBaseUrl(req)}/api/fleet/notify-alert`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          vehicleNickname: vehicle.nickname,
-          registrationNumber: vehicle.registration_number,
-          alertType: "panic",
-          severity: "critical",
-          message: panicMessage,
-          lastLatitude: latestLocation?.latitude ?? null,
-          lastLongitude: latestLocation?.longitude ?? null,
-        }),
-      });
+      const notifyResponse = await fetch(
+        `${getBaseUrl(req)}/api/fleet/notify-alert`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            vehicleNickname: vehicle.nickname,
+            registrationNumber: vehicle.registration_number,
+            alertType: "panic",
+            severity: "critical",
+            message: panicMessage,
+            lastLatitude: latestLocation?.latitude ?? null,
+            lastLongitude: latestLocation?.longitude ?? null,
+          }),
+        }
+      );
 
       notificationResult = await notifyResponse.json().catch(() => null);
 
       if (!notifyResponse.ok) {
         notificationError =
-          notificationResult?.error || "Panic alert created, but notification failed.";
+          typeof notificationResult === "object" &&
+          notificationResult !== null &&
+          "error" in notificationResult
+            ? String(notificationResult.error)
+            : "Panic alert created, but notification failed.";
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       notificationError =
-        err.message || "Panic alert created, but notification failed.";
+        err instanceof Error
+          ? err.message
+          : "Panic alert created, but notification failed.";
     }
 
     return NextResponse.json({
@@ -145,10 +153,10 @@ export async function POST(req: Request) {
         error: notificationError,
       },
     });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message || "Failed to create panic alert." },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : "Failed to create panic alert.";
+
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
