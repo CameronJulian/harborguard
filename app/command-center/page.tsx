@@ -2,7 +2,7 @@
 
 import "leaflet/dist/leaflet.css";
 import PremiumGate from "@/components/PremiumGate";
-import { canAccessPremiumFeatures } from "@/lib/subscription";
+
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import {
@@ -102,6 +102,18 @@ const buttonStyle: CSSProperties = {
   fontWeight: 800,
   cursor: "pointer",
 };
+function canAccessPremiumFeatures(
+  status?: string | null,
+  trialEndsAt?: string | null
+) {
+  if (status === "active") return true;
+
+  if (status === "trialing" && trialEndsAt) {
+    return new Date(trialEndsAt) > new Date();
+  }
+
+  return false;
+}
 
 function toNumber(value: unknown) {
   if (typeof value === "number") return value;

@@ -1,7 +1,7 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
-import { canAccessPremiumFeatures } from "@/lib/subscription";
+
 import dynamic from "next/dynamic";
 import PremiumGate from "@/components/PremiumGate";
 
@@ -130,6 +130,19 @@ const secondaryButtonStyle: CSSProperties = {
   cursor: "pointer",
   padding: "12px 16px",
 };
+
+function canAccessPremiumFeatures(
+  status?: string | null,
+  trialEndsAt?: string | null
+) {
+  if (status === "active") return true;
+
+  if (status === "trialing" && trialEndsAt) {
+    return new Date(trialEndsAt) > new Date();
+  }
+
+  return false;
+}
 
 function formatDateTime(value: string | null) {
   if (!value) return "-";
