@@ -5,10 +5,8 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function getOrganizationSubscription(
-  organizationId: string
-) {
-  const { data } = await supabase
+export async function getOrganizationSubscription(organizationId: string) {
+  const { data, error } = await supabase
     .from("organizations")
     .select(`
       subscription_status,
@@ -18,6 +16,10 @@ export async function getOrganizationSubscription(
     `)
     .eq("id", organizationId)
     .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
 
   return data;
 }
@@ -29,7 +31,7 @@ export function canAccessPremiumFeatures(
   if (status === "active") return true;
 
   if (status === "trialing" && trialEndsAt) {
-    return new Date(trialEndsAt) > new Date();
+    return new Date(trialEndsAt).getTime() > Date.now();
   }
 
   return false;
