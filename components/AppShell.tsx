@@ -126,12 +126,20 @@ export default function AppShell({ children }: Props) {
     if (isMobile) setSidebarOpen(false);
   }, [pathname, isMobile]);
 
-  async function handleSignOut() {
-    await supabase.auth.signOut();
-    setSession(null);
-    setRole(null);
-    router.replace("/");
-  }
+ async function handleSignOut() {
+  await supabase.auth.signOut();
+
+  document.cookie =
+    "sb-access-token=; path=/; max-age=0";
+
+  document.cookie =
+    "sb-refresh-token=; path=/; max-age=0";
+
+  setSession(null);
+  setRole(null);
+
+  window.location.href = "/";
+}
 
   // ✅ FIXED: no padding conflict anymore
   if (checking || !session) {

@@ -21,13 +21,10 @@ const protectedRoutes = [
 ];
 
 function hasAuthSession(request: NextRequest) {
-  return request.cookies.getAll().some((cookie) => {
-    return (
-      cookie.name === "sb-access-token" ||
-      cookie.name.includes("auth-token") ||
-      cookie.name.startsWith("sb-")
-    );
-  });
+  const token =
+    request.cookies.get("sb-access-token")?.value;
+
+  return Boolean(token);
 }
 
 export function proxy(request: NextRequest) {
