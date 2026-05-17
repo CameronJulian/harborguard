@@ -1,10 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { requireOrganization } from "@/lib/server-auth";
 
 type StartTripBody = {
   vehicleId?: string;
@@ -18,6 +13,8 @@ type StartTripBody = {
 
 export async function POST(req: Request) {
   try {
+    const { supabase, organizationId } = await requireOrganization();
+
     const body = (await req.json()) as StartTripBody;
 
     const vehicleId = body.vehicleId;
@@ -35,6 +32,7 @@ export async function POST(req: Request) {
       .from("vehicles")
       .select("id, driver_id")
       .eq("id", vehicleId)
+      .eq("organization_id", organizationId)
       .single();
 
     if (vehicleError || !vehicle) {
@@ -78,15 +76,13 @@ export async function POST(req: Request) {
         status: "scheduled",
         expected_route: expectedRoute,
         deviation_threshold_km: 3,
+        organization_id: organizationId,
       })
       .select()
       .single();
 
     if (tripError) {
-      return NextResponse.json(
-        { error: tripError.message },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: tripError.message }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -94,10 +90,10 @@ export async function POST(req: Request) {
       message: "Trip started successfully.",
       trip,
     });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message || "Failed to start trip." },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : "Failed to start trip.";
+
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
