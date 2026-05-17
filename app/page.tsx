@@ -158,7 +158,7 @@ export default function Home() {
       .insert({
         id: user.id,
         email: user.email,
-        role: "admin",
+        role: "manager",
         organization_id:
           organization.id,
       });
