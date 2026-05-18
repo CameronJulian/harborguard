@@ -2,7 +2,7 @@
 
 import { CSSProperties, FormEvent, useEffect, useMemo, useState } from "react";
 import TrialBanner from "@/components/TrialBanner";
-import { requireOrganization } from "@/lib/server-auth";
+
 import {
   demoVehicles,
   demoAlerts,
@@ -179,6 +179,16 @@ async function loadSubscription() {
     );
   }
 }
+
+const trialDaysRemaining = trialEndsAt
+  ? Math.max(
+      0,
+      Math.ceil(
+        (new Date(trialEndsAt).getTime() - Date.now()) /
+          (1000 * 60 * 60 * 24)
+      )
+    )
+  : null;
   async function loadAll() {
     const { data: batchData } = await supabase
       .from("batches")
