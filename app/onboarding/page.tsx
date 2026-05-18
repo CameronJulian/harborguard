@@ -1,4 +1,5 @@
 "use client";
+
 import { supabase } from "@/lib/supabase";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -6,55 +7,73 @@ import { useRouter } from "next/navigation";
 export default function OnboardingPage() {
   const router = useRouter();
 
-  const [organizationName, setOrganizationName] =
-    useState("");
+  const [organizationName, setOrganizationName] = useState("");
+  const [fleetSize, setFleetSize] = useState("");
+  const [vehicleName, setVehicleName] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const [fleetSize, setFleetSize] =
-    useState("");
+  async function completeSetup() {
+    try {
+      setSaving(true);
 
-  const [vehicleName, setVehicleName] =
-    useState("");
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
- async function completeSetup() {
-  try {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+      if (!session?.user) {
+        alert("You are not logged in. Please sign in first.");
+        setSaving(false);
+        return;
+      }
 
-    if (!session?.user) {
-      alert("You are not logged in. Please sign in first.");
-      return;
-    }
+      if (!organizationName.trim()) {
+        alert("Please enter an organization name.");
+        setSaving(false);
+        return;
+      }
 
-    const { data: profile, error: profileError } =
-      await supabase
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("organization_id")
         .eq("id", session.user.id)
         .single();
 
-    if (profileError || !profile?.organization_id) {
-      alert("Could not find your organization.");
-      return;
+      if (profileError || !profile?.organization_id) {
+        alert("Could not find your organization.");
+        setSaving(false);
+        return;
+      }
+
+      const fleetSizeNumber =
+        Number(fleetSize.replace(/\D/g, "")) || 0;
+
+      const { error: orgError } = await supabase
+        .from("organizations")
+        .update({
+          name: organizationName.trim(),
+          fleet_size: fleetSizeNumber,
+          first_vehicle: vehicleName.trim() || null,
+          subscription_plan: "starter",
+          subscription_status: "trialing",
+          seats: 1,
+          trial_ends_at: new Date(
+            Date.now() + 14 * 24 * 60 * 60 * 1000
+          ).toISOString(),
+        })
+        .eq("id", profile.organization_id);
+
+      if (orgError) {
+        alert(`Organization update failed: ${orgError.message}`);
+        setSaving(false);
+        return;
+      }
+
+      router.push("/dashboard");
+    } catch (err: any) {
+      alert(err.message || "Setup failed.");
+      setSaving(false);
     }
-
-    const { error: orgError } = await supabase
-      .from("organizations")
-      .update({
-        name: organizationName,
-      })
-      .eq("id", profile.organization_id);
-
-    if (orgError) {
-      alert(`Organization update failed: ${orgError.message}`);
-      return;
-    }
-
-    router.push("/dashboard");
-  } catch (err: any) {
-    alert(err.message || "Setup failed.");
   }
-}
 
   return (
     <div
@@ -71,8 +90,7 @@ export default function OnboardingPage() {
           background: "#fff",
           padding: 40,
           borderRadius: 24,
-          boxShadow:
-            "0 20px 40px rgba(15,23,42,0.08)",
+          boxShadow: "0 20px 40px rgba(15,23,42,0.08)",
         }}
       >
         <h1
@@ -91,8 +109,7 @@ export default function OnboardingPage() {
             marginBottom: 40,
           }}
         >
-          Configure your fleet intelligence
-          workspace.
+          Configure your fleet intelligence workspace.
         </p>
 
         <div style={{ marginBottom: 24 }}>
@@ -100,11 +117,7 @@ export default function OnboardingPage() {
 
           <input
             value={organizationName}
-            onChange={(e) =>
-              setOrganizationName(
-                e.target.value
-              )
-            }
+            onChange={(e) => setOrganizationName(e.target.value)}
             style={{
               width: "100%",
               padding: 14,
@@ -120,9 +133,7 @@ export default function OnboardingPage() {
 
           <input
             value={fleetSize}
-            onChange={(e) =>
-              setFleetSize(e.target.value)
-            }
+            onChange={(e) => setFleetSize(e.target.value)}
             placeholder="Example: 25 vehicles"
             style={{
               width: "100%",
@@ -139,11 +150,7 @@ export default function OnboardingPage() {
 
           <input
             value={vehicleName}
-            onChange={(e) =>
-              setVehicleName(
-                e.target.value
-              )
-            }
+            onChange={(e) => setVehicleName(e.target.value)}
             placeholder="HG Vessel 01"
             style={{
               width: "100%",
@@ -157,19 +164,20 @@ export default function OnboardingPage() {
 
         <button
           onClick={completeSetup}
+          disabled={saving}
           style={{
-            background:
-              "linear-gradient(135deg,#2563eb,#06b6d4)",
+            background: "linear-gradient(135deg,#2563eb,#06b6d4)",
             color: "#fff",
             border: "none",
             padding: "16px 28px",
             borderRadius: 14,
             fontSize: 16,
             fontWeight: 700,
-            cursor: "pointer",
+            cursor: saving ? "not-allowed" : "pointer",
+            opacity: saving ? 0.7 : 1,
           }}
         >
-          Complete Setup
+          {saving ? "Saving..." : "Complete Setup"}
         </button>
       </div>
     </div>
