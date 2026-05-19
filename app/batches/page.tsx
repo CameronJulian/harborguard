@@ -64,10 +64,27 @@ export default function BatchesPage() {
   const [statusFilter, setStatusFilter] = useState("All");
 
   async function loadBatches() {
-    const { data } = await supabase
-      .from("batches")
-      .select("id, batch_code, vessel, species, catch_kg, dock_kg, storage_kg, status, created_at")
-      .order("created_at", { ascending: false });
+    const {
+  data: { session },
+} = await supabase.auth.getSession();
+
+if (!session?.user) return;
+
+const { data: profile } = await supabase
+  .from("profiles")
+  .select("organization_id")
+  .eq("id", session.user.id)
+  .single();
+
+if (!profile?.organization_id) return;
+
+const { data } = await supabase
+  .from("batches")
+  .select(
+    "id, batch_code, vessel, species, catch_kg, dock_kg, storage_kg, status, created_at"
+  )
+  .eq("organization_id", profile.organization_id)
+  .order("created_at", { ascending: false });
 
     setBatches((data as BatchRow[]) || []);
   }
