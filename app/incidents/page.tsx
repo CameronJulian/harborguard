@@ -72,10 +72,25 @@ export default function IncidentsPage() {
   const [statusFilter, setStatusFilter] = useState("All");
 
   async function loadIncidents() {
-    const { data } = await supabase
-      .from("incidents")
-      .select("id, incident_code, severity, status, summary, created_at")
-      .order("created_at", { ascending: false });
+   const {
+  data: { session },
+} = await supabase.auth.getSession();
+
+if (!session?.user) return;
+
+const { data: profile } = await supabase
+  .from("profiles")
+  .select("organization_id")
+  .eq("id", session.user.id)
+  .single();
+
+if (!profile?.organization_id) return;
+
+const { data } = await supabase
+  .from("incidents")
+  .select("id, incident_code, severity, status, summary, created_at")
+  .eq("organization_id", profile.organization_id)
+  .order("created_at", { ascending: false });
 
     setIncidents((data as IncidentRow[]) || []);
   }
