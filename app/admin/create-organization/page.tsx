@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import { supabase } from "@/lib/supabase";
@@ -14,25 +14,68 @@ export default function CreateOrganizationPage() {
   const [seats, setSeats] = useState("1");
   const [trialDays, setTrialDays] = useState("14");
   const [loading, setLoading] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
+
+  useEffect(() => {
+    checkAdminAccess();
+  }, []);
+
+  async function checkAdminAccess() {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.user) {
+      router.replace("/");
+      return;
+    }
+
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", session.user.id)
+      .single();
+
+    if (error || !profile?.role) {
+      router.replace("/dashboard");
+      return;
+    }
+
+    const allowedRoles = ["admin", "super_admin", "manager"];
+
+    if (!allowedRoles.includes(profile.role)) {
+      router.replace("/dashboard");
+      return;
+    }
+
+    setAuthorized(true);
+    setCheckingAccess(false);
+  }
 
   async function createOrganization() {
     try {
       setLoading(true);
 
-      const trialEndDate = new Date();
+      if (!name.trim()) {
+        alert("Please enter an organization name.");
+        setLoading(false);
+        return;
+      }
 
+      const trialEndDate = new Date();
       trialEndDate.setDate(
-        trialEndDate.getDate() + Number(trialDays)
+        trialEndDate.getDate() + Number(trialDays || 14)
       );
 
       const { error } = await supabase
         .from("organizations")
         .insert({
-          name,
-          fleet_size: Number(fleetSize),
+          name: name.trim(),
+          fleet_size: Number(fleetSize || 0),
           subscription_plan: plan,
           subscription_status: "trialing",
-          seats: Number(seats),
+          seats: Number(seats || 1),
           trial_ends_at: trialEndDate.toISOString(),
         });
 
@@ -43,14 +86,32 @@ export default function CreateOrganizationPage() {
       }
 
       alert("Organization created successfully.");
-
       router.push("/admin");
     } catch (err: any) {
       alert(err.message || "Failed to create organization.");
+      setLoading(false);
     }
-
-    setLoading(false);
   }
+
+  if (checkingAccess) {
+    return (
+      <AppShell>
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 24,
+            padding: 32,
+            boxShadow: "0 10px 30px rgba(15,23,42,0.08)",
+            border: "1px solid #e5e7eb",
+          }}
+        >
+          Checking admin access...
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (!authorized) return null;
 
   return (
     <AppShell>
@@ -111,21 +172,14 @@ export default function CreateOrganizationPage() {
             background: "#fff",
             borderRadius: 24,
             padding: 32,
-            boxShadow:
-              "0 10px 30px rgba(15,23,42,0.08)",
+            boxShadow: "0 10px 30px rgba(15,23,42,0.08)",
             border: "1px solid #e5e7eb",
             display: "grid",
             gap: 24,
           }}
         >
           <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: 8,
-                fontWeight: 700,
-              }}
-            >
+            <label style={labelStyle}>
               Organization Name
             </label>
 
@@ -138,34 +192,20 @@ export default function CreateOrganizationPage() {
           </div>
 
           <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: 8,
-                fontWeight: 700,
-              }}
-            >
+            <label style={labelStyle}>
               Fleet Size
             </label>
 
             <input
               value={fleetSize}
-              onChange={(e) =>
-                setFleetSize(e.target.value)
-              }
+              onChange={(e) => setFleetSize(e.target.value)}
               placeholder="25"
               style={inputStyle}
             />
           </div>
 
           <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: 8,
-                fontWeight: 700,
-              }}
-            >
+            <label style={labelStyle}>
               Subscription Plan
             </label>
 
@@ -174,28 +214,14 @@ export default function CreateOrganizationPage() {
               onChange={(e) => setPlan(e.target.value)}
               style={inputStyle}
             >
-              <option value="starter">
-                Starter
-              </option>
-
-              <option value="professional">
-                Professional
-              </option>
-
-              <option value="enterprise">
-                Enterprise
-              </option>
+              <option value="starter">Starter</option>
+              <option value="professional">Professional</option>
+              <option value="enterprise">Enterprise</option>
             </select>
           </div>
 
           <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: 8,
-                fontWeight: 700,
-              }}
-            >
+            <label style={labelStyle}>
               Seat Count
             </label>
 
@@ -208,21 +234,13 @@ export default function CreateOrganizationPage() {
           </div>
 
           <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: 8,
-                fontWeight: 700,
-              }}
-            >
+            <label style={labelStyle}>
               Trial Duration (Days)
             </label>
 
             <input
               value={trialDays}
-              onChange={(e) =>
-                setTrialDays(e.target.value)
-              }
+              onChange={(e) => setTrialDays(e.target.value)}
               placeholder="14"
               style={inputStyle}
             />
@@ -240,7 +258,8 @@ export default function CreateOrganizationPage() {
               color: "#fff",
               fontWeight: 800,
               fontSize: 16,
-              cursor: "pointer",
+              cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading ? 0.7 : 1,
             }}
           >
             {loading
@@ -252,6 +271,12 @@ export default function CreateOrganizationPage() {
     </AppShell>
   );
 }
+
+const labelStyle = {
+  display: "block",
+  marginBottom: 8,
+  fontWeight: 700,
+};
 
 const inputStyle = {
   width: "100%",
