@@ -18,12 +18,16 @@ const schema = z.object({
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { vessel, species, catchKg, dockKg, storageKg } = schema.parse(body);
+    const { vessel, species, catchKg, dockKg, storageKg } =
+      schema.parse(body);
 
     const authHeader = req.headers.get("authorization");
 
     if (!authHeader) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
     const token = authHeader.replace("Bearer ", "").trim();
@@ -34,18 +38,29 @@ export async function POST(req: Request) {
     } = await supabase.auth.getUser(token);
 
     if (userError || !user) {
-      return NextResponse.json({ error: "Invalid user" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Invalid user" },
+        { status: 401 }
+      );
     }
 
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("full_name, role")
-      .eq("id", user.id)
-      .single();
+    const { data: profile, error: profileError } =
+      await supabase
+        .from("profiles")
+        .select("full_name, role, organization_id")
+        .eq("id", user.id)
+        .single();
 
     if (profileError || !profile) {
       return NextResponse.json(
         { error: "User profile not found." },
+        { status: 403 }
+      );
+    }
+
+    if (!profile.organization_id) {
+      return NextResponse.json(
+        { error: "Organization not found." },
         { status: 403 }
       );
     }
@@ -58,7 +73,8 @@ export async function POST(req: Request) {
     }
 
     const loss = catchKg - storageKg;
-    const lossPercent = catchKg > 0 ? (loss / catchKg) * 100 : 0;
+    const lossPercent =
+      catchKg > 0 ? (loss / catchKg) * 100 : 0;
 
     let riskScore = 0;
 
@@ -70,48 +86,61 @@ export async function POST(req: Request) {
     if (storageKg < dockKg) riskScore += 10;
 
     const status =
-      riskScore > 70 ? "Flagged" :
-      riskScore > 30 ? "Review" :
-      "Normal";
+      riskScore > 70
+        ? "Flagged"
+        : riskScore > 30
+        ? "Review"
+        : "Normal";
 
     const riskLevel =
-      riskScore > 70 ? "High" :
-      riskScore > 30 ? "Medium" :
-      "Low";
+      riskScore > 70
+        ? "High"
+        : riskScore > 30
+        ? "Medium"
+        : "Low";
 
     const batchCode = `BAT-${Date.now()}`;
     const qrCode = `HG-${batchCode}`;
 
-    const handlerName = profile.full_name || user.email || "Unknown User";
+    const handlerName =
+      profile.full_name || user.email || "Unknown User";
+
     const handlerRole = profile.role || "manager";
 
-    const { error: batchError } = await supabase.from("batches").insert({
-      batch_code: batchCode,
-      vessel,
-      species,
-      catch_kg: catchKg,
-      dock_kg: dockKg,
-      storage_kg: storageKg,
-      handler_name: handlerName,
-      handler_role: handlerRole,
-      location: "Main Warehouse",
-      notes: `AI risk score: ${riskScore}`,
-      qr_code: qrCode,
-      status,
-      created_by: user.id,
-    });
+    const { error: batchError } =
+      await supabase.from("batches").insert({
+        organization_id: profile.organization_id,
+        batch_code: batchCode,
+        vessel,
+        species,
+        catch_kg: catchKg,
+        dock_kg: dockKg,
+        storage_kg: storageKg,
+        handler_name: handlerName,
+        handler_role: handlerRole,
+        location: "Main Warehouse",
+        notes: `AI risk score: ${riskScore}`,
+        qr_code: qrCode,
+        status,
+        created_by: user.id,
+      });
 
     if (batchError) {
-      return NextResponse.json({ error: batchError.message }, { status: 500 });
+      return NextResponse.json(
+        { error: batchError.message },
+        { status: 500 }
+      );
     }
 
     if (status === "Flagged") {
-      const { error: incidentError } = await supabase.from("incidents").insert({
-        incident_code: `INC-${Date.now()}`,
-        severity: "High",
-        status: "Open",
-        summary: `${loss}kg discrepancy detected for ${vessel} / ${species} (Risk Score: ${riskScore})`,
-      });
+      const { error: incidentError } =
+        await supabase.from("incidents").insert({
+          organization_id: profile.organization_id,
+          incident_code: `INC-${Date.now()}`,
+          severity: "High",
+          status: "Open",
+          summary: `${loss}kg discrepancy detected for ${vessel} / ${species} (Risk Score: ${riskScore})`,
+        });
 
       if (incidentError) {
         return NextResponse.json(
@@ -121,12 +150,13 @@ export async function POST(req: Request) {
       }
     }
 
-    const { error: auditError } = await supabase.from("audit_logs").insert({
-      actor_name: handlerName,
-      action: "Created batch",
-      batch_code: batchCode,
-      risk: riskLevel,
-    });
+    const { error: auditError } =
+      await supabase.from("audit_logs").insert({
+        actor_name: handlerName,
+        action: "Created batch",
+        batch_code: batchCode,
+        risk: riskLevel,
+      });
 
     if (auditError) {
       return NextResponse.json(
