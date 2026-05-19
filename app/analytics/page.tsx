@@ -199,15 +199,33 @@ if (!hasPremiumAccess) {
   }, []);
 
   async function loadAll() {
-    const { data: batchData } = await supabase
-      .from("batches")
-      .select("id, batch_code, vessel, species, catch_kg, dock_kg, storage_kg, status, created_at")
-      .order("created_at", { ascending: false });
+   const {
+  data: { session },
+} = await supabase.auth.getSession();
 
-    const { data: incidentData } = await supabase
-      .from("incidents")
-      .select("id, incident_code, severity, status, summary, created_at")
-      .order("created_at", { ascending: false });
+if (!session?.user) return;
+
+const { data: profile } = await supabase
+  .from("profiles")
+  .select("organization_id")
+  .eq("id", session.user.id)
+  .single();
+
+if (!profile?.organization_id) return;
+
+const { data: batchData } = await supabase
+  .from("batches")
+  .select(
+    "id, batch_code, vessel, species, catch_kg, dock_kg, storage_kg, status, created_at"
+  )
+  .eq("organization_id", profile.organization_id)
+  .order("created_at", { ascending: false });
+
+const { data: incidentData } = await supabase
+  .from("incidents")
+  .select("id, incident_code, severity, status, summary, created_at")
+  .eq("organization_id", profile.organization_id)
+  .order("created_at", { ascending: false });
 
     setBatches((batchData as BatchRow[]) || []);
     setIncidents((incidentData as IncidentRow[]) || []);
