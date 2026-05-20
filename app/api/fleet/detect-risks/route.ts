@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { requireOrganization } from "@/lib/server-auth";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+
+
 
 const OFFLINE_MINUTES = 15;
 const LONG_STOP_MINUTES = 20;
@@ -54,9 +52,14 @@ async function notifyAlert(params: {
   }
 }
 
-async function createIncident(alert: any) {
+async function createIncident(
+  supabase: any,
+  organizationId: string,
+  alert: any
+) {
   try {
     await supabase.from("incidents").insert({
+      organization_id: organizationId,
       vehicle_id: alert.vehicle_id,
       alert_id: alert.id,
       type: alert.alert_type,
@@ -69,23 +72,28 @@ async function createIncident(alert: any) {
   }
 }
 
-async function createAlert(params: {
+async function createAlert(
+  supabase: any,
+  organizationId: string,
+  params: {
   vehicleId: string;
   alertType: string;
   severity: string;
-  message: string;
-}) {
+    message: string;
+  }
+) {
   const { data: historicalAlerts } = await supabase
     .from("vehicle_alerts")
     .select("id, severity, created_at")
     .eq("vehicle_id", params.vehicleId)
+	.eq("organization_id", organizationId)
     .order("created_at", { ascending: false })
     .limit(20);
 
   const previousCount = historicalAlerts?.length || 0;
 
   const criticalCount =
-    historicalAlerts?.filter((a) => a.severity === "critical").length || 0;
+    historicalAlerts?.filter((a: any) => a.severity === "critical").length || 0;
 
   let threatScore = 0;
 
@@ -140,6 +148,7 @@ if (
       intelligence_score: threatScore,
       behavioral_risk: behavioralRisk,
       intelligence_narrative: intelligenceNarrative,
+	  organization_id: organizationId,
     })
     .select()
     .single();
@@ -149,16 +158,19 @@ if (
   }
 
   if (data.severity === "critical" || data.severity === "high") {
-    await createIncident(data);
+    await createIncident(supabase, organizationId, data);
   }
 
   return data;
 }
 export async function POST() {
   try {
+  const { supabase, organizationId } =
+    await requireOrganization();
     const { data: vehicles, error: vehiclesError } = await supabase
-      .from("vehicles")
-      .select("id, nickname, registration_number");
+  .from("vehicles")
+  .select("id, nickname, registration_number")
+  .eq("organization_id", organizationId);
 
     if (vehiclesError) {
       return NextResponse.json(
@@ -168,9 +180,10 @@ export async function POST() {
     }
 
     const { data: geofences, error: geofencesError } = await supabase
-      .from("geofences")
-      .select("*")
-      .eq("is_active", true);
+  .from("geofences")
+  .select("*")
+  .eq("organization_id", organizationId)
+  .eq("is_active", true);
 
     if (geofencesError) {
       return NextResponse.json(
@@ -291,7 +304,7 @@ if (
       " abnormal route deviation detected";
 
     const alert =
-      await createAlert({
+      await createAlert(supabase, organizationId, {
         vehicleId: vehicle.id,
         alertType:
           "route_anomaly",
@@ -331,7 +344,7 @@ if (
     " driver fatigue risk detected";
 
   const alert =
-    await createAlert({
+    await createAlert(supabase, organizationId, {
       vehicleId: vehicle.id,
       alertType: "driver_fatigue",
       severity:
@@ -372,7 +385,7 @@ if (
           Math.floor(minutes) +
           " minutes";
 
-        const alert = await createAlert({
+        const alert = await createAlert(supabase, organizationId, {
           vehicleId: vehicle.id,
           alertType: "offline",
           severity: "high",
@@ -403,7 +416,7 @@ if (
           String(vehicle.registration_number || "Unknown vehicle") +
           " stationary too long";
 
-        const alert = await createAlert({
+        const alert = await createAlert(supabase, organizationId, {
           vehicleId: vehicle.id,
           alertType: "long_stop",
           severity: "medium",
@@ -446,7 +459,7 @@ if (
           String(vehicle.registration_number || "Unknown vehicle") +
           " outside allowed zone";
 
-        const alert = await createAlert({
+        const alert = await createAlert(supabase, organizationId, {
           vehicleId: vehicle.id,
           alertType: "geofence_breach",
           severity: "critical",
