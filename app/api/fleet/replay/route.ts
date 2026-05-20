@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
-
+import { requirePremiumAccess } from "@/lib/require-premium";
 type ReplayPoint = {
   id: string;
   vehicle_id: string;
@@ -194,6 +194,14 @@ export async function GET(req: Request) {
       supabase,
       organizationId,
     } = await requireOrganization();
+	const premium = await requirePremiumAccess(organizationId);
+
+if (!premium.allowed) {
+  return NextResponse.json(
+    { error: "Professional subscription required for route replay." },
+    { status: 403 }
+  );
+}
 
     const url = new URL(req.url);
 
