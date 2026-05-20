@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { requireOrganization } from "@/lib/server-auth";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 const PAYFAST_URL =
   process.env.PAYFAST_SANDBOX === "true"
@@ -26,10 +31,7 @@ function generateSignature(data: Record<string, string>, passphrase?: string) {
 
 export async function POST(req: Request) {
   try {
-    const { organizationId, supabase } = await requireOrganization();
-
     const body = await req.json();
-
     const billingEmail = body.billingEmail;
 
     if (!billingEmail) {
@@ -38,6 +40,44 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+
+    const authHeader = req.headers.get("authorization");
+
+    if (!authHeader) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "").trim();
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(token);
+
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: "Invalid user" },
+        { status: 401 }
+      );
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("organization_id")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError || !profile?.organization_id) {
+      return NextResponse.json(
+        { error: "Organization not found." },
+        { status: 403 }
+      );
+    }
+
+    const organizationId = profile.organization_id;
 
     const merchantId = process.env.PAYFAST_MERCHANT_ID!;
     const merchantKey = process.env.PAYFAST_MERCHANT_KEY!;

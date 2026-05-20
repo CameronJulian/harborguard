@@ -1,5 +1,5 @@
 "use client";
-
+import { supabase } from "@/lib/supabase";
 import { useState } from "react";
 
 export default function BillingPage() {
@@ -11,11 +11,21 @@ export default function BillingPage() {
     try {
       setLoading(true);
       setError("");
+const {
+  data: { session },
+} = await supabase.auth.getSession();
 
+if (!session?.access_token) {
+  setError("You must be signed in to upgrade.");
+  setLoading(false);
+  return;
+}
       const response = await fetch("/api/billing/professional", {
         method: "POST",
+		credentials: "include",
         headers: {
           "Content-Type": "application/json",
+		  Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           billingEmail,
