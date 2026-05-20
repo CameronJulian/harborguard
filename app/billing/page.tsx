@@ -1,4 +1,42 @@
+"use client";
+
+import { useState } from "react";
+
 export default function BillingPage() {
+  const [billingEmail, setBillingEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function upgradeProfessional() {
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await fetch("/api/billing/professional", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          billingEmail,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.error || "Failed to start checkout.");
+        setLoading(false);
+        return;
+      }
+
+      window.location.href = result.paymentUrl;
+    } catch (err: any) {
+      setError(err.message || "Something went wrong.");
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 p-8">
       <div className="mx-auto max-w-7xl">
@@ -45,12 +83,12 @@ export default function BillingPage() {
 
         {/* TITLE */}
 
-        <div className="text-center mb-14">
+        <div className="mb-14 text-center">
           <h1 className="text-5xl font-black text-slate-900">
             HarborGuard Pricing
           </h1>
 
-          <p className="mt-4 text-xl text-slate-600 max-w-3xl mx-auto">
+          <p className="mx-auto mt-4 max-w-3xl text-xl text-slate-600">
             Enterprise-grade fleet intelligence, predictive risk analytics,
             AI incident monitoring, and operational visibility for modern
             fish supply chain operations.
@@ -78,7 +116,7 @@ export default function BillingPage() {
                   R0
                 </span>
 
-                <span className="text-slate-500 ml-2">
+                <span className="ml-2 text-slate-500">
                   /month
                 </span>
               </div>
@@ -112,6 +150,7 @@ export default function BillingPage() {
 
           <div
             className="
+              relative
               rounded-3xl
               bg-black
               p-8
@@ -119,14 +158,13 @@ export default function BillingPage() {
               shadow-2xl
               ring-4
               ring-blue-500
-              relative
             "
           >
             <div
               className="
                 absolute
-                top-4
                 right-4
+                top-4
                 rounded-full
                 bg-blue-500
                 px-4
@@ -149,7 +187,7 @@ export default function BillingPage() {
 
               <div className="mt-6">
                 <span className="text-5xl font-black">
-                  R2,499
+                  R499
                 </span>
 
                 <span className="ml-2 text-slate-300">
@@ -175,24 +213,53 @@ export default function BillingPage() {
               <li>✓ Mobile PWA access</li>
             </ul>
 
-            <a
-              href="/api/billing/professional"
-              className="
-                mt-10
-                block
-                w-full
-                rounded-2xl
-                bg-white
-                py-4
-                text-center
-                font-bold
-                text-black
-                transition
-                hover:bg-slate-200
-              "
-            >
-              Upgrade to Professional
-            </a>
+            <div className="mt-8">
+              <input
+                type="email"
+                placeholder="Billing email"
+                value={billingEmail}
+                onChange={(e) => setBillingEmail(e.target.value)}
+                className="
+                  mb-4
+                  w-full
+                  rounded-2xl
+                  border
+                  border-slate-700
+                  bg-slate-900
+                  px-4
+                  py-4
+                  text-white
+                  outline-none
+                "
+              />
+
+              {error ? (
+                <div className="mb-4 rounded-xl bg-red-500/20 p-3 text-sm text-red-200">
+                  {error}
+                </div>
+              ) : null}
+
+              <button
+                onClick={upgradeProfessional}
+                disabled={loading}
+                className="
+                  w-full
+                  rounded-2xl
+                  bg-white
+                  py-4
+                  text-center
+                  font-bold
+                  text-black
+                  transition
+                  hover:bg-slate-200
+                  disabled:opacity-50
+                "
+              >
+                {loading
+                  ? "Redirecting to PayFast..."
+                  : "Upgrade to Professional"}
+              </button>
+            </div>
           </div>
 
           {/* ENTERPRISE */}
@@ -241,106 +308,6 @@ export default function BillingPage() {
           </div>
 
         </div>
-
-        {/* USAGE METRICS */}
-
-        <div className="mt-16 grid gap-6 md:grid-cols-4">
-
-          <div className="rounded-3xl bg-white p-6 shadow-sm">
-            <div className="text-slate-500 text-sm">
-              Active Vehicles
-            </div>
-
-            <div className="mt-3 text-4xl font-black text-slate-900">
-              12
-            </div>
-          </div>
-
-          <div className="rounded-3xl bg-white p-6 shadow-sm">
-            <div className="text-slate-500 text-sm">
-              AI Incidents
-            </div>
-
-            <div className="mt-3 text-4xl font-black text-slate-900">
-              184
-            </div>
-          </div>
-
-          <div className="rounded-3xl bg-white p-6 shadow-sm">
-            <div className="text-slate-500 text-sm">
-              Route Replays
-            </div>
-
-            <div className="mt-3 text-4xl font-black text-slate-900">
-              42
-            </div>
-          </div>
-
-          <div className="rounded-3xl bg-white p-6 shadow-sm">
-            <div className="text-slate-500 text-sm">
-              Storage Usage
-            </div>
-
-            <div className="mt-3 text-4xl font-black text-slate-900">
-              28GB
-            </div>
-          </div>
-
-        </div>
-
-        {/* INVOICE HISTORY */}
-
-        <div className="mt-16 rounded-3xl bg-white p-8 shadow-sm">
-          <h2 className="text-3xl font-black text-slate-900">
-            Invoice History
-          </h2>
-
-          <div className="mt-8 overflow-x-auto">
-            <table className="w-full text-left">
-
-              <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="pb-4">Invoice</th>
-                  <th className="pb-4">Date</th>
-                  <th className="pb-4">Amount</th>
-                  <th className="pb-4">Status</th>
-                </tr>
-              </thead>
-
-              <tbody className="text-slate-600">
-
-                <tr className="border-b border-slate-100">
-                  <td className="py-4">INV-2041</td>
-                  <td>May 2026</td>
-                  <td>R2,499</td>
-                  <td className="text-green-600 font-semibold">
-                    Paid
-                  </td>
-                </tr>
-
-                <tr className="border-b border-slate-100">
-                  <td className="py-4">INV-1988</td>
-                  <td>April 2026</td>
-                  <td>R2,499</td>
-                  <td className="text-green-600 font-semibold">
-                    Paid
-                  </td>
-                </tr>
-
-              </tbody>
-
-            </table>
-          </div>
-        </div>
-
-        {/* FOOTER */}
-
-        <div className="mt-16 text-center text-slate-500 text-sm">
-          HarborGuard Professional includes a 14-day free trial.
-          Trusted for enterprise fleet intelligence, AI threat detection,
-          operational visibility, and maritime risk analytics.
-        </div>
-
       </div>
     </div>
   );
