@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireOrganization, requireRole } from "@/lib/server-auth";
+import { requirePremiumAccess } from "@/lib/require-premium";
 
 function buildExecutiveNarrative(period: string, result: any) {
   const totalVehicles = result?.summary?.totalVehicles || 0;
@@ -46,6 +47,14 @@ function buildExecutiveNarrative(period: string, result: any) {
 export async function POST(req: Request) {
   try {
     const { organizationId, role } = await requireOrganization();
+	const premium = await requirePremiumAccess(organizationId);
+
+if (!premium.allowed) {
+  return NextResponse.json(
+    { error: "Professional subscription required." },
+    { status: 403 }
+  );
+}
 
     requireRole(role, ["owner", "admin", "operator"]);
 
