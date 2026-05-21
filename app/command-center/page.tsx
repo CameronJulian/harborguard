@@ -358,34 +358,7 @@ async function createVehicleIcon(
 }
 
 export default function CommandCenterPage() {
-	const organization = {
-  subscription_status: "trialing",
-  subscription_plan: "starter",
-  trial_ends_at: new Date(
-    Date.now() + 7 * 24 * 60 * 60 * 1000
-  ).toISOString(),
-};
-
-const hasPremiumAccess =
-  canAccessPremiumFeatures(
-    organization.subscription_status,
-    organization.trial_ends_at
-  );
-
-if (!hasPremiumAccess) {
-  return (
-    <PremiumGate
-      title="Command Center"
-      description="Upgrade to HarborGuard Professional to unlock the live operational command center, AI fleet monitoring, and realtime incident coordination."
-      currentPlan={
-        organization.subscription_plan
-      }
-      trialEndsAt={
-        organization.trial_ends_at
-      }
-    />
-  );
-}
+	
   const [fleet, setFleet] = useState<FleetVehicle[]>([]);
   const [incidents, setIncidents] = useState<RoadIncident[]>([]);
   const [threatFeed, setThreatFeed] = useState<any[]>([]);
@@ -404,6 +377,49 @@ if (!hasPremiumAccess) {
   const [voiceEnabled, setVoiceEnabled] = useState(false);
 const [voiceTranscript, setVoiceTranscript] = useState("");
 const [copilotResponse, setCopilotResponse] = useState("");
+const [premiumAllowed, setPremiumAllowed] =
+  useState(true);
+
+const [subscriptionLoaded, setSubscriptionLoaded] =
+  useState(false);
+
+const [subscription, setSubscription] =
+  useState<any>(null);
+  
+  async function loadSubscriptionStatus() {
+  try {
+    const response = await fetch(
+      "/api/fleet/vehicles",
+      {
+        cache: "no-store",
+      }
+    );
+
+    if (!response.ok) {
+      setPremiumAllowed(false);
+      setSubscriptionLoaded(true);
+      return;
+    }
+
+    const result = await response.json();
+
+    const subscription =
+      result.subscription;
+
+    const allowed =
+      canAccessPremiumFeatures(
+        subscription?.subscription_status,
+        subscription?.trial_ends_at
+      );
+
+    setSubscription(subscription);
+    setPremiumAllowed(allowed);
+  } catch {
+    setPremiumAllowed(false);
+  } finally {
+    setSubscriptionLoaded(true);
+  }
+}
 
   async function loadFleet() {
     try {
@@ -614,6 +630,7 @@ useEffect(() => {
   };
 }, [voiceEnabled]);
  useEffect(() => {
+	 loadSubscriptionStatus();
   loadFleet();
   loadIncidents();
   loadThreatFeed();
@@ -776,7 +793,23 @@ const operationalColor =
     : globalThreatScore >= 40
     ? "#d97706"
     : "#16a34a";
-
+if (
+  subscriptionLoaded &&
+  !premiumAllowed
+) {
+  return (
+    <AppShell>
+      <PremiumGate
+        title="Command Center"
+        description="Upgrade to HarborGuard Professional to unlock live operational intelligence, AI command orchestration, replay intelligence, and advanced fleet coordination."
+        currentPlan={subscription?.plan}
+        trialEndsAt={
+          subscription?.trial_ends_at
+        }
+      />
+    </AppShell>
+  );
+}
   return (
     <AppShell>
       <style>{`
