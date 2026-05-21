@@ -183,14 +183,21 @@ if (!session?.user) return;
 
 const { data: profile } = await supabase
   .from("profiles")
-  .select("organization_id, organizations(subscription_status, plan, trial_ends_at)")
+  .select("organization_id")
   .eq("id", session.user.id)
   .single();
 
-if (!profile?.organization_id) return;
-const organization = Array.isArray(profile.organizations)
-  ? profile.organizations[0]
-  : profile.organizations;
+if (!profile?.organization_id) {
+  setPremiumAllowed(false);
+  setSubscriptionLoaded(true);
+  return;
+}
+
+const { data: organization } = await supabase
+  .from("organizations")
+  .select("subscription_status, plan, trial_ends_at")
+  .eq("id", profile.organization_id)
+  .single();
 
 setSubscription(organization);
 
