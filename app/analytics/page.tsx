@@ -121,41 +121,17 @@ function canAccessPremiumFeatures(
   return false;
 }
 export default function AnalyticsPage() {
-	const organization = {
-  subscription_status: "trialing",
-  subscription_plan: "starter",
-  trial_ends_at: new Date(
-    Date.now() + 7 * 24 * 60 * 60 * 1000
-  ).toISOString(),
-};
+	
 
-const hasPremiumAccess =
-  canAccessPremiumFeatures(
-    organization.subscription_status,
-    organization.trial_ends_at
-  );
 
-if (!hasPremiumAccess) {
-  return (
-    <AppShell>
-      <PremiumGate
-        title="Advanced Analytics"
-        description="Upgrade to HarborGuard Professional to unlock executive analytics, vessel intelligence, reporting exports, and operational insights."
-        currentPlan={
-          organization.subscription_plan
-        }
-        trialEndsAt={
-          organization.trial_ends_at
-        }
-      />
-    </AppShell>
-  );
-}
   const [isMobile, setIsMobile] = useState(false);
   const [batches, setBatches] = useState<BatchRow[]>([]);
   const [incidents, setIncidents] = useState<IncidentRow[]>([]);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [premiumAllowed, setPremiumAllowed] = useState(true);
+const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
+const [subscription, setSubscription] = useState<any>(null);
 
   const today = new Date();
   const thirtyDaysAgo = new Date();
@@ -207,11 +183,25 @@ if (!session?.user) return;
 
 const { data: profile } = await supabase
   .from("profiles")
-  .select("organization_id")
+  .select("organization_id, organizations(subscription_status, plan, trial_ends_at)")
   .eq("id", session.user.id)
   .single();
 
 if (!profile?.organization_id) return;
+const organization = Array.isArray(profile.organizations)
+  ? profile.organizations[0]
+  : profile.organizations;
+
+setSubscription(organization);
+
+setPremiumAllowed(
+  canAccessPremiumFeatures(
+    organization?.subscription_status,
+    organization?.trial_ends_at
+  )
+);
+
+setSubscriptionLoaded(true);
 
 const { data: batchData } = await supabase
   .from("batches")
@@ -526,7 +516,18 @@ const { data: incidentData } = await supabase
       setExportingPdf(false);
     }
   }
-
+if (subscriptionLoaded && !premiumAllowed) {
+  return (
+    <AppShell>
+      <PremiumGate
+        title="Advanced Analytics"
+        description="Upgrade to HarborGuard Professional to unlock executive analytics, vessel intelligence, reporting exports, and operational insights."
+        currentPlan={subscription?.plan}
+        trialEndsAt={subscription?.trial_ends_at}
+      />
+    </AppShell>
+  );
+}
   return (
     <AppShell>
       <div style={{ ...cardStyle, padding: 26, marginBottom: 24 }}>
