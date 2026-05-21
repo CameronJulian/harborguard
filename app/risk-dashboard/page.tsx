@@ -182,34 +182,7 @@ function canAccessPremiumFeatures(
 }
 
 export default function RiskDashboardPage() {
-	const organization = {
-  subscription_status: "trialing",
-  subscription_plan: "starter",
-  trial_ends_at: new Date(
-    Date.now() + 7 * 24 * 60 * 60 * 1000
-  ).toISOString(),
-};
-
-const hasPremiumAccess =
-  canAccessPremiumFeatures(
-    organization.subscription_status,
-    organization.trial_ends_at
-  );
-
-if (!hasPremiumAccess) {
-  return (
-    <PremiumGate
-      title="Risk Intelligence Dashboard"
-      description="Upgrade to HarborGuard Professional to unlock AI-powered operational risk intelligence, predictive threat analysis, and fleet anomaly detection."
-      currentPlan={
-        organization.subscription_plan
-      }
-      trialEndsAt={
-        organization.trial_ends_at
-      }
-    />
-  );
-}
+	
   const [fleet, setFleet] = useState<FleetVehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
