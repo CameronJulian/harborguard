@@ -1,5 +1,6 @@
 "use client";
 import { supabase } from "@/lib/supabase";
+import PermissionGate from "@/components/auth/PermissionGate";
 import { useState } from "react";
 
 export default function BillingPage() {
@@ -158,119 +159,130 @@ if (!session?.access_token) {
 
           {/* PROFESSIONAL */}
 
-          <div
-            className="
-              relative
-              rounded-3xl
-              bg-black
-              p-8
-              text-white
-              shadow-2xl
-              ring-4
-              ring-blue-500
-            "
-          >
-            <div
-              className="
-                absolute
-                right-4
-                top-4
-                rounded-full
-                bg-blue-500
-                px-4
-                py-1
-                text-sm
-                font-bold
-              "
-            >
-              MOST POPULAR
-            </div>
+          {/* PROFESSIONAL */}
 
-            <div className="mb-8">
-              <h2 className="text-3xl font-bold">
-                Professional
-              </h2>
+<PermissionGate
+  permission="billing:manage"
+  fallback={
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+      Only organization owners can manage billing.
+    </div>
+  }
+>
+  <div
+    className="
+      relative
+      rounded-3xl
+      bg-black
+      p-8
+      text-white
+      shadow-2xl
+      ring-4
+      ring-blue-500
+    "
+  >
+    <div
+      className="
+        absolute
+        right-4
+        top-4
+        rounded-full
+        bg-blue-500
+        px-4
+        py-1
+        text-sm
+        font-bold
+      "
+    >
+      MOST POPULAR
+    </div>
 
-              <p className="mt-2 text-slate-300">
-                Advanced fleet intelligence
-              </p>
+    <div className="mb-8">
+      <h2 className="text-3xl font-bold">
+        Professional
+      </h2>
 
-              <div className="mt-6">
-                <span className="text-5xl font-black">
-                  R499
-                </span>
+      <p className="mt-2 text-slate-300">
+        Advanced fleet intelligence
+      </p>
 
-                <span className="ml-2 text-slate-300">
-                  /month
-                </span>
-              </div>
+      <div className="mt-6">
+        <span className="text-5xl font-black">
+          R499
+        </span>
 
-              <div className="mt-4 rounded-2xl bg-blue-500/20 p-4 text-sm text-blue-100">
-                Includes AI Threat Intelligence, Route Replay,
-                Executive Fleet Analytics, and Predictive Risk Scoring.
-              </div>
-            </div>
+        <span className="ml-2 text-slate-300">
+          /month
+        </span>
+      </div>
 
-            <ul className="space-y-4 text-slate-200">
-              <li>✓ AI Copilot</li>
-              <li>✓ Predictive Threat AI</li>
-              <li>✓ Route Replay Intelligence</li>
-              <li>✓ Unlimited alerts</li>
-              <li>✓ Up to 50 vehicles</li>
-              <li>✓ Executive reporting</li>
-              <li>✓ AI incident narratives</li>
-              <li>✓ Push notifications</li>
-              <li>✓ Mobile PWA access</li>
-            </ul>
+      <div className="mt-4 rounded-2xl bg-blue-500/20 p-4 text-sm text-blue-100">
+        Includes AI Threat Intelligence, Route Replay,
+        Executive Fleet Analytics, and Predictive Risk Scoring.
+      </div>
+    </div>
 
-            <div className="mt-8">
-              <input
-                type="email"
-                placeholder="Billing email"
-                value={billingEmail}
-                onChange={(e) => setBillingEmail(e.target.value)}
-                className="
-                  mb-4
-                  w-full
-                  rounded-2xl
-                  border
-                  border-slate-700
-                  bg-slate-900
-                  px-4
-                  py-4
-                  text-white
-                  outline-none
-                "
-              />
+    <ul className="space-y-4 text-slate-200">
+      <li>✓ AI Copilot</li>
+      <li>✓ Predictive Threat AI</li>
+      <li>✓ Route Replay Intelligence</li>
+      <li>✓ Unlimited alerts</li>
+      <li>✓ Up to 50 vehicles</li>
+      <li>✓ Executive reporting</li>
+      <li>✓ AI incident narratives</li>
+      <li>✓ Push notifications</li>
+      <li>✓ Mobile PWA access</li>
+    </ul>
 
-              {error ? (
-                <div className="mb-4 rounded-xl bg-red-500/20 p-3 text-sm text-red-200">
-                  {error}
-                </div>
-              ) : null}
+    <div className="mt-8">
+      <input
+        type="email"
+        placeholder="Billing email"
+        value={billingEmail}
+        onChange={(e) => setBillingEmail(e.target.value)}
+        className="
+          mb-4
+          w-full
+          rounded-2xl
+          border
+          border-slate-700
+          bg-slate-900
+          px-4
+          py-4
+          text-white
+          outline-none
+        "
+      />
 
-              <button
-                onClick={upgradeProfessional}
-                disabled={loading}
-                className="
-                  w-full
-                  rounded-2xl
-                  bg-white
-                  py-4
-                  text-center
-                  font-bold
-                  text-black
-                  transition
-                  hover:bg-slate-200
-                  disabled:opacity-50
-                "
-              >
-                {loading
-                  ? "Redirecting to PayFast..."
-                  : "Upgrade to Professional"}
-              </button>
-            </div>
-          </div>
+      {error ? (
+        <div className="mb-4 rounded-xl bg-red-500/20 p-3 text-sm text-red-200">
+          {error}
+        </div>
+      ) : null}
+
+      <button
+        onClick={upgradeProfessional}
+        disabled={loading}
+        className="
+          w-full
+          rounded-2xl
+          bg-white
+          py-4
+          text-center
+          font-bold
+          text-black
+          transition
+          hover:bg-slate-200
+          disabled:opacity-50
+        "
+      >
+        {loading
+          ? "Redirecting to PayFast..."
+          : "Upgrade to Professional"}
+      </button>
+    </div>
+  </div>
+</PermissionGate>
 
           {/* ENTERPRISE */}
 
