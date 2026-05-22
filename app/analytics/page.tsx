@@ -1,5 +1,6 @@
 "use client";
 import { usePremiumAccess } from "@/hooks/usePremiumAccess";
+import TrialBanner from "@/components/billing/TrialBanner";
 import PremiumGate from "@/components/PremiumGate";
 
 import { CSSProperties, useEffect, useMemo, useState } from "react";
@@ -498,6 +499,9 @@ const { data: incidentData } = await supabase
 if (subscriptionLoaded && !premiumAllowed) {
   return (
     <AppShell>
+	<TrialBanner
+  trialEndsAt={subscription?.trial_ends_at}
+/>
       <PremiumGate
         title="Advanced Analytics"
         description="Upgrade to HarborGuard Professional to unlock executive analytics, vessel intelligence, reporting exports, and operational insights."

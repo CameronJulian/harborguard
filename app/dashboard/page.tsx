@@ -1,7 +1,7 @@
 "use client";
 
 import { CSSProperties, FormEvent, useEffect, useMemo, useState } from "react";
-import TrialBanner from "@/components/TrialBanner";
+import TrialBanner from "@/components/billing/TrialBanner";
 
 import {
   demoVehicles,
