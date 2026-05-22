@@ -25,7 +25,7 @@ function generateSignature(data: Record<string, string>, passphrase?: string) {
     .join("&");
 
   const payload = passphrase
-    ? `${pfOutput}&passphrase=${encodeURIComponent(passphrase)}`
+    ? `${pfOutput}&passphrase=${encodeURIComponent(passphrase).replace(/%20/g, "+")}`
     : pfOutput;
 
   return crypto.createHash("md5").update(payload).digest("hex");
@@ -92,7 +92,8 @@ export async function POST(req: Request) {
 
     const merchantId = process.env.PAYFAST_MERCHANT_ID!;
     const merchantKey = process.env.PAYFAST_MERCHANT_KEY!;
-    const passphrase = process.env.PAYFAST_PASSPHRASE;
+    const passphrase =
+  process.env.PAYFAST_PASSPHRASE?.trim();
 
     const paymentData: Record<string, string> = {
       merchant_id: merchantId,
