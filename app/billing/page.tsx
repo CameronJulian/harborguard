@@ -7,6 +7,9 @@ export default function BillingPage() {
   const [billingEmail, setBillingEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [organization, setOrganization] = useState<any>({
+  plan: "professional"
+});
 
   async function upgradeProfessional() {
     try {
@@ -260,26 +263,33 @@ if (!session?.access_token) {
         </div>
       ) : null}
 
-      <button
-        onClick={upgradeProfessional}
-        disabled={loading}
-        className="
-          w-full
-          rounded-2xl
-          bg-white
-          py-4
-          text-center
-          font-bold
-          text-black
-          transition
-          hover:bg-slate-200
-          disabled:opacity-50
-        "
-      >
-        {loading
-          ? "Redirecting to PayFast..."
-          : "Upgrade to Professional"}
-      </button>
+      {organization?.plan === "professional" ? (
+  <button
+    disabled
+    className="w-full rounded bg-gray-500 py-3 text-white"
+  >
+    Current Plan
+  </button>
+) : (
+  <button
+    onClick={upgradeProfessional}
+    disabled={loading}
+    className="
+      w-full
+      rounded
+      bg-white
+      py-3
+      text-black
+      transition
+      hover:bg-slate-200
+      disabled:opacity-50
+    "
+  >
+    {loading
+      ? "Redirecting to PayFast..."
+      : "Upgrade to Professional"}
+  </button>
+)}
     </div>
   </div>
 </PermissionGate>
