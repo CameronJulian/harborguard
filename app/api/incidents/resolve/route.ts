@@ -1,123 +1,182 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { requireOrganization } from "@/lib/server-auth";
-import { hasPermission } from "@/lib/rbac";
 import { createAuditLog } from "@/lib/audit";
 
-const schema = z.object({
-  id: z.string().min(1, "Incident id is required."),
-});
+type PanicBody = {
+  vehicleId?: string;
+  tripId?: string | null;
+  message?: string;
+};
 
-function generateIncidentReport(incident: any, actorName: string) {
-  const code = incident.incident_code || incident.id;
-  const type = incident.type || "operational incident";
-  const severity = incident.severity || "unknown";
-  const description = incident.description || "No description provided.";
-
-  return {
-    title: `Incident ${code} resolved`,
-    summary: `Incident ${code} was resolved by ${actorName}.`,
-    operationalNarrative:
-      `A ${severity.toUpperCase()} ${type} incident was reviewed and marked as resolved. ${description}`,
-    probableCause:
-      severity === "critical"
-        ? "High-severity operational deviation or safety risk detected."
-        : "Operational exception detected and reviewed.",
-    resolutionAction:
-      "Incident status was updated to Resolved and logged for audit tracking.",
-    complianceNote:
-      "Resolution was recorded with user attribution for operational traceability.",
-  };
+function getBaseUrl(req: Request) {
+  return process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin;
 }
 
 export async function POST(req: Request) {
   try {
-    const { supabase, organizationId, role, user, profile } =
-      await requireOrganization();
+    const { supabase, organizationId, user } = await requireOrganization();
 
-    if (!hasPermission(role, "incidents:resolve")) {
+    const body = (await req.json()) as PanicBody;
+
+    const vehicleId = String(body.vehicleId || "").trim();
+    const requestedTripId = body.tripId ? String(body.tripId).trim() : null;
+    const panicMessage =
+      body.message?.trim() ||
+      "Driver triggered panic alert. Possible hijack or emergency.";
+
+    if (!vehicleId) {
       return NextResponse.json(
-        { error: "You do not have permission to resolve incidents." },
-        { status: 403 }
+        { error: "vehicleId is required." },
+        { status: 400 }
       );
     }
 
-    const body = await req.json();
-    const { id } = schema.parse({
-      id: String(body.id ?? "").trim(),
-    });
-
-    const { data: incident, error: fetchError } = await supabase
-      .from("incidents")
-      .select("*")
-      .eq("id", id)
+    const { data: vehicle, error: vehicleError } = await supabase
+      .from("vehicles")
+      .select("id, nickname, registration_number")
+      .eq("id", vehicleId)
       .eq("organization_id", organizationId)
-      .single();
+      .maybeSingle();
 
-    if (fetchError || !incident) {
+    if (vehicleError || !vehicle) {
       return NextResponse.json(
-        { error: "Incident not found." },
+        { error: vehicleError?.message || "Vehicle not found." },
         { status: 404 }
       );
     }
 
-    const actorName =
-      profile?.full_name || user.email || "Unknown User";
+    const { data: latestLocation } = await supabase
+      .from("vehicle_locations")
+      .select("latitude, longitude, recorded_at")
+      .eq("vehicle_id", vehicleId)
+      .eq("organization_id", organizationId)
+      .order("recorded_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    const report = generateIncidentReport(incident, actorName);
+    const { data: activeTrip } = await supabase
+      .from("vehicle_trips")
+      .select("id, status")
+      .eq("vehicle_id", vehicleId)
+      .eq("organization_id", organizationId)
+      .in("status", [
+        "scheduled",
+        "en_route_to_port",
+        "collecting",
+        "en_route_to_fishery",
+        "emergency",
+      ])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    if (incident.status === "Resolved") {
-      return NextResponse.json({
-        success: true,
-        message: "Incident is already resolved.",
-        report,
-      });
+    const finalTripId = requestedTripId || activeTrip?.id || null;
+
+    const { data: insertedAlert, error: alertError } = await supabase
+      .from("vehicle_alerts")
+      .insert({
+        vehicle_id: vehicleId,
+        trip_id: finalTripId,
+        alert_type: "panic",
+        severity: "critical",
+        message: panicMessage,
+        is_resolved: false,
+        organization_id: organizationId,
+      })
+      .select()
+      .single();
+
+    if (alertError) {
+      return NextResponse.json({ error: alertError.message }, { status: 500 });
     }
 
-    const { error: resolveError } = await supabase
-      .from("incidents")
-      .update({
-        status: "Resolved",
-      })
-      .eq("id", id)
-      .eq("organization_id", organizationId);
-
-    if (resolveError) {
-      return NextResponse.json(
-        { error: `Failed to resolve incident: ${resolveError.message}` },
-        { status: 500 }
-      );
+    if (activeTrip && activeTrip.status !== "emergency") {
+      await supabase
+        .from("vehicle_trips")
+        .update({ status: "emergency" })
+        .eq("id", activeTrip.id)
+        .eq("organization_id", organizationId);
     }
 
     await createAuditLog({
       organizationId,
-      userId: user.id,
-      action: "incident.resolved",
-      target: id,
+      userId: user?.id ?? null,
+      action: "fleet.panic.triggered",
+      target: vehicleId,
       metadata: {
-        actorName,
-        incidentCode: incident.incident_code ?? null,
-        severity: incident.severity ?? null,
-        type: incident.type ?? null,
-        resolvedAt: new Date().toISOString(),
-        report,
+        alertId: insertedAlert.id,
+        tripId: finalTripId,
+        vehicleNickname: vehicle.nickname,
+        registrationNumber: vehicle.registration_number,
+        severity: "critical",
+        message: panicMessage,
+        latitude: latestLocation?.latitude ?? null,
+        longitude: latestLocation?.longitude ?? null,
+        recordedAt: latestLocation?.recorded_at ?? null,
+        triggeredAt: new Date().toISOString(),
       },
     });
 
+    let notificationResult: unknown = null;
+    let notificationError: string | null = null;
+
+    try {
+      const notifyResponse = await fetch(
+        `${getBaseUrl(req)}/api/fleet/notify-alert`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            vehicleNickname: vehicle.nickname,
+            registrationNumber: vehicle.registration_number,
+            alertType: "panic",
+            severity: "critical",
+            message: panicMessage,
+            lastLatitude: latestLocation?.latitude ?? null,
+            lastLongitude: latestLocation?.longitude ?? null,
+          }),
+        }
+      );
+
+      notificationResult = await notifyResponse.json().catch(() => null);
+
+      if (!notifyResponse.ok) {
+        notificationError =
+          typeof notificationResult === "object" &&
+          notificationResult !== null &&
+          "error" in notificationResult
+            ? String(notificationResult.error)
+            : "Panic alert created, but notification failed.";
+      }
+    } catch (err: unknown) {
+      notificationError =
+        err instanceof Error
+          ? err.message
+          : "Panic alert created, but notification failed.";
+    }
+
     return NextResponse.json({
       success: true,
-      message: "Incident resolved successfully.",
-      report,
+      message: "Panic alert created successfully.",
+      vehicle: {
+        id: vehicle.id,
+        nickname: vehicle.nickname,
+        registrationNumber: vehicle.registration_number,
+      },
+      alert: insertedAlert,
+      activeTripId: finalTripId,
+      notification: {
+        sent: !notificationError,
+        result: notificationResult,
+        error: notificationError,
+      },
     });
-  } catch (error: any) {
-    const message = error.message || "Unexpected server error.";
-    const status =
-      message === "Unauthorized"
-        ? 401
-        : message === "Permission denied"
-        ? 403
-        : 500;
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : "Failed to create panic alert.";
 
-    return NextResponse.json({ error: message }, { status });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
