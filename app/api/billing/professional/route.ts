@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { hasPermission } from "@/lib/rbac";
 import { createClient } from "@supabase/supabase-js";
+import { hasPermission } from "@/lib/rbac";
+import { createAuditLog } from "@/lib/audit";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -67,30 +68,22 @@ export async function POST(req: Request) {
 
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-     .select("organization_id, role")
+      .select("organization_id, role")
       .eq("id", user.id)
       .single();
-	  
-	  if (
-  !hasPermission(
-    profile?.role,
-    "billing:manage"
-  )
-) {
-  return Response.json(
-    {
-      error:
-        "Only organization owners can manage billing.",
-    },
-    {
-      status: 403,
-    }
-  );
-}
 
     if (profileError || !profile?.organization_id) {
       return NextResponse.json(
         { error: "Organization not found." },
+        { status: 403 }
+      );
+    }
+
+    if (!hasPermission(profile.role, "billing:manage")) {
+      return NextResponse.json(
+        {
+          error: "Only organization owners can manage billing.",
+        },
         { status: 403 }
       );
     }
@@ -141,6 +134,19 @@ export async function POST(req: Request) {
         billing_email: billingEmail,
       })
       .eq("id", organizationId);
+
+    await createAuditLog({
+      organizationId,
+      userId: user.id,
+      action: "billing.checkout.started",
+      target: "professional-plan",
+      metadata: {
+        billingEmail,
+        amount: "499.00",
+        provider: "payfast",
+        startedAt: new Date().toISOString(),
+      },
+    });
 
     return NextResponse.json({
       success: true,
