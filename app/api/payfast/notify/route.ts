@@ -18,7 +18,7 @@ function generateSignature(
       value !== null &&
       value !== ""
     )
-    .sort(([a], [b]) => a.localeCompare(b));
+    
 
   const queryString = filtered
     .map(
