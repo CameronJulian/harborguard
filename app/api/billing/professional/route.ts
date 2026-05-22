@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { hasPermission } from "@/lib/rbac";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -66,9 +67,26 @@ export async function POST(req: Request) {
 
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("organization_id")
+     .select("organization_id, role")
       .eq("id", user.id)
       .single();
+	  
+	  if (
+  !hasPermission(
+    profile?.role,
+    "billing:manage"
+  )
+) {
+  return Response.json(
+    {
+      error:
+        "Only organization owners can manage billing.",
+    },
+    {
+      status: 403,
+    }
+  );
+}
 
     if (profileError || !profile?.organization_id) {
       return NextResponse.json(
