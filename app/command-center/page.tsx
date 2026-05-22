@@ -1,6 +1,7 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
+import { usePremiumAccess } from "@/hooks/usePremiumAccess";
 import PremiumGate from "@/components/PremiumGate";
 
 import Link from "next/link";
@@ -102,18 +103,7 @@ const buttonStyle: CSSProperties = {
   fontWeight: 800,
   cursor: "pointer",
 };
-function canAccessPremiumFeatures(
-  status?: string | null,
-  trialEndsAt?: string | null
-) {
-  if (status === "active") return true;
 
-  if (status === "trialing" && trialEndsAt) {
-    return new Date(trialEndsAt) > new Date();
-  }
-
-  return false;
-}
 
 function toNumber(value: unknown) {
   if (typeof value === "number") return value;
@@ -377,49 +367,15 @@ export default function CommandCenterPage() {
   const [voiceEnabled, setVoiceEnabled] = useState(false);
 const [voiceTranscript, setVoiceTranscript] = useState("");
 const [copilotResponse, setCopilotResponse] = useState("");
-const [premiumAllowed, setPremiumAllowed] =
-  useState(true);
 
-const [subscriptionLoaded, setSubscriptionLoaded] =
-  useState(false);
+const {
+  premiumAllowed,
+  subscriptionLoaded,
+  subscription,
+} = usePremiumAccess();
 
-const [subscription, setSubscription] =
-  useState<any>(null);
   
-  async function loadSubscriptionStatus() {
-  try {
-    const response = await fetch(
-      "/api/fleet/vehicles",
-      {
-        cache: "no-store",
-      }
-    );
-
-    if (!response.ok) {
-      setPremiumAllowed(false);
-      setSubscriptionLoaded(true);
-      return;
-    }
-
-    const result = await response.json();
-
-    const subscription =
-      result.subscription;
-
-    const allowed =
-      canAccessPremiumFeatures(
-        subscription?.subscription_status,
-        subscription?.trial_ends_at
-      );
-
-    setSubscription(subscription);
-    setPremiumAllowed(allowed);
-  } catch {
-    setPremiumAllowed(false);
-  } finally {
-    setSubscriptionLoaded(true);
-  }
-}
+ 
 
   async function loadFleet() {
     try {
@@ -630,7 +586,7 @@ useEffect(() => {
   };
 }, [voiceEnabled]);
  useEffect(() => {
-	 loadSubscriptionStatus();
+	 
   loadFleet();
   loadIncidents();
   loadThreatFeed();
