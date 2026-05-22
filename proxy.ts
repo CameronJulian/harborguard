@@ -20,9 +20,16 @@ const protectedRoutes = [
   "/vehicle-alerts",
 ];
 
+const premiumRoutes = [
+  "/command-center",
+  "/analytics",
+  "/report-admin",
+  "/risk-dashboard",
+  "/route-replay",
+];
+
 function hasAuthSession(request: NextRequest) {
-  const token =
-    request.cookies.get("sb-access-token")?.value;
+  const token = request.cookies.get("sb-access-token")?.value;
 
   return Boolean(token);
 }
@@ -31,6 +38,10 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isProtected = protectedRoutes.some((route) =>
+    pathname.startsWith(route)
+  );
+
+  const isPremium = premiumRoutes.some((route) =>
     pathname.startsWith(route)
   );
 
@@ -48,6 +59,10 @@ export function proxy(request: NextRequest) {
 
   response.headers.set("x-harborguard-protected-route", "true");
   response.headers.set("x-harborguard-enterprise-gateway", "active");
+
+  if (isPremium) {
+    response.headers.set("x-harborguard-premium-route", "true");
+  }
 
   return response;
 }
