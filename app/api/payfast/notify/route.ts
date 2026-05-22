@@ -11,15 +11,14 @@ function generateSignature(
   data: Record<string, string>,
   passphrase?: string
 ) {
-  const filteredData = Object.entries(data).filter(
-    ([key, value]) =>
-      key !== "signature" &&
-      value !== undefined &&
-      value !== null &&
-      value !== ""
-  );
-
-  const pfOutput = filteredData
+  const pfOutput = Object.entries(data)
+    .filter(
+      ([key, value]) =>
+        key !== "signature" &&
+        value !== undefined &&
+        value !== null &&
+        value !== ""
+    )
     .map(
       ([key, value]) =>
         `${key}=${encodeURIComponent(value.trim()).replace(/%20/g, "+")}`
@@ -27,9 +26,10 @@ function generateSignature(
     .join("&");
 
   const payload = passphrase
-    ? `${pfOutput}&passphrase=${encodeURIComponent(
-        passphrase.trim()
-      ).replace(/%20/g, "+")}`
+    ? `${pfOutput}&passphrase=${encodeURIComponent(passphrase.trim()).replace(
+        /%20/g,
+        "+"
+      )}`
     : pfOutput;
 
   return crypto.createHash("md5").update(payload).digest("hex");
@@ -38,14 +38,11 @@ function generateSignature(
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
-
     const payload: Record<string, string> = {};
 
     formData.forEach((value, key) => {
       payload[key] = String(value);
     });
-
-    console.log("PAYFAST PAYLOAD:", payload);
 
     const receivedSignature = payload.signature;
     const generatedSignature = generateSignature(
@@ -58,17 +55,14 @@ export async function POST(req: Request) {
       generatedSignature.trim().toLowerCase();
 
     if (!signaturesMatch) {
-      console.error("INVALID SIGNATURE");
+      console.error("INVALID PAYFAST SIGNATURE", {
+        receivedSignature,
+        generatedSignature,
+      });
 
-      if (process.env.PAYFAST_SANDBOX !== "true") {
-        return NextResponse.json(
-          { error: "Invalid signature." },
-          { status: 400 }
-        );
-      }
-
-      console.warn(
-        "SANDBOX MODE: allowing PayFast ITN despite signature mismatch"
+      return NextResponse.json(
+        { error: "Invalid signature." },
+        { status: 400 }
       );
     }
 
@@ -117,22 +111,20 @@ export async function POST(req: Request) {
         console.error("BILLING EVENT ERROR:", billingEventError);
       }
 
-      const { error: invoiceError } = await supabase
-  .from("invoices")
-  .insert({
-    organization_id: organizationId,
-    payfast_payment_id: payload.pf_payment_id || null,
-    amount: Number(payload.amount_gross || 0),
-    currency: payload.currency || "ZAR",
-    status: "paid",
-    invoice_url: null,
-  });
+      const { error: invoiceError } = await supabase.from("invoices").insert({
+        organization_id: organizationId,
+        payfast_payment_id: payload.pf_payment_id || null,
+        amount: Number(payload.amount_gross || 0),
+        currency: payload.currency || "ZAR",
+        status: "paid",
+        invoice_url: null,
+      });
 
-if (invoiceError) {
-  console.error("INVOICE ERROR:", invoiceError);
-} else {
-  console.log("INVOICE CREATED");
-}
+      if (invoiceError) {
+        console.error("INVOICE ERROR:", invoiceError);
+      } else {
+        console.log("INVOICE CREATED");
+      }
 
       console.log("SUBSCRIPTION ACTIVATED");
     }
