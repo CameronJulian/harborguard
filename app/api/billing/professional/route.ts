@@ -99,7 +99,7 @@ export async function POST(req: Request) {
       merchant_key: merchantKey,
 
       return_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing?success=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing?canceled=true`,
+cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing?canceled=true`,
       notify_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/payfast/notify`,
 
       name_first: "HarborGuard",
