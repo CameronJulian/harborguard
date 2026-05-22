@@ -1,4 +1,5 @@
 "use client";
+import { usePremiumAccess } from "@/hooks/usePremiumAccess";
 import PremiumGate from "@/components/PremiumGate";
 
 import { CSSProperties, useEffect, useMemo, useState } from "react";
@@ -108,18 +109,7 @@ function formatDisplayDate(dateString: string | null) {
   if (!dateString) return "-";
   return new Date(dateString).toLocaleString();
 }
-function canAccessPremiumFeatures(
-  status?: string | null,
-  trialEndsAt?: string | null
-) {
-  if (status === "active") return true;
 
-  if (status === "trialing" && trialEndsAt) {
-    return new Date(trialEndsAt) > new Date();
-  }
-
-  return false;
-}
 export default function AnalyticsPage() {
 	
 
@@ -129,10 +119,11 @@ export default function AnalyticsPage() {
   const [incidents, setIncidents] = useState<IncidentRow[]>([]);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
-  const [premiumAllowed, setPremiumAllowed] = useState(true);
-const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
-const [subscription, setSubscription] = useState<any>(null);
-
+ const {
+  premiumAllowed,
+  subscriptionLoaded,
+  subscription,
+} = usePremiumAccess();
   const today = new Date();
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(today.getDate() - 30);
@@ -187,41 +178,22 @@ const { data: profile } = await supabase
   .eq("id", session.user.id)
   .single();
 
-if (!profile?.organization_id) {
-  setPremiumAllowed(false);
-  setSubscriptionLoaded(true);
-  return;
-}
 
-const { data: organization } = await supabase
-  .from("organizations")
-  .select("subscription_status, plan, trial_ends_at")
-  .eq("id", profile.organization_id)
-  .single();
 
-setSubscription(organization);
 
-setPremiumAllowed(
-  canAccessPremiumFeatures(
-    organization?.subscription_status,
-    organization?.trial_ends_at
-  )
-);
-
-setSubscriptionLoaded(true);
 
 const { data: batchData } = await supabase
   .from("batches")
   .select(
     "id, batch_code, vessel, species, catch_kg, dock_kg, storage_kg, status, created_at"
   )
-  .eq("organization_id", profile.organization_id)
+  .eq("organization_id", profile!.organization_id)
   .order("created_at", { ascending: false });
 
 const { data: incidentData } = await supabase
   .from("incidents")
   .select("id, incident_code, severity, status, summary, created_at")
-  .eq("organization_id", profile.organization_id)
+  .eq("organization_id", profile!.organization_id)
   .order("created_at", { ascending: false });
 
     setBatches((batchData as BatchRow[]) || []);
