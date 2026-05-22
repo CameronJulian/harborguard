@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
-import { createAuditLog } from "@/lib/audit";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,23 +11,30 @@ function generateSignature(
   data: Record<string, string>,
   passphrase?: string
 ) {
-  const pfOutput = Object.keys(data)
-    .filter((key) => key !== "signature")
-    .filter((key) => data[key] !== "")
+  const filtered = Object.entries(data)
+    .filter(([key, value]) =>
+      key !== "signature" &&
+      value !== undefined &&
+      value !== null &&
+      value !== ""
+    )
+    .sort(([a], [b]) => a.localeCompare(b));
+
+  const queryString = filtered
     .map(
-      (key) =>
-        `${key}=${encodeURIComponent(data[key]).replace(/%20/g, "+")}`
+      ([key, value]) =>
+        `${key}=${encodeURIComponent(value).replace(/%20/g, "+")}`
     )
     .join("&");
 
   const payload = passphrase
-    ? `${pfOutput}&passphrase=${encodeURIComponent(passphrase.trim()).replace(
-        /%20/g,
-        "+"
-      )}`
-    : pfOutput;
+    ? `${queryString}&passphrase=${encodeURIComponent(passphrase.trim())}`
+    : queryString;
 
-  return crypto.createHash("md5").update(payload).digest("hex");
+  return crypto
+    .createHash("md5")
+    .update(payload)
+    .digest("hex");
 }
 
 export async function POST(req: Request) {
@@ -41,12 +47,24 @@ export async function POST(req: Request) {
       payload[key] = String(value);
     });
 
+    console.log("PAYFAST PAYLOAD:", payload);
+
     const receivedSignature = payload.signature;
-    const passphrase = process.env.PAYFAST_PASSPHRASE?.trim();
 
-    const generatedSignature = generateSignature(payload, passphrase);
+    const generatedSignature = generateSignature(
+      payload,
+      process.env.PAYFAST_PASSPHRASE
+    );
 
-    if (receivedSignature !== generatedSignature) {
+    console.log("RECEIVED:", receivedSignature);
+    console.log("GENERATED:", generatedSignature);
+
+    if (
+      receivedSignature?.trim().toLowerCase() !==
+      generatedSignature.trim().toLowerCase()
+    ) {
+      console.error("INVALID SIGNATURE");
+
       return NextResponse.json(
         { error: "Invalid signature." },
         { status: 400 }
@@ -62,53 +80,18 @@ export async function POST(req: Request) {
       );
     }
 
-    const paymentStatus = payload.payment_status;
-
-    if (paymentStatus === "COMPLETE") {
-      const { error: updateError } = await supabase
+    if (payload.payment_status === "COMPLETE") {
+      await supabase
         .from("organizations")
         .update({
           subscription_status: "active",
           plan: "professional",
-          trial_ends_at: null,
-          payfast_subscription_id:
-            payload.token ||
-            payload.subscription_id ||
-            null,
+          payfast_subscription_id: payload.token || null,
           next_billing_date: new Date(
             Date.now() + 30 * 24 * 60 * 60 * 1000
           ).toISOString(),
         })
         .eq("id", organizationId);
-
-      if (updateError) {
-        return NextResponse.json(
-          {
-            error: `Failed to activate subscription: ${updateError.message}`,
-          },
-          { status: 500 }
-        );
-      }
-
-      await createAuditLog({
-        organizationId,
-        userId: null,
-        action: "billing.subscription.activated",
-        target: "professional-plan",
-        metadata: {
-          provider: "payfast",
-          paymentStatus,
-          pfPaymentId: payload.pf_payment_id || null,
-          subscriptionId:
-            payload.token ||
-            payload.subscription_id ||
-            null,
-          amountGross: payload.amount_gross || null,
-          amountFee: payload.amount_fee || null,
-          amountNet: payload.amount_net || null,
-          activatedAt: new Date().toISOString(),
-        },
-      });
 
       await supabase.from("billing_events").insert({
         organization_id: organizationId,
@@ -118,17 +101,19 @@ export async function POST(req: Request) {
 
       await supabase.from("invoices").insert({
         organization_id: organizationId,
-        provider_payment_id: payload.pf_payment_id || null,
+        provider_payment_id: payload.pf_payment_id,
         amount: Number(payload.amount_gross || 0),
         status: "paid",
         paid_at: new Date().toISOString(),
       });
+
+      console.log("SUBSCRIPTION ACTIVATED");
     }
 
-    return NextResponse.json({
-      success: true,
-    });
+    return NextResponse.json({ success: true });
   } catch (err: any) {
+    console.error(err);
+
     return NextResponse.json(
       {
         error: err.message || "Webhook processing failed.",
