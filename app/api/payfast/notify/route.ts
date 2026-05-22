@@ -11,25 +11,24 @@ function generateSignature(
   data: Record<string, string>,
   passphrase?: string
 ) {
-  const filtered = Object.entries(data)
+  const filteredData = Object.entries(data)
     .filter(([key, value]) =>
       key !== "signature" &&
       value !== undefined &&
       value !== null &&
       value !== ""
-    )
-    
+    );
 
-  const queryString = filtered
+  const pfOutput = filteredData
     .map(
       ([key, value]) =>
-        `${key}=${encodeURIComponent(value).replace(/%20/g, "+")}`
+        `${key}=${encodeURIComponent(value.trim()).replace(/%20/g, "+")}`
     )
     .join("&");
 
   const payload = passphrase
-    ? `${queryString}&passphrase=${encodeURIComponent(passphrase.trim())}`
-    : queryString;
+    ? `${pfOutput}&passphrase=${encodeURIComponent(passphrase.trim()).replace(/%20/g, "+")}`
+    : pfOutput;
 
   return crypto
     .createHash("md5")
