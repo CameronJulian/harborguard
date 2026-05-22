@@ -16,9 +16,8 @@ const PAYFAST_URL =
 
 function generateSignature(data: Record<string, string>, passphrase?: string) {
   const pfOutput = Object.keys(data)
-    .filter((key) => data[key] !== "")
-    .sort()
-    .map(
+  .filter((key) => data[key] !== "")
+  .map(
       (key) =>
         `${key}=${encodeURIComponent(data[key]).replace(/%20/g, "+")}`
     )
