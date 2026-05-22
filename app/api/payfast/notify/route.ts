@@ -118,18 +118,21 @@ export async function POST(req: Request) {
       }
 
       const { error: invoiceError } = await supabase
-        .from("invoices")
-        .insert({
-          organization_id: organizationId,
-          provider_payment_id: payload.pf_payment_id || null,
-          amount: Number(payload.amount_gross || 0),
-          status: "paid",
-          paid_at: new Date().toISOString(),
-        });
+  .from("invoices")
+  .insert({
+    organization_id: organizationId,
+    payfast_payment_id: payload.pf_payment_id || null,
+    amount: Number(payload.amount_gross || 0),
+    currency: payload.currency || "ZAR",
+    status: "paid",
+    invoice_url: null,
+  });
 
-      if (invoiceError) {
-        console.error("INVOICE ERROR:", invoiceError);
-      }
+if (invoiceError) {
+  console.error("INVOICE ERROR:", invoiceError);
+} else {
+  console.log("INVOICE CREATED");
+}
 
       console.log("SUBSCRIPTION ACTIVATED");
     }
