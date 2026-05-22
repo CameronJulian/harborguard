@@ -11,13 +11,13 @@ function generateSignature(
   data: Record<string, string>,
   passphrase?: string
 ) {
-  const filteredData = Object.entries(data)
-    .filter(([key, value]) =>
+  const filteredData = Object.entries(data).filter(
+    ([key, value]) =>
       key !== "signature" &&
       value !== undefined &&
       value !== null &&
       value !== ""
-    );
+  );
 
   const pfOutput = filteredData
     .map(
@@ -27,13 +27,12 @@ function generateSignature(
     .join("&");
 
   const payload = passphrase
-    ? `${pfOutput}&passphrase=${encodeURIComponent(passphrase.trim()).replace(/%20/g, "+")}`
+    ? `${pfOutput}&passphrase=${encodeURIComponent(
+        passphrase.trim()
+      ).replace(/%20/g, "+")}`
     : pfOutput;
 
-  return crypto
-    .createHash("md5")
-    .update(payload)
-    .digest("hex");
+  return crypto.createHash("md5").update(payload).digest("hex");
 }
 
 export async function POST(req: Request) {
@@ -49,31 +48,29 @@ export async function POST(req: Request) {
     console.log("PAYFAST PAYLOAD:", payload);
 
     const receivedSignature = payload.signature;
-
     const generatedSignature = generateSignature(
       payload,
       process.env.PAYFAST_PASSPHRASE
     );
 
-    console.log("RECEIVED:", receivedSignature);
-    console.log("GENERATED:", generatedSignature);
+    const signaturesMatch =
+      receivedSignature?.trim().toLowerCase() ===
+      generatedSignature.trim().toLowerCase();
 
-   const signaturesMatch =
-  receivedSignature?.trim().toLowerCase() ===
-  generatedSignature.trim().toLowerCase();
+    if (!signaturesMatch) {
+      console.error("INVALID SIGNATURE");
 
-if (!signaturesMatch) {
-  console.error("INVALID SIGNATURE");
+      if (process.env.PAYFAST_SANDBOX !== "true") {
+        return NextResponse.json(
+          { error: "Invalid signature." },
+          { status: 400 }
+        );
+      }
 
-  if (process.env.PAYFAST_SANDBOX !== "true") {
-    return NextResponse.json(
-      { error: "Invalid signature." },
-      { status: 400 }
-    );
-  }
-
-  console.warn("SANDBOX MODE: allowing PayFast ITN despite signature mismatch");
-}
+      console.warn(
+        "SANDBOX MODE: allowing PayFast ITN despite signature mismatch"
+      );
+    }
 
     const organizationId = payload.m_payment_id;
 
@@ -85,11 +82,12 @@ if (!signaturesMatch) {
     }
 
     if (payload.payment_status === "COMPLETE") {
-      await supabase
+      const { error: organizationError } = await supabase
         .from("organizations")
         .update({
           subscription_status: "active",
           plan: "professional",
+          trial_ends_at: null,
           payfast_subscription_id: payload.token || null,
           next_billing_date: new Date(
             Date.now() + 30 * 24 * 60 * 60 * 1000
@@ -97,26 +95,48 @@ if (!signaturesMatch) {
         })
         .eq("id", organizationId);
 
-      await supabase.from("billing_events").insert({
-        organization_id: organizationId,
-        event_type: "subscription_activated",
-        payload,
-      });
+      if (organizationError) {
+        console.error("ORGANIZATION UPDATE ERROR:", organizationError);
 
-      await supabase.from("invoices").insert({
-        organization_id: organizationId,
-        provider_payment_id: payload.pf_payment_id,
-        amount: Number(payload.amount_gross || 0),
-        status: "paid",
-        paid_at: new Date().toISOString(),
-      });
+        return NextResponse.json(
+          { error: organizationError.message },
+          { status: 500 }
+        );
+      }
+
+      const { error: billingEventError } = await supabase
+        .from("billing_events")
+        .insert({
+          organization_id: organizationId,
+          event_type: "subscription_activated",
+          provider: "payfast",
+          payload,
+        });
+
+      if (billingEventError) {
+        console.error("BILLING EVENT ERROR:", billingEventError);
+      }
+
+      const { error: invoiceError } = await supabase
+        .from("invoices")
+        .insert({
+          organization_id: organizationId,
+          provider_payment_id: payload.pf_payment_id || null,
+          amount: Number(payload.amount_gross || 0),
+          status: "paid",
+          paid_at: new Date().toISOString(),
+        });
+
+      if (invoiceError) {
+        console.error("INVOICE ERROR:", invoiceError);
+      }
 
       console.log("SUBSCRIPTION ACTIVATED");
     }
 
     return NextResponse.json({ success: true });
   } catch (err: any) {
-    console.error(err);
+    console.error("PAYFAST WEBHOOK ERROR:", err);
 
     return NextResponse.json(
       {
