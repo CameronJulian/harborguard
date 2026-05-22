@@ -1,6 +1,7 @@
 "use client";
 
 import { CSSProperties, useEffect, useMemo, useState } from "react";
+import TrialBanner from "@/components/billing/TrialBanner";
 import { usePremiumAccess } from "@/hooks/usePremiumAccess";
 import PremiumGate from "@/components/PremiumGate";
 
@@ -459,6 +460,9 @@ export default function ReportAdminPage() {
 ) {
   return (
     <AppShell>
+	<TrialBanner
+  trialEndsAt={subscription?.trial_ends_at}
+/>
       <PremiumGate
         title="Executive Reporting Suite"
         description="Automated intelligence reports, operational analytics, scheduled executive summaries, and enterprise reporting controls require HarborGuard Professional."

@@ -1,6 +1,7 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
+import TrialBanner from "@/components/billing/TrialBanner";
 import { usePremiumAccess } from "@/hooks/usePremiumAccess";
 import dynamic from "next/dynamic";
 import PremiumGate from "@/components/PremiumGate";
@@ -669,6 +670,9 @@ useEffect(() => {
 ) {
   return (
     <AppShell>
+	<TrialBanner
+  trialEndsAt={subscription?.trial_ends_at}
+/>
       <PremiumGate
         title="Professional Route Replay"
         description="Replay telemetry, AI forensic movement analysis, and animated route intelligence are available on HarborGuard Professional."

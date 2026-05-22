@@ -1,6 +1,7 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
+import TrialBanner from "@/components/billing/TrialBanner";
 import { usePremiumAccess } from "@/hooks/usePremiumAccess";
 import PremiumGate from "@/components/PremiumGate";
 
@@ -755,6 +756,9 @@ if (
 ) {
   return (
     <AppShell>
+	<TrialBanner
+  trialEndsAt={subscription?.trial_ends_at}
+/>
       <PremiumGate
         title="Command Center"
         description="Upgrade to HarborGuard Professional to unlock live operational intelligence, AI command orchestration, replay intelligence, and advanced fleet coordination."

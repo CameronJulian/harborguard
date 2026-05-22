@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import TrialBanner from "@/components/billing/TrialBanner";
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import { usePremiumAccess } from "@/hooks/usePremiumAccess";
 import PremiumGate from "@/components/PremiumGate";
@@ -345,6 +346,9 @@ const anomalyForecast = useMemo(() => {
 ) {
   return (
     <AppShell>
+	<TrialBanner
+  trialEndsAt={subscription?.trial_ends_at}
+/>
       <PremiumGate
         title="Predictive Threat Intelligence"
         description="AI anomaly forecasting, threat prediction, behavioral scoring, and operational risk intelligence require HarborGuard Professional."
