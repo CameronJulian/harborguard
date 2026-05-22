@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireOrganization, requireRole } from "@/lib/server-auth";
+import { requireOrganization } from "@/lib/server-auth";
+import { hasPermission } from "@/lib/rbac";
+import { createAuditLog } from "@/lib/audit";
 
 const schema = z.object({
   id: z.string().min(1, "Incident id is required."),
@@ -33,7 +35,12 @@ export async function POST(req: Request) {
     const { supabase, organizationId, role, user, profile } =
       await requireOrganization();
 
-    requireRole(role, ["owner", "admin", "operator"]);
+    if (!hasPermission(role, "incidents:resolve")) {
+      return NextResponse.json(
+        { error: "You do not have permission to resolve incidents." },
+        { status: 403 }
+      );
+    }
 
     const body = await req.json();
     const { id } = schema.parse({
@@ -82,24 +89,20 @@ export async function POST(req: Request) {
       );
     }
 
-    const { error: auditError } = await supabase
-      .from("audit_logs")
-      .insert({
-        actor_name: actorName,
-        action: `Resolved incident with AI report: ${report.summary}`,
-        batch_code: incident.incident_code ?? null,
-        risk: incident.severity || "Low",
-      });
-
-    if (auditError) {
-      return NextResponse.json(
-        {
-          error: `Incident resolved, but audit log failed: ${auditError.message}`,
-          report,
-        },
-        { status: 500 }
-      );
-    }
+    await createAuditLog({
+      organizationId,
+      userId: user.id,
+      action: "incident.resolved",
+      target: id,
+      metadata: {
+        actorName,
+        incidentCode: incident.incident_code ?? null,
+        severity: incident.severity ?? null,
+        type: incident.type ?? null,
+        resolvedAt: new Date().toISOString(),
+        report,
+      },
+    });
 
     return NextResponse.json({
       success: true,
