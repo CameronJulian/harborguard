@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hasPermission } from "@/lib/rbac";
 import { requireOrganization, requireRole } from "@/lib/server-auth";
 import { requirePremiumAccess } from "@/lib/require-premium";
 
@@ -56,7 +57,12 @@ if (!premium.allowed) {
   );
 }
 
-    requireRole(role, ["owner", "admin", "operator"]);
+    if (!hasPermission(role, "reports:manage")) {
+  return NextResponse.json(
+    { error: "You do not have permission to manage reports." },
+    { status: 403 }
+  );
+}
 
     const body = await req.json();
 
