@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { CSSProperties, useEffect, useMemo, useState } from "react";
+import { usePremiumAccess } from "@/hooks/usePremiumAccess";
 import PremiumGate from "@/components/PremiumGate";
 
 
@@ -168,18 +169,7 @@ function calculateDriverScore(vehicle: FleetVehicle): DriverScore {
   };
 }
 
-function canAccessPremiumFeatures(
-  status?: string | null,
-  trialEndsAt?: string | null
-) {
-  if (status === "active") return true;
 
-  if (status === "trialing" && trialEndsAt) {
-    return new Date(trialEndsAt) > new Date();
-  }
-
-  return false;
-}
 
 export default function RiskDashboardPage() {
 	
@@ -188,46 +178,14 @@ export default function RiskDashboardPage() {
   const [message, setMessage] = useState("");
   
   
-  const [premiumAllowed, setPremiumAllowed] =
-  useState(true);
-
-const [subscriptionLoaded, setSubscriptionLoaded] =
-  useState(false);
+ const {
+  premiumAllowed,
+  subscriptionLoaded,
+  subscription,
+} = usePremiumAccess();
   const [predictions, setPredictions] = useState<ThreatPrediction[]>([]);
   
-async function loadSubscriptionStatus() {
-  try {
-    const response = await fetch(
-      "/api/fleet/vehicles",
-      {
-        cache: "no-store",
-      }
-    );
 
-    if (!response.ok) {
-      setPremiumAllowed(false);
-      setSubscriptionLoaded(true);
-      return;
-    }
-
-    const result = await response.json();
-
-    const subscription =
-      result.subscription;
-
-    const allowed =
-      canAccessPremiumFeatures(
-        subscription?.subscription_status,
-        subscription?.trial_ends_at
-      );
-
-    setPremiumAllowed(allowed);
-  } catch {
-    setPremiumAllowed(false);
-  } finally {
-    setSubscriptionLoaded(true);
-  }
-}
   async function loadFleet() {
     setLoading(true);
     setMessage("");
@@ -296,7 +254,7 @@ async function loadSubscriptionStatus() {
   }
 
   useEffect(() => {
-	  loadSubscriptionStatus();
+	  
   loadFleet();
   loadPredictions();
 
