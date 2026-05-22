@@ -2,7 +2,10 @@ export type UserRole =
   | "owner"
   | "admin"
   | "operator"
-  | "viewer";
+  | "viewer"
+  | "manager"
+  | "dock"
+  | "warehouse";
 
 export type Permission =
   | "billing:manage"
@@ -23,19 +26,42 @@ export const rolePermissions: Record<UserRole, Permission[]> = {
     "analytics:view",
     "fleet:view",
   ],
+
   admin: [
+    "billing:manage",
     "reports:manage",
     "vehicles:manage",
     "incidents:resolve",
+    "organization:manage",
     "analytics:view",
     "fleet:view",
   ],
+
+  manager: [
+    "billing:manage",
+    "reports:manage",
+    "vehicles:manage",
+    "incidents:resolve",
+    "organization:manage",
+    "analytics:view",
+    "fleet:view",
+  ],
+
   operator: [
     "reports:manage",
     "vehicles:manage",
     "incidents:resolve",
     "fleet:view",
   ],
+
+  dock: [
+    "fleet:view",
+  ],
+
+  warehouse: [
+    "fleet:view",
+  ],
+
   viewer: [
     "analytics:view",
     "fleet:view",
