@@ -1,35 +1,75 @@
 "use client";
+
 import { supabase } from "@/lib/supabase";
 import PermissionGate from "@/components/auth/PermissionGate";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function BillingPage() {
   const [billingEmail, setBillingEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [organization, setOrganization] = useState<any>({
-  plan: "starter",
-});
+
+  const [organization, setOrganization] = useState<any>(null);
+
+  useEffect(() => {
+    loadOrganization();
+  }, []);
+
+  async function loadOrganization() {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.user?.id) return;
+
+    const { data } = await supabase
+      .from("organizations")
+      .select("*")
+      .limit(1)
+      .single();
+
+    if (data) {
+      setOrganization(data);
+    }
+  }
+
+  const isProfessional =
+    organization?.plan === "professional" &&
+    organization?.subscription_status === "active";
+
+  const planLabel = isProfessional
+    ? "Professional Plan"
+    : "Starter Plan";
+
+  const statusLabel = isProfessional
+    ? "Active subscription"
+    : "Trial Active — 14 days remaining";
+
+  const statusText = isProfessional
+    ? "Active"
+    : "Trialing";
 
   async function upgradeProfessional() {
     try {
       setLoading(true);
       setError("");
-const {
-  data: { session },
-} = await supabase.auth.getSession();
 
-if (!session?.access_token) {
-  setError("You must be signed in to upgrade.");
-  setLoading(false);
-  return;
-}
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        setError("You must be signed in to upgrade.");
+        setLoading(false);
+        return;
+      }
+
       const response = await fetch("/api/billing/professional", {
         method: "POST",
-		credentials: "include",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
-		  Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           billingEmail,
@@ -66,15 +106,15 @@ if (!session?.access_token) {
               </div>
 
               <h1 className="mt-2 text-5xl font-black">
-                Starter Plan
+                {planLabel}
               </h1>
 
               <p className="mt-4 text-lg text-blue-100">
-                Trial Active — 14 days remaining
+                {statusLabel}
               </p>
 
               <p className="mt-2 text-blue-200">
-                Status: Trialing
+                Status: {statusText}
               </p>
             </div>
 
@@ -156,143 +196,141 @@ if (!session?.access_token) {
                 text-slate-700
               "
             >
-              Current Plan
+              {isProfessional ? "Downgrade Required" : "Current Plan"}
             </button>
           </div>
 
           {/* PROFESSIONAL */}
 
-          {/* PROFESSIONAL */}
+          <PermissionGate
+            permission="billing:manage"
+            fallback={
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                Only organization owners can manage billing.
+              </div>
+            }
+          >
+            <div
+              className="
+                relative
+                rounded-3xl
+                bg-black
+                p-8
+                text-white
+                shadow-2xl
+                ring-4
+                ring-blue-500
+              "
+            >
+              <div
+                className="
+                  absolute
+                  right-4
+                  top-4
+                  rounded-full
+                  bg-blue-500
+                  px-4
+                  py-1
+                  text-sm
+                  font-bold
+                "
+              >
+                MOST POPULAR
+              </div>
 
-<PermissionGate
-  permission="billing:manage"
-  fallback={
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-      Only organization owners can manage billing.
-    </div>
-  }
->
-  <div
-    className="
-      relative
-      rounded-3xl
-      bg-black
-      p-8
-      text-white
-      shadow-2xl
-      ring-4
-      ring-blue-500
-    "
-  >
-    <div
-      className="
-        absolute
-        right-4
-        top-4
-        rounded-full
-        bg-blue-500
-        px-4
-        py-1
-        text-sm
-        font-bold
-      "
-    >
-      MOST POPULAR
-    </div>
+              <div className="mb-8">
+                <h2 className="text-3xl font-bold">
+                  Professional
+                </h2>
 
-    <div className="mb-8">
-      <h2 className="text-3xl font-bold">
-        Professional
-      </h2>
+                <p className="mt-2 text-slate-300">
+                  Advanced fleet intelligence
+                </p>
 
-      <p className="mt-2 text-slate-300">
-        Advanced fleet intelligence
-      </p>
+                <div className="mt-6">
+                  <span className="text-5xl font-black">
+                    R499
+                  </span>
 
-      <div className="mt-6">
-        <span className="text-5xl font-black">
-          R499
-        </span>
+                  <span className="ml-2 text-slate-300">
+                    /month
+                  </span>
+                </div>
 
-        <span className="ml-2 text-slate-300">
-          /month
-        </span>
-      </div>
+                <div className="mt-4 rounded-2xl bg-blue-500/20 p-4 text-sm text-blue-100">
+                  Includes AI Threat Intelligence, Route Replay,
+                  Executive Fleet Analytics, and Predictive Risk Scoring.
+                </div>
+              </div>
 
-      <div className="mt-4 rounded-2xl bg-blue-500/20 p-4 text-sm text-blue-100">
-        Includes AI Threat Intelligence, Route Replay,
-        Executive Fleet Analytics, and Predictive Risk Scoring.
-      </div>
-    </div>
+              <ul className="space-y-4 text-slate-200">
+                <li>✓ AI Copilot</li>
+                <li>✓ Predictive Threat AI</li>
+                <li>✓ Route Replay Intelligence</li>
+                <li>✓ Unlimited alerts</li>
+                <li>✓ Up to 50 vehicles</li>
+                <li>✓ Executive reporting</li>
+                <li>✓ AI incident narratives</li>
+                <li>✓ Push notifications</li>
+                <li>✓ Mobile PWA access</li>
+              </ul>
 
-    <ul className="space-y-4 text-slate-200">
-      <li>✓ AI Copilot</li>
-      <li>✓ Predictive Threat AI</li>
-      <li>✓ Route Replay Intelligence</li>
-      <li>✓ Unlimited alerts</li>
-      <li>✓ Up to 50 vehicles</li>
-      <li>✓ Executive reporting</li>
-      <li>✓ AI incident narratives</li>
-      <li>✓ Push notifications</li>
-      <li>✓ Mobile PWA access</li>
-    </ul>
+              <div className="mt-8">
+                <input
+                  type="email"
+                  placeholder="Billing email"
+                  value={billingEmail}
+                  onChange={(e) => setBillingEmail(e.target.value)}
+                  className="
+                    mb-4
+                    w-full
+                    rounded-2xl
+                    border
+                    border-slate-700
+                    bg-slate-900
+                    px-4
+                    py-4
+                    text-white
+                    outline-none
+                  "
+                />
 
-    <div className="mt-8">
-      <input
-        type="email"
-        placeholder="Billing email"
-        value={billingEmail}
-        onChange={(e) => setBillingEmail(e.target.value)}
-        className="
-          mb-4
-          w-full
-          rounded-2xl
-          border
-          border-slate-700
-          bg-slate-900
-          px-4
-          py-4
-          text-white
-          outline-none
-        "
-      />
+                {error ? (
+                  <div className="mb-4 rounded-xl bg-red-500/20 p-3 text-sm text-red-200">
+                    {error}
+                  </div>
+                ) : null}
 
-      {error ? (
-        <div className="mb-4 rounded-xl bg-red-500/20 p-3 text-sm text-red-200">
-          {error}
-        </div>
-      ) : null}
-
-      {organization?.plan === "professional" ? (
-  <button
-    disabled
-    className="w-full rounded bg-gray-500 py-3 text-white"
-  >
-    Current Plan
-  </button>
-) : (
-  <button
-    onClick={upgradeProfessional}
-    disabled={loading}
-    className="
-      w-full
-      rounded
-      bg-white
-      py-3
-      text-black
-      transition
-      hover:bg-slate-200
-      disabled:opacity-50
-    "
-  >
-    {loading
-      ? "Redirecting to PayFast..."
-      : "Upgrade to Professional"}
-  </button>
-)}
-    </div>
-  </div>
-</PermissionGate>
+                {isProfessional ? (
+                  <button
+                    disabled
+                    className="w-full rounded bg-gray-500 py-3 text-white"
+                  >
+                    Current Plan
+                  </button>
+                ) : (
+                  <button
+                    onClick={upgradeProfessional}
+                    disabled={loading}
+                    className="
+                      w-full
+                      rounded
+                      bg-white
+                      py-3
+                      text-black
+                      transition
+                      hover:bg-slate-200
+                      disabled:opacity-50
+                    "
+                  >
+                    {loading
+                      ? "Redirecting to PayFast..."
+                      : "Upgrade to Professional"}
+                  </button>
+                )}
+              </div>
+            </div>
+          </PermissionGate>
 
           {/* ENTERPRISE */}
 
