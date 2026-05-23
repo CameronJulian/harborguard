@@ -11,25 +11,26 @@ function generateSignature(
   data: Record<string, string>,
   passphrase?: string
 ) {
-  const pfOutput = Object.entries(data)
-    .filter(
-      ([key, value]) =>
-        key !== "signature" &&
-        value !== undefined &&
-        value !== null &&
-        value !== ""
-    )
-    .map(
-      ([key, value]) =>
-        `${key}=${encodeURIComponent(value.trim()).replace(/%20/g, "+")}`
-    )
+  const sortedKeys = Object.keys(data).filter(
+    (key) =>
+      key !== "signature" &&
+      data[key] !== undefined &&
+      data[key] !== null &&
+      data[key] !== ""
+  );
+
+  const pfOutput = sortedKeys
+    .map((key) => {
+      const value = data[key].trim();
+
+      return `${key}=${encodeURIComponent(value).replace(/%20/g, "+")}`;
+    })
     .join("&");
 
   const payload = passphrase
-    ? `${pfOutput}&passphrase=${encodeURIComponent(passphrase.trim()).replace(
-        /%20/g,
-        "+"
-      )}`
+    ? `${pfOutput}&passphrase=${encodeURIComponent(
+        passphrase.trim()
+      ).replace(/%20/g, "+")}`
     : pfOutput;
 
   return crypto.createHash("md5").update(payload).digest("hex");
