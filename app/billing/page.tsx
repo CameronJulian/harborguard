@@ -8,7 +8,7 @@ export default function BillingPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [organization, setOrganization] = useState<any>({
-  plan: "professional"
+  plan: "starter",
 });
 
   async function upgradeProfessional() {
