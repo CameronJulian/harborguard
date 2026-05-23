@@ -16,22 +16,30 @@ export default function BillingPage() {
   }, []);
 
   async function loadOrganization() {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+  const {
+    data: { session: currentSession },
+  } = await supabase.auth.getSession();
 
-    if (!session?.user?.id) return;
+  if (!currentSession?.user?.id) return;
 
-    const { data } = await supabase
-      .from("organizations")
-      .select("*")
-      .limit(1)
-      .single();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("organization_id")
+    .eq("id", currentSession.user.id)
+    .single();
 
-    if (data) {
-      setOrganization(data);
-    }
+  if (!profile?.organization_id) return;
+
+  const { data: organizationData } = await supabase
+    .from("organizations")
+    .select("*")
+    .eq("id", profile.organization_id)
+    .single();
+
+  if (organizationData) {
+    setOrganization(organizationData);
   }
+}
 
   const isProfessional =
     organization?.plan === "professional" &&
