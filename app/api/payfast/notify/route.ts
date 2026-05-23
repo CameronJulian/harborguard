@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -7,33 +6,25 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-function generateSignature(
-  data: Record<string, string>,
-  passphrase?: string
-) {
-  const sortedKeys = Object.keys(data).filter(
-    (key) =>
-      key !== "signature" &&
-      data[key] !== undefined &&
-      data[key] !== null &&
-      data[key] !== ""
-  );
+async function validatePayFastITN(payload: Record<string, string>) {
+  const url =
+    process.env.PAYFAST_SANDBOX === "true"
+      ? "https://sandbox.payfast.co.za/eng/query/validate"
+      : "https://www.payfast.co.za/eng/query/validate";
 
-  const pfOutput = sortedKeys
-    .map((key) => {
-      const value = data[key].trim();
+  const validationBody = new URLSearchParams(payload).toString();
 
-      return `${key}=${encodeURIComponent(value).replace(/%20/g, "+")}`;
-    })
-    .join("&");
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: validationBody,
+  });
 
-  const payload = passphrase
-    ? `${pfOutput}&passphrase=${encodeURIComponent(
-        passphrase.trim()
-      ).replace(/%20/g, "+")}`
-    : pfOutput;
+  const text = (await response.text()).trim();
 
-  return crypto.createHash("md5").update(payload).digest("hex");
+  return text === "VALID";
 }
 
 export async function POST(req: Request) {
@@ -45,24 +36,15 @@ export async function POST(req: Request) {
       payload[key] = String(value);
     });
 
-    const receivedSignature = payload.signature;
-    const generatedSignature = generateSignature(
-      payload,
-      process.env.PAYFAST_PASSPHRASE
-    );
+    console.log("PAYFAST ITN RECEIVED:", payload);
 
-    const signaturesMatch =
-      receivedSignature?.trim().toLowerCase() ===
-      generatedSignature.trim().toLowerCase();
+    const isValidPayFastITN = await validatePayFastITN(payload);
 
-    if (!signaturesMatch) {
-      console.error("INVALID PAYFAST SIGNATURE", {
-        receivedSignature,
-        generatedSignature,
-      });
+    if (!isValidPayFastITN) {
+      console.error("PAYFAST SERVER VALIDATION FAILED");
 
       return NextResponse.json(
-        { error: "Invalid signature." },
+        { error: "PayFast validation failed." },
         { status: 400 }
       );
     }
@@ -135,9 +117,7 @@ export async function POST(req: Request) {
     console.error("PAYFAST WEBHOOK ERROR:", err);
 
     return NextResponse.json(
-      {
-        error: err.message || "Webhook processing failed.",
-      },
+      { error: err.message || "Webhook processing failed." },
       { status: 500 }
     );
   }
