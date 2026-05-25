@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { PLAN_LIMITS } from "@/lib/plan-limits";
 import { requireOrganization } from "@/lib/server-auth";
 
 function buildMaintenanceProfile(vehicle: any) {
@@ -84,6 +85,77 @@ export async function GET() {
     });
   } catch (err: any) {
     const message = err.message || "Failed to load vehicles.";
+    const status = message === "Unauthorized" ? 401 : 500;
+
+    return NextResponse.json({ error: message }, { status });
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const { supabase, organizationId } = await requireOrganization();
+    const body = await req.json();
+
+    const { count: vehicleCount, error: countError } = await supabase
+      .from("vehicles")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId);
+
+    if (countError) {
+      return NextResponse.json(
+        { error: countError.message },
+        { status: 500 }
+      );
+    }
+
+    const { data: organization, error: orgError } = await supabase
+      .from("organizations")
+      .select("plan")
+      .eq("id", organizationId)
+      .single();
+
+    if (orgError) {
+      return NextResponse.json(
+        { error: orgError.message },
+        { status: 500 }
+      );
+    }
+
+    const plan = organization?.plan || "starter";
+    const planLimit =
+  PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS]?.vehicles ?? 5;
+
+    if ((vehicleCount || 0) >= planLimit) {
+      return NextResponse.json(
+        { error: "Vehicle limit reached for your plan." },
+        { status: 403 }
+      );
+    }
+
+    const { data: vehicle, error: insertError } = await supabase
+      .from("vehicles")
+      .insert({
+        organization_id: organizationId,
+        name: body.name,
+        registration_number: body.registration_number || body.registrationNumber || null,
+        status: body.status || "active",
+      })
+      .select("*")
+      .single();
+
+    if (insertError) {
+      return NextResponse.json(
+        { error: insertError.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      vehicle,
+    });
+  } catch (err: any) {
+    const message = err.message || "Failed to create vehicle.";
     const status = message === "Unauthorized" ? 401 : 500;
 
     return NextResponse.json({ error: message }, { status });
