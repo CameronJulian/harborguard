@@ -121,9 +121,17 @@ export async function POST(req: Request) {
       );
     }
 
-    const plan = organization?.plan || "starter";
-    const planLimit =
-  PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS]?.vehicles ?? 5;
+   const rawPlan = (organization?.plan || "starter").toLowerCase();
+
+const normalizedPlan =
+  rawPlan === "trial"
+    ? "starter"
+    : rawPlan;
+
+const planLimit =
+  PLAN_LIMITS[
+    normalizedPlan as keyof typeof PLAN_LIMITS
+  ]?.vehicles ?? 5;
 
     if ((vehicleCount || 0) >= planLimit) {
       return NextResponse.json(
