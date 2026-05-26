@@ -91,12 +91,13 @@ export default function VehiclesPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          name,
-          registration_number: registrationNumber,
-          make,
-          model,
-          status: "active",
+       body: JSON.stringify({
+  nickname: name,
+  registration_number: registrationNumber,
+  make,
+  model,
+  status: "active",
+
         }),
       });
 
