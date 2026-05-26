@@ -135,11 +135,14 @@ export async function POST(req: Request) {
     const { data: vehicle, error: insertError } = await supabase
       .from("vehicles")
       .insert({
-        organization_id: organizationId,
-        name: body.name,
-        registration_number: body.registration_number || body.registrationNumber || null,
-        status: body.status || "active",
-      })
+  organization_id: organizationId,
+  nickname: body.nickname || body.name || null,
+  registration_number:
+    body.registration_number || body.registrationNumber || null,
+  make: body.make || null,
+  model: body.model || null,
+  is_active: true,
+})
       .select("*")
       .single();
 
