@@ -110,7 +110,7 @@ export async function POST(req: Request) {
 
    const { data: organization, error: orgError } = await supabase
   .from("organizations")
-  .select("subscription_plan")
+  .select("plan")
   .eq("id", organizationId)
   .single();
 
@@ -122,7 +122,7 @@ export async function POST(req: Request) {
     }
 
    const rawPlan = String(
-  organization?.subscription_plan || "starter"
+  organization?.plan || "starter"
 ).toLowerCase();
 
 const normalizedPlan =
