@@ -121,17 +121,24 @@ export async function POST(req: Request) {
       );
     }
 
-   const rawPlan = (organization?.plan || "starter").toLowerCase();
+   const rawPlan = String(organization?.plan || "starter").toLowerCase();
 
 const normalizedPlan =
-  rawPlan === "trial"
-    ? "starter"
-    : rawPlan;
+  rawPlan === "trial" ? "starter" : rawPlan;
 
-const planLimit =
-  PLAN_LIMITS[
-    normalizedPlan as keyof typeof PLAN_LIMITS
-  ]?.vehicles ?? 5;
+const planLimits =
+  PLAN_LIMITS[normalizedPlan as keyof typeof PLAN_LIMITS] ||
+  PLAN_LIMITS.starter;
+
+const planLimit = planLimits.vehicles;
+
+console.log("VEHICLE LIMIT DEBUG", {
+  organizationId,
+  rawPlan,
+  normalizedPlan,
+  vehicleCount,
+  planLimit,
+});
 
     if ((vehicleCount || 0) >= planLimit) {
       return NextResponse.json(
