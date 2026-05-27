@@ -36,18 +36,19 @@ export async function requireOrganization() {
     await supabase
       .from("profiles")
       .select(`
-        id,
-        full_name,
-        role,
-        organization_id,
-        organization:organizations (
   id,
-  name,
-  subscription_status,
-  subscription_plan,
-  trial_ends_at
-)
-      `)
+  full_name,
+  role,
+  organization_id,
+  organization:organizations (
+    id,
+    name,
+    plan,
+    subscription_status,
+    subscription_plan,
+    trial_ends_at
+  )
+`)
       .eq("id", user.id)
       .single();
 
