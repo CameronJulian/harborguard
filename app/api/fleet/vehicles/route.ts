@@ -108,11 +108,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const { data: organization, error: orgError } = await supabase
-      .from("organizations")
-      .select("plan")
-      .eq("id", organizationId)
-      .single();
+   const { data: organization, error: orgError } = await supabase
+  .from("organizations")
+  .select("subscription_plan")
+  .eq("id", organizationId)
+  .single();
 
     if (orgError) {
       return NextResponse.json(
@@ -121,7 +121,9 @@ export async function POST(req: Request) {
       );
     }
 
-   const rawPlan = String(organization?.plan || "starter").toLowerCase();
+   const rawPlan = String(
+  organization?.subscription_plan || "starter"
+).toLowerCase();
 
 const normalizedPlan =
   rawPlan === "trial" ? "starter" : rawPlan;
