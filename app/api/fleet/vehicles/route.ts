@@ -62,15 +62,10 @@ export async function GET() {
       .from("vehicles")
       .select("*")
       .eq("organization_id", organizationId)
-      .order("created_at", {
-        ascending: false,
-      });
+      .order("created_at", { ascending: false });
 
     if (error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     const vehicles = (data || []).map((vehicle) => ({
@@ -102,45 +97,34 @@ export async function POST(req: Request) {
       .eq("organization_id", organizationId);
 
     if (countError) {
-      return NextResponse.json(
-        { error: countError.message },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: countError.message }, { status: 500 });
     }
 
-   const { data: organization, error: orgError } = await supabase
-  .from("organizations")
-  .select("plan")
-  .eq("id", organizationId)
-  .single();
+    const { data: organization, error: orgError } = await supabase
+      .from("organizations")
+      .select("id, plan")
+      .eq("id", organizationId)
+      .single();
 
     if (orgError) {
-      return NextResponse.json(
-        { error: orgError.message },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: orgError.message }, { status: 500 });
     }
 
-   const rawPlan = String(
-  organization?.plan || "starter"
-).toLowerCase();
+    const rawPlan = String(organization?.plan || "starter").toLowerCase();
+    const normalizedPlan = rawPlan === "trial" ? "starter" : rawPlan;
 
-const normalizedPlan =
-  rawPlan === "trial" ? "starter" : rawPlan;
+    const planLimit =
+      PLAN_LIMITS[normalizedPlan as keyof typeof PLAN_LIMITS]?.vehicles ??
+      PLAN_LIMITS.starter.vehicles;
 
-const planLimits =
-  PLAN_LIMITS[normalizedPlan as keyof typeof PLAN_LIMITS] ||
-  PLAN_LIMITS.starter;
-
-const planLimit = planLimits.vehicles;
-
-console.log("VEHICLE LIMIT DEBUG", {
-  organizationId,
-  rawPlan,
-  normalizedPlan,
-  vehicleCount,
-  planLimit,
-});
+    console.log("VEHICLE LIMIT DEBUG", {
+      organizationId,
+      organization,
+      rawPlan,
+      normalizedPlan,
+      vehicleCount,
+      planLimit,
+    });
 
     if ((vehicleCount || 0) >= planLimit) {
       return NextResponse.json(
@@ -152,22 +136,19 @@ console.log("VEHICLE LIMIT DEBUG", {
     const { data: vehicle, error: insertError } = await supabase
       .from("vehicles")
       .insert({
-  organization_id: organizationId,
-  nickname: body.nickname || body.name || null,
-  registration_number:
-    body.registration_number || body.registrationNumber || null,
-  make: body.make || null,
-  model: body.model || null,
-  is_active: true,
-})
+        organization_id: organizationId,
+        nickname: body.nickname || body.name || null,
+        registration_number:
+          body.registration_number || body.registrationNumber || null,
+        make: body.make || null,
+        model: body.model || null,
+        is_active: true,
+      })
       .select("*")
       .single();
 
     if (insertError) {
-      return NextResponse.json(
-        { error: insertError.message },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: insertError.message }, { status: 500 });
     }
 
     return NextResponse.json({
