@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 import { requirePremiumAccess } from "@/lib/require-premium";
+import { ratelimit } from "@/lib/ratelimit";
 
 function getVehicleRegistration(vehicle: any) {
   if (Array.isArray(vehicle)) {
@@ -96,6 +97,22 @@ function buildRecommendation(alerts: any[]) {
 
 export async function POST(req: Request) {
   try {
+	  const ip =
+  req.headers.get("x-forwarded-for") ??
+  "anonymous";
+
+const { success } =
+  await ratelimit.limit(ip);
+
+if (!success) {
+  return NextResponse.json(
+    {
+      error:
+        "Too many requests. Please slow down.",
+    },
+    { status: 429 }
+  );
+}
     const { supabase, organizationId } = await requireOrganization();
 	const premium =
   await requirePremiumAccess(
