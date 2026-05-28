@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 import { requirePremiumAccess } from "@/lib/require-premium";
-
-
-
-
-
-
+import { ratelimit } from "@/lib/ratelimit";
 
 function calculateThreatProbability(params: {
   speed: number;
@@ -64,30 +59,44 @@ function getDistanceMeters(
 
 export async function GET(request: NextRequest) {
   try {
-    const {
-  supabase,
-  organizationId,
-} = await requireOrganization();
+    const ip =
+      request.headers.get("x-forwarded-for") ??
+      request.headers.get("x-real-ip") ??
+      "anonymous";
 
-const premium =
-  await requirePremiumAccess(
-    organizationId
-  );
+    const { success } = await ratelimit.limit(
+      `predict-threats:${ip}`
+    );
 
-if (!premium.allowed) {
-  return NextResponse.json(
-    {
-      error:
-        "Professional subscription required for predictive AI.",
-    },
-    { status: 403 }
-  );
-}
+    if (!success) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429 }
+      );
+    }
 
-    const { data: vehicles, error: vehiclesError } = await supabase
-      .from("vehicles")
-      .select("*")
-      .eq("organization_id", organizationId);
+    const { supabase, organizationId } =
+      await requireOrganization();
+
+    const premium = await requirePremiumAccess(
+      organizationId
+    );
+
+    if (!premium.allowed) {
+      return NextResponse.json(
+        {
+          error:
+            "Professional subscription required for predictive AI.",
+        },
+        { status: 403 }
+      );
+    }
+
+    const { data: vehicles, error: vehiclesError } =
+      await supabase
+        .from("vehicles")
+        .select("*")
+        .eq("organization_id", organizationId);
 
     if (vehiclesError) {
       return NextResponse.json(
@@ -96,10 +105,11 @@ if (!premium.allowed) {
       );
     }
 
-    const { data: incidents, error: incidentsError } = await supabase
-      .from("road_incidents")
-      .select("*")
-      .eq("organization_id", organizationId);
+    const { data: incidents, error: incidentsError } =
+      await supabase
+        .from("road_incidents")
+        .select("*")
+        .eq("organization_id", organizationId);
 
     if (incidentsError) {
       return NextResponse.json(
@@ -107,6 +117,12 @@ if (!premium.allowed) {
         { status: 500 }
       );
     }
+
+    const { data: geofences } = await supabase
+      .from("geofences")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .eq("is_active", true);
 
     const predictions: any[] = [];
 
@@ -131,66 +147,61 @@ if (!premium.allowed) {
       const openAlerts = alerts || [];
 
       const criticalAlerts = openAlerts.filter(
-        (a) => a.severity === "critical"
+        (alert) => alert.severity === "critical"
       ).length;
 
       const lastSeen = latest.recorded_at
         ? new Date(latest.recorded_at).getTime()
         : 0;
 
-      const minutesOffline = (Date.now() - lastSeen) / (1000 * 60);
+      const minutesOffline =
+        (Date.now() - lastSeen) / (1000 * 60);
+
       const isOffline = minutesOffline >= 15;
 
       let nearIncident = false;
-	  
-	  let predictedGeofenceRisk = 0;
-let predictedBreach = false;
+      let predictedGeofenceRisk = 0;
 
-const { data: geofences } = await supabase
-  .from("geofences")
-  .select("*")
-  .eq("organization_id", organizationId)
-  .eq("is_active", true);
+      for (const zone of geofences || []) {
+        const distance = getDistanceMeters(
+          latest.latitude,
+          latest.longitude,
+          zone.center_lat,
+          zone.center_lng
+        );
 
-for (const zone of geofences || []) {
-  const distance = getDistanceMeters(
-    latest.latitude,
-    latest.longitude,
-    zone.center_lat,
-    zone.center_lng
-  );
+        const speed = latest.speed_kmh || 0;
 
-  const speed = latest.speed_kmh || 0;
+        if (
+          distance <= zone.radius_meters * 1.5 &&
+          speed > 80
+        ) {
+          predictedGeofenceRisk += 25;
+        }
 
-  if (
-    distance <= zone.radius_meters * 1.5 &&
-    speed > 80
-  ) {
-    predictedGeofenceRisk += 25;
-  }
+        if (
+          distance <= zone.radius_meters * 1.2 &&
+          speed > 100
+        ) {
+          predictedGeofenceRisk += 35;
+        }
 
-  if (
-    distance <= zone.radius_meters * 1.2 &&
-    speed > 100
-  ) {
-    predictedGeofenceRisk += 35;
-  }
+        if (
+          distance <= zone.radius_meters &&
+          speed > 120
+        ) {
+          predictedGeofenceRisk += 45;
+        }
+      }
 
-  if (
-    distance <= zone.radius_meters &&
-    speed > 120
-  ) {
-    predictedGeofenceRisk += 45;
-  }
-}
+      predictedGeofenceRisk = Math.min(
+        100,
+        predictedGeofenceRisk
+      );
 
-predictedGeofenceRisk = Math.min(
-  100,
-  predictedGeofenceRisk
-);
+      const predictedBreach =
+        predictedGeofenceRisk >= 60;
 
-predictedBreach =
-  predictedGeofenceRisk >= 60;
       for (const incident of incidents || []) {
         const distance = getDistanceMeters(
           latest.latitude,
@@ -206,37 +217,38 @@ predictedBreach =
       }
 
       const basePrediction =
-  calculateThreatProbability({
-    speed: latest.speed_kmh || 0,
-    openAlerts: openAlerts.length,
-    criticalAlerts,
-    isOffline,
-    nearIncident,
-  });
+        calculateThreatProbability({
+          speed: latest.speed_kmh || 0,
+          openAlerts: openAlerts.length,
+          criticalAlerts,
+          isOffline,
+          nearIncident,
+        });
 
-const adjustedProbability = Math.min(
-  100,
-  basePrediction.probability +
-    predictedGeofenceRisk
-);
+      const adjustedProbability = Math.min(
+        100,
+        basePrediction.probability +
+          predictedGeofenceRisk
+      );
 
-let adjustedLevel = "Low";
+      let adjustedLevel = "Low";
 
-if (adjustedProbability >= 75)
-  adjustedLevel = "Critical";
-else if (adjustedProbability >= 50)
-  adjustedLevel = "High";
-else if (adjustedProbability >= 25)
-  adjustedLevel = "Medium";
+      if (adjustedProbability >= 75) {
+        adjustedLevel = "Critical";
+      } else if (adjustedProbability >= 50) {
+        adjustedLevel = "High";
+      } else if (adjustedProbability >= 25) {
+        adjustedLevel = "Medium";
+      }
 
       predictions.push({
         vehicleId: vehicle.id,
         registrationNumber: vehicle.registration_number,
         nickname: vehicle.nickname,
-probability: adjustedProbability,
-level: adjustedLevel,
-predictedGeofenceRisk,
-predictedBreach,
+        probability: adjustedProbability,
+        level: adjustedLevel,
+        predictedGeofenceRisk,
+        predictedBreach,
         speed: latest.speed_kmh || 0,
         openAlerts: openAlerts.length,
         criticalAlerts,
