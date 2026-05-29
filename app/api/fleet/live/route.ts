@@ -170,7 +170,7 @@ export async function GET() {
           routePointCount: routePoints.length,
         });
 
-        const snappedRoute = await snapToRoad(reduceRoute(routePoints, 8));
+        const snappedRoute = reduceRoute(routePoints, 8);
 
         return {
           id: vehicle.id,

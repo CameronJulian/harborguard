@@ -396,7 +396,7 @@ if (
     });
   }
 }
-      if (minutes >= OFFLINE_MINUTES && !openTypes.has("offline")) {
+      if (false && minutes >= OFFLINE_MINUTES && !openTypes.has("offline")) {
         const message =
           String(vehicle.registration_number || "Unknown vehicle") +
           " offline for " +
