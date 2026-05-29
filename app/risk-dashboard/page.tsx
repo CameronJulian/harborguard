@@ -796,10 +796,11 @@ return (
                       </div>
                     </div>
 
-                    <div>
-                      <div style={{ color: "#64748b", fontSize: 14 }}>Risk</div>
-                      <div style={{ fontWeight: 900, color }}>{label}</div>
-                    </div>
+     <div style={{ fontSize: 12, color: "#64748b" }}>
+  {alerts.length > 0
+    ? formatAlertType(alerts[0]?.alert_type)
+    : "No active alerts"}
+</div>
 
                     <div>
                       <div style={{ color: "#64748b", fontSize: 14 }}>
@@ -808,7 +809,7 @@ return (
 					  
 					  <div>
   <div style={{ color: "#64748b", fontSize: 14 }}>
-    Driver Score
+    Driver Safety Score
   </div>
 
   <div
@@ -829,7 +830,7 @@ return (
   </div>
 
   <div style={{ fontSize: 12, color: "#64748b" }}>
-    {driverScore.level} Risk
+    {driverScore.level} Driver Risk
   </div>
 </div>
                       <div style={{ fontWeight: 800 }}>

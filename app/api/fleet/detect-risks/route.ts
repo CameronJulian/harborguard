@@ -58,17 +58,34 @@ async function createIncident(
   alert: any
 ) {
   try {
-    await supabase.from("incidents").insert({
+	  console.log("Creating incident for alert:", alert.id, alert.severity, organizationId);
+    const incidentCode = `INC-${Date.now()}`;
+
+    const summary =
+      alert.message ||
+      `${alert.alert_type || "Risk event"} detected`;
+
+    const { error } = await supabase.from("incidents").insert({
+      incident_code: incidentCode,
+      severity:
+        alert.severity === "critical"
+          ? "Critical"
+          : alert.severity === "high"
+            ? "High"
+            : alert.severity === "medium"
+              ? "Medium"
+              : "Low",
+      status: "Open",
+      summary,
+      assigned_to: null,
       organization_id: organizationId,
-      vehicle_id: alert.vehicle_id,
-      alert_id: alert.id,
-      type: alert.alert_type,
-      severity: alert.severity,
-      status: "open",
-      description: alert.message,
     });
-  } catch {
-    // Do not block risk detection if incident creation fails.
+
+    if (error) {
+      console.error("Failed to create incident:", error.message);
+    }
+  } catch (err) {
+    console.error("Incident creation error:", err);
   }
 }
 
@@ -156,10 +173,11 @@ if (
   if (error || !data) {
     return null;
   }
+console.log("Created alert:", data.id, data.severity, data.organization_id);
 
-  if (data.severity === "critical" || data.severity === "high") {
-    await createIncident(supabase, organizationId, data);
-  }
+if (data.severity === "critical" || data.severity === "high") {
+  await createIncident(supabase, organizationId, data);
+}
 
   return data;
 }
