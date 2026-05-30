@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   try {
     const { supabase, organizationId, role } = await requireOrganization();
 
-    requireRole(role, ["owner", "admin", "operator"]);
+    requireRole(role, ["owner", "admin", "operator", "manager"]);
 
     const body = (await req.json()) as ResolveAlertBody;
 
@@ -63,6 +63,23 @@ export async function POST(req: Request) {
       );
     }
 
+    const { error: timelineError } = await supabase
+      .from("emergency_response_events")
+      .insert({
+        vehicle_alert_id: alertId,
+        event_type: "resolved",
+        note: resolutionNotes,
+        created_by: null,
+      });
+
+    if (timelineError) {
+      console.error("Emergency response timeline resolve insert failed:", timelineError);
+      return NextResponse.json(
+        { error: timelineError.message },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
       message: "Alert resolved successfully.",
@@ -77,3 +94,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: message }, { status });
   }
 }
+
+
