@@ -79,6 +79,7 @@ export default function VehicleAlertsPage() {
   const [filter, setFilter] = useState("open");
   const [search, setSearch] = useState("");
   const [resolvingId, setResolvingId] = useState<string | null>(null);
+  const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null);
   const [notesById, setNotesById] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
 
@@ -138,6 +139,35 @@ export default function VehicleAlertsPage() {
       setMessage(err.message || "Failed to resolve alert.");
     } finally {
       setResolvingId(null);
+    }
+  }
+
+  async function acknowledgeAlert(alertId: string) {
+    setAcknowledgingId(alertId);
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/fleet/acknowledge-alert", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ alertId }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setMessage(result.error || "Failed to acknowledge alert.");
+        return;
+      }
+
+      await loadAlerts();
+      setMessage("Alert acknowledged successfully.");
+    } catch (err: any) {
+      setMessage(err.message || "Failed to acknowledge alert.");
+    } finally {
+      setAcknowledgingId(null);
     }
   }
 
@@ -486,7 +516,7 @@ export default function VehicleAlertsPage() {
                   </div>
                 ) : (
                   <div
-                    style={{ display: "grid", gridTemplateColumns: "1fr 180px", gap: 12 }}
+                    style={{ display: "grid", gridTemplateColumns: "1fr 160px 180px", gap: 12 }}
                     onClick={(e) => e.stopPropagation()}
                   >
                     <input
@@ -499,7 +529,21 @@ export default function VehicleAlertsPage() {
                       }
                       placeholder="Resolution notes..."
                       style={inputStyle}
-                    />
+                    />                    <button
+                      onClick={() => acknowledgeAlert(alert.id)}
+                      disabled={acknowledgingId === alert.id}
+                      style={{
+                        border: "none",
+                        borderRadius: 12,
+                        background: "#2563eb",
+                        color: "#fff",
+                        fontWeight: 800,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {acknowledgingId === alert.id ? "Acknowledging..." : "Acknowledge"}
+                    </button>
+
 
                     <button
                       onClick={() => resolveAlert(alert.id)}
@@ -525,5 +569,9 @@ export default function VehicleAlertsPage() {
     </AppShell>
   );
 }
+
+
+
+
 
 
