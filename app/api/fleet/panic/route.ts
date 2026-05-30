@@ -89,6 +89,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: alertError.message }, { status: 500 });
     }
 
+    const { error: timelineError } = await supabase
+      .from("emergency_response_events")
+      .insert({
+        vehicle_alert_id: insertedAlert.id,
+        event_type: "panic_activated",
+        note: panicMessage,
+        created_by: null,
+      });
+
+    if (timelineError) {
+      console.error("Emergency response timeline insert failed:", timelineError);
+      return NextResponse.json(
+        { error: timelineError.message },
+        { status: 500 }
+      );
+    }
+
     if (activeTrip && activeTrip.status !== "emergency") {
       await supabase
         .from("vehicle_trips")
@@ -160,3 +177,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+
+
