@@ -15,6 +15,11 @@ type VehicleAlert = {
   created_at: string | null;
   resolved_at?: string | null;
   resolution_notes?: string | null;
+  timeline?: {
+    event_type: string;
+    note?: string | null;
+    created_at?: string | null;
+  }[];
   intelligence_score?: number | null;
 behavioral_risk?: string | null;
 intelligence_narrative?: string | null;
@@ -415,6 +420,53 @@ export default function VehicleAlertsPage() {
   </div>
 ) : null}
 
+                {alert.timeline && alert.timeline.length > 0 ? (
+                  <div
+                    style={{
+                      marginBottom: 18,
+                      padding: 18,
+                      borderRadius: 14,
+                      background: "#fff7ed",
+                      border: "1px solid #fed7aa",
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div
+                      style={{
+                        fontWeight: 800,
+                        marginBottom: 10,
+                        color: "#9a3412",
+                      }}
+                    >
+                      Emergency Response Timeline
+                    </div>
+
+                    <div style={{ display: "grid", gap: 10 }}>
+                      {alert.timeline.map((event, index) => (
+                        <div
+                          key={`${event.event_type}-${event.created_at}-${index}`}
+                          style={{
+                            padding: 12,
+                            borderRadius: 12,
+                            background: "#ffffff",
+                            border: "1px solid #fed7aa",
+                          }}
+                        >
+                          <div style={{ fontWeight: 800 }}>
+                            {event.event_type.replace(/_/g, " ").toUpperCase()}
+                          </div>
+                          <div style={{ color: "#64748b", fontSize: 13 }}>
+                            {formatDateTime(event.created_at)}
+                          </div>
+                          <div style={{ marginTop: 6 }}>
+                            {event.note || "No timeline note provided."}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
                 {alert.is_resolved ? (
                   <div
                     style={{
@@ -473,3 +525,5 @@ export default function VehicleAlertsPage() {
     </AppShell>
   );
 }
+
+

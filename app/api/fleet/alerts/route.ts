@@ -163,11 +163,30 @@ export async function GET() {
       );
     }
 
+    const alertIds = (data || []).map((alert: any) => alert.id);
+
+    const { data: emergencyEvents } = alertIds.length
+      ? await supabase
+          .from("emergency_response_events")
+          .select(`
+            vehicle_alert_id,
+            event_type,
+            note,
+            created_at
+          `)
+          .in("vehicle_alert_id", alertIds)
+          .order("created_at", { ascending: true })
+      : { data: [] };
+
     const alerts = (data || []).map(
       (alert: any) => ({
         ...alert,
         intelligence:
           generateNarrative(alert),
+        timeline: (emergencyEvents || []).filter(
+          (event: any) =>
+            event.vehicle_alert_id === alert.id
+        ),
       })
     );
 
@@ -284,3 +303,8 @@ dangerLevel:
     );
   }
 }
+
+
+
+
+
