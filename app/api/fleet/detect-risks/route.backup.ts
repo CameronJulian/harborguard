@@ -58,7 +58,7 @@ async function createIncident(
   alert: any
 ) {
   try {
-	  
+	  console.log("Creating incident for alert:", alert.id, alert.severity, organizationId);
     const incidentCode = `INC-${Date.now()}`;
 
     const summary =
@@ -173,7 +173,7 @@ if (
   if (error || !data) {
     return null;
   }
-
+console.log("Created alert:", data.id, data.severity, data.organization_id);
 
 if (data.severity === "critical" || data.severity === "high") {
   await createIncident(supabase, organizationId, data);
@@ -333,7 +333,7 @@ if (
     if (alert) {
       createdAlerts.push(alert);
 
-      void notifyAlert({
+      await notifyAlert({
         vehicleNickname:
           vehicle.nickname,
         registrationNumber:
@@ -375,7 +375,7 @@ if (
   if (alert) {
     createdAlerts.push(alert);
 
-    void notifyAlert({
+    await notifyAlert({
       vehicleNickname:
         vehicle.nickname,
       registrationNumber:
@@ -413,7 +413,7 @@ if (
         if (alert) {
           createdAlerts.push(alert);
 
-          void notifyAlert({
+          await notifyAlert({
             vehicleNickname: vehicle.nickname,
             registrationNumber: vehicle.registration_number,
             alertType: "offline",
@@ -444,7 +444,7 @@ if (
         if (alert) {
           createdAlerts.push(alert);
 
-          void notifyAlert({
+          await notifyAlert({
             vehicleNickname: vehicle.nickname,
             registrationNumber: vehicle.registration_number,
             alertType: "long_stop",
@@ -487,7 +487,7 @@ if (
         if (alert) {
           createdAlerts.push(alert);
 
-          void notifyAlert({
+          await notifyAlert({
             vehicleNickname: vehicle.nickname,
             registrationNumber: vehicle.registration_number,
             alertType: "geofence_breach",

@@ -128,7 +128,7 @@ export async function GET() {
           .select("latitude, longitude, speed_kmh")
           .eq("vehicle_id", vehicle.id)
           .order("recorded_at", { ascending: true })
-          .limit(50);
+          .limit(200);
 
         const { data: stops } = await supabase
           .from("vehicle_stops")

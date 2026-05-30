@@ -25,26 +25,16 @@ function calculateThreatProbability(params: {
   score = Math.min(score, 100);
 
   let level = "Low";
-
   if (score >= 75) level = "Critical";
   else if (score >= 50) level = "High";
   else if (score >= 25) level = "Medium";
 
-  return {
-    probability: score,
-    level,
-  };
+  return { probability: score, level };
 }
 
-function getDistanceMeters(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
-) {
+function getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371000;
   const toRad = (v: number) => (v * Math.PI) / 180;
-
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
 
@@ -64,88 +54,109 @@ export async function GET(request: NextRequest) {
       request.headers.get("x-real-ip") ??
       "anonymous";
 
-    const { success } = await ratelimit.limit(
-      `predict-threats:${ip}`
-    );
+    const { success } = await ratelimit.limit(`predict-threats:${ip}`);
 
     if (!success) {
-      return NextResponse.json(
-        { error: "Too many requests" },
-        { status: 429 }
-      );
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
-    const { supabase, organizationId } =
-      await requireOrganization();
+    const { supabase, organizationId } = await requireOrganization();
 
-    const premium = await requirePremiumAccess(
-      organizationId
-    );
+    const premium = await requirePremiumAccess(organizationId);
 
     if (!premium.allowed) {
       return NextResponse.json(
-        {
-          error:
-            "Professional subscription required for predictive AI.",
-        },
+        { error: "Professional subscription required for predictive AI." },
         { status: 403 }
       );
     }
 
-    const { data: vehicles, error: vehiclesError } =
-      await supabase
-        .from("vehicles")
-        .select("*")
-        .eq("organization_id", organizationId);
+    const { data: vehicles, error: vehiclesError } = await supabase
+      .from("vehicles")
+      .select("*")
+      .eq("organization_id", organizationId);
 
     if (vehiclesError) {
-      return NextResponse.json(
-        { error: vehiclesError.message },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: vehiclesError.message }, { status: 500 });
     }
 
-    const { data: incidents, error: incidentsError } =
-      await supabase
+    const vehicleIds = (vehicles || []).map((vehicle) => vehicle.id);
+
+    if (vehicleIds.length === 0) {
+      return NextResponse.json({ success: true, predictions: [] });
+    }
+
+    const [
+      incidentsResult,
+      geofencesResult,
+      locationsResult,
+      alertsResult,
+    ] = await Promise.all([
+      supabase
         .from("road_incidents")
         .select("*")
-        .eq("organization_id", organizationId);
+        .eq("organization_id", organizationId),
 
-    if (incidentsError) {
-      return NextResponse.json(
-        { error: incidentsError.message },
-        { status: 500 }
-      );
+      supabase
+        .from("geofences")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .eq("is_active", true),
+
+      supabase
+        .from("vehicle_locations")
+        .select("*")
+        .in("vehicle_id", vehicleIds)
+        .order("recorded_at", { ascending: false })
+        .limit(vehicleIds.length * 5),
+
+      supabase
+        .from("vehicle_alerts")
+        .select("*")
+        .in("vehicle_id", vehicleIds)
+        .eq("organization_id", organizationId)
+        .eq("is_resolved", false),
+    ]);
+
+    if (incidentsResult.error) {
+      return NextResponse.json({ error: incidentsResult.error.message }, { status: 500 });
     }
 
-    const { data: geofences } = await supabase
-      .from("geofences")
-      .select("*")
-      .eq("organization_id", organizationId)
-      .eq("is_active", true);
+    if (geofencesResult.error) {
+      return NextResponse.json({ error: geofencesResult.error.message }, { status: 500 });
+    }
+
+    if (locationsResult.error) {
+      return NextResponse.json({ error: locationsResult.error.message }, { status: 500 });
+    }
+
+    if (alertsResult.error) {
+      return NextResponse.json({ error: alertsResult.error.message }, { status: 500 });
+    }
+
+    const latestByVehicle = new Map<string, any>();
+
+    for (const location of locationsResult.data || []) {
+      if (!latestByVehicle.has(location.vehicle_id)) {
+        latestByVehicle.set(location.vehicle_id, location);
+      }
+    }
+
+    const alertsByVehicle = new Map<string, any[]>();
+
+    for (const alert of alertsResult.data || []) {
+      const existing = alertsByVehicle.get(alert.vehicle_id) || [];
+      existing.push(alert);
+      alertsByVehicle.set(alert.vehicle_id, existing);
+    }
 
     const predictions: any[] = [];
 
     for (const vehicle of vehicles || []) {
-      const { data: latest } = await supabase
-        .from("vehicle_locations")
-        .select("*")
-        .eq("vehicle_id", vehicle.id)
-        .order("recorded_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
+      const latest = latestByVehicle.get(vehicle.id);
       if (!latest) continue;
 
-      const { data: alerts } = await supabase
-        .from("vehicle_alerts")
-        .select("*")
-        .eq("vehicle_id", vehicle.id)
-        .eq("organization_id", organizationId)
-        .eq("is_resolved", false);
-
-      const openAlerts = alerts || [];
-
+      const openAlerts = alertsByVehicle.get(vehicle.id) || [];
       const criticalAlerts = openAlerts.filter(
         (alert) => alert.severity === "critical"
       ).length;
@@ -154,15 +165,13 @@ export async function GET(request: NextRequest) {
         ? new Date(latest.recorded_at).getTime()
         : 0;
 
-      const minutesOffline =
-        (Date.now() - lastSeen) / (1000 * 60);
-
+      const minutesOffline = (Date.now() - lastSeen) / (1000 * 60);
       const isOffline = minutesOffline >= 15;
 
       let nearIncident = false;
       let predictedGeofenceRisk = 0;
 
-      for (const zone of geofences || []) {
+      for (const zone of geofencesResult.data || []) {
         const distance = getDistanceMeters(
           latest.latitude,
           latest.longitude,
@@ -172,37 +181,23 @@ export async function GET(request: NextRequest) {
 
         const speed = latest.speed_kmh || 0;
 
-        if (
-          distance <= zone.radius_meters * 1.5 &&
-          speed > 80
-        ) {
+        if (distance <= zone.radius_meters * 1.5 && speed > 80) {
           predictedGeofenceRisk += 25;
         }
 
-        if (
-          distance <= zone.radius_meters * 1.2 &&
-          speed > 100
-        ) {
+        if (distance <= zone.radius_meters * 1.2 && speed > 100) {
           predictedGeofenceRisk += 35;
         }
 
-        if (
-          distance <= zone.radius_meters &&
-          speed > 120
-        ) {
+        if (distance <= zone.radius_meters && speed > 120) {
           predictedGeofenceRisk += 45;
         }
       }
 
-      predictedGeofenceRisk = Math.min(
-        100,
-        predictedGeofenceRisk
-      );
+      predictedGeofenceRisk = Math.min(100, predictedGeofenceRisk);
+      const predictedBreach = predictedGeofenceRisk >= 60;
 
-      const predictedBreach =
-        predictedGeofenceRisk >= 60;
-
-      for (const incident of incidents || []) {
+      for (const incident of incidentsResult.data || []) {
         const distance = getDistanceMeters(
           latest.latitude,
           latest.longitude,
@@ -216,30 +211,23 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      const basePrediction =
-        calculateThreatProbability({
-          speed: latest.speed_kmh || 0,
-          openAlerts: openAlerts.length,
-          criticalAlerts,
-          isOffline,
-          nearIncident,
-        });
+      const basePrediction = calculateThreatProbability({
+        speed: latest.speed_kmh || 0,
+        openAlerts: openAlerts.length,
+        criticalAlerts,
+        isOffline,
+        nearIncident,
+      });
 
       const adjustedProbability = Math.min(
         100,
-        basePrediction.probability +
-          predictedGeofenceRisk
+        basePrediction.probability + predictedGeofenceRisk
       );
 
       let adjustedLevel = "Low";
-
-      if (adjustedProbability >= 75) {
-        adjustedLevel = "Critical";
-      } else if (adjustedProbability >= 50) {
-        adjustedLevel = "High";
-      } else if (adjustedProbability >= 25) {
-        adjustedLevel = "Medium";
-      }
+      if (adjustedProbability >= 75) adjustedLevel = "Critical";
+      else if (adjustedProbability >= 50) adjustedLevel = "High";
+      else if (adjustedProbability >= 25) adjustedLevel = "Medium";
 
       predictions.push({
         vehicleId: vehicle.id,
@@ -263,9 +251,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (err: any) {
     return NextResponse.json(
-      {
-        error: err.message || "Prediction engine failed.",
-      },
+      { error: err.message || "Prediction engine failed." },
       { status: 500 }
     );
   }
