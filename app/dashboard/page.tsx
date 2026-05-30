@@ -1,13 +1,8 @@
-"use client";
+﻿"use client";
 
 import { CSSProperties, FormEvent, useEffect, useMemo, useState } from "react";
 import TrialBanner from "@/components/billing/TrialBanner";
 
-import {
-  demoVehicles,
-  demoAlerts,
-  demoMetrics,
-} from "@/lib/demo-data";
 import {
   LineChart,
   Line,
@@ -99,10 +94,18 @@ function formatOneDecimal(value: number) {
   return Number.isFinite(value) ? value.toFixed(1) : "0.0";
 }
 
+function formatDateTime(value?: string | null) {
+  if (!value) return "-";
+  return new Date(value).toLocaleString();
+}
+
 export default function DashboardPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [batches, setBatches] = useState<BatchRow[]>([]);
   const [incidents, setIncidents] = useState<IncidentRow[]>([]);
+  const [fleetVehicles, setFleetVehicles] = useState<any[]>([]);
+  const [fleetTrips, setFleetTrips] = useState<any[]>([]);
+  const [fleetAlerts, setFleetAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 const [trialEndsAt, setTrialEndsAt] =
@@ -594,19 +597,19 @@ const executiveRiskIndex = useMemo(() => {
   {[
     {
       label: "Active Vehicles",
-      value: demoMetrics.activeVehicles,
+      value: fleetVehicles.filter((v) => v.is_active).length,
     },
     {
       label: "Active Trips",
-      value: demoMetrics.activeTrips,
+      value: fleetTrips.filter((trip) => trip.status === "active" || trip.status === "emergency").length,
     },
     {
       label: "Incidents Today",
-      value: demoMetrics.incidentsToday,
+      value: fleetAlerts.length,
     },
     {
       label: "AI Threat Score",
-      value: `${demoMetrics.aiThreatScore}%`,
+      value: `${fleetAlerts.some((alert) => alert.severity === "critical") ? 100 : fleetAlerts.some((alert) => alert.severity === "high") ? 75 : fleetAlerts.length > 0 ? 50 : 0}%`,
     },
   ].map((metric) => (
     <div
@@ -659,7 +662,7 @@ const executiveRiskIndex = useMemo(() => {
   </h2>
 
   <div style={{ display: "grid", gap: 16 }}>
-    {demoVehicles.map((vehicle) => (
+    {fleetVehicles.slice(0, 6).map((vehicle) => (
       <div
         key={vehicle.id}
         style={{
@@ -673,7 +676,7 @@ const executiveRiskIndex = useMemo(() => {
       >
         <div>
           <div style={{ fontWeight: 800 }}>
-            {vehicle.name}
+            {vehicle.registration_number || vehicle.registrationNumber || vehicle.nickname || "Unknown Vehicle"}
           </div>
 
           <div
@@ -682,7 +685,7 @@ const executiveRiskIndex = useMemo(() => {
               marginTop: 4,
             }}
           >
-            {vehicle.location}
+            {vehicle.nickname || "Live fleet vehicle"}
           </div>
         </div>
 
@@ -692,22 +695,22 @@ const executiveRiskIndex = useMemo(() => {
           }}
         >
           <div style={{ fontWeight: 700 }}>
-            {vehicle.speed} km/h
+            {Number(vehicle.speed_kmh || vehicle.speedKmh || 0)} km/h
           </div>
 
           <div
             style={{
               marginTop: 4,
               color:
-                vehicle.risk === "high"
+                (vehicle.maintenanceProfile?.maintenanceRisk || "Low").toLowerCase() === "high"
                   ? "#dc2626"
-                  : vehicle.risk === "medium"
+                  : (vehicle.maintenanceProfile?.maintenanceRisk || "Low").toLowerCase() === "medium"
                   ? "#ca8a04"
                   : "#16a34a",
               fontWeight: 700,
             }}
           >
-            {vehicle.risk.toUpperCase()} RISK
+            {(vehicle.maintenanceProfile?.maintenanceRisk || "Low").toUpperCase()} RISK
           </div>
         </div>
       </div>
@@ -796,7 +799,7 @@ const executiveRiskIndex = useMemo(() => {
             transition: "all 0.2s ease",
           }}
         >
-          🚨 {recentHighRisk.length} high-risk batch{recentHighRisk.length > 1 ? "es" : ""} detected
+          ðŸš¨ {recentHighRisk.length} high-risk batch{recentHighRisk.length > 1 ? "es" : ""} detected
           <div style={{ marginTop: 8, fontSize: 14, fontWeight: 500 }}>
             {recentHighRisk.map((b) => b.batch_code).join(", ")}
           </div>
@@ -854,7 +857,7 @@ const executiveRiskIndex = useMemo(() => {
   </h2>
 
   <div style={{ display: "grid", gap: 16 }}>
-    {demoAlerts.map((alert) => (
+    {fleetAlerts.slice(0, 6).map((alert) => (
       <div
         key={alert.id}
         style={{
@@ -875,7 +878,7 @@ const executiveRiskIndex = useMemo(() => {
           }}
         >
           <div style={{ fontWeight: 800 }}>
-            {alert.title}
+            {(alert.alert_type || "unknown_alert").replace(/_/g, " ").toUpperCase()}
           </div>
 
           <div
@@ -894,7 +897,7 @@ const executiveRiskIndex = useMemo(() => {
             color: "#64748b",
           }}
         >
-          {alert.vehicle} • {alert.time}
+          {alert.vehicle?.registration_number || alert.vehicle?.nickname || "Unknown Vehicle"} - {formatDateTime(alert.created_at)}
         </div>
       </div>
     ))}
@@ -1113,3 +1116,14 @@ const executiveRiskIndex = useMemo(() => {
     </AppShell>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
