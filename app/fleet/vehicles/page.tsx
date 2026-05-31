@@ -45,6 +45,11 @@ export default function VehiclesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editRegistrationNumber, setEditRegistrationNumber] = useState("");
+  const [editMake, setEditMake] = useState("");
+  const [editModel, setEditModel] = useState("");
 
   const [name, setName] = useState("");
   const [registrationNumber, setRegistrationNumber] = useState("");
@@ -121,6 +126,78 @@ export default function VehiclesPage() {
     }
   }
 
+  function startEditing(vehicle: Vehicle) {
+    setEditingVehicle(vehicle);
+    setEditName(vehicle.nickname || vehicle.name || "");
+    setEditRegistrationNumber(vehicle.registration_number || vehicle.registrationNumber || "");
+    setEditMake(vehicle.make || "");
+    setEditModel(vehicle.model || "");
+  }
+
+  async function handleUpdateVehicle(event: FormEvent) {
+    event.preventDefault();
+    if (!editingVehicle) return;
+
+    try {
+      setSaving(true);
+      setError("");
+      setSuccess("");
+
+      const response = await fetch(`/api/fleet/vehicles/${editingVehicle.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nickname: editName,
+          registration_number: editRegistrationNumber,
+          make: editMake,
+          model: editModel,
+        }),
+      });
+
+      const result: VehiclesResponse = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to update vehicle");
+      }
+
+      setSuccess("Vehicle updated successfully.");
+      setEditingVehicle(null);
+      await loadVehicles();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update vehicle");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeactivateVehicle(vehicle: Vehicle) {
+    const confirmed = window.confirm("Deactivate this vehicle? It will remain in HarborGuard but can no longer be used.");
+    if (!confirmed) return;
+
+    try {
+      setSaving(true);
+      setError("");
+      setSuccess("");
+
+      const response = await fetch(`/api/fleet/vehicles/${vehicle.id}`, {
+        method: "DELETE",
+      });
+
+      const result: VehiclesResponse = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to delete vehicle");
+      }
+
+      setSuccess("Vehicle deactivated successfully.");
+      await loadVehicles();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete vehicle");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <AppShell>
       <div style={{ ...cardStyle, padding: 24, marginBottom: 24 }}>
@@ -186,6 +263,82 @@ export default function VehiclesPage() {
         </div>
       </form>
 
+      {editingVehicle && (
+        <form
+          onSubmit={handleUpdateVehicle}
+          style={{ ...cardStyle, padding: 24, marginBottom: 24 }}
+        >
+          <h2 style={{ fontSize: 24, marginBottom: 16 }}>Edit Vehicle</h2>
+
+          <div style={{ display: "grid", gap: 14 }}>
+            <input
+              style={inputStyle}
+              placeholder="Vehicle name"
+              value={editName}
+              onChange={(event) => setEditName(event.target.value)}
+              required
+            />
+
+            <input
+              style={inputStyle}
+              placeholder="Registration number"
+              value={editRegistrationNumber}
+              onChange={(event) => setEditRegistrationNumber(event.target.value)}
+              required
+            />
+
+            <input
+              style={inputStyle}
+              placeholder="Make"
+              value={editMake}
+              onChange={(event) => setEditMake(event.target.value)}
+            />
+
+            <input
+              style={inputStyle}
+              placeholder="Model"
+              value={editModel}
+              onChange={(event) => setEditModel(event.target.value)}
+            />
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                type="submit"
+                disabled={saving}
+                style={{
+                  padding: "14px 18px",
+                  borderRadius: 12,
+                  border: "none",
+                  background: saving ? "#94a3b8" : "#2563eb",
+                  color: "#ffffff",
+                  fontSize: 16,
+                  fontWeight: 800,
+                  cursor: saving ? "not-allowed" : "pointer",
+                }}
+              >
+                {saving ? "Saving..." : "Save Changes"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setEditingVehicle(null)}
+                style={{
+                  padding: "14px 18px",
+                  borderRadius: 12,
+                  border: "1px solid #cbd5e1",
+                  background: "#ffffff",
+                  fontSize: 16,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </form>
+      )}
+
       {error && (
         <div
           style={{
@@ -233,7 +386,79 @@ export default function VehiclesPage() {
               vehicle.status === "active" ||
               vehicle.status === "online";
 
-            return (
+            function startEditing(vehicle: Vehicle) {
+    setEditingVehicle(vehicle);
+    setEditName(vehicle.nickname || vehicle.name || "");
+    setEditRegistrationNumber(vehicle.registration_number || vehicle.registrationNumber || "");
+    setEditMake(vehicle.make || "");
+    setEditModel(vehicle.model || "");
+  }
+
+  async function handleUpdateVehicle(event: FormEvent) {
+    event.preventDefault();
+    if (!editingVehicle) return;
+
+    try {
+      setSaving(true);
+      setError("");
+      setSuccess("");
+
+      const response = await fetch(`/api/fleet/vehicles/${editingVehicle.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nickname: editName,
+          registration_number: editRegistrationNumber,
+          make: editMake,
+          model: editModel,
+        }),
+      });
+
+      const result: VehiclesResponse = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to update vehicle");
+      }
+
+      setSuccess("Vehicle updated successfully.");
+      setEditingVehicle(null);
+      await loadVehicles();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update vehicle");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeactivateVehicle(vehicle: Vehicle) {
+    const confirmed = window.confirm("Deactivate this vehicle? It will remain in HarborGuard but can no longer be used.");
+    if (!confirmed) return;
+
+    try {
+      setSaving(true);
+      setError("");
+      setSuccess("");
+
+      const response = await fetch(`/api/fleet/vehicles/${vehicle.id}`, {
+        method: "DELETE",
+      });
+
+      const result: VehiclesResponse = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to delete vehicle");
+      }
+
+      setSuccess("Vehicle deactivated successfully.");
+      await loadVehicles();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete vehicle");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
               <div key={vehicle.id} style={{ ...cardStyle, padding: 20 }}>
                 <div
                   style={{
@@ -281,6 +506,39 @@ export default function VehiclesPage() {
                     ? new Date(vehicle.created_at).toLocaleString()
                     : "-"}
                 </div>
+
+                <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+                  <button
+                    type="button"
+                    onClick={() => startEditing(vehicle)}
+                    style={{
+                      padding: "10px 14px",
+                      borderRadius: 10,
+                      border: "1px solid #cbd5e1",
+                      background: "#ffffff",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDeactivateVehicle(vehicle)}
+                    style={{
+                      padding: "10px 14px",
+                      borderRadius: 10,
+                      border: "none",
+                      background: "#dc2626",
+                      color: "#ffffff",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Deactivate
+                  </button>
+                </div>
               </div>
             );
           })}
@@ -289,3 +547,8 @@ export default function VehiclesPage() {
     </AppShell>
   );
 }
+
+
+
+
+
