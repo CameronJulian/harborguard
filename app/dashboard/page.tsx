@@ -248,7 +248,7 @@ const alertResult = await alertResponse.json();
     setIncidents((incidentData as IncidentRow[]) || []);
     setFleetVehicles(vehicleResult.vehicles || []);
     setFleetTrips(tripResult.trips || []);
-    setFleetAlerts(alertResult.alerts || []);
+    setFleetAlerts((alertResult.alerts || []).filter((alert: any) => !alert.is_resolved));
   }
 
   const totalCatch = useMemo(
@@ -1131,6 +1131,8 @@ const executiveRiskIndex = useMemo(() => {
     </AppShell>
   );
 }
+
+
 
 
 
