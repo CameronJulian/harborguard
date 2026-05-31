@@ -352,19 +352,11 @@ const aiOperationalNarrative = useMemo(() => {
 }, [operationalReadiness]);
 
 const executiveRiskIndex = useMemo(() => {
-  return Math.min(
-    100,
-    Math.round(
-      flaggedCount * 12 +
-        openIncidents * 15 +
-        averageLossPercent
-    )
-  );
-}, [
-  flaggedCount,
-  openIncidents,
-  averageLossPercent,
-]);
+  if (fleetAlerts.some((alert) => alert.severity === "critical")) return 100;
+  if (fleetAlerts.some((alert) => alert.severity === "high")) return 75;
+  if (fleetAlerts.length > 0) return 50;
+  return Math.min(100, Math.round(averageLossPercent));
+}, [fleetAlerts, averageLossPercent]);
 
   const trendData = useMemo(
     () =>
@@ -1131,6 +1123,7 @@ const executiveRiskIndex = useMemo(() => {
     </AppShell>
   );
 }
+
 
 
 
