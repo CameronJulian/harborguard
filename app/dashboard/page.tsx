@@ -223,8 +223,32 @@ const { data: incidentData } = await supabase
   .eq("organization_id", profile.organization_id)
   .order("created_at", { ascending: false });
 
+const vehicleResponse = await fetch("/api/fleet/vehicles", {
+  headers: {
+    Authorization: `Bearer ${session.access_token}`,
+  },
+});
+const vehicleResult = await vehicleResponse.json();
+
+const tripResponse = await fetch("/api/fleet/trips", {
+  headers: {
+    Authorization: `Bearer ${session.access_token}`,
+  },
+});
+const tripResult = await tripResponse.json();
+
+const alertResponse = await fetch("/api/fleet/alerts", {
+  headers: {
+    Authorization: `Bearer ${session.access_token}`,
+  },
+});
+const alertResult = await alertResponse.json();
+
     setBatches((batchData as BatchRow[]) || []);
     setIncidents((incidentData as IncidentRow[]) || []);
+    setFleetVehicles(vehicleResult.vehicles || []);
+    setFleetTrips(tripResult.trips || []);
+    setFleetAlerts(alertResult.alerts || []);
   }
 
   const totalCatch = useMemo(
@@ -637,7 +661,7 @@ const executiveRiskIndex = useMemo(() => {
           fontWeight: 900,
         }}
       >
-        {metric.value}
+        <span style={{ color: "#020617", WebkitTextFillColor: "#020617" }}>{String(metric.value)}</span>
       </div>
     </div>
   ))}
@@ -1116,6 +1140,13 @@ const executiveRiskIndex = useMemo(() => {
     </AppShell>
   );
 }
+
+
+
+
+
+
+
 
 
 
