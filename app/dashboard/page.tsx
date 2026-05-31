@@ -742,8 +742,7 @@ const executiveRiskIndex = useMemo(() => {
         value: `${executiveRiskIndex}/100`,
       },
       {
-        label: "Open Incidents",
-        value: openIncidents,
+        label: "Open Fleet Alerts", value: fleetAlerts.length,
       },
       {
         label: "Flagged Operations",
@@ -827,7 +826,7 @@ const executiveRiskIndex = useMemo(() => {
         {[
           { label: "Total Catch", value: `${formatNumber(totalCatch)} kg` },
           { label: "Stored", value: `${formatNumber(totalStored)} kg` },
-          { label: "Open Incidents", value: formatNumber(openIncidents) },
+          { label: "Open Fleet Alerts", value: formatNumber(fleetAlerts.length) },
           { label: "Flagged Batches", value: formatNumber(flaggedCount) },
         ].map((item, index) => (
           <div key={index} style={{ ...cardStyle, padding: 26 }}>
@@ -1123,6 +1122,7 @@ const executiveRiskIndex = useMemo(() => {
     </AppShell>
   );
 }
+
 
 
 
