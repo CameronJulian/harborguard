@@ -320,20 +320,11 @@ const alertResult = await alertResponse.json();
     return top ? `${top[0]} (${top[1]})` : "No flagged vessels";
   }, [batches]);
   const operationalReadiness = useMemo(() => {
-  const riskPenalty =
-    flaggedCount * 8 +
-    openIncidents * 10 +
-    averageLossPercent * 1.5;
-
-  return Math.max(
-    0,
-    Math.min(100, Math.round(100 - riskPenalty))
-  );
-}, [
-  flaggedCount,
-  openIncidents,
-  averageLossPercent,
-]);
+    if (fleetAlerts.some((alert) => alert.severity === "critical")) return 0;
+    if (fleetAlerts.some((alert) => alert.severity === "high")) return 25;
+    if (fleetAlerts.length > 0) return 50;
+    return 100;
+  }, [fleetAlerts]);
 
 const readinessStatus =
   operationalReadiness >= 85
@@ -1140,6 +1131,7 @@ const executiveRiskIndex = useMemo(() => {
     </AppShell>
   );
 }
+
 
 
 
