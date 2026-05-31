@@ -619,7 +619,7 @@ const executiveRiskIndex = useMemo(() => {
       value: fleetTrips.filter((trip) => trip.status === "active" || trip.status === "emergency").length,
     },
     {
-      label: "Incidents Today",
+      label: "Open Fleet Alerts",
       value: fleetAlerts.length,
     },
     {
@@ -1131,6 +1131,7 @@ const executiveRiskIndex = useMemo(() => {
     </AppShell>
   );
 }
+
 
 
 
