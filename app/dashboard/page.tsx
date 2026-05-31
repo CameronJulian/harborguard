@@ -746,7 +746,7 @@ const executiveRiskIndex = useMemo(() => {
   >
     {[
       {
-        label: "Executive Risk Index",
+        label: "Executive Threat Index",
         value: `${executiveRiskIndex}/100`,
       },
       {
@@ -1131,6 +1131,7 @@ const executiveRiskIndex = useMemo(() => {
     </AppShell>
   );
 }
+
 
 
 
