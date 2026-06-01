@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireOrganization, requireRole } from "@/lib/server-auth";
+import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
@@ -344,8 +345,8 @@ async function buildAnalyticsPdf(params: {
       labels: ["Normal", "Review", "Flagged"],
       values: [
         batches.filter((b) => b.status === "Normal").length,
-        batches.filter((b) => b.status === "Review").length,
-        batches.filter((b) => b.status === "Flagged").length,
+        batches.filter((b: any) => b.status === "Review").length,
+        batches.filter((b: any) => b.status === "Flagged").length,
       ],
       colors: [rgb(0.15, 0.39, 0.92), rgb(0.96, 0.62, 0.04), rgb(0.86, 0.15, 0.15)],
       title: "Status Distribution",
@@ -406,13 +407,43 @@ async function buildAnalyticsPdf(params: {
 
 export async function POST(req: Request) {
   try {
-	  const {
-  supabase,
-  organizationId,
-  role,
-} = await requireOrganization();
+	  const internalSecret = req.headers.get("x-cron-secret");
+    const userIdFromHeader = req.headers.get("x-user-id");
 
-requireRole(role, ["owner", "admin"]);
+    let supabase: any;
+    let organizationId: string;
+
+    if (
+      internalSecret &&
+      process.env.CRON_SECRET &&
+      internalSecret === process.env.CRON_SECRET &&
+      userIdFromHeader
+    ) {
+      supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("organization_id")
+        .eq("id", userIdFromHeader)
+        .single();
+
+      if (profileError || !profile?.organization_id) {
+        return NextResponse.json(
+          { error: "Organization not found for report subscription." },
+          { status: 404 }
+        );
+      }
+
+      organizationId = profile.organization_id;
+    } else {
+      const auth = await requireOrganization();
+      requireRole(auth.role, ["owner", "admin"]);
+      supabase = auth.supabase;
+      organizationId = auth.organizationId;
+    }
     const resendKey = process.env.RESEND_API_KEY;
 
     if (!resendKey) {
@@ -480,23 +511,23 @@ requireRole(role, ["owner", "admin"]);
     const safeIncidents = incidents || [];
 
     const totalCatch = safeBatches.reduce(
-      (sum, b) => sum + Number(b.catch_kg || 0),
+      (sum: number, b: any) => sum + Number(b.catch_kg || 0),
       0
     );
 
     const totalStored = safeBatches.reduce(
-      (sum, b) => sum + Number(b.storage_kg || 0),
+      (sum: number, b: any) => sum + Number(b.storage_kg || 0),
       0
     );
 
     const totalLoss = totalCatch - totalStored;
-    const flaggedCount = safeBatches.filter((b) => b.status === "Flagged").length;
-    const reviewCount = safeBatches.filter((b) => b.status === "Review").length;
-    const openIncidents = safeIncidents.filter((i) => i.status === "Open").length;
+    const flaggedCount = safeBatches.filter((b: any) => b.status === "Flagged").length;
+    const reviewCount = safeBatches.filter((b: any) => b.status === "Review").length;
+    const openIncidents = safeIncidents.filter((i: any) => i.status === "Open").length;
 
     const avgLossPercent =
       safeBatches.length > 0
-        ? safeBatches.reduce((sum, b) => {
+        ? safeBatches.reduce((sum: number, b: any) => {
             const catchValue = Number(b.catch_kg || 0);
             const storageValue = Number(b.storage_kg || 0);
             if (catchValue <= 0) return sum;
@@ -507,7 +538,7 @@ requireRole(role, ["owner", "admin"]);
     const batchRows = safeBatches
       .slice(0, 10)
       .map(
-        (b) => `
+        (b: any) => `
           <tr>
             <td style="padding:8px;border:1px solid #ddd;">${escapeHtml(b.batch_code)}</td>
             <td style="padding:8px;border:1px solid #ddd;">${escapeHtml(b.vessel)}</td>
@@ -523,7 +554,7 @@ requireRole(role, ["owner", "admin"]);
     const incidentRows = safeIncidents
       .slice(0, 10)
       .map(
-        (i) => `
+        (i: any) => `
           <tr>
             <td style="padding:8px;border:1px solid #ddd;">${escapeHtml(i.incident_code)}</td>
             <td style="padding:8px;border:1px solid #ddd;">${escapeHtml(i.severity)}</td>
@@ -653,3 +684,7 @@ export async function GET() {
     { status: 405 }
   );
 }
+
+
+
+

@@ -102,6 +102,8 @@ export async function GET(req: Request) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "x-cron-secret": process.env.CRON_SECRET || "",
+            "x-user-id": String(subscription.user_id || ""),
           },
           cache: "no-store",
           body: JSON.stringify({
@@ -239,3 +241,7 @@ export async function GET(req: Request) {
     );
   }
 }
+
+
+
+
