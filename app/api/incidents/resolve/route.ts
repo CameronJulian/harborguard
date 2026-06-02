@@ -36,7 +36,11 @@ export async function POST(req: Request) {
 
     const { error: updateError } = await supabase
       .from("incidents")
-      .update({ status: "Resolved" })
+      .update({
+        status: "Resolved",
+        resolved_by: user?.id ?? null,
+        resolved_at: new Date().toISOString(),
+      })
       .eq("id", incidentId)
       .eq("organization_id", organizationId);
 
