@@ -86,14 +86,14 @@ export async function POST(req: Request) {
     if (storageKg < dockKg) riskScore += 10;
 
     const status =
-      riskScore > 70
+      riskScore >= 70
         ? "Flagged"
         : riskScore > 30
         ? "Review"
         : "Normal";
 
     const riskLevel =
-      riskScore > 70
+      riskScore >= 70
         ? "High"
         : riskScore > 30
         ? "Medium"
@@ -184,4 +184,6 @@ export async function POST(req: Request) {
     );
   }
 }
+
+
 
