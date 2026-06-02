@@ -152,10 +152,15 @@ export async function POST(req: Request) {
 
     const { error: auditError } =
       await supabase.from("audit_logs").insert({
-        actor_name: handlerName,
+        organization_id: profile.organization_id,
+        user_id: user.id,
         action: "Created batch",
-        batch_code: batchCode,
-        risk: riskLevel,
+        target: batchCode,
+        metadata: {
+          actor_name: handlerName,
+          batch_code: batchCode,
+          risk: riskLevel,
+        },
       });
 
     if (auditError) {
@@ -179,3 +184,4 @@ export async function POST(req: Request) {
     );
   }
 }
+
