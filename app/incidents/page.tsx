@@ -114,6 +114,13 @@ const { data } = await supabase
 
   async function resolveIncident(id: string) {
     setMessage("");
+
+    const resolutionNote = window.prompt(
+      "Enter a resolution note for this incident:"
+    );
+
+    if (resolutionNote === null) return;
+
     setResolvingId(id);
 
     const {
@@ -126,7 +133,7 @@ const { data } = await supabase
         "Content-Type": "application/json",
         Authorization: `Bearer ${session?.access_token}`,
       },
-      body: JSON.stringify({ id }),
+      body: JSON.stringify({ id, resolutionNote }),
     });
 
     const result = await response.json();
@@ -339,3 +346,4 @@ const { data } = await supabase
     </AppShell>
   );
 }
+
