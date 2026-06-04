@@ -311,8 +311,24 @@ const { data } = await supabase
                     </td>
 
                     <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
-                      {incident.summary}
-                    </td>
+                        <div>{incident.summary}</div>
+
+                        {incident.status === "Resolved" && incident.resolution_note ? (
+                          <div
+                            style={{
+                              marginTop: 8,
+                              padding: 10,
+                              borderRadius: 10,
+                              background: "#f0fdf4",
+                              color: "#166534",
+                              fontSize: 13,
+                              fontWeight: 600,
+                            }}
+                          >
+                            Resolution note: {incident.resolution_note}
+                          </div>
+                        ) : null}
+                      </td>
 
                     <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
                       {incident.status !== "Resolved" ? (
@@ -346,6 +362,7 @@ const { data } = await supabase
     </AppShell>
   );
 }
+
 
 
 
