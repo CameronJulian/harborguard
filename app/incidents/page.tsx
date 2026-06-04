@@ -11,6 +11,9 @@ type IncidentRow = {
   status: string | null;
   summary: string | null;
   created_at: string | null;
+  resolved_by: string | null;
+  resolved_at: string | null;
+  resolution_note: string | null;
 };
 
 const cardStyle: CSSProperties = {
@@ -362,6 +365,8 @@ const { data } = await supabase
     </AppShell>
   );
 }
+
+
 
 
 
