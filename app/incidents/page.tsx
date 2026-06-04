@@ -88,7 +88,7 @@ if (!profile?.organization_id) return;
 
 const { data } = await supabase
   .from("incidents")
-  .select("id, incident_code, severity, status, summary, created_at")
+  .select("id, incident_code, severity, status, summary, created_at, resolved_by, resolved_at, resolution_note")
   .eq("organization_id", profile.organization_id)
   .order("created_at", { ascending: false });
 
@@ -346,4 +346,7 @@ const { data } = await supabase
     </AppShell>
   );
 }
+
+
+
 
