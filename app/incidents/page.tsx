@@ -124,6 +124,11 @@ const { data } = await supabase
 
     if (resolutionNote === null) return;
 
+    if (!resolutionNote.trim()) {
+      window.alert("Resolution note is required.");
+      return;
+    }
+
     setResolvingId(id);
 
     const {
@@ -365,6 +370,7 @@ const { data } = await supabase
     </AppShell>
   );
 }
+
 
 
 
