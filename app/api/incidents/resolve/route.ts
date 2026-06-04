@@ -4,6 +4,7 @@ import { createAuditLog } from "@/lib/audit";
 
 type ResolveIncidentBody = {
   id?: string;
+  resolutionNote?: string;
 };
 
 export async function POST(req: Request) {
@@ -12,6 +13,10 @@ export async function POST(req: Request) {
 
     const body = (await req.json()) as ResolveIncidentBody;
     const incidentId = String(body.id || "").trim();
+
+const resolutionNote = String(
+  body.resolutionNote || ""
+).trim();
 
     if (!incidentId) {
       return NextResponse.json(
@@ -40,6 +45,7 @@ export async function POST(req: Request) {
         status: "Resolved",
         resolved_by: user?.id ?? null,
         resolved_at: new Date().toISOString(),
+        resolution_note: resolutionNote || null,
       })
       .eq("id", incidentId)
       .eq("organization_id", organizationId);
@@ -58,6 +64,7 @@ export async function POST(req: Request) {
         previousStatus: incident.status,
         summary: incident.summary,
         resolvedAt: new Date().toISOString(),
+        resolutionNote,
       },
     });
 
@@ -72,3 +79,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+
+
+
+
