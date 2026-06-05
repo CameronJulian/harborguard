@@ -345,27 +345,43 @@ const { data } = await supabase
                       </td>
 
                     <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
-                      {incident.status !== "Resolved" ? (
-                        <button
-                          onClick={() => resolveIncident(incident.id)}
-                          disabled={resolvingId === incident.id}
-                          style={{
-                            padding: "10px 14px",
-                            borderRadius: 10,
-                            border: "none",
-                            background: "#0f172a",
-                            color: "#fff",
-                            cursor: resolvingId === incident.id ? "not-allowed" : "pointer",
-                            fontWeight: 700,
-                            opacity: resolvingId === incident.id ? 0.7 : 1,
-                          }}
-                        >
-                          {resolvingId === incident.id ? "Resolving..." : "Resolve"}
-                        </button>
-                      ) : (
-                        <span style={{ color: "#16a34a", fontWeight: 700 }}>Done</span>
-                      )}
-                    </td>
+                        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                          <Link
+                            href={`/incidents/${incident.id}`}
+                            style={{
+                              padding: "10px 14px",
+                              borderRadius: 10,
+                              border: "1px solid #cbd5e1",
+                              color: "#0f172a",
+                              textDecoration: "none",
+                              fontWeight: 700,
+                            }}
+                          >
+                            View
+                          </Link>
+
+                          {incident.status !== "Resolved" ? (
+                            <button
+                              onClick={() => resolveIncident(incident.id)}
+                              disabled={resolvingId === incident.id}
+                              style={{
+                                padding: "10px 14px",
+                                borderRadius: 10,
+                                border: "none",
+                                background: "#0f172a",
+                                color: "#fff",
+                                cursor: resolvingId === incident.id ? "not-allowed" : "pointer",
+                                fontWeight: 700,
+                                opacity: resolvingId === incident.id ? 0.7 : 1,
+                              }}
+                            >
+                              {resolvingId === incident.id ? "Resolving..." : "Resolve"}
+                            </button>
+                          ) : (
+                            <span style={{ color: "#16a34a", fontWeight: 700 }}>Done</span>
+                          )}
+                        </div>
+                      </td>
                   </tr>
                 ))}
               </tbody>
@@ -376,6 +392,11 @@ const { data } = await supabase
     </AppShell>
   );
 }
+
+
+
+
+
 
 
 
