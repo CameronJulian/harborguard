@@ -12,9 +12,18 @@ type IncidentRow = {
   status: string | null;
   summary: string | null;
   created_at: string | null;
+  assigned_to: string | null;
+  assigned_name?: string;
   resolved_by: string | null;
   resolved_at: string | null;
   resolution_note: string | null;
+};
+
+type ProfileRow = {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  role: string | null;
 };
 
 const cardStyle: CSSProperties = {
@@ -69,6 +78,8 @@ function statusLabel(status: string | null) {
 
 export default function IncidentsPage() {
   const [incidents, setIncidents] = useState<IncidentRow[]>([]);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [message, setMessage] = useState("");
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -92,7 +103,7 @@ if (!profile?.organization_id) return;
 
 const { data } = await supabase
   .from("incidents")
-  .select("id, incident_code, severity, status, summary, created_at, resolved_by, resolved_at, resolution_note")
+  .select("id, incident_code, severity, status, summary, created_at, assigned_to, resolved_by, resolved_at, resolution_note")
   .eq("organization_id", profile.organization_id)
   .order("created_at", { ascending: false });
 
@@ -115,6 +126,48 @@ const { data } = await supabase
       supabase.removeChannel(channel);
     };
   }, []);
+
+  async function assignIncident(id: string) {
+    setMessage("");
+
+    if (profiles.length === 0) {
+      setMessage("No users available to assign.");
+      return;
+    }
+
+    const options = profiles
+      .map((person, index) => `${index + 1}. ${person.full_name || person.email || person.id}`)
+      .join("\n");
+
+    const choice = window.prompt(`Assign incident to:\n\n${options}\n\nEnter number:`);
+
+    if (choice === null) return;
+
+    const selectedIndex = Number(choice) - 1;
+    const selectedProfile = profiles[selectedIndex];
+
+    if (!selectedProfile) {
+      setMessage("Invalid user selection.");
+      return;
+    }
+
+    setAssigningId(id);
+
+    const { error } = await supabase
+      .from("incidents")
+      .update({ assigned_to: selectedProfile.id })
+      .eq("id", id);
+
+    if (error) {
+      setAssigningId(null);
+      setMessage(error.message || "Failed to assign incident.");
+      return;
+    }
+
+    await loadIncidents();
+    setAssigningId(null);
+    setMessage(`Incident assigned to ${selectedProfile.full_name || selectedProfile.email || selectedProfile.id}.`);
+  }
 
   async function resolveIncident(id: string) {
     setMessage("");
@@ -360,9 +413,28 @@ const { data } = await supabase
                             View
                           </Link>
 
-                          {incident.status !== "Resolved" ? (
-                            <button
-                              onClick={() => resolveIncident(incident.id)}
+                            {incident.status !== "Resolved" ? (
+                              <button
+                                onClick={() => assignIncident(incident.id)}
+                                disabled={assigningId === incident.id}
+                                style={{
+                                  padding: "10px 14px",
+                                  borderRadius: 10,
+                                  border: "1px solid #cbd5e1",
+                                  background: "#fff",
+                                  color: "#0f172a",
+                                  cursor: assigningId === incident.id ? "not-allowed" : "pointer",
+                                  fontWeight: 700,
+                                  opacity: assigningId === incident.id ? 0.7 : 1,
+                                }}
+                              >
+                                {assigningId === incident.id ? "Assigning..." : "Assign"}
+                              </button>
+                            ) : null}
+
+                            {incident.status !== "Resolved" ? (
+                              <button
+                                onClick={() => resolveIncident(incident.id)}
                               disabled={resolvingId === incident.id}
                               style={{
                                 padding: "10px 14px",
@@ -392,6 +464,14 @@ const { data } = await supabase
     </AppShell>
   );
 }
+
+
+
+
+
+
+
+
 
 
 
