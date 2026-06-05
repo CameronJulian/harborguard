@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import AppShell from "@/components/AppShell";
 import { supabase } from "@/lib/supabase";
@@ -375,6 +376,8 @@ const { data } = await supabase
     </AppShell>
   );
 }
+
+
 
 
 
