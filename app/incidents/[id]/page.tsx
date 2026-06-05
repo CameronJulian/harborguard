@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import AppShell from "@/components/AppShell";
@@ -41,7 +42,19 @@ export default function IncidentDetailsPage() {
   if (!incident) {
     return (
       <AppShell>
-        <div style={{ padding: 24 }}>Loading incident...</div>
+        <div style={{ padding: 24 }}>
+        <Link
+          href="/incidents"
+          style={{
+            display: "inline-block",
+            marginBottom: 20,
+            color: "#2563eb",
+            textDecoration: "none",
+            fontWeight: 700,
+          }}
+        >
+          Back to Incidents
+        </Link>Loading incident...</div>
       </AppShell>
     );
   }
@@ -49,6 +62,18 @@ export default function IncidentDetailsPage() {
   return (
     <AppShell>
       <div style={{ padding: 24 }}>
+        <Link
+          href="/incidents"
+          style={{
+            display: "inline-block",
+            marginBottom: 20,
+            color: "#2563eb",
+            textDecoration: "none",
+            fontWeight: 700,
+          }}
+        >
+          Back to Incidents
+        </Link>
         <h1 style={{ marginBottom: 24 }}>
           Incident {incident.incident_code}
         </h1>
