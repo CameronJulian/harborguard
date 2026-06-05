@@ -107,7 +107,30 @@ const { data } = await supabase
   .eq("organization_id", profile.organization_id)
   .order("created_at", { ascending: false });
 
-    setIncidents((data as IncidentRow[]) || []);
+    const { data: orgProfiles } = await supabase
+    .from("profiles")
+    .select("id, email, full_name, role")
+    .eq("organization_id", profile.organization_id)
+    .order("full_name", { ascending: true });
+
+  const profileRows = (orgProfiles as ProfileRow[]) || [];
+  setProfiles(profileRows);
+
+  const profileMap = new Map(
+    profileRows.map((person) => [
+      person.id,
+      person.full_name || person.email || person.id,
+    ])
+  );
+
+  const enrichedIncidents = ((data as IncidentRow[]) || []).map((incident) => ({
+    ...incident,
+    assigned_name: incident.assigned_to
+      ? profileMap.get(incident.assigned_to) || incident.assigned_to
+      : undefined,
+  }));
+
+  setIncidents(enrichedIncidents);
   }
 
   useEffect(() => {
@@ -464,6 +487,8 @@ const { data } = await supabase
     </AppShell>
   );
 }
+
+
 
 
 
