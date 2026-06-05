@@ -21,9 +21,16 @@ type Incident = {
   resolution_note: string | null;
 };
 
+type Profile = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+};
+
 export default function IncidentDetailsPage() {
   const params = useParams();
   const [incident, setIncident] = useState<Incident | null>(null);
+  const [resolver, setResolver] = useState<Profile | null>(null);
 
   useEffect(() => {
     async function loadIncident() {
@@ -34,6 +41,16 @@ export default function IncidentDetailsPage() {
         .single();
 
       setIncident(data);
+
+      if (data?.resolved_by) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id, full_name, email")
+          .eq("id", data.resolved_by)
+          .maybeSingle();
+
+        setResolver(profile);
+      }
     }
 
     loadIncident();
@@ -97,7 +114,7 @@ export default function IncidentDetailsPage() {
         <div>
           <h2>Resolution</h2>
 
-          <p><strong>Resolved By:</strong> {incident.resolved_by || "N/A"}</p>
+          <p><strong>Resolved By:</strong> {resolver?.full_name || resolver?.email || incident.resolved_by || "N/A"}</p>
           <p><strong>Resolved At:</strong> {incident.resolved_at || "N/A"}</p>
           <p>
             <strong>Resolution Note:</strong>{" "}
@@ -108,3 +125,5 @@ export default function IncidentDetailsPage() {
     </AppShell>
   );
 }
+
+
