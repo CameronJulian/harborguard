@@ -43,6 +43,16 @@ export default function IncidentDetailsPage() {
 
       setIncident(data);
 
+        if (data?.assigned_to) {
+          const { data: assignedProfile } = await supabase
+            .from("profiles")
+            .select("id, full_name, email")
+            .eq("id", data.assigned_to)
+            .maybeSingle();
+
+          setAssignee(assignedProfile);
+        }
+
       if (data?.resolved_by) {
         const { data: profile } = await supabase
           .from("profiles")
@@ -126,6 +136,8 @@ export default function IncidentDetailsPage() {
     </AppShell>
   );
 }
+
+
 
 
 
