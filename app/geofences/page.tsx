@@ -66,6 +66,12 @@ export default function GeofencesPage() {
   const [centerLng, setCenterLng] = useState("");
   const [radiusMeters, setRadiusMeters] = useState("");
 
+  const [editingZone, setEditingZone] = useState<Geofence | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editCenterLat, setEditCenterLat] = useState("");
+  const [editCenterLng, setEditCenterLng] = useState("");
+  const [editRadiusMeters, setEditRadiusMeters] = useState("");
+
   async function loadGeofences() {
     setLoading(true);
 
@@ -131,6 +137,51 @@ export default function GeofencesPage() {
     }
   }
 
+  function startEditing(zone: Geofence) {
+    setEditingZone(zone);
+    setEditName(zone.name);
+    setEditCenterLat(String(zone.center_lat));
+    setEditCenterLng(String(zone.center_lng));
+    setEditRadiusMeters(String(zone.radius_meters));
+  }
+
+  async function handleSaveEdit() {
+    if (!editingZone) return;
+
+    setSaving(true);
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/geofences", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: editingZone.id,
+          name: editName,
+          center_lat: Number(editCenterLat),
+          center_lng: Number(editCenterLng),
+          radius_meters: Number(editRadiusMeters),
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setMessage(result.error || "Failed to update geofence.");
+        return;
+      }
+
+      setMessage("Geofence edited successfully.");
+      setEditingZone(null);
+      await loadGeofences();
+    } catch (err: any) {
+      setMessage(err.message || "Failed to update geofence.");
+    } finally {
+      setSaving(false);
+    }
+  }
   async function toggleGeofence(id: string, isActive: boolean) {
     setMessage("");
 
@@ -256,6 +307,28 @@ export default function GeofencesPage() {
           </div>
         ) : null}
       </div>
+      {editingZone && (
+        <div style={{ ...cardStyle, padding: 24, marginBottom: 24 }}>
+          <h2 style={{ fontSize: 28, margin: "0 0 16px 0" }}>Edit Geofence</h2>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Zone name" style={inputStyle} />
+            <input value={editRadiusMeters} onChange={(e) => setEditRadiusMeters(e.target.value)} placeholder="Radius meters" style={inputStyle} />
+            <input value={editCenterLat} onChange={(e) => setEditCenterLat(e.target.value)} placeholder="Center latitude" style={inputStyle} />
+            <input value={editCenterLng} onChange={(e) => setEditCenterLng(e.target.value)} placeholder="Center longitude" style={inputStyle} />
+
+            <button onClick={handleSaveEdit} style={primaryButtonStyle} disabled={saving}>
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
+
+            <button onClick={() => setEditingZone(null)} style={secondaryButtonStyle} disabled={saving}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+
 
       <div style={{ ...cardStyle, padding: 24 }}>
         <div
@@ -346,6 +419,12 @@ export default function GeofencesPage() {
 
                 <div style={{ display: "flex", gap: 12 }}>
                   <button
+                    onClick={() => startEditing(zone)}
+                    style={secondaryButtonStyle}
+                  >
+                    Edit
+                  </button>
+                  <button
                     onClick={() => toggleGeofence(zone.id, zone.is_active)}
                     style={secondaryButtonStyle}
                   >
@@ -371,3 +450,10 @@ export default function GeofencesPage() {
     </AppShell>
   );
 }
+
+
+
+
+
+
+

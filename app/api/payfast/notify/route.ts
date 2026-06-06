@@ -6,6 +6,13 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+function moneyEquals(actual: string | undefined, expected: string | undefined) {
+  const actualValue = Number(actual || 0);
+  const expectedValue = Number(expected || 0);
+
+  return Math.abs(actualValue - expectedValue) < 0.01;
+}
+
 async function validatePayFastITN(payload: Record<string, string>) {
   const url =
     process.env.PAYFAST_SANDBOX === "true"
@@ -36,26 +43,94 @@ export async function POST(req: Request) {
       payload[key] = String(value);
     });
 
-    console.log("PAYFAST ITN RECEIVED:", payload);
-
     const isValidPayFastITN = await validatePayFastITN(payload);
 
     if (!isValidPayFastITN) {
-      console.error("PAYFAST SERVER VALIDATION FAILED");
-
       return NextResponse.json(
         { error: "PayFast validation failed." },
         { status: 400 }
       );
     }
 
+    if (
+      process.env.PAYFAST_MERCHANT_ID &&
+      payload.merchant_id !== process.env.PAYFAST_MERCHANT_ID
+    ) {
+      return NextResponse.json(
+        { error: "Invalid PayFast merchant." },
+        { status: 400 }
+      );
+    }
+
+    if (
+      !moneyEquals(
+        payload.amount_gross,
+        process.env.PAYFAST_PROFESSIONAL_AMOUNT
+      )
+    ) {
+      return NextResponse.json(
+        { error: "Invalid PayFast amount." },
+        { status: 400 }
+      );
+    }
+
     const organizationId = payload.m_payment_id;
+    const payfastPaymentId = payload.pf_payment_id;
 
     if (!organizationId) {
       return NextResponse.json(
         { error: "Missing organization ID." },
         { status: 400 }
       );
+    }
+
+    if (!payfastPaymentId) {
+      return NextResponse.json(
+        { error: "Missing PayFast payment ID." },
+        { status: 400 }
+      );
+    }
+
+    const { data: organization, error: organizationLookupError } =
+      await supabase
+        .from("organizations")
+        .select("id")
+        .eq("id", organizationId)
+        .maybeSingle();
+
+    if (organizationLookupError) {
+      return NextResponse.json(
+        { error: organizationLookupError.message },
+        { status: 500 }
+      );
+    }
+
+    if (!organization) {
+      return NextResponse.json(
+        { error: "Organization not found." },
+        { status: 404 }
+      );
+    }
+
+    const { data: existingInvoice, error: invoiceLookupError } =
+      await supabase
+        .from("invoices")
+        .select("id")
+        .eq("payfast_payment_id", payfastPaymentId)
+        .maybeSingle();
+
+    if (invoiceLookupError) {
+      return NextResponse.json(
+        { error: invoiceLookupError.message },
+        { status: 500 }
+      );
+    }
+
+    if (existingInvoice) {
+      return NextResponse.json({
+        success: true,
+        duplicate: true,
+      });
     }
 
     if (payload.payment_status === "COMPLETE") {
@@ -73,51 +148,45 @@ export async function POST(req: Request) {
         .eq("id", organizationId);
 
       if (organizationError) {
-        console.error("ORGANIZATION UPDATE ERROR:", organizationError);
-
         return NextResponse.json(
           { error: organizationError.message },
           { status: 500 }
         );
       }
 
-      const { error: billingEventError } = await supabase
-        .from("billing_events")
-        .insert({
-          organization_id: organizationId,
-          event_type: "subscription_activated",
-          provider: "payfast",
-          payload,
-        });
-
-      if (billingEventError) {
-        console.error("BILLING EVENT ERROR:", billingEventError);
-      }
-
-      const { error: invoiceError } = await supabase.from("invoices").insert({
+      await supabase.from("billing_events").insert({
         organization_id: organizationId,
-        payfast_payment_id: payload.pf_payment_id || null,
-        amount: Number(payload.amount_gross || 0),
-        currency: payload.currency || "ZAR",
-        status: "paid",
-        invoice_url: null,
+        event_type: "subscription_activated",
+        provider: "payfast",
+        payload,
       });
 
-      if (invoiceError) {
-        console.error("INVOICE ERROR:", invoiceError);
-      } else {
-        console.log("INVOICE CREATED");
-      }
+      const { error: invoiceError } = await supabase
+        .from("invoices")
+        .insert({
+          organization_id: organizationId,
+          payfast_payment_id: payfastPaymentId,
+          amount: Number(payload.amount_gross || 0),
+          currency: payload.currency || "ZAR",
+          status: "paid",
+          invoice_url: null,
+        });
 
-      console.log("SUBSCRIPTION ACTIVATED");
+      if (invoiceError) {
+        return NextResponse.json(
+          { error: invoiceError.message },
+          { status: 500 }
+        );
+      }
     }
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
-    console.error("PAYFAST WEBHOOK ERROR:", err);
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : "Webhook processing failed.";
 
     return NextResponse.json(
-      { error: err.message || "Webhook processing failed." },
+      { error: message },
       { status: 500 }
     );
   }

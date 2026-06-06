@@ -1,48 +1,88 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { requireOrganization } from "@/lib/server-auth";
+import { hasPermission } from "@/lib/rbac";
 
-export async function PATCH(req: Request, context: { params: Promise<{ id: string }> }) {
+const VehicleUpdateSchema = z.object({
+  nickname: z.string().min(1).max(100).optional(),
+  registration_number: z.string().min(1).max(50).optional(),
+  make: z.string().max(100).optional().nullable(),
+  model: z.string().max(100).optional().nullable(),
+});
+
+export async function PATCH(
+  req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
-    const { supabase, organizationId } = await requireOrganization();
+    const { supabase, organizationId, role } = await requireOrganization();
+
+    if (!hasPermission(role, "vehicles:manage")) {
+      return NextResponse.json({ error: "Permission denied." }, { status: 403 });
+    }
+
     const { id } = await context.params;
-    const body = await req.json();
+    const body = VehicleUpdateSchema.parse(await req.json());
 
     const { data, error } = await supabase
       .from("vehicles")
-      .update({
-        nickname: body.nickname,
-        registration_number: body.registration_number,
-        make: body.make,
-        model: body.model,
-      })
+      .update(body)
       .eq("id", id)
       .eq("organization_id", organizationId)
       .select()
-      .single();
+      .maybeSingle();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 
-    return NextResponse.json({ vehicle: data });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Failed to update vehicle." }, { status: 500 });
+    if (!data) {
+      return NextResponse.json({ error: "Vehicle not found." }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, vehicle: data });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to update vehicle.";
+    const status = message === "Unauthorized" ? 401 : 400;
+
+    return NextResponse.json({ error: message }, { status });
   }
 }
 
-export async function DELETE(req: Request, context: { params: Promise<{ id: string }> }) {
+export async function DELETE(
+  req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
-    const { supabase, organizationId } = await requireOrganization();
+    const { supabase, organizationId, role } = await requireOrganization();
+
+    if (!hasPermission(role, "vehicles:manage")) {
+      return NextResponse.json({ error: "Permission denied." }, { status: 403 });
+    }
+
     const { id } = await context.params;
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("vehicles")
       .update({ is_active: false })
       .eq("id", id)
-      .eq("organization_id", organizationId);
+      .eq("organization_id", organizationId)
+      .select("id")
+      .maybeSingle();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (!data) {
+      return NextResponse.json({ error: "Vehicle not found." }, { status: 404 });
+    }
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Failed to delete vehicle." }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to delete vehicle.";
+    const status = message === "Unauthorized" ? 401 : 400;
+
+    return NextResponse.json({ error: message }, { status });
   }
 }

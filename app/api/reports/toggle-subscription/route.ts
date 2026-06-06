@@ -1,26 +1,34 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { z } from "zod";
+import { requireOrganization } from "@/lib/server-auth";
+import { hasPermission } from "@/lib/rbac";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const ToggleSubscriptionSchema = z.object({
+  subscriptionId: z.string().uuid(),
+  isEnabled: z.boolean(),
+});
 
 export async function POST(req: Request) {
   try {
-    const { subscriptionId, isEnabled } = await req.json();
+    const { supabase, organizationId, role } = await requireOrganization();
 
-    if (!subscriptionId) {
+    if (!hasPermission(role, "reports:manage")) {
       return NextResponse.json(
-        { error: "subscriptionId is required." },
-        { status: 400 }
+        { error: "Permission denied." },
+        { status: 403 }
       );
     }
 
-    const { error } = await supabase
+    const { subscriptionId, isEnabled } =
+      ToggleSubscriptionSchema.parse(await req.json());
+
+    const { data, error } = await supabase
       .from("report_subscriptions")
       .update({ is_enabled: !isEnabled })
-      .eq("id", subscriptionId);
+      .eq("id", subscriptionId)
+      .eq("organization_id", organizationId)
+      .select("id, is_enabled")
+      .maybeSingle();
 
     if (error) {
       return NextResponse.json(
@@ -29,14 +37,27 @@ export async function POST(req: Request) {
       );
     }
 
+    if (!data) {
+      return NextResponse.json(
+        { error: "Subscription not found." },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      newState: !isEnabled,
+      newState: data.is_enabled,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : "Toggle failed.";
+
+    const status =
+      message === "Unauthorized" ? 401 : 400;
+
     return NextResponse.json(
-      { error: err.message || "Toggle failed." },
-      { status: 500 }
+      { error: message },
+      { status }
     );
   }
 }

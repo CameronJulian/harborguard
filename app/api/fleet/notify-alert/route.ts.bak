@@ -1,7 +1,4 @@
 import { NextResponse } from "next/server";
-import { requireOrganization } from "@/lib/server-auth";
-import { hasPermission } from "@/lib/rbac";
-import { ratelimit } from "@/lib/ratelimit";
 import { Resend } from "resend";
 import twilio from "twilio";
 
@@ -113,22 +110,6 @@ function determineEscalationLevel(
 
 export async function POST(req: Request) {
   try {
-    const { role } = await requireOrganization();
-
-    if (!hasPermission(role, "vehicles:manage")) {
-      return NextResponse.json({ error: "Permission denied." }, { status: 403 });
-    }
-
-    const ip =
-      req.headers.get("x-forwarded-for") ||
-      req.headers.get("x-real-ip") ||
-      "unknown";
-
-    const rate = await ratelimit.limit(`notify-alert:${ip}`);
-
-    if (!rate.success) {
-      return NextResponse.json({ error: "Too many notification requests." }, { status: 429 });
-    }
     const body =
       (await req.json()) as NotifyAlertBody;
 

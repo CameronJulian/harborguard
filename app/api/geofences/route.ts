@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   try {
     const { supabase, organizationId, role } = await requireOrganization();
 
-    requireRole(role, ["owner", "admin", "operator"]);
+    requireRole(role, ["owner", "admin", "operator", "manager"]);
 
     const body = await req.json();
 
@@ -94,25 +94,78 @@ export async function PATCH(req: Request) {
   try {
     const { supabase, organizationId, role } = await requireOrganization();
 
-    requireRole(role, ["owner", "admin", "operator"]);
+    requireRole(role, ["owner", "admin", "operator", "manager"]);
 
     const body = await req.json();
-
     const id = String(body.id || "").trim();
-    const isActive = body.is_active;
 
-    if (!id || typeof isActive !== "boolean") {
+    if (!id) {
       return NextResponse.json(
-        { error: "id and is_active are required." },
+        { error: "id is required." },
+        { status: 400 }
+      );
+    }
+
+    const updatePayload: any = {};
+
+    if (typeof body.is_active === "boolean") {
+      updatePayload.is_active = body.is_active;
+    }
+
+    if (body.name !== undefined) {
+      const name = String(body.name || "").trim();
+      if (!name) {
+        return NextResponse.json(
+          { error: "Geofence name is required." },
+          { status: 400 }
+        );
+      }
+      updatePayload.name = name;
+    }
+
+    if (body.center_lat !== undefined) {
+      const centerLat = Number(body.center_lat);
+      if (Number.isNaN(centerLat)) {
+        return NextResponse.json(
+          { error: "Invalid center latitude." },
+          { status: 400 }
+        );
+      }
+      updatePayload.center_lat = centerLat;
+    }
+
+    if (body.center_lng !== undefined) {
+      const centerLng = Number(body.center_lng);
+      if (Number.isNaN(centerLng)) {
+        return NextResponse.json(
+          { error: "Invalid center longitude." },
+          { status: 400 }
+        );
+      }
+      updatePayload.center_lng = centerLng;
+    }
+
+    if (body.radius_meters !== undefined) {
+      const radiusMeters = Number(body.radius_meters);
+      if (Number.isNaN(radiusMeters) || radiusMeters <= 0) {
+        return NextResponse.json(
+          { error: "Invalid radius meters." },
+          { status: 400 }
+        );
+      }
+      updatePayload.radius_meters = radiusMeters;
+    }
+
+    if (Object.keys(updatePayload).length === 0) {
+      return NextResponse.json(
+        { error: "No geofence fields provided to update." },
         { status: 400 }
       );
     }
 
     const { data, error } = await supabase
       .from("geofences")
-      .update({
-        is_active: isActive,
-      })
+      .update(updatePayload)
       .eq("id", id)
       .eq("organization_id", organizationId)
       .select()
@@ -138,7 +191,7 @@ export async function DELETE(req: Request) {
   try {
     const { supabase, organizationId, role } = await requireOrganization();
 
-    requireRole(role, ["owner", "admin"]);
+    requireRole(role, ["owner", "admin", "manager"]);
 
     const url = new URL(req.url);
     const id = url.searchParams.get("id");
@@ -170,3 +223,5 @@ export async function DELETE(req: Request) {
     );
   }
 }
+
+

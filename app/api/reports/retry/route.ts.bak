@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { hasPermission } from "@/lib/rbac";
-import { requireOrganization } from "@/lib/server-auth";
-import { requirePremiumAccess } from "@/lib/require-premium";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,35 +18,15 @@ type FailedLogRow = {
   status: "success" | "failed";
   error_message: string | null;
   created_at: string | null;
-  organization_id: string;
 };
 
 export async function POST() {
   try {
-    const { organizationId, role } = await requireOrganization();
-
-    const premium = await requirePremiumAccess(organizationId);
-
-    if (!premium.allowed) {
-      return NextResponse.json(
-        { error: "Professional subscription required." },
-        { status: 403 }
-      );
-    }
-
-    if (!hasPermission(role, "reports:manage")) {
-      return NextResponse.json(
-        { error: "You do not have permission to manage reports." },
-        { status: 403 }
-      );
-    }
-
     const { data: failedLogs, error } = await supabase
       .from("report_delivery_logs")
       .select(
-        "id, subscription_id, user_id, email, full_name, report_frequency, start_date, end_date, status, error_message, created_at, organization_id"
+        "id, subscription_id, user_id, email, full_name, report_frequency, start_date, end_date, status, error_message, created_at"
       )
-      .eq("organization_id", organizationId)
       .eq("status", "failed")
       .order("created_at", { ascending: false })
       .limit(10);
@@ -68,18 +45,10 @@ export async function POST() {
     }
 
     const origin = process.env.NEXT_PUBLIC_SITE_URL;
-    const cronSecret = process.env.CRON_SECRET;
 
     if (!origin) {
       return NextResponse.json(
         { error: "NEXT_PUBLIC_SITE_URL is not configured." },
-        { status: 500 }
-      );
-    }
-
-    if (!cronSecret) {
-      return NextResponse.json(
-        { error: "CRON_SECRET is not configured." },
         { status: 500 }
       );
     }
@@ -97,8 +66,6 @@ export async function POST() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-cron-secret": cronSecret,
-            "x-user-id": String(log.user_id || ""),
           },
           cache: "no-store",
           body: JSON.stringify({
@@ -110,8 +77,7 @@ export async function POST() {
 
         const rawText = await response.text();
 
-        let result: unknown;
-
+        let result: any;
         try {
           result = JSON.parse(rawText);
         } catch {
@@ -121,15 +87,10 @@ export async function POST() {
           };
         }
 
-        const resultObject =
-          result && typeof result === "object"
-            ? (result as { success?: boolean; error?: string; details?: string })
-            : {};
-
-        if (!response.ok || !resultObject.success) {
+        if (!response.ok || !result?.success) {
           const errorMessage =
-            resultObject.error ||
-            resultObject.details ||
+            result?.error ||
+            result?.details ||
             "Failed to retry report.";
 
           results.push({
@@ -140,7 +101,6 @@ export async function POST() {
           });
 
           await supabase.from("report_delivery_logs").insert({
-            organization_id: organizationId,
             subscription_id: log.subscription_id,
             user_id: log.user_id,
             email: log.email,
@@ -163,7 +123,6 @@ export async function POST() {
         });
 
         await supabase.from("report_delivery_logs").insert({
-          organization_id: organizationId,
           subscription_id: log.subscription_id,
           user_id: log.user_id,
           email: log.email,
@@ -174,9 +133,8 @@ export async function POST() {
           status: "success",
           error_message: null,
         });
-      } catch (err: unknown) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Retry failed.";
+      } catch (err: any) {
+        const errorMessage = err.message || "Retry failed.";
 
         results.push({
           logId: log.id,
@@ -186,7 +144,6 @@ export async function POST() {
         });
 
         await supabase.from("report_delivery_logs").insert({
-          organization_id: organizationId,
           subscription_id: log.subscription_id,
           user_id: log.user_id,
           email: log.email,
@@ -207,16 +164,10 @@ export async function POST() {
       failedCount: results.filter((r) => !r.success).length,
       results,
     });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Retry failed.";
-
-    const status =
-      message === "Unauthorized"
-        ? 401
-        : message === "Permission denied"
-        ? 403
-        : 500;
-
-    return NextResponse.json({ error: message }, { status });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err.message || "Retry failed." },
+      { status: 500 }
+    );
   }
 }
