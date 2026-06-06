@@ -213,6 +213,7 @@ CREATE TABLE IF NOT EXISTS "public"."report_delivery_logs" (
     "status" "text" NOT NULL,
     "error_message" "text",
     "created_at" timestamp with time zone DEFAULT "now"(),
+    "organization_id" "uuid",
     CONSTRAINT "report_delivery_logs_report_frequency_check" CHECK (("report_frequency" = ANY (ARRAY['daily'::"text", 'weekly'::"text"]))),
     CONSTRAINT "report_delivery_logs_status_check" CHECK (("status" = ANY (ARRAY['success'::"text", 'failed'::"text"])))
 );
