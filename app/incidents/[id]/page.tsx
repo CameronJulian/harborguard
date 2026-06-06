@@ -31,6 +31,7 @@ export default function IncidentDetailsPage() {
   const params = useParams();
   const [incident, setIncident] = useState<Incident | null>(null);
   const [resolver, setResolver] = useState<Profile | null>(null);
+  const [assignee, setAssignee] = useState<Profile | null>(null);
 
   useEffect(() => {
     async function loadIncident() {
@@ -102,7 +103,7 @@ export default function IncidentDetailsPage() {
           <p><strong>Severity:</strong> {incident.severity}</p>
           <p><strong>Created:</strong> {incident.created_at}</p>
           <p><strong>Batch ID:</strong> {incident.batch_id || "N/A"}</p>
-          <p><strong>Assigned To:</strong> {incident.assigned_to || "N/A"}</p>
+          <p><strong>Assigned To:</strong> {assignee?.full_name || assignee?.email || incident.assigned_to || "N/A"}</p>
           <p><strong>Organization:</strong> {incident.organization_id}</p>
         </div>
 
@@ -125,5 +126,6 @@ export default function IncidentDetailsPage() {
     </AppShell>
   );
 }
+
 
 
