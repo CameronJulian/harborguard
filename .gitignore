@@ -43,3 +43,5 @@ structure.txt
 
 # Sentry Config File
 .env.sentry-build-plugin
+
+supabase/.temp/
