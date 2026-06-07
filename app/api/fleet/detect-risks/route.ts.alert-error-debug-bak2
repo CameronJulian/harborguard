@@ -171,12 +171,6 @@ if (
     .single();
 
   if (error || !data) {
-    console.error("CREATE ALERT FAILED", {
-      error,
-      params,
-      organizationId,
-    });
-
     return null;
   }
 
@@ -526,8 +520,6 @@ if (
     );
   }
 }
-
-
 
 
 
