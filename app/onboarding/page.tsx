@@ -32,45 +32,86 @@ export default function OnboardingPage() {
         return;
       }
 
-      const { data: profile, error: profileError } = await supabase
+      const fleetSizeNumber =
+        Number(fleetSize.replace(/\D/g, "")) || 0;
+
+      const trialEndsAt = new Date(
+        Date.now() + 14 * 24 * 60 * 60 * 1000
+      ).toISOString();
+
+      const { data: existingProfile } = await supabase
         .from("profiles")
         .select("organization_id")
         .eq("id", session.user.id)
+        .maybeSingle();
+
+      if (existingProfile?.organization_id) {
+        const { error: updateOrgError } = await supabase
+          .from("organizations")
+          .update({
+            name: organizationName.trim(),
+            fleet_size: fleetSizeNumber,
+            first_vehicle: vehicleName.trim() || null,
+            subscription_plan: "starter",
+            subscription_status: "trialing",
+            seats: 1,
+            trial_ends_at: trialEndsAt,
+          })
+          .eq("id", existingProfile.organization_id);
+
+        if (updateOrgError) {
+          alert(`Organization update failed: ${updateOrgError.message}`);
+          setSaving(false);
+          return;
+        }
+
+        router.push("/dashboard");
+        return;
+      }
+
+      const { data: organization, error: orgError } = await supabase
+        .from("organizations")
+        .insert({
+          name: organizationName.trim(),
+          fleet_size: fleetSizeNumber,
+          first_vehicle: vehicleName.trim() || null,
+          subscription_status: "trialing",
+          subscription_plan: "starter",
+          trial_ends_at: trialEndsAt,
+          seats: 1,
+        })
+        .select("id")
         .single();
 
-      if (profileError || !profile?.organization_id) {
-        alert("Could not find your organization.");
+      if (orgError || !organization) {
+        alert(`Organization creation failed: ${orgError?.message || "Unknown error"}`);
         setSaving(false);
         return;
       }
 
-      const fleetSizeNumber =
-        Number(fleetSize.replace(/\D/g, "")) || 0;
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .insert({
+          id: session.user.id,
+          email: session.user.email,
+          full_name:
+            session.user.email?.split("@")[0] || "HarborGuard User",
+          role: "manager",
+          organization_id: organization.id,
+        });
 
-      const { error: orgError } = await supabase
-        .from("organizations")
-        .update({
-          name: organizationName.trim(),
-          fleet_size: fleetSizeNumber,
-          first_vehicle: vehicleName.trim() || null,
-          subscription_plan: "starter",
-          subscription_status: "trialing",
-          seats: 1,
-          trial_ends_at: new Date(
-            Date.now() + 14 * 24 * 60 * 60 * 1000
-          ).toISOString(),
-        })
-        .eq("id", profile.organization_id);
-
-      if (orgError) {
-        alert(`Organization update failed: ${orgError.message}`);
+      if (profileError) {
+        alert(`Profile creation failed: ${profileError.message}`);
         setSaving(false);
         return;
       }
 
       router.push("/dashboard");
-    } catch (err: any) {
-      alert(err.message || "Setup failed.");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Setup failed.";
+
+      alert(message);
       setSaving(false);
     }
   }
