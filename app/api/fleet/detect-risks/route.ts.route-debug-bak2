@@ -308,14 +308,6 @@ if (
         (minutesBetween / 60)
       : 0;
 
-  console.log("ROUTE TEST", {
-    vehicleId: vehicle.id,
-    jumpDistance,
-    minutesBetween,
-    estimatedSpeed,
-    openTypes: Array.from(openTypes),
-  });
-
   if (
     estimatedSpeed > 180 &&
     !openTypes.has(
@@ -520,5 +512,4 @@ if (
     );
   }
 }
-
 
