@@ -171,7 +171,13 @@ if (
     .single();
 
   if (error || !data) {
-return null;
+    console.error("CREATE ALERT FAILED", {
+      error,
+      params,
+      organizationId,
+    });
+
+    return null;
   }
 
 
@@ -307,7 +313,16 @@ if (
       ? (jumpDistance / 1000) /
         (minutesBetween / 60)
       : 0;
-if (
+
+  console.log("ROUTE TEST", {
+    vehicleId: vehicle.id,
+    jumpDistance,
+    minutesBetween,
+    estimatedSpeed,
+    openTypes: Array.from(openTypes),
+  });
+
+  if (
     estimatedSpeed > 180 &&
     !openTypes.has(
       "route_anomaly"
@@ -511,7 +526,6 @@ if (
     );
   }
 }
-
 
 
 
