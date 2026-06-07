@@ -292,4 +292,3 @@ const isMobile =
     </main>
   );
 }
-
