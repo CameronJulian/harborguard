@@ -20,7 +20,7 @@ export default function OnboardingPage() {
         data: { session },
       } = await supabase.auth.getSession();
 
-      if (!session?.user) {
+      if (!session?.access_token) {
         alert("You are not logged in. Please sign in first.");
         setSaving(false);
         return;
@@ -32,76 +32,23 @@ export default function OnboardingPage() {
         return;
       }
 
-      const fleetSizeNumber =
-        Number(fleetSize.replace(/\D/g, "")) || 0;
+      const response = await fetch("/api/onboarding/complete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          organizationName,
+          fleetSize,
+          vehicleName,
+        }),
+      });
 
-      const trialEndsAt = new Date(
-        Date.now() + 14 * 24 * 60 * 60 * 1000
-      ).toISOString();
+      const result = await response.json();
 
-      const { data: existingProfile } = await supabase
-        .from("profiles")
-        .select("organization_id")
-        .eq("id", session.user.id)
-        .maybeSingle();
-
-      if (existingProfile?.organization_id) {
-        const { error: updateOrgError } = await supabase
-          .from("organizations")
-          .update({
-            name: organizationName.trim(),
-            fleet_size: fleetSizeNumber,
-            first_vehicle: vehicleName.trim() || null,
-            subscription_plan: "starter",
-            subscription_status: "trialing",
-            seats: 1,
-            trial_ends_at: trialEndsAt,
-          })
-          .eq("id", existingProfile.organization_id);
-
-        if (updateOrgError) {
-          alert(`Organization update failed: ${updateOrgError.message}`);
-          setSaving(false);
-          return;
-        }
-
-        router.push("/dashboard");
-        return;
-      }
-
-      const { data: organization, error: orgError } = await supabase
-        .from("organizations")
-        .insert({
-          name: organizationName.trim(),
-          fleet_size: fleetSizeNumber,
-          first_vehicle: vehicleName.trim() || null,
-          subscription_status: "trialing",
-          subscription_plan: "starter",
-          trial_ends_at: trialEndsAt,
-          seats: 1,
-        })
-        .select("id")
-        .single();
-
-      if (orgError || !organization) {
-        alert(`Organization creation failed: ${orgError?.message || "Unknown error"}`);
-        setSaving(false);
-        return;
-      }
-
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .insert({
-          id: session.user.id,
-          email: session.user.email,
-          full_name:
-            session.user.email?.split("@")[0] || "HarborGuard User",
-          role: "manager",
-          organization_id: organization.id,
-        });
-
-      if (profileError) {
-        alert(`Profile creation failed: ${profileError.message}`);
+      if (!response.ok) {
+        alert(`Setup failed: ${result.error || "Unknown error"}`);
         setSaving(false);
         return;
       }
@@ -115,7 +62,6 @@ export default function OnboardingPage() {
       setSaving(false);
     }
   }
-
   return (
     <div
       style={{
@@ -224,3 +170,4 @@ export default function OnboardingPage() {
     </div>
   );
 }
+
