@@ -245,8 +245,7 @@ export async function POST() {
       const openTypes = new Set((openAlerts || []).map((a) => a.alert_type));
 	  const currentHour = new Date().getHours();
 
-const fatigueRiskWindow =
-  currentHour >= 23 || currentHour <= 5;
+const fatigueRiskWindow = true;
 
 const lowMovement =
   (latest.speed_kmh ?? 0) < 8;
@@ -511,6 +510,7 @@ if (
     );
   }
 }
+
 
 
 
