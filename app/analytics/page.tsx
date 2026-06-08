@@ -206,12 +206,19 @@ const { data: incidentData } = await supabase
     const end = new Date(`${endDate}T23:59:59`);
 
     const testKeywords = [
-      "test",
-      "demo",
-      "audit",
-      "incident",
-      "deployment",
-      "resolution",
+      "audit-trail-test",
+      "final-prod-test",
+      "final-resolution-test",
+      "resolution-note-test",
+      "incident-flagged-test",
+      "incident-test-ocean-only",
+      "test brand new batch creation",
+      "test new batch",
+      "vessel test for batch",
+      "new test for inci",
+      "new test to see incident",
+      "test for deployment",
+      "new vessel test",
     ];
 
     return batches.filter((batch) => {
@@ -742,4 +749,5 @@ if (subscriptionLoaded && !premiumAllowed) {
     </AppShell>
   );
 }
+
 
