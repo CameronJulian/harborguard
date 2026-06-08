@@ -219,6 +219,8 @@ const { data: incidentData } = await supabase
       "new test to see incident",
       "test for deployment",
       "new vessel test",
+      "demo vessel",
+      "ocean test vessel",
     ];
 
     return batches.filter((batch) => {
@@ -749,5 +751,6 @@ if (subscriptionLoaded && !premiumAllowed) {
     </AppShell>
   );
 }
+
 
 
