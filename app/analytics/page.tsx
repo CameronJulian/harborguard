@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { usePremiumAccess } from "@/hooks/usePremiumAccess";
 import TrialBanner from "@/components/billing/TrialBanner";
 import PremiumGate from "@/components/PremiumGate";
@@ -205,8 +205,28 @@ const { data: incidentData } = await supabase
     const start = new Date(`${startDate}T00:00:00`);
     const end = new Date(`${endDate}T23:59:59`);
 
+    const testKeywords = [
+      "test",
+      "demo",
+      "audit",
+      "incident",
+      "deployment",
+      "resolution",
+    ];
+
     return batches.filter((batch) => {
       if (!batch.created_at) return false;
+
+      const vesselName = String(batch.vessel || "").toLowerCase();
+      const batchCode = String(batch.batch_code || "").toLowerCase();
+
+      const isTestBatch = testKeywords.some(
+        (keyword) =>
+          vesselName.includes(keyword) || batchCode.includes(keyword)
+      );
+
+      if (isTestBatch) return false;
+
       const created = new Date(batch.created_at);
       return created >= start && created <= end;
     });
@@ -722,3 +742,4 @@ if (subscriptionLoaded && !premiumAllowed) {
     </AppShell>
   );
 }
+
