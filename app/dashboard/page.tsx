@@ -805,7 +805,7 @@ const executiveRiskIndex = useMemo(() => {
             transition: "all 0.2s ease",
           }}
         >
-          ðŸš¨ {recentHighRisk.length} high-risk batch{recentHighRisk.length > 1 ? "es" : ""} detected
+          🚨 {recentHighRisk.length} high-risk batch{recentHighRisk.length > 1 ? "es" : ""} detected
           <div style={{ marginTop: 8, fontSize: 14, fontWeight: 500 }}>
             {recentHighRisk.map((b) => b.batch_code).join(", ")}
           </div>
@@ -1122,6 +1122,7 @@ const executiveRiskIndex = useMemo(() => {
     </AppShell>
   );
 }
+
 
 
 
