@@ -599,24 +599,24 @@ return (
               </div>
 
               <div style={{ fontSize: 14, color: "#475569" }}>
-                • Speed: {prediction.speed} km/h
+                â€¢ Speed: {prediction.speed} km/h
               </div>
 
               <div style={{ fontSize: 14, color: "#475569" }}>
-                • Open Alerts: {prediction.openAlerts}
+                â€¢ Open Alerts: {prediction.openAlerts}
               </div>
 
               <div style={{ fontSize: 14, color: "#475569" }}>
-                • Critical Alerts: {prediction.criticalAlerts}
+                â€¢ Critical Alerts: {prediction.criticalAlerts}
               </div>
 
               <div style={{ fontSize: 14, color: "#475569" }}>
-                • Near Incident Zone:{" "}
+                â€¢ Near Incident Zone:{" "}
                 {prediction.nearIncident ? "Yes" : "No"}
               </div>
 
               <div style={{ fontSize: 14, color: "#475569" }}>
-                • Offline: {prediction.isOffline ? "Yes" : "No"}
+                â€¢ Offline: {prediction.isOffline ? "Yes" : "No"}
               </div>
             </div>
           </div>
@@ -907,7 +907,7 @@ return (
                           >
                             {formatAlertType(alert.alert_type)}
                           </strong>{" "}
-                          — {alert.message || "No alert message provided."}
+                          â€” {alert.message || "No alert message provided."}
                         </div>
                       ))}
                     </div>
@@ -921,5 +921,4 @@ return (
     </AppShell>
   );
 }
-
 

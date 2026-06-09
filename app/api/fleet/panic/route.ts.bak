@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 
 type PanicBody = {
@@ -89,21 +89,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: alertError.message }, { status: 500 });
     }
 
-    const { error: incidentError } = await supabase
-      .from("incidents")
-      .insert({
-        incident_code: `INC-${Date.now()}`,
-        severity: "Critical",
-        status: "Open",
-        summary: `PANIC activated for ${vehicle.registration_number}. ${panicMessage}`,
-        assigned_to: null,
-        organization_id: organizationId,
-      });
-
-    if (incidentError) {
-      console.error("Failed to create panic incident:", incidentError);
-    }
-
     const { error: timelineError } = await supabase
       .from("emergency_response_events")
       .insert({
@@ -192,8 +177,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-
-
 
 
 
