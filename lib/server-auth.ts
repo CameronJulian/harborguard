@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+﻿import { cookies, headers } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
 
 export async function requireOrganization() {
