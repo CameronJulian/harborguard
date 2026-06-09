@@ -4,8 +4,15 @@ import { createClient } from "@supabase/supabase-js";
 export async function requireOrganization() {
   const cookieStore = await cookies();
 
+  const headerStore = await headers();
+
+  const bearerToken = headerStore
+    .get("authorization")
+    ?.replace("Bearer ", "")
+    .trim();
+
   const accessToken =
-    cookieStore.get("sb-access-token")?.value;
+    bearerToken || cookieStore.get("sb-access-token")?.value;
 
   if (!accessToken) {
     throw new Error("Unauthorized");
@@ -76,3 +83,5 @@ export function requireRole(
     throw new Error("Permission denied");
   }
 }
+
+
