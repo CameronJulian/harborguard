@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { requireOrganization, requireRole } from "@/lib/server-auth";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
@@ -301,7 +301,7 @@ async function buildAnalyticsPdf(params: {
 
   for (const row of summaryRows) {
     ensureSpace();
-    drawText(`• ${row}`, margin, 11);
+    drawText(`â€¢ ${row}`, margin, 11);
     y -= lineHeight;
   }
 
@@ -440,7 +440,7 @@ export async function POST(req: Request) {
       organizationId = profile.organization_id;
     } else {
       const auth = await requireOrganization();
-      requireRole(auth.role, ["owner", "admin"]);
+      requireRole(auth.role, ["owner", "admin", "manager"]);
       supabase = auth.supabase;
       organizationId = auth.organizationId;
     }
@@ -684,6 +684,7 @@ export async function GET() {
     { status: 405 }
   );
 }
+
 
 
 
