@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 import { createAuditLog } from "@/lib/audit";
 
@@ -54,6 +54,37 @@ const resolutionNote = String(
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
+    const panicMatch = incident.summary?.match(/PANIC activated for ([^.]+)\./);
+
+    if (panicMatch?.[1]) {
+      const registrationNumber = panicMatch[1].trim();
+
+      const { data: vehicle } = await supabase
+        .from("vehicles")
+        .select("id")
+        .eq("organization_id", organizationId)
+        .eq("registration_number", registrationNumber)
+        .maybeSingle();
+
+      if (vehicle?.id) {
+        const { error: alertResolveError } = await supabase
+          .from("vehicle_alerts")
+          .update({
+            is_resolved: true,
+            resolved_at: new Date().toISOString(),
+            resolution_notes: resolutionNote || "Resolved via incident management.",
+          })
+          .eq("organization_id", organizationId)
+          .eq("vehicle_id", vehicle.id)
+          .eq("is_resolved", false)
+          .ilike("message", "%panic%");
+
+        if (alertResolveError) {
+          console.error("Failed to resolve linked panic alert:", alertResolveError);
+        }
+      }
+    }
+
     await createAuditLog({
       organizationId,
       userId: user?.id ?? null,
@@ -79,6 +110,8 @@ const resolutionNote = String(
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+
 
 
 
