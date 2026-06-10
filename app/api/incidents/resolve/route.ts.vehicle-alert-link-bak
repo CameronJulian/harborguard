@@ -27,7 +27,7 @@ const resolutionNote = String(
 
     const { data: incident, error: incidentError } = await supabase
       .from("incidents")
-      .select("id, incident_code, summary, status, vehicle_alert_id")
+      .select("id, incident_code, summary, status")
       .eq("id", incidentId)
       .eq("organization_id", organizationId)
       .maybeSingle();
@@ -54,20 +54,34 @@ const resolutionNote = String(
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
-    if (incident.vehicle_alert_id) {
-      const { error: alertResolveError } = await supabase
-        .from("vehicle_alerts")
-        .update({
-          is_resolved: true,
-          resolved_at: new Date().toISOString(),
-          resolution_notes: resolutionNote || "Resolved via incident management.",
-        })
-        .eq("id", incident.vehicle_alert_id)
-        .eq("organization_id", organizationId)
-        .eq("is_resolved", false);
+    const panicMatch = incident.summary?.match(/PANIC activated for ([^.]+)\./);
 
-      if (alertResolveError) {
-        console.error("Failed to resolve linked alert:", alertResolveError);
+    if (panicMatch?.[1]) {
+      const registrationNumber = panicMatch[1].trim();
+
+      const { data: vehicle } = await supabase
+        .from("vehicles")
+        .select("id")
+        .eq("organization_id", organizationId)
+        .eq("registration_number", registrationNumber)
+        .maybeSingle();
+
+      if (vehicle?.id) {
+        const { error: alertResolveError } = await supabase
+          .from("vehicle_alerts")
+          .update({
+            is_resolved: true,
+            resolved_at: new Date().toISOString(),
+            resolution_notes: resolutionNote || "Resolved via incident management.",
+          })
+          .eq("organization_id", organizationId)
+          .eq("vehicle_id", vehicle.id)
+          .eq("is_resolved", false)
+          .ilike("message", "%panic%");
+
+        if (alertResolveError) {
+          console.error("Failed to resolve linked panic alert:", alertResolveError);
+        }
       }
     }
 
@@ -96,7 +110,6 @@ const resolutionNote = String(
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-
 
 
 
