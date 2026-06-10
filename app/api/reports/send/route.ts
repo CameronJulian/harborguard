@@ -301,7 +301,7 @@ async function buildAnalyticsPdf(params: {
 
   for (const row of summaryRows) {
     ensureSpace();
-    drawText(`â€¢ ${row}`, margin, 11);
+    drawText(`• ${row}`, margin, 11);
     y -= lineHeight;
   }
 
@@ -684,6 +684,7 @@ export async function GET() {
     { status: 405 }
   );
 }
+
 
 
 
