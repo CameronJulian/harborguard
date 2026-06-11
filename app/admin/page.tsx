@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { CSSProperties, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -81,7 +81,7 @@ export default function AdminPage() {
       return;
     }
 
-    const allowedRoles = ["admin", "super_admin", "manager"];
+    const allowedRoles = ["admin", "super_admin"];
 
     if (!allowedRoles.includes(profile.role)) {
       router.replace("/dashboard");
@@ -230,7 +230,7 @@ export default function AdminPage() {
                   <td style={tableCellStyle}>
                     {organization.trial_ends_at
                       ? new Date(organization.trial_ends_at).toLocaleDateString()
-                      : "—"}
+                      : "â€”"}
                   </td>
                 </tr>
               ))}
