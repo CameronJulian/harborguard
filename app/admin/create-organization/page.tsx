@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -42,7 +42,7 @@ export default function CreateOrganizationPage() {
       return;
     }
 
-    const allowedRoles = ["admin", "super_admin", "manager"];
+    const allowedRoles = ["admin", "super_admin"];
 
     if (!allowedRoles.includes(profile.role)) {
       router.replace("/dashboard");
