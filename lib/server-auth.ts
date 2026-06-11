@@ -63,6 +63,22 @@ export async function requireOrganization() {
     throw new Error("Organization not found.");
   }
 
+  const organization = Array.isArray(profile.organization)
+    ? profile.organization[0] || null
+    : profile.organization || null;
+
+  const subscriptionStatus = organization?.subscription_status;
+  const trialEndsAt = organization?.trial_ends_at;
+
+  const trialIsActive =
+    subscriptionStatus === "trialing" &&
+    trialEndsAt &&
+    new Date(trialEndsAt).getTime() > Date.now();
+
+  if (subscriptionStatus !== "active" && !trialIsActive) {
+    throw new Error("Subscription inactive");
+  }
+
   return {
     supabase,
     user,
@@ -83,5 +99,7 @@ export function requireRole(
     throw new Error("Permission denied");
   }
 }
+
+
 
 
