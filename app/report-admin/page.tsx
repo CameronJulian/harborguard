@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import TrialBanner from "@/components/billing/TrialBanner";
@@ -473,7 +473,7 @@ export default function ReportAdminPage() {
 
 return (
   <AppShell>
-      <RoleGuard allowedRoles={["admin", "manager"]}>
+      <RoleGuard allowedRoles={["admin"]}>
         {message ? (
           <div
             style={{
@@ -893,7 +893,7 @@ return (
                       {log.email}
                     </div>
                     <div style={{ color: "#7f1d1d", fontSize: 14, marginBottom: 4 }}>
-                      {log.report_frequency} • {log.start_date} → {log.end_date}
+                      {log.report_frequency} â€¢ {log.start_date} â†’ {log.end_date}
                     </div>
                     <div style={{ color: "#7f1d1d", fontSize: 14, marginBottom: 4 }}>
                       {log.error_message || "Unknown failure"}
@@ -932,7 +932,7 @@ return (
                     {log.email}
                   </div>
                   <div style={{ color: "#166534", fontSize: 14, marginBottom: 4 }}>
-                    {log.report_frequency} • {log.start_date} → {log.end_date}
+                    {log.report_frequency} â€¢ {log.start_date} â†’ {log.end_date}
                   </div>
                   <div style={{ color: "#166534", fontSize: 12 }}>
                     {formatDateTime(log.created_at)}
@@ -997,7 +997,7 @@ return (
                         {log.report_frequency}
                       </td>
                       <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
-                        {log.start_date} → {log.end_date}
+                        {log.start_date} â†’ {log.end_date}
                       </td>
                       <td
                         style={{

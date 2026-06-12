@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import AppShell from "@/components/AppShell";
@@ -230,7 +230,7 @@ export default function ReportHistoryPage() {
 
   return (
     <AppShell>
-      <RoleGuard allowedRoles={["admin", "manager"]}>
+      <RoleGuard allowedRoles={["admin"]}>
         {message ? (
           <div
             style={{
@@ -402,7 +402,7 @@ export default function ReportHistoryPage() {
                       </td>
 
                       <td style={{ padding: 14, borderBottom: "1px solid #f1f5f9" }}>
-                        {log.start_date} → {log.end_date}
+                        {log.start_date} â†’ {log.end_date}
                       </td>
 
                       <td

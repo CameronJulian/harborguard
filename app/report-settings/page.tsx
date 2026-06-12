@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { CSSProperties, useEffect, useState } from "react";
 import AppShell from "@/components/AppShell";
@@ -183,7 +183,7 @@ export default function ReportSettingsPage() {
 
   return (
     <AppShell>
-      <RoleGuard allowedRoles={["admin", "manager"]}>
+      <RoleGuard allowedRoles={["admin"]}>
         {message ? (
           <div
             style={{
