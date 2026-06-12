@@ -35,7 +35,7 @@ export default function Sidebar({
 }: Props) {
   const pathname = usePathname();
 
-  const canManageReports = role === "admin" || role === "super_admin";
+  const canManageReports = role === "admin";
 
   function navStyle(href: string): CSSProperties {
     const active = pathname === href;
@@ -188,3 +188,4 @@ export default function Sidebar({
     </aside>
   );
 }
+
