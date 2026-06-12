@@ -661,12 +661,21 @@ export async function POST(req: Request) {
         { status: 500 }
       );
     }
+    if (emailResult?.error) {
+      return NextResponse.json(
+        {
+          error: emailResult.error.message || "Resend rejected the email.",
+          emailResult,
+        },
+        { status: emailResult.error.statusCode || 500 }
+      );
+    }
 
-       return NextResponse.json({
+    return NextResponse.json({
       success: true,
       message: "Email report with PDF attachment sent successfully.",
       organizationId,
-emailResult,
+      emailResult,
     });
   } catch (err: any) {
     console.error("REPORT SEND ERROR:", err);
@@ -684,6 +693,9 @@ export async function GET() {
     { status: 405 }
   );
 }
+
+
+
 
 
 
