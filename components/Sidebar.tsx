@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -35,7 +35,7 @@ export default function Sidebar({
 }: Props) {
   const pathname = usePathname();
 
-  const canManageReports = role === "admin" || role === "manager";
+  const canManageReports = role === "admin" || role === "super_admin";
 
   function navStyle(href: string): CSSProperties {
     const active = pathname === href;
