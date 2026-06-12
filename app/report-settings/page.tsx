@@ -111,8 +111,19 @@ export default function ReportSettingsPage() {
       return;
     }
 
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      setMessage("Unable to verify your user session.");
+      setSaving(false);
+      return;
+    }
+
     const { error } = await supabase.from("report_subscriptions").insert({
-      user_id: null,
+      user_id: user.id,
       email: cleanEmail,
       full_name: cleanName || null,
       report_frequency: reportFrequency,
@@ -344,3 +355,6 @@ export default function ReportSettingsPage() {
     </AppShell>
   );
 }
+
+
+
