@@ -64,7 +64,6 @@ export async function POST(request: Request) {
       fleet_size: fleetSize,
       first_vehicle: firstVehicle,
       subscription_status: "trialing",
-      subscription_plan: "starter",
       plan: "trial",
       trial_ends_at: trialEndsAt,
       seats: 1,

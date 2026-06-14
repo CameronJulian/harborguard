@@ -1,4 +1,6 @@
-"use client";
+﻿"use client";
+
+import { fetchWithAuth } from "@/lib/auth-fetch";
 
 import { CSSProperties, useEffect, useState } from "react";
 import AppShell from "@/components/AppShell";
@@ -76,7 +78,7 @@ export default function GeofencesPage() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/geofences", {
+      const response = await fetchWithAuth("/api/geofences", {
         cache: "no-store",
       });
       const result = await response.json();
@@ -104,7 +106,7 @@ export default function GeofencesPage() {
     setMessage("");
 
     try {
-      const response = await fetch("/api/geofences", {
+      const response = await fetchWithAuth("/api/geofences", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -152,7 +154,7 @@ export default function GeofencesPage() {
     setMessage("");
 
     try {
-      const response = await fetch("/api/geofences", {
+      const response = await fetchWithAuth("/api/geofences", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -186,7 +188,7 @@ export default function GeofencesPage() {
     setMessage("");
 
     try {
-      const response = await fetch("/api/geofences", {
+      const response = await fetchWithAuth("/api/geofences", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -450,6 +452,8 @@ export default function GeofencesPage() {
     </AppShell>
   );
 }
+
+
 
 
 

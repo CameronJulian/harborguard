@@ -1,4 +1,6 @@
-"use client";
+﻿"use client";
+
+import { fetchWithAuth } from "@/lib/auth-fetch";
 
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -79,7 +81,7 @@ export default function TripsPage() {
     setMessage("");
 
     try {
-      const response = await fetch("/api/fleet/trips", { cache: "no-store" });
+      const response = await fetchWithAuth("/api/fleet/trips", { cache: "no-store" });
       const result = await response.json();
 
       if (!response.ok) {
@@ -235,3 +237,5 @@ export default function TripsPage() {
     </AppShell>
   );
 }
+
+

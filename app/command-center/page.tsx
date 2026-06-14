@@ -1,4 +1,6 @@
-"use client";
+﻿"use client";
+
+import { fetchWithAuth } from "@/lib/auth-fetch";
 
 import "leaflet/dist/leaflet.css";
 import TrialBanner from "@/components/billing/TrialBanner";
@@ -154,31 +156,30 @@ function formatDateTime(value?: string | null) {
   if (!value) return "-";
   return new Date(value).toLocaleString();
 }
-
 function calculateDistanceMeters(
   lat1: number,
   lon1: number,
   lat2: number,
   lon2: number
 ) {
-  const R = 6371e3;
+  const earthRadiusMeters = 6371e3;
 
-  const φ1 = (lat1 * Math.PI) / 180;
-  const φ2 = (lat2 * Math.PI) / 180;
+  const lat1Rad = (lat1 * Math.PI) / 180;
+  const lat2Rad = (lat2 * Math.PI) / 180;
 
-  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+  const deltaLatRad = ((lat2 - lat1) * Math.PI) / 180;
+  const deltaLonRad = ((lon2 - lon1) * Math.PI) / 180;
 
   const a =
-    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-    Math.cos(φ1) *
-      Math.cos(φ2) *
-      Math.sin(Δλ / 2) *
-      Math.sin(Δλ / 2);
+    Math.sin(deltaLatRad / 2) * Math.sin(deltaLatRad / 2) +
+    Math.cos(lat1Rad) *
+      Math.cos(lat2Rad) *
+      Math.sin(deltaLonRad / 2) *
+      Math.sin(deltaLonRad / 2);
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-  return R * c;
+  return earthRadiusMeters * c;
 }
 
 function secondsSince(value?: string | null) {
@@ -380,7 +381,7 @@ const {
 
   async function loadFleet() {
     try {
-      const response = await fetch("/api/fleet/live", { cache: "no-store" });
+      const response = await fetchWithAuth("/api/fleet/live", { cache: "no-store" });
       const result = await response.json();
 
       if (!response.ok) {
@@ -399,7 +400,7 @@ const {
   
   async function loadIncidents() {
   try {
-    const response = await fetch("/api/road-incidents", { cache: "no-store" });
+    const response = await fetchWithAuth("/api/road-incidents", { cache: "no-store" });
     const result = await response.json();
 
     if (!response.ok) {
@@ -414,7 +415,7 @@ const {
 }
 async function loadThreatFeed() {
   try {
-    const response = await fetch("/api/fleet/predict-threats", {
+    const response = await fetchWithAuth("/api/fleet/predict-threats", {
       cache: "no-store",
     });
 
@@ -436,7 +437,7 @@ async function loadThreatFeed() {
     setMessage("Running risk detection...");
 
     try {
-      const response = await fetch("/api/fleet/detect-risks", {
+      const response = await fetchWithAuth("/api/fleet/detect-risks", {
         method: "POST",
       });
       const result = await response.json();
@@ -457,7 +458,7 @@ async function loadThreatFeed() {
     setMessage(`Triggering panic escalation for ${vehicle.registrationNumber}...`);
 
     try {
-      const response = await fetch("/api/fleet/panic", {
+      const response = await fetchWithAuth("/api/fleet/panic", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -491,7 +492,7 @@ async function loadThreatFeed() {
     setMessage(`Resolving first alert for ${vehicle.registrationNumber}...`);
 
     try {
-      const response = await fetch("/api/fleet/resolve-alert", {
+      const response = await fetchWithAuth("/api/fleet/resolve-alert", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -540,7 +541,7 @@ useEffect(() => {
     setVoiceTranscript(cleaned);
 
     try {
-      const response = await fetch("/api/copilot", {
+      const response = await fetchWithAuth("/api/copilot", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1343,17 +1344,17 @@ if (
               fontSize: 14,
             }}
           >
-            <div>• Speed: {threat.speed} km/h</div>
-            <div>• Open Alerts: {threat.openAlerts}</div>
+            <div>â€¢ Speed: {threat.speed} km/h</div>
+            <div>â€¢ Open Alerts: {threat.openAlerts}</div>
             <div>
-              • Critical Alerts: {threat.criticalAlerts}
+              â€¢ Critical Alerts: {threat.criticalAlerts}
             </div>
             <div>
-              • Near Incident Zone:{" "}
+              â€¢ Near Incident Zone:{" "}
               {threat.nearIncident ? "Yes" : "No"}
             </div>
             <div>
-              • Offline: {threat.isOffline ? "Yes" : "No"}
+              â€¢ Offline: {threat.isOffline ? "Yes" : "No"}
             </div>
           </div>
         </div>
@@ -1559,7 +1560,7 @@ if (
                             <strong>Speed:</strong> {Math.round(vehicle.speedKmh || 0)} km/h
                           </div>
                           <div>
-                            <strong>Heading:</strong> {Math.round(vehicle.heading || 0)}°
+                            <strong>Heading:</strong> {Math.round(vehicle.heading || 0)}Â°
                           </div>
                           <div>
                             <strong>Last Seen:</strong> {formatDateTime(vehicle.lastSeen)}
@@ -1764,7 +1765,7 @@ if (
           lineHeight: 1.5,
         }}
       >
-        ⚠ {incident.title} ({incident.severity})
+        âš  {incident.title} ({incident.severity})
       </div>
     ))}
   </div>
@@ -1853,3 +1854,5 @@ if (
     </AppShell>
   );
 }
+
+

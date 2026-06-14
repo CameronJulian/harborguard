@@ -1,4 +1,6 @@
-"use client";
+﻿"use client";
+
+import { fetchWithAuth } from "@/lib/auth-fetch";
 
 import "leaflet/dist/leaflet.css";
 import TrialBanner from "@/components/billing/TrialBanner";
@@ -350,7 +352,7 @@ const [timelineThreatLevel, setTimelineThreatLevel] = useState("LOW");
   useEffect(() => {
     async function loadVehicles() {
       try {
-        const response = await fetch("/api/fleet/live", { cache: "no-store" });
+        const response = await fetchWithAuth("/api/fleet/live", { cache: "no-store" });
         const result = (await response.json()) as FleetResponse | { error: string };
 
         if (!response.ok) {
@@ -1046,7 +1048,7 @@ return (
                       <br />
                       Speed: {currentPlaybackPoint.speed_kmh ?? 0} km/h
                       <br />
-                      Heading: {currentPlaybackPoint.heading ?? 0}°
+                      Heading: {currentPlaybackPoint.heading ?? 0}Â°
                     </div>
                   </Popup>
                 </Marker>
@@ -1144,7 +1146,7 @@ return (
                       }}
                     >
                       <div style={{ fontWeight: 800, marginBottom: 6 }}>
-                        Point {index + 1} {isActive ? "• Current" : ""}
+                        Point {index + 1} {isActive ? "â€¢ Current" : ""}
                       </div>
                       <div style={{ color: "#334155", fontSize: 14, marginBottom: 4 }}>
                         <strong>Time:</strong> {formatDateTime(point.recorded_at)}
@@ -1185,3 +1187,4 @@ export default function RouteReplayPage() {
     </Suspense>
   );
 }
+

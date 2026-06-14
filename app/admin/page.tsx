@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { CSSProperties, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -111,7 +111,7 @@ export default function AdminPage() {
     const { count: professional } = await supabase
       .from("organizations")
       .select("*", { count: "exact", head: true })
-      .eq("subscription_plan", "professional");
+      .eq("plan", "professional");
 
     setOrganizationCount(orgs || 0);
     setVehicleCount(vehicles || 0);
@@ -212,7 +212,7 @@ export default function AdminPage() {
               {organizations.map((organization) => (
                 <tr key={organization.id}>
                   <td style={tableCellStyle}>{organization.name}</td>
-                  <td style={tableCellStyle}>{organization.subscription_plan}</td>
+                  <td style={tableCellStyle}>{organization.plan}</td>
                   <td
                     style={{
                       ...tableCellStyle,
@@ -230,7 +230,7 @@ export default function AdminPage() {
                   <td style={tableCellStyle}>
                     {organization.trial_ends_at
                       ? new Date(organization.trial_ends_at).toLocaleDateString()
-                      : "â€”"}
+                      : "—"}
                   </td>
                 </tr>
               ))}

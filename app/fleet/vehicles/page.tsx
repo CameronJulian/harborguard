@@ -1,4 +1,6 @@
-"use client";
+﻿"use client";
+
+import { fetchWithAuth } from "@/lib/auth-fetch";
 
 import { CSSProperties, FormEvent, useEffect, useState } from "react";
 import AppShell from "@/components/AppShell";
@@ -61,7 +63,7 @@ export default function VehiclesPage() {
       setLoading(true);
       setError("");
 
-      const response = await fetch("/api/fleet/vehicles", {
+      const response = await fetchWithAuth("/api/fleet/vehicles", {
         cache: "no-store",
       });
 
@@ -91,7 +93,7 @@ export default function VehiclesPage() {
       setError("");
       setSuccess("");
 
-      const response = await fetch("/api/fleet/vehicles", {
+      const response = await fetchWithAuth("/api/fleet/vehicles", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -547,6 +549,8 @@ export default function VehiclesPage() {
     </AppShell>
   );
 }
+
+
 
 
 

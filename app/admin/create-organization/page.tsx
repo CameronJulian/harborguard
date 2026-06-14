@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -73,7 +73,7 @@ export default function CreateOrganizationPage() {
         .insert({
           name: name.trim(),
           fleet_size: Number(fleetSize || 0),
-          subscription_plan: plan,
+          plan: plan,
           subscription_status: "trialing",
           seats: Number(seats || 1),
           trial_ends_at: trialEndDate.toISOString(),

@@ -1,5 +1,7 @@
 ﻿"use client";
 
+import { fetchWithAuth } from "@/lib/auth-fetch";
+
 import Link from "next/link";
 import TrialBanner from "@/components/billing/TrialBanner";
 import { CSSProperties, useEffect, useMemo, useState } from "react";
@@ -192,7 +194,7 @@ export default function RiskDashboardPage() {
     setMessage("");
 
     try {
-      const response = await fetch("/api/fleet/live", { cache: "no-store" });
+      const response = await fetchWithAuth("/api/fleet/live", { cache: "no-store" });
       const result = await response.json();
 
       if (!response.ok) {
@@ -209,7 +211,7 @@ export default function RiskDashboardPage() {
   }
   async function loadPredictions() {
   try {
-    const response = await fetch("/api/fleet/predict-threats", {
+    const response = await fetchWithAuth("/api/fleet/predict-threats", {
       cache: "no-store",
     });
 
@@ -234,7 +236,7 @@ export default function RiskDashboardPage() {
     setMessage("Running risk detection...");
 
     try {
-      const response = await fetch("/api/fleet/detect-risks", {
+      const response = await fetchWithAuth("/api/fleet/detect-risks", {
         method: "POST",
       });
       const result = await response.json();
@@ -921,5 +923,7 @@ return (
     </AppShell>
   );
 }
+
+
 
 

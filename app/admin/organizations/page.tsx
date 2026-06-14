@@ -9,7 +9,6 @@ type Organization = {
   id: string;
   name: string;
   plan?: string | null;
-  subscription_plan?: string | null;
   subscription_status?: string | null;
   fleet_size?: number | null;
   created_at?: string | null;
@@ -163,7 +162,7 @@ export default function OrganizationsPage() {
                     textTransform: "capitalize",
                   }}
                 >
-                  {org.plan || org.subscription_plan || "starter"}
+                  {org.plan || "starter"}
                 </div>
               </div>
 

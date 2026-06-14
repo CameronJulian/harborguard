@@ -10,7 +10,7 @@ export async function getOrganizationSubscription(organizationId: string) {
     .from("organizations")
     .select(`
       subscription_status,
-      subscription_plan,
+      plan,
       trial_ends_at,
       payfast_subscription_id
     `)

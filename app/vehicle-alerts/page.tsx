@@ -1,4 +1,6 @@
-"use client";
+﻿"use client";
+
+import { fetchWithAuth } from "@/lib/auth-fetch";
 
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -86,7 +88,7 @@ export default function VehicleAlertsPage() {
   async function loadAlerts() {
     setLoading(true);
     try {
-      const response = await fetch("/api/fleet/alerts", {
+      const response = await fetchWithAuth("/api/fleet/alerts", {
         cache: "no-store",
       });
       const result = await response.json();
@@ -114,7 +116,7 @@ export default function VehicleAlertsPage() {
     setMessage("");
 
     try {
-      const response = await fetch("/api/fleet/resolve-alert", {
+      const response = await fetchWithAuth("/api/fleet/resolve-alert", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -147,7 +149,7 @@ export default function VehicleAlertsPage() {
     setMessage("");
 
     try {
-      const response = await fetch("/api/fleet/acknowledge-alert", {
+      const response = await fetchWithAuth("/api/fleet/acknowledge-alert", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -569,6 +571,8 @@ export default function VehicleAlertsPage() {
     </AppShell>
   );
 }
+
+
 
 
 
