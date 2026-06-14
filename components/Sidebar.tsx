@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -100,6 +100,10 @@ export default function Sidebar({
         <Link href="/route-replay" style={navStyle("/route-replay")} onClick={onNavigate}>
           Route Replay
         </Link>
+		
+		<Link href="/route-safety" style={navStyle("/route-safety")} onClick={onNavigate}>
+  Route Safety
+</Link>
 
         <Link href="/geofences" style={navStyle("/geofences")} onClick={onNavigate}>
           Geofence Management
@@ -188,6 +192,7 @@ export default function Sidebar({
     </aside>
   );
 }
+
 
 
 
