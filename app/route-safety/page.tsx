@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
 
 type SafetyAlert = {
@@ -12,9 +12,96 @@ type SafetyAlert = {
   distance_meters: number;
 };
 
+const alertIcons: Record<string, string> = {
+  roadblock: "🚧",
+  traffic_light_outage: "🚦",
+  smash_grab_hotspot: "🚨",
+  accident: "⚠️",
+  protest: "⚠️",
+  high_risk_area: "🛡️",
+};
+
+function alertLabel(type: string) {
+  return type.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function getWarningMessage(alert: SafetyAlert) {
+  if (alert.type === "roadblock") {
+    return "Warning. Roadblock reported ahead. Alternative route may be required.";
+  }
+
+  if (alert.type === "traffic_light_outage") {
+    return "Warning. Traffic lights are reported not working ahead.";
+  }
+
+  if (alert.type === "smash_grab_hotspot") {
+    return "Warning. Known smash and grab hotspot ahead. Remain alert.";
+  }
+
+  return `Warning. ${alert.title} ahead.`;
+}
+
 export default function RouteSafetyPage() {
   const [alerts, setAlerts] = useState<SafetyAlert[]>([]);
   const [message, setMessage] = useState("Getting location...");
+  const spokenAlerts = useRef<Set<string>>(new Set());
+
+  async function notifyDriver(alert: SafetyAlert) {
+    const warning = getWarningMessage(alert);
+
+    if (!spokenAlerts.current.has(alert.id)) {
+      spokenAlerts.current.add(alert.id);
+
+      if ("speechSynthesis" in window) {
+        const utterance = new SpeechSynthesisUtterance(warning);
+        utterance.rate = 0.9;
+        window.speechSynthesis.speak(utterance);
+      }
+
+      if ("Notification" in window) {
+        if (Notification.permission === "granted") {
+          new Notification(alert.title, {
+            body: `${alertLabel(alert.type)} - ${alert.distance_meters}m away`,
+          });
+        } else if (Notification.permission !== "denied") {
+          await Notification.requestPermission();
+        }
+      }
+    }
+  }
+
+  async function fetchAlerts(lat: number, lng: number, label = "safety") {
+    const response = await fetchWithAuth(
+      `/api/route-safety/nearby?lat=${lat}&lng=${lng}`,
+      { cache: "no-store" }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      setMessage(result.error || "Failed to load route safety alerts.");
+      return;
+    }
+
+    const nextAlerts = result.alerts || [];
+    setAlerts(nextAlerts);
+
+    setMessage(
+      nextAlerts.length
+        ? `${nextAlerts.length} ${label} alert(s) nearby.`
+        : `No nearby ${label} alerts.`
+    );
+
+    for (const alert of nextAlerts) {
+      if (
+        alert.severity === "critical" ||
+        alert.severity === "high" ||
+        alert.distance_meters <= 1000
+      ) {
+        await notifyDriver(alert);
+      }
+    }
+  }
 
   async function loadSafetyAlerts() {
     if (!navigator.geolocation) {
@@ -24,28 +111,10 @@ export default function RouteSafetyPage() {
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-
-        setMessage(`Checking nearby safety alerts at ${lat}, ${lng}...`);
-
-        const response = await fetchWithAuth(
-          `/api/route-safety/nearby?lat=${lat}&lng=${lng}`,
-          { cache: "no-store" }
-        );
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          setMessage(result.error || "Failed to load route safety alerts.");
-          return;
-        }
-
-        setAlerts(result.alerts || []);
-        setMessage(
-          result.alerts?.length
-            ? `${result.alerts.length} safety alert(s) nearby.`
-            : "No nearby safety alerts."
+        await fetchAlerts(
+          position.coords.latitude,
+          position.coords.longitude,
+          "safety"
         );
       },
       () => {
@@ -54,62 +123,29 @@ export default function RouteSafetyPage() {
     );
   }
 
+  async function loadTestDurbanAlerts() {
+    await fetchAlerts(-29.8587, 31.0218, "test safety");
+  }
+
   useEffect(() => {
     loadSafetyAlerts();
 
-    const interval = setInterval(loadSafetyAlerts, 30000);
+    const interval = setInterval(loadSafetyAlerts, 10000);
 
-    async function loadTestDurbanAlerts() {
-    const response = await fetchWithAuth(
-      "/api/route-safety/nearby?lat=-29.8587&lng=31.0218",
-      { cache: "no-store" }
-    );
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      setMessage(result.error || "Failed to load test safety alerts.");
-      return;
-    }
-
-    setAlerts(result.alerts || []);
-    setMessage(
-      result.alerts?.length
-        ? `${result.alerts.length} test safety alert(s) nearby.`
-        : "No test safety alerts found."
-    );
-  }
-
-  return () => clearInterval(interval);
+    return () => clearInterval(interval);
   }, []);
-
-  async function loadTestDurbanAlerts() {
-    const response = await fetchWithAuth(
-      "/api/route-safety/nearby?lat=-29.8587&lng=31.0218",
-      { cache: "no-store" }
-    );
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      setMessage(result.error || "Failed to load test safety alerts.");
-      return;
-    }
-
-    setAlerts(result.alerts || []);
-    setMessage(
-      result.alerts?.length
-        ? `${result.alerts.length} test safety alert(s) nearby.`
-        : "No test safety alerts found."
-    );
-  }
 
   return (
     <main style={{ padding: 32 }}>
-      <h1>Route Safety Intelligence</h1>
-      <p>Live roadblock, robot outage, and smash-and-grab hotspot alerts.</p>
+      <h1 style={{ fontSize: 38, marginBottom: 8 }}>
+        Route Safety Intelligence
+      </h1>
 
-      <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
+      <p style={{ color: "#64748b", fontSize: 18 }}>
+        Live roadblock, robot outage, and smash-and-grab hotspot alerts.
+      </p>
+
+      <div style={{ display: "flex", gap: 12, margin: "24px 0" }}>
         <button onClick={loadSafetyAlerts}>
           Refresh Safety Alerts
         </button>
@@ -119,34 +155,32 @@ export default function RouteSafetyPage() {
         </button>
       </div>
 
-      <p>{message}</p>
+      <p style={{ fontWeight: 700 }}>{message}</p>
 
-      <div style={{ display: "grid", gap: 16 }}>
+      <div style={{ display: "grid", gap: 18 }}>
         {alerts.map((alert) => (
           <div
             key={alert.id}
             style={{
-              border: "1px solid #ddd",
-              borderRadius: 12,
-              padding: 16,
+              border: "1px solid #dbe3ef",
+              borderRadius: 18,
+              padding: 22,
               background:
                 alert.severity === "critical"
-                  ? "#ffe5e5"
+                  ? "#fee2e2"
                   : alert.severity === "high"
-                  ? "#fff3cd"
+                  ? "#fef3c7"
                   : "#f8fafc",
+              boxShadow: "0 10px 24px rgba(15, 23, 42, 0.08)",
             }}
           >
-            <h2>{alert.title}</h2>
-            <p>
-              <strong>Type:</strong> {alert.type}
-            </p>
-            <p>
-              <strong>Severity:</strong> {alert.severity}
-            </p>
-            <p>
-              <strong>Distance:</strong> {alert.distance_meters}m away
-            </p>
+            <h2 style={{ marginTop: 0 }}>
+              {alertIcons[alert.type] || "⚠️"} {alert.title}
+            </h2>
+
+            <p><strong>Type:</strong> {alertLabel(alert.type)}</p>
+            <p><strong>Severity:</strong> {alert.severity.toUpperCase()}</p>
+            <p><strong>Distance:</strong> {alert.distance_meters}m away</p>
             <p>{alert.description}</p>
           </div>
         ))}
@@ -154,4 +188,3 @@ export default function RouteSafetyPage() {
     </main>
   );
 }
-
