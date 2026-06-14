@@ -106,6 +106,7 @@ export default function DashboardPage() {
   const [fleetVehicles, setFleetVehicles] = useState<any[]>([]);
   const [fleetTrips, setFleetTrips] = useState<any[]>([]);
   const [fleetAlerts, setFleetAlerts] = useState<any[]>([]);
+  const [routeSafetyAlerts, setRouteSafetyAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 const [trialEndsAt, setTrialEndsAt] =
@@ -244,11 +245,19 @@ const alertResponse = await fetch("/api/fleet/alerts", {
 });
 const alertResult = await alertResponse.json();
 
+const { data: routeAlerts } = await supabase
+  .from("route_safety_alerts")
+  .select("*")
+  .eq("organization_id", profile.organization_id)
+  .eq("status", "active")
+  .order("created_at", { ascending: false });
+
     setBatches((batchData as BatchRow[]) || []);
     setIncidents((incidentData as IncidentRow[]) || []);
     setFleetVehicles(vehicleResult.vehicles || []);
     setFleetTrips(tripResult.trips || []);
     setFleetAlerts((alertResult.alerts || []).filter((alert: any) => !alert.is_resolved));
+    setRouteSafetyAlerts(routeAlerts || []);
   }
 
   const totalCatch = useMemo(
@@ -788,6 +797,38 @@ const executiveRiskIndex = useMemo(() => {
     ))}
   </div>
 </div>
+      {routeSafetyAlerts.length > 0 && (
+        <div
+          onClick={() => {
+            window.location.href = "/route-safety";
+          }}
+          style={{
+            marginBottom: 20,
+            padding: 18,
+            borderRadius: 14,
+            background: "#fff7ed",
+            border: "1px solid #fdba74",
+            color: "#9a3412",
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          🚧 Route Safety Intelligence
+          <div style={{ marginTop: 8, fontSize: 14, fontWeight: 500 }}>
+            Active Route Threats: {routeSafetyAlerts.length}
+          </div>
+          <div style={{ marginTop: 6, fontSize: 13, opacity: 0.85 }}>
+            {routeSafetyAlerts
+              .slice(0, 3)
+              .map((alert) => alert.title)
+              .join(" • ")}
+          </div>
+          <div style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>
+            Click to open Route Safety
+          </div>
+        </div>
+      )}
+
       {recentHighRisk.length > 0 && (
         <div
           onClick={() => {
@@ -1122,6 +1163,7 @@ const executiveRiskIndex = useMemo(() => {
     </AppShell>
   );
 }
+
 
 
 
