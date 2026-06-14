@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const protectedRoutes = [
@@ -17,6 +17,7 @@ const protectedRoutes = [
   "/report-settings",
   "/risk-dashboard",
   "/route-replay",
+  "/route-safety",
   "/trips",
   "/vehicle-alerts",
 ];
@@ -27,6 +28,7 @@ const premiumRoutes = [
   "/report-admin",
   "/risk-dashboard",
   "/route-replay",
+  "/route-safety",
 ];
 
 function hasAuthSession(request: NextRequest) {
@@ -84,9 +86,11 @@ export const config = {
     "/report-settings/:path*",
     "/risk-dashboard/:path*",
     "/route-replay/:path*",
+    "/route-safety/:path*",
     "/trips/:path*",
     "/vehicle-alerts/:path*",
   ],
 };
+
 
 
