@@ -80,6 +80,14 @@ export default function RouteSafetyPage() {
 
   const spokenAlerts = useRef<Set<string>>(new Set());
 
+  const activeAlerts = alerts.length;
+  const verifiedAlerts = alerts.filter((alert) => alert.verification_status === "verified").length;
+  const unverifiedAlerts = alerts.filter((alert) => alert.verification_status !== "verified").length;
+  const criticalAlerts = alerts.filter((alert) => alert.severity === "critical").length;
+  const roadblocks = alerts.filter((alert) => alert.type === "roadblock").length;
+  const trafficLightOutages = alerts.filter((alert) => alert.type === "traffic_light_outage").length;
+  const smashGrabHotspots = alerts.filter((alert) => alert.type === "smash_grab_hotspot").length;
+
   function updateTitleForType(nextType: string) {
     setType(nextType);
 
@@ -267,6 +275,40 @@ export default function RouteSafetyPage() {
         Live roadblock, robot outage, and smash-and-grab hotspot alerts.
       </p>
 
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          gap: 14,
+          margin: "24px 0",
+        }}
+      >
+        {[
+          ["Active Alerts", activeAlerts],
+          ["Verified", verifiedAlerts],
+          ["Unverified", unverifiedAlerts],
+          ["Critical", criticalAlerts],
+          ["Roadblocks", roadblocks],
+          ["Traffic Lights", trafficLightOutages],
+          ["Smash-and-Grab", smashGrabHotspots],
+        ].map(([label, value]) => (
+          <div
+            key={label}
+            style={{
+              padding: 18,
+              borderRadius: 16,
+              border: "1px solid #e2e8f0",
+              background: "#ffffff",
+              boxShadow: "0 8px 20px rgba(15, 23, 42, 0.06)",
+            }}
+          >
+            <div style={{ color: "#64748b", fontSize: 14 }}>{label}</div>
+            <div style={{ fontSize: 32, fontWeight: 900, marginTop: 6 }}>
+              {value}
+            </div>
+          </div>
+        ))}
+      </div>
       <div style={{ display: "flex", gap: 12, margin: "24px 0", flexWrap: "wrap" }}>
         <button onClick={loadSafetyAlerts} style={buttonStyle}>
           Refresh Safety Alerts
@@ -424,6 +466,7 @@ export default function RouteSafetyPage() {
     </main>
   );
 }
+
 
 
 
