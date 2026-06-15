@@ -1371,6 +1371,52 @@ if (
   )}
 </div>
 
+      {incidents.length > 0 && (
+        <div
+          style={{
+            ...cardStyle,
+            padding: 22,
+            marginBottom: 24,
+            border: "1px solid #fed7aa",
+            background: "#fff7ed",
+          }}
+        >
+          <h2 style={{ marginTop: 0, fontSize: 26 }}>
+            Active Route Threat Feed
+          </h2>
+
+          <div style={{ display: "grid", gap: 12 }}>
+            {incidents.slice(0, 6).map((incident) => (
+              <div
+                key={incident.id}
+                style={{
+                  padding: 14,
+                  borderRadius: 14,
+                  background: "#ffffff",
+                  border: "1px solid #fdba74",
+                }}
+              >
+                <div style={{ fontWeight: 900 }}>
+                  {incident.type === "roadblock"
+                    ? "🚧"
+                    : incident.type === "traffic_light_outage"
+                    ? "🚦"
+                    : incident.type === "smash_grab_hotspot"
+                    ? "🚨"
+                    : "⚠️"}{" "}
+                  {incident.title}
+                </div>
+
+                <div style={{ marginTop: 6, color: "#64748b", fontSize: 14 }}>
+                  Type: {incident.type.replaceAll("_", " ")} • Severity:{" "}
+                  {incident.severity.toUpperCase()} • Radius:{" "}
+                  {incident.radius_meters}m
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 24 }}>
         <div style={{ ...cardStyle, padding: 20 }}>
           <h2 style={{ fontSize: 28, margin: "0 0 4px 0" }}>
@@ -1862,6 +1908,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
