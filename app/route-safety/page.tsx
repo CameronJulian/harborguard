@@ -11,6 +11,7 @@ type SafetyAlert = {
   severity: string;
   distance_meters: number;
   suggested_route?: string | null;
+  verification_status?: string | null;
 };
 
 const alertIcons: Record<string, string> = {
@@ -372,8 +373,45 @@ export default function RouteSafetyPage() {
 
             <p><strong>Type:</strong> {alertLabel(alert.type)}</p>
             <p><strong>Severity:</strong> {alert.severity.toUpperCase()}</p>
+
+            <p>
+              <strong>Status:</strong>{" "}
+              {alert.verification_status === "verified"
+                ? "✅ VERIFIED"
+                : "⚠️ UNVERIFIED"}
+            </p>
             <p><strong>Distance:</strong> {alert.distance_meters}m away</p>
             <p>{alert.description}</p>
+
+            {alert.verification_status !== "verified" && (
+              <button
+                onClick={async () => {
+                  await fetchWithAuth(
+                    "/api/route-safety/verify",
+                    {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        alertId: alert.id,
+                      }),
+                    }
+                  );
+
+                  loadSafetyAlerts();
+                }}
+                style={{
+                  marginTop: 12,
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                Verify Alert
+              </button>
+            )}
 
             {alert.suggested_route && (
               <p>
@@ -386,4 +424,7 @@ export default function RouteSafetyPage() {
     </main>
   );
 }
+
+
+
 
