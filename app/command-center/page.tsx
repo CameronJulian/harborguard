@@ -1371,7 +1371,6 @@ if (
   )}
 </div>
 
-      {incidents.length > 0 && (
         <div
           style={{
             ...cardStyle,
@@ -1416,7 +1415,6 @@ if (
             ))}
           </div>
         </div>
-      )}
       <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 24 }}>
         <div style={{ ...cardStyle, padding: 20 }}>
           <h2 style={{ fontSize: 28, margin: "0 0 4px 0" }}>
