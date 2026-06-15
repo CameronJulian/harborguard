@@ -710,8 +710,12 @@ useEffect(() => {
       offline: fleet.filter((v) => vehicleRisk(v) === "offline").length,
       alerts: fleet.filter((v) => (v.openAlerts || []).length > 0).length,
       stops: fleet.reduce((total, v) => total + (v.stops?.length || 0), 0),
+      roadThreats: incidents.length,
+      roadblocks: incidents.filter((i) => i.type === "roadblock").length,
+      smashGrab: incidents.filter((i) => i.type === "smash_grab_hotspot").length,
+      trafficLights: incidents.filter((i) => i.type === "traffic_light_outage").length,
     };
-  }, [fleet, vehiclesWithLocation]);
+  }, [fleet, vehiclesWithLocation, incidents]);
   
   const globalThreatScore = useMemo(() => {
   if (threatFeed.length === 0) return 0;
@@ -1117,6 +1121,10 @@ if (
           { label: "Alerts", value: summary.alerts, color: "#d97706" },
           { label: "Critical", value: summary.critical, color: "#dc2626" },
           { label: "Offline", value: summary.offline, color: "#64748b" },
+          { label: "Road Threats", value: summary.roadThreats, color: "#ea580c" },
+          { label: "Roadblocks", value: summary.roadblocks, color: "#d97706" },
+          { label: "Smash & Grab", value: summary.smashGrab, color: "#dc2626" },
+          { label: "Robot Outages", value: summary.trafficLights, color: "#7c3aed" },
         ].map((item) => (
           <div key={item.label} style={{ ...cardStyle, padding: 18 }}>
             <div style={{ color: "#64748b", fontSize: 13, marginBottom: 8 }}>
@@ -1369,7 +1377,7 @@ if (
             Live Tactical Fleet Map
           </h2>
           <div style={{ color: "#64748b", marginBottom: 12 }}>
-            Pulsing markers show live vehicles. Blue trails show movement history. Purple circles show stops.
+            Pulsing markers show live vehicles. Blue trails show movement history. Purple circles show stops. Orange and red circles show Route Safety threats.
           </div>
 
           <div
@@ -1854,5 +1862,8 @@ if (
     </AppShell>
   );
 }
+
+
+
 
 
