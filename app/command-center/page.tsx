@@ -400,7 +400,7 @@ const {
   
   async function loadIncidents() {
   try {
-    const response = await fetchWithAuth("/api/road-incidents", { cache: "no-store" });
+    const response = await fetchWithAuth("/api/route-safety/active", { cache: "no-store" });
     const result = await response.json();
 
     if (!response.ok) {
@@ -1906,6 +1906,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
