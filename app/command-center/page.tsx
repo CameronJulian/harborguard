@@ -1440,7 +1440,7 @@ if (
 
               <MapFollower position={selectedPosition} enabled={followSelected} />
 			  
-			  {showHeatmap && incidents.length > 0 && (
+			  {false && showHeatmap && incidents.length > 0 && (
   <HeatmapLayer
     points={incidents.map((incident) => ({
       lat: incident.latitude,
@@ -1906,6 +1906,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
