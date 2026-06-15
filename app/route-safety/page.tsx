@@ -10,6 +10,7 @@ type SafetyAlert = {
   description: string | null;
   severity: string;
   distance_meters: number;
+  suggested_route?: string | null;
 };
 
 const alertIcons: Record<string, string> = {
@@ -74,6 +75,7 @@ export default function RouteSafetyPage() {
   const [longitude, setLongitude] = useState("");
   const [radiusMeters, setRadiusMeters] = useState("1500");
   const [expiresHours, setExpiresHours] = useState("6");
+  const [suggestedRoute, setSuggestedRoute] = useState("");
 
   const spokenAlerts = useRef<Set<string>>(new Set());
 
@@ -84,18 +86,22 @@ export default function RouteSafetyPage() {
       setTitle("Possible roadblock ahead");
       setSeverity("high");
       setDescription("Reported roadblock on current route. Driver should consider alternate route.");
+      setSuggestedRoute("Use M4 Southbound and rejoin N2 after roadblock.");
     } else if (nextType === "traffic_light_outage") {
       setTitle("Traffic lights not working");
       setSeverity("medium");
       setDescription("Reported robot outage at nearby intersection.");
+      setSuggestedRoute("");
     } else if (nextType === "smash_grab_hotspot") {
       setTitle("Known smash-and-grab hotspot");
       setSeverity("critical");
       setDescription("High-risk stop or intersection. Driver should remain alert and keep valuables out of sight.");
+      setSuggestedRoute("");
     } else {
       setTitle("Route safety alert");
       setSeverity("medium");
       setDescription("Reported road safety issue. Driver should proceed with caution.");
+      setSuggestedRoute("");
     }
   }
 
@@ -221,6 +227,7 @@ export default function RouteSafetyPage() {
         longitude,
         radius_meters: Number(radiusMeters),
         expires_hours: Number(expiresHours),
+        suggested_route: suggestedRoute || null,
       }),
     });
 
@@ -318,6 +325,13 @@ export default function RouteSafetyPage() {
           <input value={expiresHours} onChange={(e) => setExpiresHours(e.target.value)} placeholder="Expires in hours" style={inputStyle} />
         </div>
 
+        <input
+          value={suggestedRoute}
+          onChange={(e) => setSuggestedRoute(e.target.value)}
+          placeholder="Suggested route, for example: Use M4 Southbound and rejoin N2 after roadblock"
+          style={{ ...inputStyle, marginTop: 14 }}
+        />
+
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -360,9 +374,16 @@ export default function RouteSafetyPage() {
             <p><strong>Severity:</strong> {alert.severity.toUpperCase()}</p>
             <p><strong>Distance:</strong> {alert.distance_meters}m away</p>
             <p>{alert.description}</p>
+
+            {alert.suggested_route && (
+              <p>
+                <strong>Suggested Route:</strong> {alert.suggested_route}
+              </p>
+            )}
           </div>
         ))}
       </div>
     </main>
   );
 }
+

@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
         created_by: user.id,
         verified_at: new Date().toISOString(),
         expires_at: expiresAt,
+        suggested_route: body.suggested_route || null,
       })
       .select("*")
       .single();
@@ -52,3 +53,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
