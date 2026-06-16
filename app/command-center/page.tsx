@@ -1737,6 +1737,24 @@ if (
                           Track Live
                         </button>
 
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            triggerPanic(item.vehicle);
+                          }}
+                          style={{
+                            padding: "8px 10px",
+                            borderRadius: 10,
+                            border: "none",
+                            background: "#dc2626",
+                            color: "#fff",
+                            fontWeight: 800,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Create Case
+                        </button>
+
                         <Link
                           href={replayHref(item.vehicle)}
                           onClick={(e) => e.stopPropagation()}
@@ -2286,6 +2304,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
