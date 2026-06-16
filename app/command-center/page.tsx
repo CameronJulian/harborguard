@@ -1716,7 +1716,32 @@ if (
   return distance <= incident.radius_meters;
 });
 
-                return (
+                const routeThreatScore = nearbyIncidents.reduce((total, incident) => {
+                    if (incident.type === "smash_grab_hotspot") return total + 40;
+                    if (incident.type === "roadblock") return total + 25;
+                    if (incident.type === "traffic_light_outage") return total + 15;
+                    return total + 10;
+                  }, 0);
+
+                  const vehicleRiskScore = Math.min(
+                    100,
+                    routeThreatScore +
+                      alerts.length * 10 +
+                      alerts.filter((alert) => alert.severity === "critical").length * 20 +
+                      (risk === "offline" ? 15 : 0) +
+                      (status === "Stopped" ? 5 : 0)
+                  );
+
+                  const vehicleRiskLevel =
+                    vehicleRiskScore >= 80
+                      ? "CRITICAL"
+                      : vehicleRiskScore >= 60
+                      ? "HIGH"
+                      : vehicleRiskScore >= 35
+                      ? "MEDIUM"
+                      : "LOW";
+
+                  return (
                   <div
                     key={vehicle.id}
                     onClick={() => setSelectedVehicleId(vehicle.id)}
@@ -1765,6 +1790,26 @@ if (
                     <div style={{ color: "#334155", fontSize: 14 }}>
                       Route Points: {routePoints.length} | Stops: {vehicle.stops?.length || 0}
                     </div>
+
+                      <div
+                        style={{
+                          marginTop: 10,
+                          padding: 10,
+                          borderRadius: 12,
+                          background:
+                            vehicleRiskLevel === "CRITICAL"
+                              ? "#fee2e2"
+                              : vehicleRiskLevel === "HIGH"
+                              ? "#ffedd5"
+                              : vehicleRiskLevel === "MEDIUM"
+                              ? "#fef3c7"
+                              : "#dcfce7",
+                          border: "1px solid #e5e7eb",
+                          fontWeight: 900,
+                        }}
+                      >
+                        Risk Score: {vehicleRiskScore}/100 - {vehicleRiskLevel}
+                      </div>
 
                     {alerts.length > 0 ? (
                       <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
@@ -1906,6 +1951,8 @@ if (
     </AppShell>
   );
 }
+
+
 
 
 
