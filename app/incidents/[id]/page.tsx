@@ -70,6 +70,7 @@ export default function IncidentDetailsPage() {
   const [assignee, setAssignee] = useState<Profile | null>(null);
   const [timeline, setTimeline] = useState<EmergencyEvent[]>([]);
   const [operatorNote, setOperatorNote] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
 
   useEffect(() => {
     async function loadIncident() {
@@ -114,6 +115,41 @@ export default function IncidentDetailsPage() {
 
     loadIncident();
   }, [params.id]);
+
+  async function addOperatorNote() {
+    if (!incident?.vehicle_alert_id || !operatorNote.trim()) return;
+
+    setSavingNote(true);
+
+    const { error } = await supabase
+      .from("emergency_response_events")
+      .insert({
+        vehicle_alert_id: incident.vehicle_alert_id,
+        event_type: "operator_note",
+        note: operatorNote.trim(),
+        created_by: null,
+      });
+
+    setSavingNote(false);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setTimeline((current) => [
+      {
+        vehicle_alert_id: incident.vehicle_alert_id || null,
+        event_type: "operator_note",
+        note: operatorNote.trim(),
+        created_at: new Date().toISOString(),
+        created_by: null,
+      },
+      ...current,
+    ]);
+
+    setOperatorNote("");
+  }
 
   if (!incident) {
     return (
@@ -242,23 +278,41 @@ export default function IncidentDetailsPage() {
                   fontSize: 14,
                 }}
               />
-              <button
-                onClick={() => {
-                  navigator.clipboard?.writeText(operatorNote);
-                }}
-                style={{
-                  marginTop: 12,
-                  padding: "10px 14px",
-                  borderRadius: 12,
-                  border: "none",
-                  background: "#2563eb",
-                  color: "#fff",
-                  fontWeight: 800,
-                  cursor: "pointer",
-                }}
-              >
-                Copy Notes
-              </button>
+              <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
+                <button
+                  onClick={addOperatorNote}
+                  disabled={savingNote || !operatorNote.trim() || !incident.vehicle_alert_id}
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: 12,
+                    border: "none",
+                    background: "#2563eb",
+                    color: "#fff",
+                    fontWeight: 800,
+                    cursor: "pointer",
+                    opacity: savingNote || !operatorNote.trim() || !incident.vehicle_alert_id ? 0.6 : 1,
+                  }}
+                >
+                  {savingNote ? "Saving..." : "Add to Timeline"}
+                </button>
+
+                <button
+                  onClick={() => {
+                    navigator.clipboard?.writeText(operatorNote);
+                  }}
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: 12,
+                    border: "1px solid #cbd5e1",
+                    background: "#f8fafc",
+                    color: "#0f172a",
+                    fontWeight: 800,
+                    cursor: "pointer",
+                  }}
+                >
+                  Copy Notes
+                </button>
+              </div>
             </div>
           </div>
 
@@ -336,3 +390,4 @@ export default function IncidentDetailsPage() {
     </AppShell>
   );
 }
+
