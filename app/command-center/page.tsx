@@ -1718,6 +1718,60 @@ if (
                     <div style={{ fontSize: 13, color: "#475569" }}>
                       Risk {item.score}/100 - {item.level}
                     </div>
+                      <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedVehicleId(item.vehicle.id);
+                          }}
+                          style={{
+                            padding: "8px 10px",
+                            borderRadius: 10,
+                            border: "none",
+                            background: "#2563eb",
+                            color: "#fff",
+                            fontWeight: 800,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Track Live
+                        </button>
+
+                        <Link
+                          href={replayHref(item.vehicle)}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            padding: "8px 10px",
+                            borderRadius: 10,
+                            border: "1px solid #cbd5e1",
+                            color: "#0f172a",
+                            fontWeight: 800,
+                            textDecoration: "none",
+                          }}
+                        >
+                          Open Replay
+                        </Link>
+
+                        {(item.level === "HIGH" || item.level === "CRITICAL") && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              triggerPanic(item.vehicle);
+                            }}
+                            style={{
+                              padding: "8px 10px",
+                              borderRadius: 10,
+                              border: "none",
+                              background: "#dc2626",
+                              color: "#fff",
+                              fontWeight: 800,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Escalate
+                          </button>
+                        )}
+                      </div>
                   </div>
                 ))}
             </div>
@@ -2005,6 +2059,8 @@ if (
     </AppShell>
   );
 }
+
+
 
 
 
