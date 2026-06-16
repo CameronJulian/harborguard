@@ -2163,6 +2163,30 @@ if (
                       >
                         Risk Score: {vehicleRiskScore}/100 - {vehicleRiskLevel}
                       </div>
+                        <div
+                          style={{
+                            marginTop: 10,
+                            padding: 10,
+                            borderRadius: 12,
+                            background: "#eff6ff",
+                            border: "1px solid #bfdbfe",
+                            color: "#1e3a8a",
+                            fontSize: 13,
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          <strong>AI Dispatch Recommendation</strong>
+                          <br />
+                          {vehicleRiskLevel === "CRITICAL"
+                            ? "Escalate immediately. Contact driver, create/confirm incident case, and dispatch response support."
+                            : vehicleRiskLevel === "HIGH"
+                            ? "Contact driver now. Monitor route threats closely and prepare escalation if no response."
+                            : vehicleRiskLevel === "MEDIUM"
+                            ? "Warn driver and continue monitoring. Review nearby route threats before next stop."
+                            : nearbyIncidents.length > 0
+                            ? "Route threat nearby. Advise caution and monitor vehicle movement."
+                            : "Continue normal monitoring."}
+                        </div>
 
                     {alerts.length > 0 ? (
                       <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
@@ -2304,6 +2328,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
