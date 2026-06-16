@@ -1668,6 +1668,60 @@ if (
         </div>
 
         <div style={{ ...cardStyle, padding: 24 }}>
+            <h2 style={{ fontSize: 24, margin: "0 0 12px 0" }}>
+              Priority Response Queue
+            </h2>
+
+            <div style={{ display: "grid", gap: 10, marginBottom: 24 }}>
+              {[...filteredFleet]
+                .map((vehicle) => {
+                  const alerts = vehicle.openAlerts || [];
+                  const baseRisk = vehicleRisk(vehicle);
+                  const status = movementStatus(vehicle);
+
+                  const score = Math.min(
+                    100,
+                    alerts.length * 10 +
+                      alerts.filter((alert) => alert.severity === "critical").length * 20 +
+                      (baseRisk === "offline" ? 15 : 0) +
+                      (status === "Stopped" ? 5 : 0)
+                  );
+
+                  const level =
+                    score >= 80
+                      ? "CRITICAL"
+                      : score >= 60
+                      ? "HIGH"
+                      : score >= 35
+                      ? "MEDIUM"
+                      : "LOW";
+
+                  return { vehicle, score, level };
+                })
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 5)
+                .map((item, index) => (
+                  <div
+                    key={item.vehicle.id}
+                    onClick={() => setSelectedVehicleId(item.vehicle.id)}
+                    style={{
+                      padding: 12,
+                      borderRadius: 14,
+                      border: "1px solid #e5e7eb",
+                      background: item.level === "LOW" ? "#f8fafc" : "#fef3c7",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div style={{ fontWeight: 900 }}>
+                      #{index + 1} {item.vehicle.registrationNumber}
+                    </div>
+                    <div style={{ fontSize: 13, color: "#475569" }}>
+                      Risk {item.score}/100 - {item.level}
+                    </div>
+                  </div>
+                ))}
+            </div>
+
           <h2 style={{ fontSize: 28, margin: "0 0 16px 0" }}>
             Active Operations
           </h2>
@@ -1951,6 +2005,8 @@ if (
     </AppShell>
   );
 }
+
+
 
 
 
