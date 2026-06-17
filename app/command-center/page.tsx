@@ -2111,10 +2111,49 @@ if (
 
                     {routePrediction ? (
                       <div style={{ padding: 12, borderRadius: 14, background: "#ffffff", border: "1px solid #bfdbfe" }}>
-                        <strong>{routePrediction.vehicle?.registrationNumber} - Risk {routePrediction.riskScore}/100 {routePrediction.riskLevel}</strong>
+                        <strong>
+                          {routePrediction.vehicle?.registrationNumber} - Route Risk{" "}
+                          {routePrediction.riskScore}/100 {routePrediction.riskLevel}
+                        </strong>
+
                         <div style={{ marginTop: 8, color: "#1e3a8a", fontWeight: 800 }}>
                           {routePrediction.driverWarning}
                         </div>
+
+                        {routePrediction.threats?.length > 0 ? (
+                          <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
+                            {routePrediction.threats.slice(0, 5).map((threat: any) => (
+                              <div
+                                key={threat.id}
+                                style={{
+                                  padding: 10,
+                                  borderRadius: 12,
+                                  background: "#fff7ed",
+                                  border: "1px solid #fed7aa",
+                                  fontSize: 13,
+                                }}
+                              >
+                                <strong>{threat.title}</strong>
+                                <br />
+                                Type: {threat.type?.replaceAll("_", " ")} | Severity:{" "}
+                                {threat.severity?.toUpperCase()} | Score: {threat.score}
+                                <br />
+                                Distance from vehicle: {threat.distanceFromOrigin}m
+
+                                {threat.suggestedRoute ? (
+                                  <>
+                                    <br />
+                                    Suggested route: {threat.suggestedRoute}
+                                  </>
+                                ) : null}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div style={{ marginTop: 10, color: "#64748b" }}>
+                            No route safety threats predicted.
+                          </div>
+                        )}
                       </div>
                     ) : null}
                   </div>
@@ -2428,6 +2467,8 @@ if (
     </AppShell>
   );
 }
+
+
 
 
 
