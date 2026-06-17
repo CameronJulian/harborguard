@@ -506,6 +506,43 @@ const heading =
           </div>
         </div>
 
+        {nearbyAlerts.length > 0 && (
+          <div
+            style={{
+              ...cardStyle,
+              padding: 20,
+              marginBottom: 24,
+              background: "#fef2f2",
+              border: "2px solid #dc2626",
+            }}
+          >
+            <h2 style={{ marginTop: 0 }}>Driver Safety Warning</h2>
+
+            {nearbyAlerts.slice(0, 5).map((alert) => (
+              <div
+                key={alert.id}
+                style={{
+                  padding: 14,
+                  borderRadius: 14,
+                  background: "#ffffff",
+                  border: "1px solid #fecaca",
+                  marginTop: 12,
+                }}
+              >
+                <strong>{alert.title}</strong>
+                <div>Severity: {alert.severity?.toUpperCase()}</div>
+                <div>Distance: {alert.distance_meters}m away</div>
+
+                {alert.suggested_route ? (
+                  <div>
+                    <strong>Suggested Route:</strong> {alert.suggested_route}
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        )}
+
         <div
           style={{
             marginTop: 20,
