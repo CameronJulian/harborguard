@@ -356,8 +356,6 @@ export default function CommandCenterPage() {
   const [threatFeed, setThreatFeed] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
-  const [routePrediction, setRoutePrediction] = useState<any | null>(null);
-  const [routePredictionLoading, setRoutePredictionLoading] = useState(false);
   const [animatedPositions, setAnimatedPositions] = useState<
     Record<string, [number, number]>
   >({});
@@ -415,56 +413,6 @@ const {
     setMessage(err.message || "Failed to load road incidents.");
   }
 }
-  async function loadRouteSafetyPrediction(vehicle: FleetVehicle) {
-    const coords = cleanLatLng(vehicle.latitude, vehicle.longitude);
-
-    if (!coords) {
-      setMessage("Vehicle has no valid location for route safety prediction.");
-      return;
-    }
-
-    const routePoints = cleanRoute(vehicle.route);
-    const destination = routePoints.length > 0 ? routePoints[routePoints.length - 1] : coords;
-
-    setRoutePredictionLoading(true);
-
-    try {
-      const response = await fetchWithAuth("/api/route-safety/predict", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        cache: "no-store",
-        body: JSON.stringify({
-          origin: {
-            lat: coords[0],
-            lng: coords[1],
-          },
-          destination: {
-            lat: destination[0],
-            lng: destination[1],
-          },
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        setMessage(result.error || "Failed to predict route safety.");
-        return;
-      }
-
-      setRoutePrediction({
-        vehicle,
-        ...result,
-      });
-    } catch (error: any) {
-      setMessage(error.message || "Failed to predict route safety.");
-    } finally {
-      setRoutePredictionLoading(false);
-    }
-  }
-
 async function loadThreatFeed() {
   try {
     const response = await fetchWithAuth("/api/fleet/predict-threats", {
@@ -2074,54 +2022,6 @@ if (
               })()}
             </div>
 
-            <div style={{ ...cardStyle, padding: 20, marginBottom: 24, border: "1px solid #bfdbfe", background: "#eff6ff" }}>
-              <h2 style={{ fontSize: 24, margin: "0 0 12px 0" }}>
-                Route Safety Prediction
-              </h2>
-
-              {(() => {
-                const selectedPredictionVehicle =
-                  filteredFleet.find((vehicle) => vehicle.id === selectedVehicleId) ||
-                  filteredFleet[0];
-
-                return (
-                  <div>
-                    <div style={{ color: "#475569", marginBottom: 12 }}>
-                      Predict roadblock, robot outage, and hotspot exposure for the selected vehicle route.
-                    </div>
-
-                    {selectedPredictionVehicle ? (
-                      <button
-                        onClick={() => loadRouteSafetyPrediction(selectedPredictionVehicle)}
-                        disabled={routePredictionLoading}
-                        style={{
-                          padding: "10px 14px",
-                          borderRadius: 12,
-                          border: "none",
-                          background: "#2563eb",
-                          color: "#fff",
-                          fontWeight: 900,
-                          cursor: "pointer",
-                          marginBottom: 12,
-                        }}
-                      >
-                        {routePredictionLoading ? "Analyzing..." : `Analyze ${selectedPredictionVehicle.registrationNumber}`}
-                      </button>
-                    ) : null}
-
-                    {routePrediction ? (
-                      <div style={{ padding: 12, borderRadius: 14, background: "#ffffff", border: "1px solid #bfdbfe" }}>
-                        <strong>{routePrediction.vehicle?.registrationNumber} - Risk {routePrediction.riskScore}/100 {routePrediction.riskLevel}</strong>
-                        <div style={{ marginTop: 8, color: "#1e3a8a", fontWeight: 800 }}>
-                          {routePrediction.driverWarning}
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })()}
-            </div>
-
             Active Operations
           </h2>
 
@@ -2428,7 +2328,6 @@ if (
     </AppShell>
   );
 }
-
 
 
 
