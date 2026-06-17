@@ -183,13 +183,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const routePoints =
-      routeEstimate?.encodedPolyline
-        ? decodePolyline(routeEstimate.encodedPolyline)
-        : [
-            [originLat, originLng] as [number, number],
-            [destinationLat, destinationLng] as [number, number],
-          ];
+    const decodedRoutePoints = routeEstimate?.encodedPolyline
+      ? decodePolyline(routeEstimate.encodedPolyline)
+      : [];
+
+    const routePoints = [
+      [originLat, originLng] as [number, number],
+      ...decodedRoutePoints,
+      [destinationLat, destinationLng] as [number, number],
+    ];
 
     const routeThreats = (alerts || [])
       .map((alert: any) => {
@@ -220,7 +222,7 @@ export async function POST(req: NextRequest) {
 
         const corridorDistance = distanceFromRoute;
         const radius = Number(alert.radius_meters || 1000);
-        const isLikelyOnRoute = corridorDistance <= radius;
+        const isLikelyOnRoute = corridorDistance <= radius + 500;
 
         const score = Math.min(
           100,
@@ -276,4 +278,5 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
 
