@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import AppShell from "@/components/AppShell";
@@ -91,6 +91,8 @@ export default function DriverEmergencyPage() {
   const [currentSpeed, setCurrentSpeed] = useState<number>(0);
   const [statusMessage, setStatusMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [nearbyAlerts, setNearbyAlerts] = useState<any[]>([]);
+  const [lastAlertId, setLastAlertId] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadVehicles() {
@@ -211,7 +213,7 @@ export default function DriverEmergencyPage() {
     }
 
     setStatusMessage(
-      `LIVE • ${speedKmh.toFixed(1)} km/h • ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`
+      `LIVE â€¢ ${speedKmh.toFixed(1)} km/h â€¢ ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`
     );
   } catch {
     setStatusMessage("Connection lost. Retrying GPS sync...");
