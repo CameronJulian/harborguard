@@ -2120,6 +2120,31 @@ if (
                           {routePrediction.driverWarning}
                         </div>
 
+                        {routePrediction.routeEstimate ? (
+                          <div
+                            style={{
+                              marginTop: 10,
+                              padding: 10,
+                              borderRadius: 12,
+                              background: "#ecfeff",
+                              border: "1px solid #a5f3fc",
+                              color: "#155e75",
+                              fontSize: 13,
+                              fontWeight: 800,
+                            }}
+                          >
+                            Google traffic-aware route checked.
+                            <br />
+                            Distance: {Math.round((routePrediction.routeEstimate.distanceMeters || 0) / 1000)} km
+                            <br />
+                            ETA: {routePrediction.routeEstimate.duration || "N/A"}
+                          </div>
+                        ) : (
+                          <div style={{ marginTop: 10, color: "#64748b", fontSize: 13 }}>
+                            Google route estimate unavailable. Check GOOGLE_ROUTES_API_KEY if this persists.
+                          </div>
+                        )}
+
                         {routePrediction.threats?.length > 0 ? (
                           <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
                             {routePrediction.threats.slice(0, 5).map((threat: any) => (
@@ -2467,6 +2492,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
