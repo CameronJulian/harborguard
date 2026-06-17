@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import { fetchWithAuth } from "@/lib/auth-fetch";
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import AppShell from "@/components/AppShell";
 
@@ -93,6 +94,8 @@ export default function DriverEmergencyPage() {
   const [busy, setBusy] = useState(false);
   const [nearbyAlerts, setNearbyAlerts] = useState<any[]>([]);
   const [lastAlertId, setLastAlertId] = useState<string | null>(null);
+  const [routeOptions, setRouteOptions] = useState<any[]>([]);
+  const [routeRecommendation, setRouteRecommendation] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadVehicles() {
@@ -220,6 +223,42 @@ export default function DriverEmergencyPage() {
   }
 }
 
+  async function loadRerouteOptions(latitude: number, longitude: number) {
+    try {
+      const response = await fetchWithAuth("/api/route-safety/reroute", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+        body: JSON.stringify({
+          origin: {
+            lat: latitude,
+            lng: longitude,
+          },
+          destination: {
+            lat: -33.7606,
+            lng: 18.9647,
+          },
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setRouteOptions([]);
+        setRouteRecommendation(result.error || "Could not calculate safer route.");
+        return;
+      }
+
+      setRouteOptions(result.routes || []);
+      setRouteRecommendation(result.recommendation || null);
+    } catch {
+      setRouteOptions([]);
+      setRouteRecommendation("Could not calculate safer route.");
+    }
+  }
+
   async function checkNearbyThreats(latitude: number, longitude: number) {
     try {
       const response = await fetch(`/api/route-safety/nearby?lat=${latitude}&lng=${longitude}`, {
@@ -234,6 +273,7 @@ export default function DriverEmergencyPage() {
       if (alerts.length === 0) return;
 
       const closest = alerts[0];
+      await loadRerouteOptions(latitude, longitude);
 
       if (closest.id !== lastAlertId) {
         setLastAlertId(closest.id);
@@ -517,6 +557,34 @@ const heading =
             }}
           >
             <h2 style={{ marginTop: 0 }}>Driver Safety Warning</h2>
+            {routeOptions.length > 0 && (
+              <div
+                style={{
+                  padding: 14,
+                  borderRadius: 14,
+                  background: "#eff6ff",
+                  border: "1px solid #bfdbfe",
+                  marginBottom: 14,
+                }}
+              >
+                <strong>Safer Route Options</strong>
+
+                {routeRecommendation ? (
+                  <div style={{ marginTop: 6 }}>{routeRecommendation}</div>
+                ) : null}
+
+                {routeOptions.slice(0, 3).map((route) => (
+                  <div key={route.index} style={{ marginTop: 10 }}>
+                    <strong>{route.label}</strong>
+                    <br />
+                    Distance: {Math.round((route.distanceMeters || 0) / 1000)} km
+                    <br />
+                    ETA: {route.duration || "N/A"}
+                  </div>
+                ))}
+              </div>
+            )}
+
 
             {nearbyAlerts.slice(0, 5).map((alert) => (
               <div
