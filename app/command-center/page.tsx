@@ -89,6 +89,19 @@ type FleetVehicle = {
   openAlerts?: FleetAlert[];
   route?: any[];
   stops?: FleetStop[];
+    activeTrip?: {
+      id: string;
+      status: string | null;
+      expectedRoute?: {
+        points?: {
+          name?: string;
+          latitude: number;
+          longitude: number;
+        }[];
+      } | null;
+      originPort?: string | null;
+      destinationFishery?: string | null;
+    } | null;
 };
 
 const cardStyle: CSSProperties = {
@@ -424,8 +437,16 @@ const {
     }
 
     const routePoints = cleanRoute(vehicle.route);
-    const destination = routePoints.length > 0 ? routePoints[routePoints.length - 1] : coords;
+    const activeTripPoints = vehicle.activeTrip?.expectedRoute?.points || [];
+    const activeTripDestination = activeTripPoints.length > 0
+      ? activeTripPoints[activeTripPoints.length - 1]
+      : null;
 
+    const destination = activeTripDestination
+      ? [activeTripDestination.latitude, activeTripDestination.longitude]
+      : routePoints.length > 0
+      ? routePoints[routePoints.length - 1]
+      : coords;
     setRoutePredictionLoading(true);
 
     try {
@@ -2492,6 +2513,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
