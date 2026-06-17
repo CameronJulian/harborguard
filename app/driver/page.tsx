@@ -220,6 +220,48 @@ export default function DriverEmergencyPage() {
   }
 }
 
+  async function checkNearbyThreats(latitude: number, longitude: number) {
+    try {
+      const response = await fetch(`/api/route-safety/nearby?lat=${latitude}&lng=${longitude}`, {
+        cache: "no-store",
+      });
+
+      const result = await response.json();
+      const alerts = result.alerts || [];
+
+      setNearbyAlerts(alerts);
+
+      if (alerts.length === 0) return;
+
+      const closest = alerts[0];
+
+      if (closest.id !== lastAlertId) {
+        setLastAlertId(closest.id);
+
+        if (typeof window !== "undefined" && "speechSynthesis" in window) {
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.speak(
+            new SpeechSynthesisUtterance(
+              `Warning. ${closest.title}. ${closest.distance_meters} meters away.`
+            )
+          );
+        }
+
+        if (typeof window !== "undefined" && "Notification" in window) {
+          if (Notification.permission === "granted") {
+            new Notification(closest.title, {
+              body: `${closest.type?.replaceAll("_", " ")} - ${closest.distance_meters}m away`,
+            });
+          } else if (Notification.permission !== "denied") {
+            Notification.requestPermission();
+          }
+        }
+      }
+    } catch {
+      // Keep GPS sharing alive even if safety scan fails.
+    }
+  }
+
   function startSharingLocation() {
     if (!selectedVehicleId) {
       setStatusMessage("Please select a vehicle first.");
@@ -254,6 +296,7 @@ const heading =
         setCurrentSpeed(speedKmh);
 
         await sendLocation(lat, lng, speedKmh);
+          await checkNearbyThreats(lat, lng);
         setStatusMessage("Live location sharing is active.");
       },
       (error) => {
