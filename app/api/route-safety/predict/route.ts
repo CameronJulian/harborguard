@@ -33,6 +33,41 @@ function typeWeight(type: string | null) {
   if (type === "protest") return 28;
   return 12;
 }
+function decodePolyline(encoded: string) {
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+  const points: [number, number][] = [];
+
+  while (index < encoded.length) {
+    let result = 0;
+    let shift = 0;
+    let byte = 0;
+
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+
+    lat += result & 1 ? ~(result >> 1) : result >> 1;
+
+    result = 0;
+    shift = 0;
+
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+
+    lng += result & 1 ? ~(result >> 1) : result >> 1;
+
+    points.push([lat / 1e5, lng / 1e5]);
+  }
+
+  return points;
+}
 
 function recommendationFor(type: string | null, severity: string | null) {
   if (type === "smash_grab_hotspot") {
@@ -148,6 +183,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const routePoints =
+      routeEstimate?.encodedPolyline
+        ? decodePolyline(routeEstimate.encodedPolyline)
+        : [
+            [originLat, originLng] as [number, number],
+            [destinationLat, destinationLng] as [number, number],
+          ];
+
     const routeThreats = (alerts || [])
       .map((alert: any) => {
         const distanceFromOrigin = distanceMeters(
@@ -164,9 +207,20 @@ export async function POST(req: NextRequest) {
           Number(alert.longitude)
         );
 
-        const corridorDistance = Math.min(distanceFromOrigin, distanceFromDestination);
+        const distanceFromRoute = Math.min(
+          ...routePoints.map(([lat, lng]) =>
+            distanceMeters(
+              lat,
+              lng,
+              Number(alert.latitude),
+              Number(alert.longitude)
+            )
+          )
+        );
+
+        const corridorDistance = distanceFromRoute;
         const radius = Number(alert.radius_meters || 1000);
-        const isLikelyOnRoute = corridorDistance <= radius + 3000;
+        const isLikelyOnRoute = corridorDistance <= radius;
 
         const score = Math.min(
           100,
@@ -181,6 +235,7 @@ export async function POST(req: NextRequest) {
           radiusMeters: radius,
           distanceFromOrigin: Math.round(distanceFromOrigin),
           distanceFromDestination: Math.round(distanceFromDestination),
+          distanceFromRoute: Math.round(distanceFromRoute),
           isLikelyOnRoute,
           score,
           recommendation: recommendationFor(alert.type, alert.severity),
@@ -221,3 +276,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
