@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 
 type LocationPoint = {
@@ -143,6 +143,28 @@ export async function GET() {
           .eq("vehicle_id", vehicle.id)
           .eq("is_resolved", false)
           .order("created_at", { ascending: false });
+        const { data: activeTrip } = await supabase
+          .from("vehicle_trips")
+          .select(`
+            id,
+            status,
+            expected_route,
+            origin_port,
+            destination_fishery
+          `)
+          .eq("vehicle_id", vehicle.id)
+          .eq("organization_id", organizationId)
+          .in("status", [
+            "scheduled",
+            "en_route_to_port",
+            "collecting",
+            "en_route_to_fishery",
+            "emergency"
+          ])
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
 
         const routePoints = (route || [])
           .map((p: LocationPoint) => {
@@ -181,6 +203,15 @@ export async function GET() {
           speedKmh: latest?.speed_kmh ?? null,
           heading: latest?.heading ?? null,
           lastSeen: latest?.recorded_at ?? null,
+          activeTrip: activeTrip
+            ? {
+                id: activeTrip.id,
+                status: activeTrip.status,
+                expectedRoute: activeTrip.expected_route,
+                originPort: activeTrip.origin_port,
+                destinationFishery: activeTrip.destination_fishery,
+              }
+            : null,
           route: snappedRoute,
           stops: stops || [],
           openAlerts: alerts,
@@ -197,3 +228,4 @@ export async function GET() {
     return NextResponse.json({ error: message }, { status });
   }
 }
+
