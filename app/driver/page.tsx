@@ -405,6 +405,18 @@ const heading =
     stopSharingLocation();
     setStatusMessage("Trip stopped. You can start another trip anytime.");
   }
+    function formatDuration(duration: string | null) {
+      if (!duration) return "N/A";
+
+      const seconds = Number(duration.replace("s", ""));
+
+      if (!Number.isFinite(seconds)) {
+        return duration;
+      }
+
+      return `${Math.round(seconds / 60)} min`;
+    }
+
 
   return (
     <AppShell>
@@ -579,7 +591,7 @@ const heading =
                     <br />
                     Distance: {Math.round((route.distanceMeters || 0) / 1000)} km
                     <br />
-                    ETA: {route.duration || "N/A"}
+                    ETA: {formatDuration(route.duration)}
                   </div>
                 ))}
               </div>
@@ -628,3 +640,5 @@ const heading =
     </AppShell>
   );
 }
+
+
