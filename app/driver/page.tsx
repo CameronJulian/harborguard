@@ -96,6 +96,7 @@ export default function DriverEmergencyPage() {
   const [lastAlertId, setLastAlertId] = useState<string | null>(null);
   const [routeOptions, setRouteOptions] = useState<any[]>([]);
   const [routeRecommendation, setRouteRecommendation] = useState<string | null>(null);
+  const [selectedSaferRoute, setSelectedSaferRoute] = useState<any | null>(null);
 
   useEffect(() => {
     async function loadVehicles() {
@@ -640,5 +641,6 @@ const heading =
     </AppShell>
   );
 }
+
 
 
