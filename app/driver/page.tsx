@@ -593,6 +593,35 @@ const heading =
                     Distance: {Math.round((route.distanceMeters || 0) / 1000)} km
                     <br />
                     ETA: {formatDuration(route.duration)}
+                    {route.index > 0 ? (
+                      <button
+                        onClick={() => {
+                          setSelectedSaferRoute(route);
+
+                          if (typeof window !== "undefined" && "speechSynthesis" in window) {
+                            window.speechSynthesis.cancel();
+                            window.speechSynthesis.speak(
+                              new SpeechSynthesisUtterance(
+                                `Safer route selected. Follow ${route.description || route.label}.`
+                              )
+                            );
+                          }
+                        }}
+                        style={{
+                          display: "block",
+                          marginTop: 8,
+                          padding: "8px 12px",
+                          borderRadius: 10,
+                          border: "none",
+                          background: "#2563eb",
+                          color: "#ffffff",
+                          fontWeight: 800,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Use Safer Route
+                      </button>
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -641,6 +670,7 @@ const heading =
     </AppShell>
   );
 }
+
 
 
 
