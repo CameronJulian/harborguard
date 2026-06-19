@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { requireOrganization, requireRole } from "@/lib/server-auth";
 
 const STOP_SPEED_KMH = 3;
@@ -313,6 +313,9 @@ export async function POST(req: Request) {
       activeTripId,
     });
   } catch (err: any) {
+    console.error("UPDATE LOCATION ERROR:");
+    console.error(err);
+
     const message = err.message || "Failed to update vehicle location.";
     const status =
       message === "Unauthorized"
@@ -324,3 +327,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: message }, { status });
   }
 }
+
