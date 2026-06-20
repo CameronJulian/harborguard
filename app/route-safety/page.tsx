@@ -264,12 +264,43 @@ export default function RouteSafetyPage() {
 
     return () => clearInterval(interval);
   }, []);
+  async function importTomTomIncidents() {
+    try {
+      setMessage("Importing TomTom traffic incidents...");
 
+      const response = await fetchWithAuth("/api/route-safety/ingest/tomtom", {
+        method: "POST",
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setMessage(result.error || "TomTom import failed.");
+        return;
+      }
+
+      setMessage(`TomTom import complete. Imported ${result.imported || 0} incidents.`);
+      await loadSafetyAlerts();
+    } catch (error: any) {
+      setMessage(error.message || "TomTom import failed.");
+    }
+  }
   return (
     <main style={{ padding: 32 }}>
       <h1 style={{ fontSize: 38, marginBottom: 8 }}>
         Route Safety Intelligence
       </h1>
+          <button
+            type="button"
+            onClick={importTomTomIncidents}
+            style={{
+              ...buttonStyle,
+              marginTop: 12,
+              background: "#0f766e",
+            }}
+          >
+            Import TomTom Incidents
+          </button>
 
       <p style={{ color: "#64748b", fontSize: 18 }}>
         Live roadblock, robot outage, and smash-and-grab hotspot alerts.
@@ -466,6 +497,8 @@ export default function RouteSafetyPage() {
     </main>
   );
 }
+
+
 
 
 

@@ -486,6 +486,51 @@ const {
     }
   }
 
+  async function escalateRouteThreat(threat: any) {
+    if (!routePrediction?.vehicle?.id) {
+      setMessage("Select a vehicle and run route prediction first.");
+      return;
+    }
+
+    try {
+      setMessage("Escalating route safety threat...");
+
+      const response = await fetchWithAuth("/api/route-safety/escalate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+        body: JSON.stringify({
+          vehicleId: routePrediction.vehicle.id,
+          tripId: routePrediction.vehicle.activeTrip?.id || null,
+          alertId: threat.id,
+          riskScore: routePrediction.riskScore,
+          riskLevel: routePrediction.riskLevel,
+          message: `Route safety escalation: ${threat.title || "Threat ahead"} for ${routePrediction.vehicle.registrationNumber || routePrediction.vehicle.registration_number || "selected vehicle"}. ${routePrediction.driverWarning || ""}`,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setMessage(result.error || "Route safety escalation failed.");
+        return;
+      }
+
+      if (result.skipped === "duplicate_open_alert") {
+        setMessage("This route safety threat already has an open fleet alert.");
+        return;
+      }
+
+      setMessage(`Route safety escalation created: ${result.incidentCode || "incident opened"}.`);
+      await loadFleet();
+      await loadThreatFeed();
+    } catch (error: any) {
+      setMessage(error.message || "Route safety escalation failed.");
+    }
+  }
+
 async function loadThreatFeed() {
   try {
     const response = await fetchWithAuth("/api/fleet/predict-threats", {
@@ -2126,7 +2171,7 @@ if (
                           marginBottom: 12,
                         }}
                       >
-                        {routePredictionLoading ? "Analyzing..." : `Analyze ${selectedPredictionVehicle.registrationNumber}`}
+                        {routePredictionLoading ? "Analyzing..." : `Run Route Safety Prediction for ${selectedPredictionVehicle.registrationNumber}`}
                       </button>
                     ) : null}
 
@@ -2185,6 +2230,23 @@ if (
                                 {threat.severity?.toUpperCase()} | Score: {threat.score}
                                 <br />
                                 Distance from vehicle: {threat.distanceFromOrigin}m
+                                  <button
+                                    type="button"
+                                    onClick={() => escalateRouteThreat(threat)}
+                                    style={{
+                                      marginTop: 10,
+                                      padding: "8px 12px",
+                                      borderRadius: 10,
+                                      border: "none",
+                                      background: "#dc2626",
+                                      color: "#ffffff",
+                                      fontWeight: 900,
+                                      cursor: "pointer",
+                                      width: "100%",
+                                    }}
+                                  >
+                                    Escalate Route Threat
+                                  </button>
 
                                 {threat.suggestedRoute ? (
                                   <>
@@ -2513,6 +2575,10 @@ if (
     </AppShell>
   );
 }
+
+
+
+
 
 
 
