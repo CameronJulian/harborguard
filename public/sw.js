@@ -1,4 +1,4 @@
-self.addEventListener("install", () => {
+﻿self.addEventListener("install", () => {
   console.log("HarborGuard service worker installed");
 });
 
@@ -10,6 +10,7 @@ self.addEventListener("push", (event) => {
   let data = {
     title: "HarborGuard Alert",
     body: "New operational alert received.",
+    url: "/command-center",
   };
 
   try {
@@ -22,6 +23,17 @@ self.addEventListener("push", (event) => {
     self.registration.showNotification(data.title, {
       body: data.body,
       icon: "/icon.png",
+      data: {
+        url: data.url || "/command-center",
+      },
     })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  event.waitUntil(
+    clients.openWindow(event.notification.data?.url || "/command-center")
   );
 });

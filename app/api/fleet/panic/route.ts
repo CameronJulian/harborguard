@@ -1,5 +1,12 @@
 ﻿import { NextResponse } from "next/server";
+import webpush from "web-push";
 import { requireOrganization } from "@/lib/server-auth";
+
+webpush.setVapidDetails(
+  process.env.VAPID_SUBJECT || "mailto:cameron@healthsystems.co.za",
+  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+  process.env.VAPID_PRIVATE_KEY!
+);
 
 type PanicBody = {
   vehicleId?: string;
@@ -128,47 +135,60 @@ export async function POST(req: Request) {
         .update({ status: "emergency" })
         .eq("id", activeTrip.id)
         .eq("organization_id", organizationId);
-    }
-
-    let notificationResult: unknown = null;
-    let notificationError: string | null = null;
+    }      let notificationResult: unknown = {
+        skipped: "legacy_notify_alert_disabled_direct_push_enabled"
+      };
+      let notificationError: string | null = null;
 
     try {
-      const notifyResponse = await fetch(
-        `${getBaseUrl(req)}/api/fleet/notify-alert`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            vehicleNickname: vehicle.nickname,
-            registrationNumber: vehicle.registration_number,
-            alertType: "panic",
-            severity: "critical",
-            message: panicMessage,
-            lastLatitude: latestLocation?.latitude ?? null,
-            lastLongitude: latestLocation?.longitude ?? null,
-          }),
-        }
-      );
+      const { data: pushSubscriptions, error: pushSubscriptionError } =
+        await supabase
+          .from("push_subscriptions")
+          .select("id, endpoint, p256dh_key, auth_key")
+          .eq("organization_id", organizationId)
+          .eq("is_active", true);
 
-      notificationResult = await notifyResponse.json().catch(() => null);
-
-      if (!notifyResponse.ok) {
-        notificationError =
-          typeof notificationResult === "object" &&
-          notificationResult !== null &&
-          "error" in notificationResult
-            ? String(notificationResult.error)
-            : "Panic alert created, but notification failed.";
+      if (pushSubscriptionError) {
+        console.error("Panic push subscription lookup failed:", pushSubscriptionError);
       }
-    } catch (err: unknown) {
-      notificationError =
-        err instanceof Error
-          ? err.message
-          : "Panic alert created, but notification failed.";
+
+      if (pushSubscriptions && pushSubscriptions.length > 0) {
+        await Promise.all(
+          pushSubscriptions.map(async (subscription) => {
+            try {
+              await webpush.sendNotification(
+                {
+                  endpoint: subscription.endpoint,
+                  keys: {
+                    p256dh: subscription.p256dh_key,
+                    auth: subscription.auth_key,
+                  },
+                },
+                JSON.stringify({
+                  title: "HarborGuard Driver Panic Alert",
+                  body: `PANIC activated for ${vehicle.registration_number}. ${panicMessage}`,
+                  icon: "/icon.png",
+                  url: "/command-center",
+                })
+              );
+            } catch (pushSendError: any) {
+              console.error("Panic push send failed:", pushSendError);
+
+              if (pushSendError?.statusCode === 404 || pushSendError?.statusCode === 410) {
+                await supabase
+                  .from("push_subscriptions")
+                  .update({ is_active: false })
+                  .eq("id", subscription.id);
+              }
+            }
+          })
+        );
+      }
+    } catch (pushError) {
+      console.error("Panic push notification failed:", pushError);
     }
+
+
 
     return NextResponse.json({
       success: true,
@@ -193,6 +213,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+
+
+
 
 
 
