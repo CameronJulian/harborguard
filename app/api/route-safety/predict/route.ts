@@ -104,6 +104,8 @@ export async function POST(req: NextRequest) {
 
     const origin = body.origin;
     const destination = body.destination;
+      const vehicleId = body.vehicleId || null;
+      const tripId = body.tripId || null;
 
     if (
       !origin?.lat ||
@@ -261,6 +263,36 @@ export async function POST(req: NextRequest) {
         ? "MEDIUM"
         : "LOW";
 
+    let autoEscalated = false;
+    let autoEscalationResult: any = null;
+
+    if (riskScore >= 80 && vehicleId && routeThreats.length > 0) {
+      try {
+        const topThreat = routeThreats[0];
+
+        const response = await fetch(`${req.nextUrl.origin}/api/route-safety/escalate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: req.headers.get("authorization") || "",
+          },
+          body: JSON.stringify({
+            vehicleId,
+            tripId,
+            alertId: topThreat.id,
+            riskScore,
+            riskLevel,
+            message: `Automatic route safety escalation: ${topThreat.title}. ${topThreat.recommendation}`,
+          }),
+        });
+
+        autoEscalationResult = await response.json().catch(() => null);
+        autoEscalated = response.ok;
+      } catch (autoEscalationError) {
+        console.error("Automatic route safety escalation failed:", autoEscalationError);
+      }
+    }
+
     return NextResponse.json({
       routeEstimate,
       riskScore,
@@ -278,5 +310,6 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
 
 

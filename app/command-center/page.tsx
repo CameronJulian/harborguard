@@ -457,6 +457,8 @@ const {
         },
         cache: "no-store",
         body: JSON.stringify({
+            vehicleId: vehicle.id,
+            tripId: vehicle.activeTrip?.id ?? null,
           origin: {
             lat: coords[0],
             lng: coords[1],
@@ -2575,6 +2577,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
