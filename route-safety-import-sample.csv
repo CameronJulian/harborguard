@@ -1,0 +1,4 @@
+﻿type,title,description,latitude,longitude,radius_meters,severity,source,expires_at
+smash_grab_hotspot,Known smash-and-grab hotspot,High-risk intersection near route,-33.9461,18.5874,1000,critical,admin_csv,
+traffic_light_outage,Traffic lights not working,Reported robot outage near main road,-33.9448,18.5869,800,medium,admin_csv,
+roadblock,Possible roadblock ahead,Reported roadblock near route,-33.9465,18.5882,1200,high,admin_csv,
