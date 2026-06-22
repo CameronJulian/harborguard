@@ -371,7 +371,6 @@ export default function CommandCenterPage() {
   const [message, setMessage] = useState("");
   const [routePrediction, setRoutePrediction] = useState<any | null>(null);
   const [routePredictionLoading, setRoutePredictionLoading] = useState(false);
-  const [routeRerouteLoading, setRouteRerouteLoading] = useState(false);
   const [animatedPositions, setAnimatedPositions] = useState<
     Record<string, [number, number]>
   >({});
@@ -486,70 +485,6 @@ const {
       setMessage(error.message || "Failed to predict route safety.");
     } finally {
       setRoutePredictionLoading(false);
-    }
-  }
-
-  async function loadSaferRouteOptions() {
-    if (!routePrediction?.vehicle) {
-      setMessage("Run route safety prediction first.");
-      return;
-    }
-
-    const vehicle = routePrediction.vehicle;
-    const coords = cleanLatLng(vehicle.latitude, vehicle.longitude);
-
-    if (!coords) {
-      setMessage("Vehicle has no valid location for rerouting.");
-      return;
-    }
-
-    const routePoints = cleanRoute(vehicle.route);
-    const activeTripPoints = vehicle.activeTrip?.expectedRoute?.points || [];
-    const activeTripDestination = activeTripPoints.length > 0
-      ? activeTripPoints[activeTripPoints.length - 1]
-      : null;
-
-    const destination = activeTripDestination
-      ? [activeTripDestination.latitude, activeTripDestination.longitude]
-      : routePoints.length > 0
-      ? routePoints[routePoints.length - 1]
-      : coords;
-
-    setRouteRerouteLoading(true);
-
-    try {
-      const response = await fetchWithAuth("/api/route-safety/reroute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-        body: JSON.stringify({
-          origin: { lat: coords[0], lng: coords[1] },
-          destination: { lat: destination[0], lng: destination[1] },
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        setMessage(result.error || "Failed to calculate safer routes.");
-        return;
-      }
-
-      setRoutePrediction((current: any) =>
-        current
-          ? {
-              ...current,
-              saferRoutes: result.routes || [],
-              rerouteRecommendation: result.recommendation,
-            }
-          : current
-      );
-
-      setMessage("Safer route options loaded.");
-    } catch (error: any) {
-      setMessage(error.message || "Failed to calculate safer routes.");
-    } finally {
-      setRouteRerouteLoading(false);
     }
   }
 
@@ -2278,50 +2213,6 @@ if (
                           </div>
                         )}
 
-                          {routePrediction.saferRoutes?.length > 0 ? (
-                            <div
-                              style={{
-                                marginTop: 10,
-                                padding: 10,
-                                borderRadius: 12,
-                                background: "#f0fdf4",
-                                border: "1px solid #bbf7d0",
-                                color: "#14532d",
-                                fontSize: 13,
-                              }}
-                            >
-                              <strong>Recommended safer route options</strong>
-                              <br />
-                              {routePrediction.rerouteRecommendation || "Google returned alternate route options."}
-
-                              <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
-                                {routePrediction.saferRoutes.slice(0, 3).map((route: any) => (
-                                  <div
-                                    key={route.index}
-                                    style={{
-                                      padding: 8,
-                                      borderRadius: 10,
-                                      background: "#ffffff",
-                                      border: "1px solid #dcfce7",
-                                    }}
-                                  >
-                                    <strong>{route.label}</strong>
-                                    <br />
-                                    Distance: {Math.round((route.distanceMeters || 0) / 1000)} km
-                                    <br />
-                                    ETA: {route.duration || "N/A"}
-                                    {route.description ? (
-                                      <>
-                                        <br />
-                                        Via: {route.description}
-                                      </>
-                                    ) : null}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ) : null}
-
                         {routePrediction.threats?.length > 0 ? (
                           <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
                             {routePrediction.threats.slice(0, 5).map((threat: any) => (
@@ -2357,25 +2248,6 @@ if (
                                     }}
                                   >
                                     Escalate Route Threat
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => loadSaferRouteOptions()}
-                                    disabled={routeRerouteLoading}
-                                    style={{
-                                      marginTop: 8,
-                                      padding: "8px 12px",
-                                      borderRadius: 10,
-                                      border: "none",
-                                      background: "#16a34a",
-                                      color: "#ffffff",
-                                      fontWeight: 900,
-                                      cursor: routeRerouteLoading ? "not-allowed" : "pointer",
-                                      width: "100%",
-                                    }}
-                                  >
-                                    {routeRerouteLoading ? "Calculating Safer Route..." : "Use Safer Route"}
                                   </button>
 
                                 {threat.suggestedRoute ? (
