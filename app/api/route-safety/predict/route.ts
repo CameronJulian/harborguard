@@ -288,6 +288,20 @@ export async function POST(req: NextRequest) {
 
         autoEscalationResult = await response.json().catch(() => null);
         autoEscalated = response.ok;
+
+        await supabase.from("route_safety_escalation_logs").insert({
+          organization_id: organizationId,
+          vehicle_id: vehicleId,
+          trip_id: tripId,
+          route_alert_id: topThreat.id,
+          risk_score: riskScore,
+          risk_level: riskLevel,
+          auto_escalated: autoEscalated,
+          duplicate_detected:
+            autoEscalationResult?.skipped === "duplicate_open_alert",
+          push_sent: autoEscalated,
+          response: autoEscalationResult,
+        });
       } catch (autoEscalationError) {
         console.error("Automatic route safety escalation failed:", autoEscalationError);
       }
@@ -310,6 +324,7 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
 
 
 
