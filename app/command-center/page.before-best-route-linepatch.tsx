@@ -1895,17 +1895,20 @@ if (
                   </Fragment>
                 );
               })}
-              {saferRoutePolylines.length > 0 ? (
-                <Polyline
-                  key="best-safer-route"
-                  positions={saferRoutePolylines[0]}
-                  pathOptions={{
-                    color: "#16a34a",
-                    weight: 7,
-                    opacity: 0.9,
-                  }}
-                />
-              ) : null}
+              {saferRoutePolylines.map(
+                (route: [number, number][], index: number) => (
+                  <Polyline
+                    key={`safer-route-${index}`}
+                    positions={route}
+                    pathOptions={{
+                      color: index === 0 ? "#16a34a" : "#22c55e",
+                      weight: index === 0 ? 7 : 5,
+                      opacity: 0.9,
+                      dashArray: index === 0 ? undefined : "8 8",
+                    }}
+                  />
+                )
+              )}
 
             </MapContainer>
           </div>

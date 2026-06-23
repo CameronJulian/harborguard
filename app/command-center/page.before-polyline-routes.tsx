@@ -142,45 +142,6 @@ function cleanRoute(route?: any[]) {
     .filter((p): p is [number, number] => p !== null);
 }
 
-function decodePolyline(encoded: string) {
-  const points: [number, number][] = [];
-
-  let index = 0;
-  let lat = 0;
-  let lng = 0;
-
-  while (index < encoded.length) {
-    let shift = 0;
-    let result = 0;
-    let byte;
-
-    do {
-      byte = encoded.charCodeAt(index++) - 63;
-      result |= (byte & 0x1f) << shift;
-      shift += 5;
-    } while (byte >= 0x20);
-
-    const deltaLat = result & 1 ? ~(result >> 1) : result >> 1;
-    lat += deltaLat;
-
-    shift = 0;
-    result = 0;
-
-    do {
-      byte = encoded.charCodeAt(index++) - 63;
-      result |= (byte & 0x1f) << shift;
-      shift += 5;
-    } while (byte >= 0x20);
-
-    const deltaLng = result & 1 ? ~(result >> 1) : result >> 1;
-    lng += deltaLng;
-
-    points.push([lat / 1e5, lng / 1e5]);
-  }
-
-  return points;
-}
-
 function cleanLatLng(latitude: unknown, longitude: unknown): [number, number] | null {
   const lat = toNumber(latitude);
   const lng = toNumber(longitude);
@@ -894,14 +855,6 @@ useEffect(() => {
       cleanLatLng(selectedVehicle.latitude, selectedVehicle.longitude)
     );
   }, [selectedVehicle, animatedPositions]);
-
-  const saferRoutePolylines = useMemo(() => {
-    return (
-      routePrediction?.saferRoutes
-        ?.filter((route: any) => route.encodedPolyline)
-        .map((route: any) => decodePolyline(route.encodedPolyline)) || []
-    );
-  }, [routePrediction]);
 
   const filteredFleet = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -1895,18 +1848,6 @@ if (
                   </Fragment>
                 );
               })}
-              {saferRoutePolylines.length > 0 ? (
-                <Polyline
-                  key="best-safer-route"
-                  positions={saferRoutePolylines[0]}
-                  pathOptions={{
-                    color: "#16a34a",
-                    weight: 7,
-                    opacity: 0.9,
-                  }}
-                />
-              ) : null}
-
             </MapContainer>
           </div>
         </div>
@@ -2764,7 +2705,6 @@ if (
     </AppShell>
   );
 }
-
 
 
 
