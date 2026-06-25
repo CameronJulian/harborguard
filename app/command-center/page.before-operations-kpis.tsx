@@ -412,7 +412,6 @@ export default function CommandCenterPage() {
   const [routePredictionLoading, setRoutePredictionLoading] = useState(false);
   const [routeRerouteLoading, setRouteRerouteLoading] = useState(false);
   const [routeAssignLoading, setRouteAssignLoading] = useState(false);
-  const [operationsSummary, setOperationsSummary] = useState<any | null>(null);
   const [animatedPositions, setAnimatedPositions] = useState<
     Record<string, [number, number]>
   >({});
@@ -529,29 +528,6 @@ const {
       setRoutePredictionLoading(false);
     }
   }
-
-  async function loadOperationsSummary() {
-    try {
-      const response = await fetchWithAuth("/api/fleet/operations-summary", {
-        method: "GET",
-        cache: "no-store",
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        setOperationsSummary(result.summary || null);
-      }
-    } catch (error) {
-      console.error("Failed to load operations summary:", error);
-    }
-  }
-
-  useEffect(() => {
-    loadOperationsSummary();
-    const interval = setInterval(loadOperationsSummary, 30000);
-    return () => clearInterval(interval);
-  }, []);
 
   async function loadSaferRouteOptions() {
     if (!routePrediction?.vehicle) {
@@ -1715,45 +1691,6 @@ if (
       <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 24 }}>
         <div style={{ ...cardStyle, padding: 20 }}>
           <h2 style={{ fontSize: 28, margin: "0 0 4px 0" }}>
-        <div style={{ ...cardStyle, padding: 22, marginBottom: 24 }}>
-          <h2 style={{ fontSize: 26, margin: "0 0 14px 0" }}>
-            Fleet Operations Snapshot
-          </h2>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-              gap: 14,
-            }}
-          >
-            {[
-              ["Active Vehicles", operationsSummary?.activeVehicles ?? 0],
-              ["Active Trips", operationsSummary?.activeTrips ?? 0],
-              ["High-Risk Routes", operationsSummary?.highRiskRoutes ?? 0],
-              ["Drivers Rerouted", operationsSummary?.driversRerouted ?? 0],
-              ["Panic Alerts Today", operationsSummary?.panicAlertsToday ?? 0],
-            ].map(([label, value]) => (
-              <div
-                key={label}
-                style={{
-                  padding: 16,
-                  borderRadius: 16,
-                  background: "#f8fafc",
-                  border: "1px solid #e2e8f0",
-                }}
-              >
-                <div style={{ color: "#64748b", fontSize: 13, fontWeight: 700 }}>
-                  {label}
-                </div>
-                <div style={{ fontSize: 30, fontWeight: 900, marginTop: 6 }}>
-                  {value}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
             Live Tactical Fleet Map
           </h2>
           <div style={{ color: "#64748b", marginBottom: 12 }}>
