@@ -335,21 +335,39 @@ export async function POST(req: NextRequest) {
         const recommendedRoute = rerouteResult?.routes?.[0] || null;
 
         if (rerouteResponse.ok && recommendedRoute) {
-          const assignResponse = await fetch(`${req.nextUrl.origin}/api/fleet/assign-route`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: req.headers.get("authorization") || "",
-            },
-            body: JSON.stringify({
-              vehicleId,
-              route: recommendedRoute,
-              reason: `Automatic safer route assignment due to ${riskLevel} route risk (${riskScore}/100). Top threat: ${topThreat.title}.`,
-            }),
-          });
+          const { data: existingPendingAssignment } = await supabase
+            .from("route_assignments")
+            .select("id, created_at")
+            .eq("organization_id", organizationId)
+            .eq("vehicle_id", vehicleId)
+            .eq("status", "pending")
+            .limit(1)
+            .maybeSingle();
 
-          autoRouteAssignmentResult = await assignResponse.json().catch(() => null);
-          autoRouteAssigned = assignResponse.ok;
+          if (existingPendingAssignment) {
+            autoRouteAssigned = false;
+            autoRouteAssignmentResult = {
+              skipped: "existing_pending_assignment",
+              assignmentId: existingPendingAssignment.id,
+              createdAt: existingPendingAssignment.created_at,
+            };
+          } else {
+            const assignResponse = await fetch(`${req.nextUrl.origin}/api/fleet/assign-route`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: req.headers.get("authorization") || "",
+              },
+              body: JSON.stringify({
+                vehicleId,
+                route: recommendedRoute,
+                reason: `Automatic safer route assignment due to ${riskLevel} route risk (${riskScore}/100). Top threat: ${topThreat.title}.`,
+              }),
+            });
+
+            autoRouteAssignmentResult = await assignResponse.json().catch(() => null);
+            autoRouteAssigned = assignResponse.ok;
+          }
         } else {
           autoRouteAssignmentResult = {
             error: "No recommended safer route returned.",
@@ -381,6 +399,7 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
 
 
 
