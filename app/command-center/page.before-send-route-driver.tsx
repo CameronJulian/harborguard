@@ -411,7 +411,6 @@ export default function CommandCenterPage() {
   const [routePrediction, setRoutePrediction] = useState<any | null>(null);
   const [routePredictionLoading, setRoutePredictionLoading] = useState(false);
   const [routeRerouteLoading, setRouteRerouteLoading] = useState(false);
-  const [routeAssignLoading, setRouteAssignLoading] = useState(false);
   const [animatedPositions, setAnimatedPositions] = useState<
     Record<string, [number, number]>
   >({});
@@ -590,46 +589,6 @@ const {
       setMessage(error.message || "Failed to calculate safer routes.");
     } finally {
       setRouteRerouteLoading(false);
-    }
-  }
-
-  async function assignSaferRouteToDriver(route: any) {
-    if (!routePrediction?.vehicle?.id) {
-      setMessage("Run route safety prediction first.");
-      return;
-    }
-
-    if (!route) {
-      setMessage("No safer route selected.");
-      return;
-    }
-
-    setRouteAssignLoading(true);
-
-    try {
-      const response = await fetchWithAuth("/api/fleet/assign-route", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-        body: JSON.stringify({
-          vehicleId: routePrediction.vehicle.id,
-          route,
-          reason: `Safer route assigned due to ${routePrediction.riskLevel} route risk (${routePrediction.riskScore}/100).`,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        setMessage(result.error || "Failed to send route to driver.");
-        return;
-      }
-
-      setMessage("Safer route sent to driver.");
-    } catch (error: any) {
-      setMessage(error.message || "Failed to send route to driver.");
-    } finally {
-      setRouteAssignLoading(false);
     }
   }
 
@@ -2416,25 +2375,6 @@ if (
                                         Via: {route.description}
                                       </>
                                     ) : null}
-
-                                      <button
-                                        type="button"
-                                        onClick={() => assignSaferRouteToDriver(route)}
-                                        disabled={routeAssignLoading}
-                                        style={{
-                                          marginTop: 8,
-                                          padding: "8px 12px",
-                                          borderRadius: 10,
-                                          border: "none",
-                                          background: "#0f172a",
-                                          color: "#ffffff",
-                                          fontWeight: 900,
-                                          cursor: routeAssignLoading ? "not-allowed" : "pointer",
-                                          width: "100%",
-                                        }}
-                                      >
-                                        {routeAssignLoading ? "Sending Route..." : "Send Route To Driver"}
-                                      </button>
                                   </div>
                                 ))}
                               </div>
@@ -2824,8 +2764,6 @@ if (
     </AppShell>
   );
 }
-
-
 
 
 

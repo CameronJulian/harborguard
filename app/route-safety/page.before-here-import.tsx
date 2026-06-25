@@ -264,25 +264,25 @@ export default function RouteSafetyPage() {
 
     return () => clearInterval(interval);
   }, []);
-  async function importHereIncidents() {
+  async function importTomTomIncidents() {
     try {
-      setMessage("Importing HERE traffic incidents...");
+      setMessage("Importing TomTom traffic incidents...");
 
-      const response = await fetchWithAuth("/api/route-safety/ingest/here", {
+      const response = await fetchWithAuth("/api/route-safety/ingest/tomtom", {
         method: "POST",
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        setMessage(result.error || "HERE import failed.");
+        setMessage(result.error || "TomTom import failed.");
         return;
       }
 
-      setMessage(`HERE import complete. Imported ${result.imported || 0} incidents.`);
+      setMessage(`TomTom import complete. Imported ${result.imported || 0} incidents.`);
       await loadSafetyAlerts();
     } catch (error: any) {
-      setMessage(error.message || "HERE import failed.");
+      setMessage(error.message || "TomTom import failed.");
     }
   }
   return (
@@ -292,14 +292,14 @@ export default function RouteSafetyPage() {
       </h1>
           <button
             type="button"
-            onClick={importHereIncidents}
+            onClick={importTomTomIncidents}
             style={{
               ...buttonStyle,
               marginTop: 12,
               background: "#0f766e",
             }}
           >
-            Import HERE Incidents
+            Import TomTom Incidents
           </button>
 
       <p style={{ color: "#64748b", fontSize: 18 }}>
@@ -497,7 +497,6 @@ export default function RouteSafetyPage() {
     </main>
   );
 }
-
 
 
 

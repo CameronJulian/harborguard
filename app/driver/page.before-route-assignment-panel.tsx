@@ -82,8 +82,6 @@ function formatCoords(lat: number | null, lng: number | null) {
 export default function DriverEmergencyPage() {
   const [vehicles, setVehicles] = useState<VehicleOption[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState("");
-  const [pendingRouteAssignment, setPendingRouteAssignment] = useState<any | null>(null);
-  const [routeAssignmentLoading, setRouteAssignmentLoading] = useState(false);
   const [originPort, setOriginPort] = useState("");
   const [destinationFishery, setDestinationFishery] = useState("");
   const [tripId, setTripId] = useState<string | null>(null);
@@ -133,77 +131,10 @@ export default function DriverEmergencyPage() {
     };
   }, [watchId]);
 
-  useEffect(() => {
-    if (selectedVehicleId) {
-      loadPendingRouteAssignment(selectedVehicleId);
-    } else {
-      setPendingRouteAssignment(null);
-    }
-  }, [selectedVehicleId]);
-
   const selectedVehicle = useMemo(
     () => vehicles.find((vehicle) => vehicle.id === selectedVehicleId) || null,
     [vehicles, selectedVehicleId]
   );
-
-  async function loadPendingRouteAssignment(vehicleId: string) {
-    if (!vehicleId) return;
-
-    try {
-      const response = await fetchWithAuth(
-        `/api/fleet/route-assignments?vehicleId=${vehicleId}`,
-        {
-          method: "GET",
-          cache: "no-store",
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        console.error("Failed to load route assignment:", result);
-        return;
-      }
-
-      setPendingRouteAssignment(result.assignment || null);
-    } catch (error) {
-      console.error("Failed to load route assignment:", error);
-    }
-  }
-
-  async function acknowledgeRouteAssignment() {
-    if (!pendingRouteAssignment?.id) {
-      setStatusMessage("No pending route assignment to acknowledge.");
-      return;
-    }
-
-    setRouteAssignmentLoading(true);
-
-    try {
-      const response = await fetchWithAuth("/api/fleet/acknowledge-route", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-        body: JSON.stringify({
-          assignmentId: pendingRouteAssignment.id,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        setStatusMessage(result.error || "Failed to acknowledge route.");
-        return;
-      }
-
-      setPendingRouteAssignment(null);
-      setStatusMessage("Route assignment acknowledged.");
-    } catch (error: any) {
-      setStatusMessage(error.message || "Failed to acknowledge route.");
-    } finally {
-      setRouteAssignmentLoading(false);
-    }
-  }
 
   async function startTrip() {
     if (!selectedVehicleId) {
@@ -571,56 +502,6 @@ const heading =
         </div>
 
         <div style={{ ...cardStyle, padding: 24 }}>
-            {pendingRouteAssignment ? (
-              <div
-                style={{
-                  padding: 16,
-                  borderRadius: 16,
-                  background: "#ecfdf5",
-                  border: "1px solid #86efac",
-                  color: "#14532d",
-                  marginBottom: 18,
-                }}
-              >
-                <h3 style={{ margin: "0 0 8px 0" }}>New Safer Route Assigned</h3>
-                <div style={{ fontWeight: 800 }}>
-                  {pendingRouteAssignment.route_data?.label || "Safer route"}
-                </div>
-                <div style={{ marginTop: 6 }}>
-                  Distance:{" "}
-                  {Math.round((pendingRouteAssignment.route_data?.distanceMeters || 0) / 1000)} km
-                </div>
-                <div>ETA: {pendingRouteAssignment.route_data?.duration || "N/A"}</div>
-                {pendingRouteAssignment.route_data?.description ? (
-                  <div>Via: {pendingRouteAssignment.route_data.description}</div>
-                ) : null}
-                {pendingRouteAssignment.route_data?.reason ? (
-                  <div style={{ marginTop: 8 }}>
-                    Reason: {pendingRouteAssignment.route_data.reason}
-                  </div>
-                ) : null}
-
-                <button
-                  type="button"
-                  onClick={acknowledgeRouteAssignment}
-                  disabled={routeAssignmentLoading}
-                  style={{
-                    marginTop: 12,
-                    padding: "10px 14px",
-                    borderRadius: 12,
-                    border: "none",
-                    background: "#16a34a",
-                    color: "#ffffff",
-                    fontWeight: 900,
-                    cursor: routeAssignmentLoading ? "not-allowed" : "pointer",
-                    width: "100%",
-                  }}
-                >
-                  {routeAssignmentLoading ? "Acknowledging..." : "Acknowledge Route"}
-                </button>
-              </div>
-            ) : null}
-
           <h2 style={{ fontSize: 28, margin: "0 0 18px 0" }}>Emergency Actions</h2>
 
           <div style={{ marginBottom: 18 }}>

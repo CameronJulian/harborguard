@@ -265,8 +265,6 @@ export async function POST(req: NextRequest) {
 
     let autoEscalated = false;
     let autoEscalationResult: any = null;
-    let autoRouteAssigned = false;
-    let autoRouteAssignmentResult: any = null;
 
     if (riskScore >= 80 && vehicleId && routeThreats.length > 0) {
       try {
@@ -306,61 +304,6 @@ export async function POST(req: NextRequest) {
         });
       } catch (autoEscalationError) {
         console.error("Automatic route safety escalation failed:", autoEscalationError);
-      }
-    }
-
-    if (riskScore >= 80 && vehicleId && routeThreats.length > 0) {
-      try {
-        const topThreat = routeThreats[0];
-
-        const rerouteResponse = await fetch(`${req.nextUrl.origin}/api/route-safety/reroute`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: req.headers.get("authorization") || "",
-          },
-          body: JSON.stringify({
-            origin: {
-              lat: originLat,
-              lng: originLng,
-            },
-            destination: {
-              lat: destinationLat,
-              lng: destinationLng,
-            },
-          }),
-        });
-
-        const rerouteResult = await rerouteResponse.json().catch(() => null);
-        const recommendedRoute = rerouteResult?.routes?.[0] || null;
-
-        if (rerouteResponse.ok && recommendedRoute) {
-          const assignResponse = await fetch(`${req.nextUrl.origin}/api/fleet/assign-route`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: req.headers.get("authorization") || "",
-            },
-            body: JSON.stringify({
-              vehicleId,
-              route: recommendedRoute,
-              reason: `Automatic safer route assignment due to ${riskLevel} route risk (${riskScore}/100). Top threat: ${topThreat.title}.`,
-            }),
-          });
-
-          autoRouteAssignmentResult = await assignResponse.json().catch(() => null);
-          autoRouteAssigned = assignResponse.ok;
-        } else {
-          autoRouteAssignmentResult = {
-            error: "No recommended safer route returned.",
-            rerouteResult,
-          };
-        }
-      } catch (autoRouteAssignmentError: any) {
-        autoRouteAssignmentResult = {
-          error: autoRouteAssignmentError.message || "Automatic route assignment failed.",
-        };
-        console.error("Automatic route assignment failed:", autoRouteAssignmentError);
       }
     }
 

@@ -2416,25 +2416,6 @@ if (
                                         Via: {route.description}
                                       </>
                                     ) : null}
-
-                                      <button
-                                        type="button"
-                                        onClick={() => assignSaferRouteToDriver(route)}
-                                        disabled={routeAssignLoading}
-                                        style={{
-                                          marginTop: 8,
-                                          padding: "8px 12px",
-                                          borderRadius: 10,
-                                          border: "none",
-                                          background: "#0f172a",
-                                          color: "#ffffff",
-                                          fontWeight: 900,
-                                          cursor: routeAssignLoading ? "not-allowed" : "pointer",
-                                          width: "100%",
-                                        }}
-                                      >
-                                        {routeAssignLoading ? "Sending Route..." : "Send Route To Driver"}
-                                      </button>
                                   </div>
                                 ))}
                               </div>
@@ -2824,7 +2805,6 @@ if (
     </AppShell>
   );
 }
-
 
 
 
