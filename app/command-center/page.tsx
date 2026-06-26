@@ -6,6 +6,7 @@ import FleetHealthDashboard from "@/components/command-center/FleetHealthDashboa
 import DispatcherRecommendations from "@/components/command-center/DispatcherRecommendations";
 import ExecutiveOperationsDashboard from "@/components/command-center/ExecutiveOperationsDashboard";
 import AIShiftSummary from "@/components/command-center/AIShiftSummary";
+import PredictiveETADashboard from "@/components/command-center/PredictiveETADashboard";
 
 import "leaflet/dist/leaflet.css";
 import TrialBanner from "@/components/billing/TrialBanner";
@@ -1895,6 +1896,8 @@ if (
 
         <FleetHealthDashboard />
 
+        <PredictiveETADashboard />
+
         <AIShiftSummary />
 
         <DispatcherRecommendations />
@@ -3034,6 +3037,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
