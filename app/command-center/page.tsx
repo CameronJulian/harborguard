@@ -54,6 +54,15 @@ const HeatmapLayer = dynamic<any>(
   { ssr: false }
 );
 
+type CommandCenterGeofence = {
+  id: string;
+  name: string;
+  center_lat: number;
+  center_lng: number;
+  radius_meters: number;
+  is_active: boolean;
+};
+
 type FleetAlert = {
   id?: string;
   alert_type?: string | null;
@@ -420,6 +429,7 @@ export default function CommandCenterPage() {
   const [routeAssignLoading, setRouteAssignLoading] = useState(false);
   const [operationsSummary, setOperationsSummary] = useState<any | null>(null);
   const [operationsTimeline, setOperationsTimeline] = useState<any[]>([]);
+  const [geofences, setGeofences] = useState<CommandCenterGeofence[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notificationStats, setNotificationStats] = useState<any>({
     unreadCount: 0,
@@ -540,6 +550,23 @@ const {
       setMessage(error.message || "Failed to predict route safety.");
     } finally {
       setRoutePredictionLoading(false);
+    }
+  }
+
+  async function loadGeofenceOverlay() {
+    try {
+      const response = await fetchWithAuth("/api/geofences", {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setGeofences((result.geofences || []).filter((zone: CommandCenterGeofence) => zone.is_active));
+      }
+    } catch (error) {
+      console.error("Failed to load geofence overlay:", error);
     }
   }
 
@@ -1907,7 +1934,7 @@ if (
             Live Tactical Fleet Map
           </h2>
           <div style={{ color: "#64748b", marginBottom: 12 }}>
-            Pulsing markers show live vehicles. Blue trails show movement history. Purple circles show stops. Orange and red circles show Route Safety threats.
+            Pulsing markers show live vehicles. Blue trails show movement history. Purple circles show stops. Orange/red circles show Route Safety threats. Green circles show active geofences.
           </div>
 
           <div
@@ -3037,6 +3064,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
