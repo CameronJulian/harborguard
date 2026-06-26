@@ -1,6 +1,7 @@
 ﻿import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 import { createCommandCenterNotification } from "@/lib/command-center/notifications";
+import { correlateVehicleAlertToIncident } from "@/lib/incidents/correlation";
 
 
 
@@ -59,34 +60,19 @@ async function createIncident(
   alert: any
 ) {
   try {
-	  
-    const incidentCode = `INC-${Date.now()}`;
-
-    const summary =
-      alert.message ||
-      `${alert.alert_type || "Risk event"} detected`;
-
-    const { error } = await supabase.from("incidents").insert({
-      incident_code: incidentCode,
-      severity:
-        alert.severity === "critical"
-          ? "Critical"
-          : alert.severity === "high"
-            ? "High"
-            : alert.severity === "medium"
-              ? "Medium"
-              : "Low",
-      status: "Open",
-      summary,
-      assigned_to: null,
-      organization_id: organizationId,
+    await correlateVehicleAlertToIncident({
+      supabase,
+      organizationId,
+      alertId: alert.id,
+      vehicleId: alert.vehicle_id,
+      alertType: alert.alert_type || "risk_event",
+      severity: alert.severity || "medium",
+      message:
+        alert.message ||
+        `${alert.alert_type || "Risk event"} detected`,
     });
-
-    if (error) {
-      console.error("Failed to create incident:", error.message);
-    }
   } catch (err) {
-    console.error("Incident creation error:", err);
+    console.error("Incident correlation error:", err);
   }
 }
 
@@ -301,3 +287,4 @@ export async function detectFleetRisks(params: {
     alerts: createdAlerts,
   };
 }
+

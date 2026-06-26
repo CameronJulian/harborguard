@@ -2,6 +2,7 @@
 
 import { fetchWithAuth } from "@/lib/auth-fetch";
 import NotificationCenter from "@/components/command-center/NotificationCenter";
+import FleetHealthDashboard from "@/components/command-center/FleetHealthDashboard";
 
 import "leaflet/dist/leaflet.css";
 import TrialBanner from "@/components/billing/TrialBanner";
@@ -1887,6 +1888,8 @@ if (
         </div>
 
 
+        <FleetHealthDashboard />
+
         <NotificationCenter />
 
             Live Tactical Fleet Map
@@ -3022,6 +3025,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
