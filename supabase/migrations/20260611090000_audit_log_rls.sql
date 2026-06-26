@@ -1,4 +1,4 @@
-﻿drop policy if exists "authenticated_can_read_audit_logs"
+drop policy if exists "authenticated_can_read_audit_logs"
 on public.audit_logs;
 
 create policy "users_can_read_own_organization_audit_logs"

@@ -1,4 +1,4 @@
-﻿drop policy if exists "admins_can_view_organizations" on public.organizations;
+drop policy if exists "admins_can_view_organizations" on public.organizations;
 drop policy if exists "admins_can_update_organizations" on public.organizations;
 drop policy if exists "admins_can_create_organizations" on public.organizations;
 
