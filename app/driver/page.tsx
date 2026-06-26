@@ -443,7 +443,7 @@ const heading =
     setStatusMessage("");
 
     try {
-      const response = await fetch("/api/fleet/panic", {
+      const response = await fetchWithAuth("/api/fleet/panic", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -789,6 +789,7 @@ const heading =
     </AppShell>
   );
 }
+
 
 
 

@@ -1,6 +1,7 @@
 ﻿import { NextResponse } from "next/server";
 import webpush from "web-push";
 import { requireOrganization } from "@/lib/server-auth";
+import { createCommandCenterNotification } from "@/lib/command-center/notifications";
 
 webpush.setVapidDetails(
   process.env.VAPID_SUBJECT || "mailto:cameron@healthsystems.co.za",
@@ -129,6 +130,22 @@ export async function POST(req: Request) {
       );
     }
 
+    await createCommandCenterNotification({
+      supabase,
+      organizationId,
+      vehicleId,
+      title: "Panic alert triggered",
+      message: `PANIC activated for ${vehicle.registration_number}. ${panicMessage}`,
+      severity: "critical",
+      type: "panic",
+      source: "fleet_panic",
+      metadata: {
+        vehicleAlertId: insertedAlert.id,
+        tripId: finalTripId,
+        latestLocation,
+      },
+    });
+
     if (activeTrip && activeTrip.status !== "emergency") {
       await supabase
         .from("vehicle_trips")
@@ -213,6 +230,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
 
 
 
