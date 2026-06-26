@@ -1,5 +1,6 @@
 ﻿import { NextResponse } from "next/server";
 import { requireOrganization, requireRole } from "@/lib/server-auth";
+import { detectFleetRisks } from "@/lib/fleet/risk-detection";
 
 const STOP_SPEED_KMH = 3;
 const STOP_MINUTES = 5;
@@ -294,6 +295,17 @@ export async function POST(req: Request) {
       }
     }
 
+    let riskDetectionResult: any = null;
+
+    try {
+      riskDetectionResult = await detectFleetRisks({
+        supabase,
+        organizationId,
+      });
+    } catch (riskError) {
+      console.error("Automatic risk detection failed:", riskError);
+    }
+
     return NextResponse.json({
       success: true,
       message: "Vehicle location updated successfully.",
@@ -327,4 +339,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: message }, { status });
   }
 }
+
+
 
