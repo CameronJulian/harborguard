@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
+import { supabase } from "@/lib/supabase";
 
 type Notification = {
   id: string;
@@ -78,9 +79,21 @@ export default function NotificationCenter() {
   useEffect(() => {
     loadNotifications();
 
-    const interval = setInterval(loadNotifications, 30000);
+    const channel = supabase
+      .channel("command-center-notifications-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "command_center_notifications" },
+        () => loadNotifications()
+      )
+      .subscribe();
 
-    return () => clearInterval(interval);
+    const interval = setInterval(loadNotifications, 60000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
   }, []);
 
   return (
@@ -137,3 +150,4 @@ export default function NotificationCenter() {
     </div>
   );
 }
+
