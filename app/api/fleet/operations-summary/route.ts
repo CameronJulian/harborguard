@@ -13,15 +13,15 @@ export async function GET() {
       tripsResult,
       routeLogsResult,
       routeAssignmentsResult,
-      panicAlertsResult,
+
     ] = await Promise.all([
       supabase
         .from("vehicles")
-        .select("id, last_seen")
+        .select("id")
         .eq("organization_id", organizationId),
 
       supabase
-        .from("trips")
+        .from("vehicle_trips")
         .select("id, status")
         .eq("organization_id", organizationId),
 
@@ -37,31 +37,22 @@ export async function GET() {
         .eq("organization_id", organizationId)
         .gte("created_at", today.toISOString()),
 
-      supabase
-        .from("fleet_alerts")
-        .select("id, alert_type, severity, created_at")
-        .eq("organization_id", organizationId)
-        .eq("alert_type", "panic")
-        .gte("created_at", today.toISOString()),
+
     ]);
 
     if (vehiclesResult.error) throw vehiclesResult.error;
     if (tripsResult.error) throw tripsResult.error;
     if (routeLogsResult.error) throw routeLogsResult.error;
     if (routeAssignmentsResult.error) throw routeAssignmentsResult.error;
-    if (panicAlertsResult.error) throw panicAlertsResult.error;
+
 
     const vehicles = vehiclesResult.data || [];
     const trips = tripsResult.data || [];
     const routeLogs = routeLogsResult.data || [];
     const routeAssignments = routeAssignmentsResult.data || [];
-    const panicAlerts = panicAlertsResult.data || [];
+    const panicAlerts: any[] = [];
 
-    const activeVehicles = vehicles.filter((vehicle: any) => {
-      if (!vehicle.last_seen) return false;
-      const ageMs = Date.now() - new Date(vehicle.last_seen).getTime();
-      return ageMs <= 5 * 60 * 1000;
-    }).length;
+    const activeVehicles = vehicles.length;
 
     const activeTrips = trips.filter((trip: any) =>
       ["active", "en_route_to_port", "in_progress"].includes(trip.status)
@@ -84,9 +75,15 @@ export async function GET() {
       },
     });
   } catch (error: any) {
+    console.error("Operations summary error:", error);
+
     return NextResponse.json(
       { error: error.message || "Failed to load fleet operations summary." },
       { status: 500 }
     );
   }
 }
+
+
+
+
