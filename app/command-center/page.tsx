@@ -4,6 +4,7 @@ import { fetchWithAuth } from "@/lib/auth-fetch";
 import NotificationCenter from "@/components/command-center/NotificationCenter";
 import FleetHealthDashboard from "@/components/command-center/FleetHealthDashboard";
 import DispatcherRecommendations from "@/components/command-center/DispatcherRecommendations";
+import ExecutiveOperationsDashboard from "@/components/command-center/ExecutiveOperationsDashboard";
 
 import "leaflet/dist/leaflet.css";
 import TrialBanner from "@/components/billing/TrialBanner";
@@ -1889,6 +1890,8 @@ if (
         </div>
 
 
+        <ExecutiveOperationsDashboard />
+
         <FleetHealthDashboard />
 
         <DispatcherRecommendations />
@@ -3028,6 +3031,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
