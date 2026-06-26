@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { fetchWithAuth } from "@/lib/auth-fetch";
+import NotificationCenter from "@/components/command-center/NotificationCenter";
 
 import "leaflet/dist/leaflet.css";
 import TrialBanner from "@/components/billing/TrialBanner";
@@ -1885,6 +1886,9 @@ if (
           )}
         </div>
 
+
+        <NotificationCenter />
+
             Live Tactical Fleet Map
           </h2>
           <div style={{ color: "#64748b", marginBottom: 12 }}>
@@ -3018,6 +3022,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
