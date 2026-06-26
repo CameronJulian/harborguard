@@ -5,6 +5,7 @@ import NotificationCenter from "@/components/command-center/NotificationCenter";
 import FleetHealthDashboard from "@/components/command-center/FleetHealthDashboard";
 import DispatcherRecommendations from "@/components/command-center/DispatcherRecommendations";
 import ExecutiveOperationsDashboard from "@/components/command-center/ExecutiveOperationsDashboard";
+import AIShiftSummary from "@/components/command-center/AIShiftSummary";
 
 import "leaflet/dist/leaflet.css";
 import TrialBanner from "@/components/billing/TrialBanner";
@@ -1894,6 +1895,8 @@ if (
 
         <FleetHealthDashboard />
 
+        <AIShiftSummary />
+
         <DispatcherRecommendations />
 
         <NotificationCenter />
@@ -3031,6 +3034,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
