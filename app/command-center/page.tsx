@@ -414,6 +414,12 @@ export default function CommandCenterPage() {
   const [routeAssignLoading, setRouteAssignLoading] = useState(false);
   const [operationsSummary, setOperationsSummary] = useState<any | null>(null);
   const [operationsTimeline, setOperationsTimeline] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notificationStats, setNotificationStats] = useState<any>({
+    unreadCount: 0,
+    criticalCount: 0,
+    total: 0,
+  });
   const [animatedPositions, setAnimatedPositions] = useState<
     Record<string, [number, number]>
   >({});
@@ -562,6 +568,56 @@ const {
       }
     } catch (error) {
       console.error("Failed to load operations summary:", error);
+    }
+  }
+
+  async function loadNotifications() {
+    try {
+      const response = await fetchWithAuth("/api/command-center/notifications", {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setNotifications(result.notifications || []);
+        setNotificationStats(result.stats || {
+          unreadCount: 0,
+          criticalCount: 0,
+          total: 0,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to load command center notifications:", error);
+    }
+  }
+
+  async function markNotificationRead(notificationId: string) {
+    try {
+      await fetchWithAuth("/api/command-center/notifications/read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notificationId }),
+      });
+
+      loadNotifications();
+    } catch (error) {
+      console.error("Failed to mark notification read:", error);
+    }
+  }
+
+  async function resolveNotification(notificationId: string) {
+    try {
+      await fetchWithAuth("/api/command-center/notifications/resolve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notificationId }),
+      });
+
+      loadNotifications();
+    } catch (error) {
+      console.error("Failed to resolve notification:", error);
     }
   }
 
@@ -2962,6 +3018,8 @@ if (
     </AppShell>
   );
 }
+
+
 
 
 
