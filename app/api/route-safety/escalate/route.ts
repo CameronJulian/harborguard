@@ -1,6 +1,7 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import webpush from "web-push";
 import { requireOrganization, requireRole } from "@/lib/server-auth";
+import { createCommandCenterNotification } from "@/lib/command-center/notifications";
 
 webpush.setVapidDetails(
   process.env.VAPID_SUBJECT || "mailto:cameron@healthsystems.co.za",
@@ -203,6 +204,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: incidentError.message, details: incidentError }, { status: 500 });
     }
 
+    await createCommandCenterNotification({
+      supabase,
+      organizationId,
+      vehicleId,
+      title: "Route safety escalation",
+      message,
+      severity,
+      type: "route_safety",
+      source: "route_safety",
+      metadata: {
+        vehicleAlertId: insertedAlert.id,
+        incidentId: insertedIncident.id,
+        routeAlertId,
+        riskScore: body.riskScore,
+        riskLevel: body.riskLevel,
+      },
+    });
+
     await sendRouteSafetyPush(supabase, organizationId, message);
 
     return NextResponse.json({
@@ -221,4 +240,5 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
 
