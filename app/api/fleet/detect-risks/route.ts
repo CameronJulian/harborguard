@@ -176,6 +176,22 @@ return null;
   }
 
 
+await createCommandCenterNotification({
+  supabase,
+  organizationId,
+  vehicleId: params.vehicleId,
+  title: params.alertType.replace(/_/g, " ").toUpperCase(),
+  message: params.message,
+  severity: params.severity as any,
+  type: params.alertType,
+  source: "fleet_detect_risks",
+  metadata: {
+    vehicleAlertId: data.id,
+    intelligenceScore: data.intelligence_score,
+    behavioralRisk: data.behavioral_risk,
+  },
+});
+
 if (data.severity === "critical" || data.severity === "high") {
   await createIncident(supabase, organizationId, data);
 }
