@@ -8,6 +8,7 @@ import ExecutiveOperationsDashboard from "@/components/command-center/ExecutiveO
 import AIShiftSummary from "@/components/command-center/AIShiftSummary";
 import PredictiveETADashboard from "@/components/command-center/PredictiveETADashboard";
 import VehicleIntelligencePanel from "@/components/command-center/VehicleIntelligencePanel";
+import FleetDigitalTwinDashboard from "@/components/command-center/FleetDigitalTwinDashboard";
 
 import "leaflet/dist/leaflet.css";
 import TrialBanner from "@/components/billing/TrialBanner";
@@ -1924,6 +1925,8 @@ if (
 
         <FleetHealthDashboard />
 
+        <FleetDigitalTwinDashboard />
+
         <PredictiveETADashboard />
 
         <AIShiftSummary />
@@ -3065,6 +3068,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
