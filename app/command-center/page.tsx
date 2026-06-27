@@ -7,6 +7,7 @@ import DispatcherRecommendations from "@/components/command-center/DispatcherRec
 import ExecutiveOperationsDashboard from "@/components/command-center/ExecutiveOperationsDashboard";
 import AIShiftSummary from "@/components/command-center/AIShiftSummary";
 import PredictiveETADashboard from "@/components/command-center/PredictiveETADashboard";
+import VehicleIntelligencePanel from "@/components/command-center/VehicleIntelligencePanel";
 
 import "leaflet/dist/leaflet.css";
 import TrialBanner from "@/components/billing/TrialBanner";
@@ -3064,6 +3065,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
