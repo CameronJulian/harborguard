@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { fetchWithAuth } from "@/lib/auth-fetch";
+import { supabase } from "@/lib/supabase";
 import NotificationCenter from "@/components/command-center/NotificationCenter";
 import FleetHealthDashboard from "@/components/command-center/FleetHealthDashboard";
 import DispatcherRecommendations from "@/components/command-center/DispatcherRecommendations";
@@ -662,12 +663,43 @@ const {
     loadOperationsSummary();
     loadOperationsTimeline();
 
-    const interval = setInterval(() => {
+    const refreshOperations = () => {
       loadOperationsSummary();
       loadOperationsTimeline();
-    }, 30000);
+    };
 
-    return () => clearInterval(interval);
+    const routeAssignmentsChannel = supabase
+      .channel("command-center-route-assignments-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "route_assignments" },
+        refreshOperations
+      )
+      .subscribe();
+
+    const routeEscalationsChannel = supabase
+      .channel("command-center-route-escalations-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "route_safety_escalation_logs" },
+        refreshOperations
+      )
+      .subscribe();
+
+    const notificationsChannel = supabase
+      .channel("command-center-notifications-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "command_center_notifications" },
+        refreshOperations
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(routeAssignmentsChannel);
+      supabase.removeChannel(routeEscalationsChannel);
+      supabase.removeChannel(notificationsChannel);
+    };
   }, []);
 
   async function loadSaferRouteOptions() {
@@ -994,18 +1026,60 @@ useEffect(() => {
   };
 }, [voiceEnabled]);
  useEffect(() => {
-	 
   loadFleet();
   loadIncidents();
   loadThreatFeed();
 
-  const interval = setInterval(() => {
+  const refreshCommandCenter = () => {
     loadFleet();
     loadIncidents();
     loadThreatFeed();
-  }, 5000);
+    loadOperationsSummary();
+    loadOperationsTimeline();
+  };
 
-  return () => clearInterval(interval);
+  const vehicleLocationsChannel = supabase
+    .channel("command-center-vehicle-locations-live")
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "vehicle_locations" },
+      refreshCommandCenter
+    )
+    .subscribe();
+
+  const alertsChannel = supabase
+    .channel("command-center-vehicle-alerts-live")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "vehicle_alerts" },
+      refreshCommandCenter
+    )
+    .subscribe();
+
+  const incidentsChannel = supabase
+    .channel("command-center-incidents-live")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "incidents" },
+      refreshCommandCenter
+    )
+    .subscribe();
+
+  const tripsChannel = supabase
+    .channel("command-center-trips-live")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "vehicle_trips" },
+      refreshCommandCenter
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(vehicleLocationsChannel);
+    supabase.removeChannel(alertsChannel);
+    supabase.removeChannel(incidentsChannel);
+    supabase.removeChannel(tripsChannel);
+  };
 }, []);
 
   useEffect(() => {
@@ -3074,6 +3148,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
