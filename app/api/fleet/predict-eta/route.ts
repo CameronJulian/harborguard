@@ -13,8 +13,7 @@ export async function GET() {
         id,
         vehicle_id,
         status,
-        destination_lat,
-        destination_lng,
+
         vehicles (
           registration_number,
           nickname
@@ -147,4 +146,5 @@ export async function GET() {
 
   }
 }
+
 

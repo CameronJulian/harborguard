@@ -80,7 +80,7 @@ export default function NotificationCenter() {
     loadNotifications();
 
     const channel = supabase
-      .channel("command-center-notifications-live")
+      .channel("notification-center-live")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "command_center_notifications" },
@@ -150,4 +150,6 @@ export default function NotificationCenter() {
     </div>
   );
 }
+
+
 
