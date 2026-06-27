@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { fetchWithAuth } from "@/lib/auth-fetch";
+import DriverNavigationPanel from "@/components/driver/DriverNavigationPanel";
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import AppShell from "@/components/AppShell";
 
@@ -789,6 +790,7 @@ const heading =
     </AppShell>
   );
 }
+
 
 
 
