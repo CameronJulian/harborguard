@@ -12,6 +12,7 @@ import VehicleIntelligencePanel from "@/components/command-center/VehicleIntelli
 import FleetDigitalTwinDashboard from "@/components/command-center/FleetDigitalTwinDashboard";
 import IncidentCommandDashboard from "@/components/command-center/IncidentCommandDashboard";
 import IncidentInvestigationTimeline from "@/components/command-center/IncidentInvestigationTimeline";
+import HERETrafficOverlay from "@/components/command-center/HERETrafficOverlay";
 
 import "leaflet/dist/leaflet.css";
 import TrialBanner from "@/components/billing/TrialBanner";
@@ -436,6 +437,7 @@ export default function CommandCenterPage() {
   const [operationsTimeline, setOperationsTimeline] = useState<any[]>([]);
   const [geofences, setGeofences] = useState<CommandCenterGeofence[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [showTrafficOverlay, setShowTrafficOverlay] = useState(true);
   const [notificationStats, setNotificationStats] = useState<any>({
     unreadCount: 0,
     criticalCount: 0,
@@ -3148,6 +3150,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
