@@ -10,6 +10,7 @@ import PredictiveETADashboard from "@/components/command-center/PredictiveETADas
 import VehicleIntelligencePanel from "@/components/command-center/VehicleIntelligencePanel";
 import FleetDigitalTwinDashboard from "@/components/command-center/FleetDigitalTwinDashboard";
 import IncidentCommandDashboard from "@/components/command-center/IncidentCommandDashboard";
+import IncidentInvestigationTimeline from "@/components/command-center/IncidentInvestigationTimeline";
 
 import "leaflet/dist/leaflet.css";
 import TrialBanner from "@/components/billing/TrialBanner";
@@ -1936,6 +1937,8 @@ if (
 
         <IncidentCommandDashboard />
 
+        <IncidentInvestigationTimeline />
+
         <NotificationCenter />
 
             Live Tactical Fleet Map
@@ -3071,6 +3074,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
