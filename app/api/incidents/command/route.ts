@@ -18,7 +18,20 @@ export async function GET(req: Request) {
     const incidentId = searchParams.get("incidentId");
 
     if (!incidentId) {
-      return NextResponse.json({ error: "incidentId is required." }, { status: 400 });
+      const { data, error } = await supabase
+        .from("incidents")
+        .select("id, incident_code, severity, status, summary, created_at")
+        .eq("organization_id", organizationId)
+        .neq("status", "Resolved")
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+
+      return NextResponse.json({
+        success: true,
+        incidents: data || [],
+      });
     }
 
     const { data, error } = await supabase
@@ -36,7 +49,7 @@ export async function GET(req: Request) {
     });
   } catch (err: any) {
     return NextResponse.json(
-      { error: err.message || "Failed to load incident command actions." },
+      { error: err.message || "Failed to load incident command data." },
       { status: err.message === "Unauthorized" ? 401 : 500 }
     );
   }
