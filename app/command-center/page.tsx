@@ -17,6 +17,7 @@ import FleetRiskHeatMap from "@/components/command-center/FleetRiskHeatMap";
 import MissionReplayTimeline from "@/components/command-center/MissionReplayTimeline";
 import AICommandAssistant from "@/components/command-center/AICommandAssistant";
 import FleetMissionQueue from "@/components/command-center/FleetMissionQueue";
+import MissionAutomationRules from "@/components/command-center/MissionAutomationRules";
 
 import "leaflet/dist/leaflet.css";
 import TrialBanner from "@/components/billing/TrialBanner";
@@ -2011,6 +2012,8 @@ if (
 
         <FleetMissionQueue />
 
+        <MissionAutomationRules />
+
         <FleetDigitalTwinDashboard />
 
         <PredictiveETADashboard />
@@ -3150,6 +3153,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
