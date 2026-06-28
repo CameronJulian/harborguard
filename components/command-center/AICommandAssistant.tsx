@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
+import { subscribeCommandCenterRealtime } from "@/lib/realtime/commandCenterEvents";
 
 type CommandAssistant = {
   fleetStatus: string;
@@ -49,8 +50,7 @@ export default function AICommandAssistant() {
 
   useEffect(() => {
     loadAssistant();
-    const interval = setInterval(loadAssistant, 30000);
-    return () => clearInterval(interval);
+    return subscribeCommandCenterRealtime(loadAssistant);
   }, []);
 
   if (loading) {
@@ -202,3 +202,4 @@ export default function AICommandAssistant() {
     </div>
   );
 }
+

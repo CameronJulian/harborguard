@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
+import { subscribeCommandCenterRealtime } from "@/lib/realtime/commandCenterEvents";
 
 type MissionTask = {
   id: string;
@@ -57,8 +58,7 @@ export default function FleetMissionQueue() {
 
   useEffect(() => {
     loadQueue();
-    const interval = setInterval(loadQueue, 30000);
-    return () => clearInterval(interval);
+    return subscribeCommandCenterRealtime(loadQueue);
   }, []);
 
   const stats = useMemo(() => {
@@ -177,3 +177,4 @@ export default function FleetMissionQueue() {
     </div>
   );
 }
+

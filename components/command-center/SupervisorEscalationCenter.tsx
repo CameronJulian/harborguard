@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
+import { subscribeCommandCenterRealtime } from "@/lib/realtime/commandCenterEvents";
 
 type Escalation = {
   id: string;
@@ -76,8 +77,7 @@ export default function SupervisorEscalationCenter() {
 
   useEffect(() => {
     loadEscalations();
-    const interval = setInterval(loadEscalations, 30000);
-    return () => clearInterval(interval);
+    return subscribeCommandCenterRealtime(loadEscalations);
   }, []);
 
   return (
@@ -219,3 +219,4 @@ export default function SupervisorEscalationCenter() {
     </div>
   );
 }
+
