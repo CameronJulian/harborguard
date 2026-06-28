@@ -16,6 +16,7 @@ import HERETrafficOverlay from "@/components/command-center/HERETrafficOverlay";
 import FleetRiskHeatMap from "@/components/command-center/FleetRiskHeatMap";
 import MissionReplayTimeline from "@/components/command-center/MissionReplayTimeline";
 import AICommandAssistant from "@/components/command-center/AICommandAssistant";
+import FleetMissionQueue from "@/components/command-center/FleetMissionQueue";
 
 import "leaflet/dist/leaflet.css";
 import TrialBanner from "@/components/billing/TrialBanner";
@@ -2008,6 +2009,8 @@ if (
 
         <AICommandAssistant />
 
+        <FleetMissionQueue />
+
         <FleetDigitalTwinDashboard />
 
         <PredictiveETADashboard />
@@ -3147,6 +3150,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
