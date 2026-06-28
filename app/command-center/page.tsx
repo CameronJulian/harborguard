@@ -13,6 +13,7 @@ import FleetDigitalTwinDashboard from "@/components/command-center/FleetDigitalT
 import IncidentCommandDashboard from "@/components/command-center/IncidentCommandDashboard";
 import IncidentInvestigationTimeline from "@/components/command-center/IncidentInvestigationTimeline";
 import HERETrafficOverlay from "@/components/command-center/HERETrafficOverlay";
+import FleetRiskHeatMap from "@/components/command-center/FleetRiskHeatMap";
 
 import "leaflet/dist/leaflet.css";
 import TrialBanner from "@/components/billing/TrialBanner";
@@ -2038,24 +2039,11 @@ if (
               />
 
               <MapFollower position={selectedPosition} enabled={followSelected} />
-			  
-			  {false && showHeatmap && incidents.length > 0 && (
-  <HeatmapLayer
-    points={incidents.map((incident) => ({
-      lat: incident.latitude,
-      lng: incident.longitude,
-      intensity:
-        incident.severity === "critical"
-          ? 1
-          : incident.severity === "high"
-            ? 0.75
-            : 0.45,
-    }))}
-    longitudeExtractor={(p: any) => p.lng}
-    latitudeExtractor={(p: any) => p.lat}
-    intensityExtractor={(p: any) => p.intensity}
-  />
-)}
+
+              <FleetRiskHeatMap
+                incidents={incidents}
+                visible={showHeatmap}
+              />
 			  
 			  {incidents.map((incident) => {
   const coords = cleanLatLng(incident.latitude, incident.longitude);
@@ -3150,6 +3138,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
