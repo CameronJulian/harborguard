@@ -18,6 +18,7 @@ import MissionReplayTimeline from "@/components/command-center/MissionReplayTime
 import AICommandAssistant from "@/components/command-center/AICommandAssistant";
 import FleetMissionQueue from "@/components/command-center/FleetMissionQueue";
 import MissionAutomationRules from "@/components/command-center/MissionAutomationRules";
+import SupervisorEscalationCenter from "@/components/command-center/SupervisorEscalationCenter";
 
 import "leaflet/dist/leaflet.css";
 import TrialBanner from "@/components/billing/TrialBanner";
@@ -2014,6 +2015,8 @@ if (
 
         <MissionAutomationRules />
 
+        <SupervisorEscalationCenter />
+
         <FleetDigitalTwinDashboard />
 
         <PredictiveETADashboard />
@@ -3153,6 +3156,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
