@@ -14,6 +14,7 @@ import IncidentCommandDashboard from "@/components/command-center/IncidentComman
 import IncidentInvestigationTimeline from "@/components/command-center/IncidentInvestigationTimeline";
 import HERETrafficOverlay from "@/components/command-center/HERETrafficOverlay";
 import FleetRiskHeatMap from "@/components/command-center/FleetRiskHeatMap";
+import MissionReplayTimeline from "@/components/command-center/MissionReplayTimeline";
 
 import "leaflet/dist/leaflet.css";
 import TrialBanner from "@/components/billing/TrialBanner";
@@ -2008,6 +2009,11 @@ if (
 
         <PredictiveETADashboard />
 
+        <MissionReplayTimeline
+          events={operationsTimeline}
+          title="Mission Replay Timeline"
+        />
+
         <AIShiftSummary />
 
         <DispatcherRecommendations />
@@ -3138,6 +3144,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
