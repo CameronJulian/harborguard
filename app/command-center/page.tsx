@@ -21,6 +21,7 @@ import MissionAutomationRules from "@/components/command-center/MissionAutomatio
 import SupervisorEscalationCenter from "@/components/command-center/SupervisorEscalationCenter";
 import AIIncidentCorrelationDashboard from "@/components/command-center/AIIncidentCorrelationDashboard";
 import PredictiveIncidentIntelligence from "@/components/command-center/PredictiveIncidentIntelligence";
+import PrescriptiveResponseIntelligence from "@/components/command-center/PrescriptiveResponseIntelligence";
 
 import "leaflet/dist/leaflet.css";
 import TrialBanner from "@/components/billing/TrialBanner";
@@ -2023,6 +2024,8 @@ if (
 
         <PredictiveIncidentIntelligence />
 
+        <PrescriptiveResponseIntelligence />
+
         <FleetDigitalTwinDashboard />
 
         <PredictiveETADashboard />
@@ -3162,6 +3165,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
