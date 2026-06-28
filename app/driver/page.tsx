@@ -2,6 +2,7 @@
 
 import { fetchWithAuth } from "@/lib/auth-fetch";
 import DriverNavigationPanel from "@/components/driver/DriverNavigationPanel";
+import DriverVoiceSafetyAlerts from "@/components/driver/DriverVoiceSafetyAlerts";
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import AppShell from "@/components/AppShell";
 
@@ -349,15 +350,6 @@ export default function DriverEmergencyPage() {
       if (closest.id !== lastAlertId) {
         setLastAlertId(closest.id);
 
-        if (typeof window !== "undefined" && "speechSynthesis" in window) {
-          window.speechSynthesis.cancel();
-          window.speechSynthesis.speak(
-            new SpeechSynthesisUtterance(
-              `Warning. ${closest.title}. ${closest.distance_meters} meters away.`
-            )
-          );
-        }
-
         if (typeof window !== "undefined" && "Notification" in window) {
           if (Notification.permission === "granted") {
             new Notification(closest.title, {
@@ -679,6 +671,11 @@ const heading =
           </div>
         </div>
 
+        <DriverVoiceSafetyAlerts
+          alerts={nearbyAlerts}
+          selectedRoute={selectedSaferRoute}
+        />
+
         {nearbyAlerts.length > 0 && (
           <div
             style={{
@@ -717,15 +714,6 @@ const heading =
                       <button
                         onClick={() => {
                           setSelectedSaferRoute(route);
-
-                          if (typeof window !== "undefined" && "speechSynthesis" in window) {
-                            window.speechSynthesis.cancel();
-                            window.speechSynthesis.speak(
-                              new SpeechSynthesisUtterance(
-                                `Safer route selected. Follow ${route.description || route.label}.`
-                              )
-                            );
-                          }
                         }}
                         style={{
                           display: "block",
@@ -790,6 +778,8 @@ const heading =
     </AppShell>
   );
 }
+
+
 
 
 
