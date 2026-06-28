@@ -20,6 +20,7 @@ import FleetMissionQueue from "@/components/command-center/FleetMissionQueue";
 import MissionAutomationRules from "@/components/command-center/MissionAutomationRules";
 import SupervisorEscalationCenter from "@/components/command-center/SupervisorEscalationCenter";
 import AIIncidentCorrelationDashboard from "@/components/command-center/AIIncidentCorrelationDashboard";
+import PredictiveIncidentIntelligence from "@/components/command-center/PredictiveIncidentIntelligence";
 
 import "leaflet/dist/leaflet.css";
 import TrialBanner from "@/components/billing/TrialBanner";
@@ -2020,6 +2021,8 @@ if (
 
         <AIIncidentCorrelationDashboard />
 
+        <PredictiveIncidentIntelligence />
+
         <FleetDigitalTwinDashboard />
 
         <PredictiveETADashboard />
@@ -3159,6 +3162,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
