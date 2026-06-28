@@ -17,8 +17,7 @@ export async function GET() {
         behavioral_risk,
         created_at,
         vehicle:vehicles (
-          registration_number,
-          driver_name
+          registration_number
         )
       `)
       .eq("organization_id", organizationId)
@@ -43,7 +42,7 @@ export async function GET() {
         alertId: alert.id,
         vehicleName:
           alert.vehicle?.registration_number || "Unknown vehicle",
-        driverName: alert.vehicle?.driver_name || null,
+        driverName: null,
         alertType: alert.alert_type,
         severity: alert.severity,
         message: alert.message,
@@ -116,3 +115,5 @@ export async function GET() {
     );
   }
 }
+
+

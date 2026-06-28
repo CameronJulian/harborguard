@@ -2,8 +2,13 @@
 
 import dynamic from "next/dynamic";
 
-const HeatmapLayer = dynamic<any>(
-  () => import("react-leaflet-heatmap-layer-v3"),
+const CircleMarker = dynamic(
+  () => import("react-leaflet").then((m) => m.CircleMarker),
+  { ssr: false }
+);
+
+const Popup = dynamic(
+  () => import("react-leaflet").then((m) => m.Popup),
   { ssr: false }
 );
 
@@ -20,23 +25,6 @@ type FleetRiskHeatMapProps = {
   visible: boolean;
 };
 
-function intensityForIncident(incident: RoadIncident) {
-  const severity = String(incident.severity || "").toLowerCase();
-  const type = String(incident.type || "").toLowerCase();
-
-  if (severity === "critical") return 1;
-  if (severity === "high") return 0.8;
-  if (type === "smash_grab_hotspot") return 0.95;
-  if (type === "road_closure") return 0.9;
-  if (type === "roadblock") return 0.75;
-  if (type === "accident") return 0.7;
-  if (type === "construction") return 0.55;
-  if (type === "congestion") return 0.5;
-  if (severity === "medium") return 0.45;
-
-  return 0.3;
-}
-
 function isValidCoordinate(latitude: any, longitude: any) {
   const lat = Number(latitude);
   const lng = Number(longitude);
@@ -52,31 +40,62 @@ function isValidCoordinate(latitude: any, longitude: any) {
   );
 }
 
+function markerColor(incident: RoadIncident) {
+  const severity = String(incident.severity || "").toLowerCase();
+  const type = String(incident.type || "").toLowerCase();
+
+  if (severity === "critical" || type === "smash_grab_hotspot") return "#dc2626";
+  if (severity === "high" || type === "roadblock" || type === "road_closure") return "#ea580c";
+  if (severity === "medium" || type === "accident") return "#d97706";
+  return "#2563eb";
+}
+
+function markerRadius(incident: RoadIncident) {
+  const severity = String(incident.severity || "").toLowerCase();
+
+  if (severity === "critical") return 22;
+  if (severity === "high") return 18;
+  if (severity === "medium") return 14;
+  return 10;
+}
+
 export default function FleetRiskHeatMap({
   incidents,
   visible,
 }: FleetRiskHeatMapProps) {
   if (!visible || !incidents?.length) return null;
 
-  const points = incidents
-    .filter((incident) => isValidCoordinate(incident.latitude, incident.longitude))
-    .map((incident) => ({
-      lat: Number(incident.latitude),
-      lng: Number(incident.longitude),
-      intensity: intensityForIncident(incident),
-    }));
+  const validIncidents = incidents.filter((incident) =>
+    isValidCoordinate(incident.latitude, incident.longitude)
+  );
 
-  if (points.length === 0) return null;
+  if (validIncidents.length === 0) return null;
 
   return (
-    <HeatmapLayer
-      points={points}
-      longitudeExtractor={(point: any) => point.lng}
-      latitudeExtractor={(point: any) => point.lat}
-      intensityExtractor={(point: any) => point.intensity}
-      radius={34}
-      blur={24}
-      max={1}
-    />
+    <>
+      {validIncidents.map((incident, index) => {
+        const color = markerColor(incident);
+
+        return (
+          <CircleMarker
+            key={incident.id || `${incident.latitude}-${incident.longitude}-${index}`}
+            center={[Number(incident.latitude), Number(incident.longitude)]}
+            radius={markerRadius(incident)}
+            pathOptions={{
+              color,
+              fillColor: color,
+              fillOpacity: 0.28,
+              weight: 2,
+            }}
+          >
+            <Popup>
+              <strong>{String(incident.type || "Risk area").replace(/_/g, " ")}</strong>
+              <br />
+              Severity: {incident.severity || "unknown"}
+            </Popup>
+          </CircleMarker>
+        );
+      })}
+    </>
   );
 }

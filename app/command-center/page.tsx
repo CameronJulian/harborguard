@@ -65,7 +65,7 @@ const CircleMarker = dynamic(
   { ssr: false }
 );
 const HeatmapLayer = dynamic<any>(
-  () => import("react-leaflet-heatmap-layer-v3"),
+  () => import("react-leaflet-heatmap-layer-v3").then((m: any) => m.default || m.HeatmapLayer || m),
   { ssr: false }
 );
 
@@ -3165,6 +3165,9 @@ if (
     </AppShell>
   );
 }
+
+
+
 
 
 

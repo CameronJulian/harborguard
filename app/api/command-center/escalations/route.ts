@@ -41,7 +41,7 @@ function buildAlertEscalation(alert: any) {
     title: `${vehicle.registration_number || "Unknown vehicle"} supervisor escalation`,
     detail: alert.message || "Vehicle alert requires supervisor review.",
     vehicleName: vehicle.registration_number || null,
-    driverName: vehicle.driver_name || null,
+    driverName: null,
     recommendedDecision:
       priority === "critical"
         ? "Approve immediate escalation and confirm response workflow."
@@ -67,8 +67,8 @@ function buildIncidentEscalation(incident: any) {
     status: "pending_supervisor_review",
     title: incident.summary || "Incident requires supervisor review",
     detail: "Open incident requires supervisor confirmation or assignment.",
-    vehicleName: incident.vehicle?.registration_number || null,
-    driverName: incident.vehicle?.driver_name || null,
+    vehicleName: null,
+    driverName: null,
     recommendedDecision: "Approve command workflow and assign response owner.",
     ageMinutes,
     slaMinutes: limitMinutes,
@@ -91,11 +91,7 @@ export async function GET() {
         message,
         intelligence_score,
         behavioral_risk,
-        created_at,
-        vehicle:vehicles (
-          registration_number,
-          driver_name
-        )
+        created_at
       `)
       .eq("organization_id", organizationId)
       .eq("is_resolved", false)
@@ -103,8 +99,7 @@ export async function GET() {
       .order("created_at", { ascending: false })
       .limit(20);
 
-    if (alertsError) {
-      return NextResponse.json({ error: alertsError.message }, { status: 500 });
+    if (alertsError) {      return NextResponse.json({ error: alertsError.message }, { status: 500 });
     }
 
     const { data: incidents, error: incidentsError } = await supabase
@@ -114,11 +109,7 @@ export async function GET() {
         severity,
         status,
         summary,
-        created_at,
-        vehicle:vehicles (
-          registration_number,
-          driver_name
-        )
+        created_at
       `)
       .eq("organization_id", organizationId)
       .neq("status", "resolved")
@@ -126,8 +117,7 @@ export async function GET() {
       .order("created_at", { ascending: false })
       .limit(20);
 
-    if (incidentsError) {
-      return NextResponse.json({ error: incidentsError.message }, { status: 500 });
+    if (incidentsError) {      return NextResponse.json({ error: incidentsError.message }, { status: 500 });
     }
 
     const escalations = [
@@ -154,9 +144,16 @@ export async function GET() {
       generatedAt: new Date().toISOString(),
     });
   } catch (error: any) {
+    console.error("ESCALATIONS ERROR:", error);
     return NextResponse.json(
       { error: error.message || "Failed to load supervisor escalations." },
       { status: error.message === "Unauthorized" ? 401 : 500 }
     );
   }
 }
+
+
+
+
+
+

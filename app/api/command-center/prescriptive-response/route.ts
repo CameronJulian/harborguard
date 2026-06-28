@@ -79,8 +79,7 @@ export async function GET() {
         behavioral_risk,
         created_at,
         vehicle:vehicles (
-          registration_number,
-          driver_name
+          registration_number
         )
       `)
       .eq("organization_id", organizationId)
@@ -134,7 +133,7 @@ export async function GET() {
             ? "High Priority Response Plan"
             : "Operational Response Plan",
         vehicleName: alert.vehicle?.registration_number || alert.vehicle_id || "Unknown vehicle",
-        driverName: alert.vehicle?.driver_name || null,
+        driverName: null,
         trigger: String(alert.alert_type || "vehicle alert").replace(/_/g, " "),
         reason: alert.message || relatedIncident?.summary || "Active operational risk detected.",
         estimatedResponseMinutes: estimatedResponseMinutes(priority),
@@ -174,3 +173,5 @@ export async function GET() {
     );
   }
 }
+
+

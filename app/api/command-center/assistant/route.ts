@@ -20,7 +20,7 @@ export async function GET() {
 
     const { data: vehicles } = await supabase
       .from("vehicles")
-      .select("id, registration_number, nickname, driver_name")
+      .select("id, registration_number, nickname")
       .eq("organization_id", organizationId);
 
     const { data: alerts } = await supabase
@@ -36,8 +36,7 @@ export async function GET() {
         created_at,
         vehicle:vehicles (
           registration_number,
-          nickname,
-          driver_name
+          nickname
         )
       `)
       .eq("organization_id", organizationId)
@@ -136,7 +135,7 @@ export async function GET() {
               registrationNumber:
                 vehicle.registration_number || highestRisk.vehicle_id,
               nickname: vehicle.nickname || null,
-              driverName: vehicle.driver_name || null,
+              driverName: null,
               severity: highestRisk.severity,
               alertType: highestRisk.alert_type,
               message: highestRisk.message,
@@ -155,3 +154,6 @@ export async function GET() {
     );
   }
 }
+
+
+

@@ -2,7 +2,7 @@
 
 export function subscribeCommandCenterRealtime(onChange: () => void) {
   const channel = supabase
-    .channel("command-center-events")
+    .channel(`command-center-events-${Date.now()}-${Math.random().toString(36).slice(2)}`)
     .on("postgres_changes", { event: "*", schema: "public", table: "vehicle_locations" }, onChange)
     .on("postgres_changes", { event: "*", schema: "public", table: "vehicle_alerts" }, onChange)
     .on("postgres_changes", { event: "*", schema: "public", table: "incidents" }, onChange)
@@ -15,4 +15,5 @@ export function subscribeCommandCenterRealtime(onChange: () => void) {
     supabase.removeChannel(channel);
   };
 }
+
 

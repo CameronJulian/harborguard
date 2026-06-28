@@ -60,8 +60,7 @@ export async function GET() {
         behavioral_risk,
         created_at,
         vehicle:vehicles (
-          registration_number,
-          driver_name
+          registration_number
         )
       `)
       .eq("organization_id", organizationId)
@@ -145,7 +144,7 @@ export async function GET() {
       return {
         vehicleId,
         vehicleName: latest.vehicle?.registration_number || vehicleId,
-        driverName: latest.vehicle?.driver_name || null,
+        driverName: null,
         score,
         riskLevel: riskLevel(score),
         prediction: predictionText(score),
@@ -181,4 +180,6 @@ export async function GET() {
     );
   }
 }
+
+
 

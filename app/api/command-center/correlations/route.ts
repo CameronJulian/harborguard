@@ -36,11 +36,7 @@ export async function GET() {
         status,
         summary,
         created_at,
-        vehicle_alert_id,
-        vehicle:vehicles (
-          registration_number,
-          driver_name
-        )
+        vehicle_alert_id
       `)
       .eq("organization_id", organizationId)
       .neq("status", "resolved")
@@ -110,8 +106,8 @@ export async function GET() {
           summary: incident.summary,
           classification: classifyIncident(incident.summary || "", alertTypes),
           confidence,
-          vehicleName: incident.vehicle?.registration_number || "Unknown vehicle",
-          driverName: incident.vehicle?.driver_name || null,
+          vehicleName: "Incident-linked alert",
+          driverName: null,
           alertCount: relatedAlerts?.length || 0,
           responseEventCount: responseEvents?.length || 0,
           evidence,
@@ -132,10 +128,17 @@ export async function GET() {
       generatedAt: new Date().toISOString(),
     });
   } catch (error: any) {
+    console.error("CORRELATIONS ERROR:", error);
     return NextResponse.json(
       { error: error.message || "Failed to load incident correlations." },
       { status: error.message === "Unauthorized" ? 401 : 500 }
     );
   }
 }
+
+
+
+
+
+
 

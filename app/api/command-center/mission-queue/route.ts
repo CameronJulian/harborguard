@@ -24,7 +24,7 @@ function buildAlertTask(alert: any) {
     detail: alert.message || "Vehicle alert requires dispatcher review.",
     vehicleId: alert.vehicle_id,
     vehicleName: registration,
-    driverName: vehicle.driver_name || null,
+    driverName: null,
     recommendedAction:
       severity === "critical"
         ? "Contact driver immediately and escalate response."
@@ -46,9 +46,9 @@ function buildIncidentTask(incident: any) {
     status: incident.status || "open",
     title: incident.summary || "Open incident",
     detail: "Incident workflow requires dispatcher confirmation.",
-    vehicleId: incident.vehicle_id || null,
-    vehicleName: incident.vehicle?.registration_number || null,
-    driverName: incident.vehicle?.driver_name || null,
+    vehicleId: null,
+    vehicleName: null,
+    driverName: null,
     recommendedAction: "Review incident command workflow and confirm next action.",
     createdAt: incident.created_at,
   };
@@ -86,19 +86,14 @@ export async function GET() {
         alert_type,
         severity,
         message,
-        created_at,
-        vehicle:vehicles (
-          registration_number,
-          driver_name
-        )
+        created_at
       `)
       .eq("organization_id", organizationId)
       .eq("is_resolved", false)
       .order("created_at", { ascending: false })
       .limit(20);
 
-    if (alertsError) {
-      return NextResponse.json({ error: alertsError.message }, { status: 500 });
+    if (alertsError) {      return NextResponse.json({ error: alertsError.message }, { status: 500 });
     }
 
     const { data: incidents, error: incidentsError } = await supabase
@@ -108,20 +103,14 @@ export async function GET() {
         severity,
         status,
         summary,
-        created_at,
-        vehicle_id,
-        vehicle:vehicles (
-          registration_number,
-          driver_name
-        )
+        created_at
       `)
       .eq("organization_id", organizationId)
       .neq("status", "resolved")
       .order("created_at", { ascending: false })
       .limit(20);
 
-    if (incidentsError) {
-      return NextResponse.json({ error: incidentsError.message }, { status: 500 });
+    if (incidentsError) {      return NextResponse.json({ error: incidentsError.message }, { status: 500 });
     }
 
     const { data: roadIncidents, error: roadError } = await supabase
@@ -133,8 +122,7 @@ export async function GET() {
       .order("created_at", { ascending: false })
       .limit(20);
 
-    if (roadError) {
-      return NextResponse.json({ error: roadError.message }, { status: 500 });
+    if (roadError) {      return NextResponse.json({ error: roadError.message }, { status: 500 });
     }
 
     const tasks = [
@@ -156,9 +144,16 @@ export async function GET() {
       generatedAt: new Date().toISOString(),
     });
   } catch (error: any) {
+    console.error("MISSION QUEUE ERROR:", error);
     return NextResponse.json(
       { error: error.message || "Failed to load Fleet Mission Queue." },
       { status: error.message === "Unauthorized" ? 401 : 500 }
     );
   }
 }
+
+
+
+
+
+
