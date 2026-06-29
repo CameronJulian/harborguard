@@ -18,6 +18,7 @@ import MissionReplayTimeline from "@/components/command-center/MissionReplayTime
 import AICommandAssistant from "@/components/command-center/AICommandAssistant";
 import FleetMissionQueue from "@/components/command-center/FleetMissionQueue";
 import MissionAutomationRules from "@/components/command-center/MissionAutomationRules";
+import CommandWall from "@/components/command-center/CommandWall";
 import SupervisorEscalationCenter from "@/components/command-center/SupervisorEscalationCenter";
 import AIIncidentCorrelationDashboard from "@/components/command-center/AIIncidentCorrelationDashboard";
 import PredictiveIncidentIntelligence from "@/components/command-center/PredictiveIncidentIntelligence";
@@ -2008,6 +2009,8 @@ if (
         </div>
 
 
+        <CommandWall />
+
         <ExecutiveOperationsDashboard />
 
         <FleetHealthDashboard />
@@ -3165,6 +3168,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
