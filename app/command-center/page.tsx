@@ -20,6 +20,7 @@ import FleetMissionQueue from "@/components/command-center/FleetMissionQueue";
 import MissionAutomationRules from "@/components/command-center/MissionAutomationRules";
 import CommandWall from "@/components/command-center/CommandWall";
 import AuditPlayback from "@/components/command-center/AuditPlayback";
+import DispatcherCollaboration from "@/components/command-center/DispatcherCollaboration";
 import SupervisorEscalationCenter from "@/components/command-center/SupervisorEscalationCenter";
 import AIIncidentCorrelationDashboard from "@/components/command-center/AIIncidentCorrelationDashboard";
 import PredictiveIncidentIntelligence from "@/components/command-center/PredictiveIncidentIntelligence";
@@ -2014,6 +2015,8 @@ if (
 
         <AuditPlayback />
 
+        <DispatcherCollaboration />
+
         <ExecutiveOperationsDashboard />
 
         <FleetHealthDashboard />
@@ -3171,6 +3174,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
