@@ -23,6 +23,7 @@ import AuditPlayback from "@/components/command-center/AuditPlayback";
 import DispatcherCollaboration from "@/components/command-center/DispatcherCollaboration";
 import CommandCenterThemeSwitcher from "@/components/command-center/CommandCenterThemeSwitcher";
 import IncidentAssignmentBoard from "@/components/command-center/IncidentAssignmentBoard";
+import AIAccidentDetection from "@/components/command-center/AIAccidentDetection";
 import SupervisorEscalationCenter from "@/components/command-center/SupervisorEscalationCenter";
 import AIIncidentCorrelationDashboard from "@/components/command-center/AIIncidentCorrelationDashboard";
 import PredictiveIncidentIntelligence from "@/components/command-center/PredictiveIncidentIntelligence";
@@ -2023,6 +2024,8 @@ if (
 
         <IncidentAssignmentBoard />
 
+        <AIAccidentDetection />
+
         <ExecutiveOperationsDashboard />
 
         <FleetHealthDashboard />
@@ -3180,6 +3183,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
