@@ -21,6 +21,7 @@ import MissionAutomationRules from "@/components/command-center/MissionAutomatio
 import CommandWall from "@/components/command-center/CommandWall";
 import AuditPlayback from "@/components/command-center/AuditPlayback";
 import DispatcherCollaboration from "@/components/command-center/DispatcherCollaboration";
+import CommandCenterThemeSwitcher from "@/components/command-center/CommandCenterThemeSwitcher";
 import SupervisorEscalationCenter from "@/components/command-center/SupervisorEscalationCenter";
 import AIIncidentCorrelationDashboard from "@/components/command-center/AIIncidentCorrelationDashboard";
 import PredictiveIncidentIntelligence from "@/components/command-center/PredictiveIncidentIntelligence";
@@ -2011,6 +2012,8 @@ if (
         </div>
 
 
+        <CommandCenterThemeSwitcher />
+
         <CommandWall />
 
         <AuditPlayback />
@@ -3174,6 +3177,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
