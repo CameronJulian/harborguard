@@ -27,6 +27,7 @@ import AIAccidentDetection from "@/components/command-center/AIAccidentDetection
 import DashcamMonitoring from "@/components/command-center/DashcamMonitoring";
 import ComputerVisionAnalytics from "@/components/command-center/ComputerVisionAnalytics";
 import ANPRDashboard from "@/components/command-center/ANPRDashboard";
+import CCTVMonitoring from "@/components/command-center/CCTVMonitoring";
 import SupervisorEscalationCenter from "@/components/command-center/SupervisorEscalationCenter";
 import AIIncidentCorrelationDashboard from "@/components/command-center/AIIncidentCorrelationDashboard";
 import PredictiveIncidentIntelligence from "@/components/command-center/PredictiveIncidentIntelligence";
@@ -2035,6 +2036,8 @@ if (
 
         <ANPRDashboard />
 
+        <CCTVMonitoring />
+
         <ExecutiveOperationsDashboard />
 
         <FleetHealthDashboard />
@@ -3192,6 +3195,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
