@@ -3,6 +3,7 @@
 import { fetchWithAuth } from "@/lib/auth-fetch";
 import DriverNavigationPanel from "@/components/driver/DriverNavigationPanel";
 import DriverVoiceSafetyAlerts from "@/components/driver/DriverVoiceSafetyAlerts";
+import DriverMissionConsole from "@/components/driver/DriverMissionConsole";
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import AppShell from "@/components/AppShell";
 
@@ -778,6 +779,7 @@ const heading =
     </AppShell>
   );
 }
+
 
 
 
