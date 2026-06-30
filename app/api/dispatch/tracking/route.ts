@@ -1,109 +1,149 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
+
+const ARRIVAL_RADIUS_METERS = 120;
+
+function toNumber(value: any) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function distanceMeters(
+  fromLat: number,
+  fromLng: number,
+  toLat: number,
+  toLng: number
+) {
+  const earthRadius = 6371000;
+  const lat1 = (fromLat * Math.PI) / 180;
+  const lat2 = (toLat * Math.PI) / 180;
+  const deltaLat = ((toLat - fromLat) * Math.PI) / 180;
+  const deltaLng = ((toLng - fromLng) * Math.PI) / 180;
+
+  const a =
+    Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+    Math.cos(lat1) *
+      Math.cos(lat2) *
+      Math.sin(deltaLng / 2) *
+      Math.sin(deltaLng / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return earthRadius * c;
+}
+
+function etaMinutes(distance: number, speedKmh: number) {
+  const safeSpeed = Math.max(speedKmh || 0, 10);
+  const km = distance / 1000;
+  return Math.round((km / safeSpeed) * 60);
+}
 
 export async function GET() {
   try {
+    const { supabase, organizationId } = await requireOrganization();
 
-    const { supabase, organizationId } =
-      await requireOrganization();
+    const { data: missions, error: missionError } = await supabase
+      .from("dispatch_missions")
+      .select(`
+        *,
+        vehicles:assigned_vehicle_id (
+          id,
+          registration_number,
+          nickname
+        )
+      `)
+      .eq("organization_id", organizationId)
+      .in("status", ["Accepted", "En Route", "Arrived", "In Progress"]);
 
-    const { data: missions } =
-      await supabase
-        .from("dispatch_missions")
-        .select(`
-          *,
-          vehicles:assigned_vehicle_id (
-            id,
-            registration_number
-          )
-        `)
-        .eq("organization_id", organizationId)
-        .in("status", [
-          "Accepted",
-          "En Route",
-          "Arrived",
-          "In Progress"
-        ]);
+    if (missionError) throw missionError;
 
-    const { data: locations } =
-      await supabase
-        .from("vehicle_locations")
-        .select("*")
-        .eq("organization_id", organizationId)
-        .order("recorded_at", {
-          ascending: false
-        });
+    const { data: locations, error: locationError } = await supabase
+      .from("vehicle_locations")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("recorded_at", { ascending: false });
 
-    const latest = new Map();
+    if (locationError) throw locationError;
+
+    const latest = new Map<string, any>();
 
     for (const location of locations || []) {
-
       if (!latest.has(location.vehicle_id)) {
         latest.set(location.vehicle_id, location);
       }
-
     }
 
     const tracking = [];
 
     for (const mission of missions || []) {
+      const location = latest.get(mission.assigned_vehicle_id);
+      if (!location) continue;
 
-      const location =
-        latest.get(mission.assigned_vehicle_id);
+      const currentLat = toNumber(location.latitude);
+      const currentLng = toNumber(location.longitude);
+      const destinationLat = toNumber(mission.destination_lat);
+      const destinationLng = toNumber(mission.destination_lng);
+      const speedKmh = toNumber(location.speed_kmh);
 
-      if (!location)
-        continue;
+      const remainingMeters = Math.round(
+        distanceMeters(currentLat, currentLng, destinationLat, destinationLng)
+      );
+
+      const plannedDistanceMeters =
+        toNumber(mission.route_data?.selectedRoute?.distanceMeters) ||
+        toNumber(mission.route_data?.selectedRoute?.length) ||
+        remainingMeters;
+
+      const completedMeters = Math.max(
+        plannedDistanceMeters - remainingMeters,
+        0
+      );
+
+      const progressPercent =
+        plannedDistanceMeters > 0
+          ? Math.min(
+              100,
+              Math.max(0, Math.round((completedMeters / plannedDistanceMeters) * 100))
+            )
+          : 0;
+
+      const eta = etaMinutes(remainingMeters, speedKmh);
+      const arrived = remainingMeters <= ARRIVAL_RADIUS_METERS;
 
       tracking.push({
-
         missionId: mission.id,
-
         vehicle:
-          mission.vehicles?.registration_number,
-
+          mission.vehicles?.registration_number ||
+          mission.vehicles?.nickname ||
+          mission.assigned_vehicle_id,
         status: mission.status,
-
-        latitude:
-          location.latitude,
-
-        longitude:
-          location.longitude,
-
-        speed:
-          location.speed_kmh,
-
+        latitude: currentLat,
+        longitude: currentLng,
+        speedKmh,
         destination: {
-          lat: mission.destination_lat,
-          lng: mission.destination_lng,
+          lat: destinationLat,
+          lng: destinationLng,
         },
-
-        lastSeen:
-          location.recorded_at,
-
+        remainingMeters,
+        remainingKm: Number((remainingMeters / 1000).toFixed(2)),
+        plannedDistanceMeters,
+        progressPercent,
+        etaMinutes: eta,
+        arrivalRadiusMeters: ARRIVAL_RADIUS_METERS,
+        arrived,
+        lastSeen: location.recorded_at,
       });
-
     }
 
     return NextResponse.json({
       success: true,
+      count: tracking.length,
       tracking,
     });
-
   } catch (error: any) {
-
     return NextResponse.json(
-      {
-        error:
-          error.message ||
-          "Tracking failed."
-      },
-      {
-        status:
-          error.message === "Unauthorized"
-            ? 401
-            : 500
-      }
+      { error: error.message || "Tracking failed." },
+      { status: error.message === "Unauthorized" ? 401 : 500 }
     );
-
   }
 }
