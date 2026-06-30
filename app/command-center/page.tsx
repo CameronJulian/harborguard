@@ -13,6 +13,7 @@ import FleetDigitalTwinDashboard from "@/components/command-center/FleetDigitalT
 import IncidentCommandDashboard from "@/components/command-center/IncidentCommandDashboard";
 import IncidentInvestigationTimeline from "@/components/command-center/IncidentInvestigationTimeline";
 import HERETrafficOverlay from "@/components/command-center/HERETrafficOverlay";
+import TrafficFlowDashboard from "@/components/command-center/TrafficFlowDashboard";
 import FleetRiskHeatMap from "@/components/command-center/FleetRiskHeatMap";
 import MissionReplayTimeline from "@/components/command-center/MissionReplayTimeline";
 import AICommandAssistant from "@/components/command-center/AICommandAssistant";
@@ -2041,6 +2042,8 @@ if (
 
         <InsuranceResponseCenter />
 
+        <TrafficFlowDashboard />
+
         <ExecutiveOperationsDashboard />
 
         <FleetHealthDashboard />
@@ -3198,6 +3201,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
