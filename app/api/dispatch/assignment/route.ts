@@ -1,5 +1,7 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
+import { buildFleetOptimization } from "@/lib/fleet/optimizationEngine";
+import { calculateHereRoutes } from "@/lib/routing/hereRouting";
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,24 +17,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-
-    const optimizationResponse = await fetch(`${baseUrl}/api/fleet/optimization`, {
-      method: "GET",
-      cache: "no-store",
-      headers: {
-        "x-harborguard-internal": "dispatch-assignment",
-      },
-    });
-
-    const optimizationResult = await optimizationResponse.json();
-
-    if (!optimizationResponse.ok) {
-      return NextResponse.json(
-        { error: optimizationResult.error || "Failed to load fleet optimization." },
-        { status: 502 }
-      );
-    }
+    const optimizationResult = await buildFleetOptimization(supabase, organizationId);
 
     const bestCandidate =
       optimizationResult.summary?.bestCandidate ||
@@ -52,33 +37,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const routeResponse = await fetch(`${baseUrl}/api/route-safety/reroute`, {
-      method: "POST",
-      cache: "no-store",
-      headers: {
-        "Content-Type": "application/json",
-        "x-harborguard-internal": "dispatch-assignment",
+    const routeResult = await calculateHereRoutes(
+      {
+        lat: bestCandidate.latitude,
+        lng: bestCandidate.longitude,
       },
-      body: JSON.stringify({
-        origin: {
-          lat: bestCandidate.latitude,
-          lng: bestCandidate.longitude,
-        },
-        destination: {
-          lat: destination.lat,
-          lng: destination.lng,
-        },
-      }),
-    });
-
-    const routeResult = await routeResponse.json();
-
-    if (!routeResponse.ok) {
-      return NextResponse.json(
-        { error: routeResult.error || "Failed to generate dispatch route." },
-        { status: 502 }
-      );
-    }
+      {
+        lat: destination.lat,
+        lng: destination.lng,
+      }
+    );
 
     const selectedRoute = routeResult.routes?.[0] || null;
 
