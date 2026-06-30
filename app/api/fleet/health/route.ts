@@ -15,12 +15,22 @@ function minutesSince(value?: string | null) {
   return (Date.now() - new Date(value).getTime()) / (1000 * 60);
 }
 
+function trafficHealthPenalty(summary: any) {
+  const riskScore = Number(summary?.riskScore || 0);
+  const congestion = Number(summary?.averageCongestion || 0);
+  const activeIncidents = Number(summary?.activeIncidents || 0);
+
+  return Math.min(
+    20,
+    Math.round(riskScore / 10) +
+      Math.round(congestion / 15) +
+      Math.min(activeIncidents, 5)
+  );
+}
+
 export async function GET() {
   try {
     const { supabase, organizationId } = await requireOrganization();
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
 
     const [
       vehiclesResult,
@@ -29,33 +39,11 @@ export async function GET() {
       tripsResult,
       incidentsResult,
     ] = await Promise.all([
-      supabase
-        .from("vehicles")
-        .select("id, nickname, registration_number")
-        .eq("organization_id", organizationId),
-
-      supabase
-        .from("vehicle_locations")
-        .select("vehicle_id, speed_kmh, recorded_at")
-        .eq("organization_id", organizationId)
-        .order("recorded_at", { ascending: false })
-        .limit(1000),
-
-      supabase
-        .from("vehicle_alerts")
-        .select("id, vehicle_id, alert_type, severity, created_at")
-        .eq("organization_id", organizationId)
-        .eq("is_resolved", false),
-
-      supabase
-        .from("vehicle_trips")
-        .select("id, vehicle_id, status")
-        .eq("organization_id", organizationId),
-
-      supabase
-        .from("incidents")
-        .select("id, severity, status, created_at")
-        .eq("organization_id", organizationId),
+      supabase.from("vehicles").select("id, nickname, registration_number").eq("organization_id", organizationId),
+      supabase.from("vehicle_locations").select("vehicle_id, speed_kmh, recorded_at").eq("organization_id", organizationId).order("recorded_at", { ascending: false }).limit(1000),
+      supabase.from("vehicle_alerts").select("id, vehicle_id, alert_type, severity, created_at").eq("organization_id", organizationId).eq("is_resolved", false),
+      supabase.from("vehicle_trips").select("id, vehicle_id, status").eq("organization_id", organizationId),
+      supabase.from("incidents").select("id, severity, status, created_at").eq("organization_id", organizationId),
     ]);
 
     if (vehiclesResult.error) throw vehiclesResult.error;
@@ -63,6 +51,27 @@ export async function GET() {
     if (alertsResult.error) throw alertsResult.error;
     if (tripsResult.error) throw tripsResult.error;
     if (incidentsResult.error) throw incidentsResult.error;
+
+    let trafficSummary: any = null;
+    let trafficWarning: string | null = null;
+
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      const response = await fetch(`${baseUrl}/api/traffic-intelligence`, {
+        cache: "no-store",
+        headers: { "x-harborguard-internal": "fleet-health" },
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        trafficSummary = result.summary;
+      } else {
+        trafficWarning = result.error || "Traffic intelligence unavailable.";
+      }
+    } catch (trafficError: any) {
+      trafficWarning = trafficError.message || "Traffic intelligence unavailable.";
+    }
 
     const vehicles = vehiclesResult.data || [];
     const locations = locationsResult.data || [];
@@ -81,15 +90,7 @@ export async function GET() {
     const activeTripVehicleIds = new Set(
       trips
         .filter((trip: any) =>
-          [
-            "scheduled",
-            "active",
-            "in_progress",
-            "en_route_to_port",
-            "collecting",
-            "en_route_to_fishery",
-            "emergency",
-          ].includes(trip.status)
+          ["scheduled", "active", "in_progress", "en_route_to_port", "collecting", "en_route_to_fishery", "emergency"].includes(trip.status)
         )
         .map((trip: any) => trip.vehicle_id)
     );
@@ -142,13 +143,11 @@ export async function GET() {
       score = Math.max(0, Math.min(100, score));
 
       let status = "Available";
-
       if (isSos) status = "SOS";
       else if (isOffline) status = "Offline";
       else if (isBusy) status = "Busy";
 
       let health = "Healthy";
-
       if (score < 50) health = "Critical";
       else if (score < 75) health = "Warning";
 
@@ -169,9 +168,7 @@ export async function GET() {
 
     const criticalAlerts = alerts.filter((a: any) => a.severity === "critical").length;
     const highAlerts = alerts.filter((a: any) => a.severity === "high").length;
-    const geofenceBreaches = alerts.filter((a: any) =>
-      String(a.alert_type || "").includes("geofence")
-    ).length;
+    const geofenceBreaches = alerts.filter((a: any) => String(a.alert_type || "").includes("geofence")).length;
 
     const openIncidents = incidents.filter((incident: any) =>
       ["Open", "Review", "Flagged"].includes(incident.status)
@@ -183,11 +180,10 @@ export async function GET() {
 
     const averageVehicleScore =
       vehicleHealth.length > 0
-        ? Math.round(
-            vehicleHealth.reduce((total, vehicle) => total + vehicle.score, 0) /
-              vehicleHealth.length
-          )
+        ? Math.round(vehicleHealth.reduce((total, vehicle) => total + vehicle.score, 0) / vehicleHealth.length)
         : 100;
+
+    const trafficPenalty = trafficHealthPenalty(trafficSummary);
 
     let healthScore = averageVehicleScore;
 
@@ -196,11 +192,11 @@ export async function GET() {
     healthScore -= Math.min(openIncidents * 2, 15);
     healthScore -= Math.min(offline * 4, 20);
     healthScore -= Math.min(sos * 25, 50);
+    healthScore -= trafficPenalty;
 
     healthScore = Math.max(0, Math.min(100, healthScore));
 
     let healthLevel = "Healthy";
-
     if (healthScore < 50) healthLevel = "Critical";
     else if (healthScore < 75) healthLevel = "Warning";
 
@@ -225,7 +221,18 @@ export async function GET() {
         criticalIncidents,
         geofenceBreaches,
         averageVehicleScore,
+        trafficPenalty,
+        trafficIntelligence: {
+          riskScore: trafficSummary?.riskScore || 0,
+          riskLevel: trafficSummary?.riskLevel || "unknown",
+          averageCongestion: trafficSummary?.averageCongestion || 0,
+          averageDelay: trafficSummary?.averageDelay || 0,
+          activeIncidents: trafficSummary?.activeIncidents || 0,
+          warning: trafficWarning,
+        },
       },
+      trafficIntelligence: trafficSummary,
+      trafficWarning,
       vehicles: vehicleHealth.sort((a, b) => a.score - b.score),
     });
   } catch (error: any) {
