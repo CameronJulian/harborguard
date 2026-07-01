@@ -1,7 +1,8 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
+import { subscribeCommandCenterRealtime } from "@/lib/realtime/commandCenterEvents";
 
 const statuses = ["Pending", "Assigned", "Accepted", "En Route", "Arrived", "In Progress", "Completed", "Cancelled"];
 
@@ -74,8 +75,10 @@ export default function MissionBoard() {
 
   useEffect(() => {
     loadMissions();
-    const interval = setInterval(loadMissions, 30000);
-    return () => clearInterval(interval);
+
+    const unsubscribe = subscribeCommandCenterRealtime(loadMissions);
+
+    return () => unsubscribe();
   }, []);
 
   return (
