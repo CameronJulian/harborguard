@@ -1,5 +1,6 @@
 ﻿import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
+import { buildMissionEscalation } from "@/lib/escalation/missionEscalation";
 
 function minutesSince(dateValue: string | null) {
   if (!dateValue) return 0;
@@ -25,9 +26,25 @@ function priorityRank(priority: string) {
   return 1;
 }
 
+function priorityFromEscalation(severity: string, score: number) {
+  if (severity === "critical" || score >= 80) return "critical";
+  if (severity === "high" || score >= 60) return "high";
+  if (severity === "medium" || score >= 30) return "medium";
+  return "medium";
+}
+
 function buildAlertEscalation(alert: any) {
+  const engine = buildMissionEscalation({
+    behavioralRisk: Number(alert.behavioral_risk || 0),
+    intelligenceScore: Number(alert.intelligence_score || 0),
+  });
+
   const severity = String(alert.severity || "medium").toLowerCase();
-  const priority = severity === "critical" ? "critical" : severity === "high" ? "high" : "medium";
+  const priority = priorityFromEscalation(
+    engine.severity,
+    Math.max(engine.score, severity === "critical" ? 80 : severity === "high" ? 60 : 30)
+  );
+
   const ageMinutes = minutesSince(alert.created_at);
   const limitMinutes = slaMinutes(priority);
   const vehicle = alert.vehicle || {};
@@ -46,6 +63,9 @@ function buildAlertEscalation(alert: any) {
       priority === "critical"
         ? "Approve immediate escalation and confirm response workflow."
         : "Review dispatcher action and approve escalation if risk persists.",
+    escalationScore: engine.score,
+    escalationReasons: engine.reasons,
+    escalationActions: engine.actions,
     ageMinutes,
     slaMinutes: limitMinutes,
     slaStatus: slaStatus(ageMinutes, limitMinutes),
@@ -99,7 +119,8 @@ export async function GET() {
       .order("created_at", { ascending: false })
       .limit(20);
 
-    if (alertsError) {      return NextResponse.json({ error: alertsError.message }, { status: 500 });
+    if (alertsError) {
+      return NextResponse.json({ error: alertsError.message }, { status: 500 });
     }
 
     const { data: incidents, error: incidentsError } = await supabase
@@ -117,7 +138,8 @@ export async function GET() {
       .order("created_at", { ascending: false })
       .limit(20);
 
-    if (incidentsError) {      return NextResponse.json({ error: incidentsError.message }, { status: 500 });
+    if (incidentsError) {
+      return NextResponse.json({ error: incidentsError.message }, { status: 500 });
     }
 
     const escalations = [
@@ -151,9 +173,3 @@ export async function GET() {
     );
   }
 }
-
-
-
-
-
-
