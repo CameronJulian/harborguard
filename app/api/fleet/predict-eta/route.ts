@@ -1,14 +1,7 @@
 ﻿import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
-
-const KMH_TO_MINUTES = 60;
-
-function etaRecommendation(delay: number, trafficLevel: string) {
-  if (trafficLevel === "critical" || delay >= 25) return "High traffic risk. Consider rerouting immediately.";
-  if (trafficLevel === "high" || delay >= 15) return "Monitor traffic and prepare alternate route.";
-  if (trafficLevel === "medium" || delay >= 8) return "Moderate delay expected. Monitor ETA.";
-  return "Route operating normally.";
-}
+import { buildTrafficIntelligence } from "@/lib/traffic/intelligence";
+import { predictETA } from "@/lib/fleet/etaPrediction";
 
 export async function GET() {
   try {
@@ -35,33 +28,32 @@ export async function GET() {
 
     if (tripError) throw tripError;
 
-    const { data: locations } = await supabase
+    const { data: locations, error: locationError } = await supabase
       .from("vehicle_locations")
       .select("*")
       .eq("organization_id", organizationId)
       .order("recorded_at", { ascending: false });
 
+    if (locationError) throw locationError;
+
+    const trafficCenter = (locations || []).find(
+      (location: any) => location.latitude && location.longitude
+    );
+
     let trafficSummary: any = null;
     let trafficWarning: string | null = null;
 
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-      const response = await fetch(`${baseUrl}/api/traffic-intelligence`, {
-        cache: "no-store",
-        headers: {
-          "x-harborguard-internal": "predictive-eta",
-        },
+      const traffic = await buildTrafficIntelligence(supabase, organizationId, {
+        latitude: trafficCenter ? Number(trafficCenter.latitude) : undefined,
+        longitude: trafficCenter ? Number(trafficCenter.longitude) : undefined,
+        radiusMeters: 10000,
       });
 
-      const result = await response.json();
-
-      if (response.ok) {
-        trafficSummary = result.summary;
-      } else {
-        trafficWarning = result.error || "Traffic intelligence unavailable.";
-      }
-    } catch (trafficError: any) {
-      trafficWarning = trafficError.message || "Traffic intelligence unavailable.";
+      trafficSummary = traffic.summary;
+      trafficWarning = traffic.intelligence?.warnings?.[0] || null;
+    } catch (error: any) {
+      trafficWarning = error.message || "Traffic intelligence unavailable.";
     }
 
     const latestLocation = new Map();
@@ -88,27 +80,14 @@ export async function GET() {
       const speed = Number(location.speed_kmh || 30);
       const remainingDistance = Number(location.remaining_distance_km || 20);
 
-      const baseMinutes =
-        remainingDistance / Math.max(speed, 10) * KMH_TO_MINUTES;
-
-      const trafficDelay =
-        averageDelay +
-        Math.round(averageCongestion / 10) +
-        (speed < 20 ? 10 : 0);
-
-      const incidentDelay =
-        activeIncidents > 0 ? Math.min(20, activeIncidents * 3) : 0;
-
-      const weatherDelay = 0;
-
-      const predictedDelay =
-        trafficDelay +
-        incidentDelay +
-        weatherDelay;
-
-      const eta = new Date(
-        Date.now() + (baseMinutes + predictedDelay) * 60000
-      );
+      const prediction = predictETA({
+        remainingKm: remainingDistance,
+        speedKmh: speed,
+        averageDelay,
+        averageCongestion,
+        activeIncidents,
+        trafficRiskLevel,
+      });
 
       const vehicleRecord = Array.isArray(trip.vehicles)
         ? trip.vehicles[0]
@@ -122,10 +101,12 @@ export async function GET() {
           "Unknown",
         remainingDistanceKm: remainingDistance,
         currentSpeed: speed,
-        estimatedArrival: eta,
-        predictedDelayMinutes: predictedDelay,
-        confidence: Math.max(55, 100 - predictedDelay),
-        recommendation: etaRecommendation(predictedDelay, trafficRiskLevel),
+        estimatedArrival: prediction.estimatedArrival,
+        baseMinutes: prediction.baseMinutes,
+        totalMinutes: prediction.totalMinutes,
+        predictedDelayMinutes: prediction.predictedDelay,
+        confidence: prediction.confidence,
+        recommendation: prediction.recommendation,
         trafficIntelligence: {
           riskLevel: trafficRiskLevel,
           riskScore,
