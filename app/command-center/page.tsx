@@ -17,6 +17,7 @@ import TrafficFlowDashboard from "@/components/command-center/TrafficFlowDashboa
 import FleetOptimizationDashboard from "@/components/command-center/FleetOptimizationDashboard";
 import MissionBoard from "@/components/command-center/MissionBoard";
 import LiveMissionTrackingDashboard from "@/components/command-center/LiveMissionTrackingDashboard";
+import LiveFleetOperationsMap from "@/components/command-center/LiveFleetOperationsMap";
 import FleetRiskHeatMap from "@/components/command-center/FleetRiskHeatMap";
 import MissionReplayTimeline from "@/components/command-center/MissionReplayTimeline";
 import AICommandAssistant from "@/components/command-center/AICommandAssistant";
@@ -2053,6 +2054,8 @@ if (
 
         <LiveMissionTrackingDashboard />
 
+        <LiveFleetOperationsMap />
+
         <ExecutiveOperationsDashboard />
 
         <FleetHealthDashboard />
@@ -3210,6 +3213,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
