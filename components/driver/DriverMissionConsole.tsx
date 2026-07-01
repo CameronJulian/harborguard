@@ -1,7 +1,8 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
+import { subscribeCommandCenterRealtime } from "@/lib/realtime/commandCenterEvents";
 
 function nextStatus(status: string) {
   const map: Record<string, string> = {
@@ -96,8 +97,10 @@ export default function DriverMissionConsole({ vehicleId }: { vehicleId: string 
 
   useEffect(() => {
     loadMission();
-    const interval = setInterval(loadMission, 30000);
-    return () => clearInterval(interval);
+
+    const unsubscribe = subscribeCommandCenterRealtime(loadMission);
+
+    return () => unsubscribe();
   }, [vehicleId]);
 
   const next = mission ? nextStatus(mission.status) : null;
