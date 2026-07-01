@@ -8,6 +8,7 @@ export function subscribeCommandCenterRealtime(onChange: () => void) {
     .on("postgres_changes", { event: "*", schema: "public", table: "incidents" }, onChange)
     .on("postgres_changes", { event: "*", schema: "public", table: "vehicle_trips" }, onChange)
     .on("postgres_changes", { event: "*", schema: "public", table: "route_assignments" }, onChange)
+    .on("postgres_changes", { event: "*", schema: "public", table: "dispatch_missions" }, onChange)
     .on("postgres_changes", { event: "*", schema: "public", table: "command_center_notifications" }, onChange)
     .subscribe();
 
@@ -15,5 +16,3 @@ export function subscribeCommandCenterRealtime(onChange: () => void) {
     supabase.removeChannel(channel);
   };
 }
-
-
