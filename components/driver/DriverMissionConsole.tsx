@@ -31,6 +31,7 @@ function actionLabel(status: string) {
 export default function DriverMissionConsole({ vehicleId }: { vehicleId: string }) {
   const [mission, setMission] = useState<any | null>(null);
   const [missions, setMissions] = useState<any[]>([]);
+  const [timeline, setTimeline] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [evidenceNotes, setEvidenceNotes] = useState("");
@@ -61,13 +62,36 @@ export default function DriverMissionConsole({ vehicleId }: { vehicleId: string 
         return;
       }
 
-      setMission(result.currentMission || null);
+      const currentMission = result.currentMission || null;
+
+      setMission(currentMission);
       setMissions(result.missions || []);
+
+      if (currentMission?.id) {
+        await loadTimeline(currentMission.id);
+      } else {
+        setTimeline([]);
+      }
     } catch (error: any) {
       setMessage(error.message || "Failed to load mission.");
     } finally {
       setLoading(false);
     }
+  }
+
+  async function loadTimeline(missionId: string) {
+    const response = await fetchWithAuth(`/api/dispatch/missions/${missionId}/timeline`, {
+      method: "GET",
+      cache: "no-store",
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || "Failed to load timeline.");
+    }
+
+    setTimeline(result.timeline || []);
   }
 
   async function updateMission(status: string) {
@@ -256,7 +280,7 @@ export default function DriverMissionConsole({ vehicleId }: { vehicleId: string 
 
             <div style={{ marginTop: 14, color: "#334155" }}>
               Incident: {mission.incidents?.incident_code || "None linked"}
-              {mission.incidents?.severity ? ` Â· ${mission.incidents.severity}` : ""}
+              {mission.incidents?.severity ? ` Ã‚Â· ${mission.incidents.severity}` : ""}
             </div>
 
             <div style={{ marginTop: 6, color: "#334155" }}>
@@ -265,7 +289,7 @@ export default function DriverMissionConsole({ vehicleId }: { vehicleId: string 
 
             {route && (
               <div style={{ marginTop: 6, color: "#334155" }}>
-                Route: {route.label || "Selected route"} Â· {route.duration || "ETA unavailable"}
+                Route: {route.label || "Selected route"} Ã‚Â· {route.duration || "ETA unavailable"}
               </div>
             )}
 
@@ -345,6 +369,32 @@ export default function DriverMissionConsole({ vehicleId }: { vehicleId: string 
                 </button>
               )}
             </div>
+          </div>
+
+          <div style={{ marginTop: 18, padding: 18, borderRadius: 16, border: "1px solid #e2e8f0", background: "#ffffff" }}>
+            <div style={{ fontWeight: 900, fontSize: 18, marginBottom: 14 }}>
+              Mission Timeline
+            </div>
+
+            {timeline.length === 0 ? (
+              <div style={{ color: "#64748b" }}>No activity yet.</div>
+            ) : (
+              timeline.map((event: any) => (
+                <div key={event.id} style={{ padding: "12px 0", borderBottom: "1px solid #e5e7eb" }}>
+                  <div style={{ fontWeight: 700 }}>{event.title}</div>
+
+                  {event.detail && (
+                    <div style={{ color: "#475569", marginTop: 4 }}>
+                      {event.detail}
+                    </div>
+                  )}
+
+                  <div style={{ marginTop: 4, fontSize: 12, color: "#94a3b8" }}>
+                    {new Date(event.created_at).toLocaleString()}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
           {missions.length > 1 && (
