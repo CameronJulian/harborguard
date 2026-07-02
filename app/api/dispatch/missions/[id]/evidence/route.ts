@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
+import { createMissionTimelineEvent } from "@/lib/dispatch/missionTimeline";
 
 const allowedTypes = ["photo", "signature", "note", "barcode", "qr"];
 
@@ -48,6 +49,20 @@ export async function POST(
       .single();
 
     if (error) throw error;
+
+    await createMissionTimelineEvent(supabase, {
+      organizationId,
+      missionId: id,
+      eventType: "evidence_added",
+      title: `${evidenceType.charAt(0).toUpperCase()}${evidenceType.slice(1)} uploaded`,
+      detail: body.notes || `${evidenceType} added to mission.`,
+      actorId: user?.id || null,
+      source: "mission_evidence",
+      metadata: {
+        evidenceId: data.id,
+        evidenceType,
+      },
+    });
 
     return NextResponse.json({
       success: true,
