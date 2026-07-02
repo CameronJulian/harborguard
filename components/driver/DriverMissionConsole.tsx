@@ -33,6 +33,10 @@ export default function DriverMissionConsole({ vehicleId }: { vehicleId: string 
   const [missions, setMissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [evidenceNotes, setEvidenceNotes] = useState("");
+  const [signatureName, setSignatureName] = useState("");
+  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
+  const [photoName, setPhotoName] = useState("");
 
   async function loadMission() {
     if (!vehicleId) {
@@ -90,6 +94,98 @@ export default function DriverMissionConsole({ vehicleId }: { vehicleId: string 
       await loadMission();
     } catch (error: any) {
       setMessage(error.message || "Failed to update mission.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handlePhotoSelection(event: any) {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      setPhotoDataUrl(null);
+      setPhotoName("");
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      setPhotoDataUrl(String(reader.result || ""));
+      setPhotoName(file.name);
+    };
+
+    reader.readAsDataURL(file);
+  }
+
+  async function saveEvidence(evidenceType: string, payload: any) {
+    if (!mission?.id) return;
+
+    const response = await fetchWithAuth(`/api/dispatch/missions/${mission.id}/evidence`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        evidenceType,
+        ...payload,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || "Failed to save mission evidence.");
+    }
+
+    return result.evidence;
+  }
+
+  async function completeMissionWithEvidence() {
+    if (!mission?.id) return;
+
+    try {
+      setLoading(true);
+      setMessage("");
+
+      if (evidenceNotes.trim()) {
+        await saveEvidence("note", {
+          notes: evidenceNotes.trim(),
+          metadata: {
+            source: "driver_mission_console",
+          },
+        });
+      }
+
+      if (signatureName.trim()) {
+        await saveEvidence("signature", {
+          signatureData: signatureName.trim(),
+          notes: "Customer signature/name captured by driver.",
+          metadata: {
+            source: "driver_mission_console",
+            signatureType: "typed_name",
+          },
+        });
+      }
+
+      if (photoDataUrl) {
+        await saveEvidence("photo", {
+          fileUrl: photoDataUrl,
+          filePath: photoName || null,
+          notes: "Mission completion photo captured by driver.",
+          metadata: {
+            source: "driver_mission_console",
+            fileName: photoName || null,
+          },
+        });
+      }
+
+      await updateMission("Completed");
+
+      setEvidenceNotes("");
+      setSignatureName("");
+      setPhotoDataUrl(null);
+      setPhotoName("");
+    } catch (error: any) {
+      setMessage(error.message || "Failed to complete mission with evidence.");
     } finally {
       setLoading(false);
     }
@@ -160,7 +256,7 @@ export default function DriverMissionConsole({ vehicleId }: { vehicleId: string 
 
             <div style={{ marginTop: 14, color: "#334155" }}>
               Incident: {mission.incidents?.incident_code || "None linked"}
-              {mission.incidents?.severity ? ` · ${mission.incidents.severity}` : ""}
+              {mission.incidents?.severity ? ` Â· ${mission.incidents.severity}` : ""}
             </div>
 
             <div style={{ marginTop: 6, color: "#334155" }}>
@@ -169,7 +265,7 @@ export default function DriverMissionConsole({ vehicleId }: { vehicleId: string 
 
             {route && (
               <div style={{ marginTop: 6, color: "#334155" }}>
-                Route: {route.label || "Selected route"} · {route.duration || "ETA unavailable"}
+                Route: {route.label || "Selected route"} Â· {route.duration || "ETA unavailable"}
               </div>
             )}
 
@@ -179,11 +275,58 @@ export default function DriverMissionConsole({ vehicleId }: { vehicleId: string 
               </div>
             )}
 
+            {!["Completed", "Cancelled"].includes(mission.status) && (
+              <div style={{ marginTop: 16, padding: 14, borderRadius: 14, background: "#ffffff", border: "1px solid #dbeafe" }}>
+                <div style={{ fontWeight: 900, marginBottom: 8 }}>Mission Evidence</div>
+
+                <div style={{ display: "grid", gap: 10 }}>
+                  <label style={{ display: "grid", gap: 6, color: "#334155", fontWeight: 700 }}>
+                    Delivery photo
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoSelection}
+                      disabled={loading}
+                    />
+                  </label>
+
+                  {photoName && (
+                    <div style={{ color: "#2563eb", fontSize: 13, fontWeight: 800 }}>
+                      Photo selected: {photoName}
+                    </div>
+                  )}
+
+                  <label style={{ display: "grid", gap: 6, color: "#334155", fontWeight: 700 }}>
+                    Customer signature/name
+                    <input
+                      value={signatureName}
+                      onChange={(event) => setSignatureName(event.target.value)}
+                      placeholder="Customer name or signature confirmation"
+                      disabled={loading}
+                      style={{ padding: 10, borderRadius: 10, border: "1px solid #cbd5e1" }}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6, color: "#334155", fontWeight: 700 }}>
+                    Completion notes
+                    <textarea
+                      value={evidenceNotes}
+                      onChange={(event) => setEvidenceNotes(event.target.value)}
+                      placeholder="Add delivery / completion notes"
+                      disabled={loading}
+                      rows={3}
+                      style={{ padding: 10, borderRadius: 10, border: "1px solid #cbd5e1", resize: "vertical" }}
+                    />
+                  </label>
+                </div>
+              </div>
+            )}
+
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 }}>
               {next && (
                 <button
                   type="button"
-                  onClick={() => updateMission(next)}
+                  onClick={() => next === "Completed" ? completeMissionWithEvidence() : updateMission(next)}
                   disabled={loading}
                   style={{ padding: "12px 16px", borderRadius: 12, border: "none", background: "#16a34a", color: "#ffffff", fontWeight: 900, cursor: loading ? "not-allowed" : "pointer" }}
                 >
