@@ -170,6 +170,14 @@ export default function DriverMissionConsole({ vehicleId }: { vehicleId: string 
       setLoading(true);
       setMessage("");
 
+      const hasPhoto = !!photoDataUrl;
+      const hasSignature = signatureName.trim().length > 0;
+      const hasNotes = evidenceNotes.trim().length > 0;
+
+      if (!hasPhoto && !hasSignature && !hasNotes) {
+        throw new Error("Proof of delivery requires at least a photo, signature, or delivery note.");
+      }
+
       if (evidenceNotes.trim()) {
         await saveEvidence("note", {
           notes: evidenceNotes.trim(),
@@ -280,7 +288,7 @@ export default function DriverMissionConsole({ vehicleId }: { vehicleId: string 
 
             <div style={{ marginTop: 14, color: "#334155" }}>
               Incident: {mission.incidents?.incident_code || "None linked"}
-              {mission.incidents?.severity ? ` Ã‚Â· ${mission.incidents.severity}` : ""}
+              {mission.incidents?.severity ? ` ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ${mission.incidents.severity}` : ""}
             </div>
 
             <div style={{ marginTop: 6, color: "#334155" }}>
@@ -289,7 +297,7 @@ export default function DriverMissionConsole({ vehicleId }: { vehicleId: string 
 
             {route && (
               <div style={{ marginTop: 6, color: "#334155" }}>
-                Route: {route.label || "Selected route"} Ã‚Â· {route.duration || "ETA unavailable"}
+                Route: {route.label || "Selected route"} ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· {route.duration || "ETA unavailable"}
               </div>
             )}
 
