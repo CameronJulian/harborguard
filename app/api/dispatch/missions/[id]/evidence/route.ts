@@ -75,3 +75,51 @@ export async function POST(
     );
   }
 }
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { supabase, organizationId } = await requireOrganization();
+    const { id } = await params;
+
+    const { data: mission, error: missionError } = await supabase
+      .from("dispatch_missions")
+      .select("id")
+      .eq("id", id)
+      .eq("organization_id", organizationId)
+      .single();
+
+    if (missionError || !mission) {
+      return NextResponse.json(
+        { error: "Mission not found." },
+        { status: 404 }
+      );
+    }
+
+    const { data: evidence, error } = await supabase
+      .from("mission_evidence")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .eq("mission_id", id)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    return NextResponse.json({
+      success: true,
+      missionId: id,
+      count: evidence?.length || 0,
+      evidence: evidence || [],
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        error: error.message || "Failed to load mission evidence.",
+      },
+      {
+        status: error.message === "Unauthorized" ? 401 : 500,
+      }
+    );
+  }
+}
