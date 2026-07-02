@@ -16,6 +16,50 @@ const transitions: Record<string, string[]> = {
   Cancelled: [],
 };
 
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { supabase, organizationId } = await requireOrganization();
+    const { id } = await params;
+
+    const { data: mission, error } = await supabase
+      .from("dispatch_missions")
+      .select(`
+        *,
+        vehicles (
+          id,
+          registration_number,
+          nickname
+        ),
+        incidents (
+          id,
+          incident_code,
+          summary,
+          severity,
+          status
+        )
+      `)
+      .eq("organization_id", organizationId)
+      .eq("id", id)
+      .single();
+
+    if (error || !mission) {
+      return NextResponse.json({ error: "Mission not found." }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      mission,
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message || "Failed to load mission." },
+      { status: error.message === "Unauthorized" ? 401 : 500 }
+    );
+  }
+}
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
