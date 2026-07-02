@@ -1,5 +1,9 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
+import {
+  createMissionTimelineEvent,
+  missionStatusTimelineTitle,
+} from "@/lib/dispatch/missionTimeline";
 
 const transitions: Record<string, string[]> = {
   Pending: ["Assigned", "Cancelled"],
@@ -17,7 +21,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { supabase, organizationId } = await requireOrganization();
+    const { supabase, organizationId, user } = await requireOrganization();
     const { id } = await params;
     const body = await req.json();
     const newStatus = body.status;
@@ -64,6 +68,21 @@ export async function PATCH(
       .single();
 
     if (updateError) throw updateError;
+
+    await createMissionTimelineEvent(supabase, {
+      organizationId,
+      missionId: id,
+      eventType: "status_change",
+      title: missionStatusTimelineTitle(newStatus),
+      detail: `Mission status changed from ${mission.status} to ${newStatus}.`,
+      actorId: user?.id || null,
+      source: "dispatch_mission_status",
+      metadata: {
+        fromStatus: mission.status,
+        toStatus: newStatus,
+        update,
+      },
+    });
 
     return NextResponse.json({
       success: true,
