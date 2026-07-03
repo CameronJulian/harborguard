@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
 import { subscribeCommandCenterRealtime } from "@/lib/realtime/commandCenterEvents";
+import { supabaseBrowser } from "@/lib/supabase/browser";
 
 type Props = {
   missionId: string | null;
@@ -20,6 +21,7 @@ export default function MissionDetailsPanel({
   const [noteText, setNoteText] = useState("");
   const [messages, setMessages] = useState<any[]>([]);
   const [messageText, setMessageText] = useState("");
+  const [uploadingEvidence, setUploadingEvidence] = useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -60,6 +62,62 @@ export default function MissionDetailsPanel({
 
     return () => unsubscribe();
   }, [missionId]);
+
+  async function uploadEvidenceFile(file: File) {
+    if (!missionId) return;
+
+    setMessage("");
+    setUploadingEvidence(true);
+
+    try {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const filePath = `missions/${missionId}/${Date.now()}-${safeName}`;
+
+      const { error: uploadError } = await supabaseBrowser.storage
+        .from("mission-evidence")
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: publicUrlData } = supabaseBrowser.storage
+        .from("mission-evidence")
+        .getPublicUrl(filePath);
+
+      const response = await fetchWithAuth(`/api/dispatch/missions/${missionId}/evidence`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          evidenceType: file.type.startsWith("image/") ? "photo" : "note",
+          fileUrl: publicUrlData.publicUrl,
+          filePath,
+          notes: `File uploaded: ${file.name}`,
+          metadata: {
+            source: "mission_details_panel",
+            fileName: file.name,
+            fileType: file.type,
+            fileSize: file.size,
+          },
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to save evidence record.");
+      }
+
+      setEvidence((current) => [result.evidence, ...current]);
+    } catch (error: any) {
+      setMessage(error.message || "Failed to upload evidence.");
+    } finally {
+      setUploadingEvidence(false);
+    }
+  }
 
   async function saveNote() {
     if (!missionId || !noteText.trim()) return;
@@ -146,6 +204,46 @@ export default function MissionDetailsPanel({
       <div>
         <strong>Evidence:</strong>{" "}
         {evidence.length}
+      </div>
+
+      <div style={{ marginTop: 20, padding: 14, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+        <h3 style={{ marginTop: 0, marginBottom: 8 }}>Mission Evidence</h3>
+
+        <input
+          type="file"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) uploadEvidenceFile(file);
+            event.currentTarget.value = "";
+          }}
+          disabled={uploadingEvidence}
+        />
+
+        <div style={{ color: "#64748b", fontSize: 13, marginTop: 8 }}>
+          {uploadingEvidence ? "Uploading evidence..." : "Upload photos, PDFs, screenshots, or mission documents."}
+        </div>
+
+        <div style={{ display: "grid", gap: 8, marginTop: 14 }}>
+          {evidence.length === 0 ? (
+            <div style={{ color: "#64748b" }}>No evidence uploaded yet.</div>
+          ) : (
+            evidence.map((item: any) => (
+              <div key={item.id} style={{ padding: 10, borderRadius: 10, background: "#ffffff", border: "1px solid #e5e7eb" }}>
+                <div style={{ fontWeight: 800 }}>
+                  {item.evidence_type || "evidence"}
+                </div>
+                <div style={{ color: "#64748b", fontSize: 13 }}>
+                  {item.notes || item.file_path || "Mission evidence"}
+                </div>
+                {item.file_url && (
+                  <a href={item.file_url} target="_blank" rel="noreferrer" style={{ color: "#2563eb", fontWeight: 800, fontSize: 13 }}>
+                    Open file
+                  </a>
+                )}
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       <div style={{ marginTop: 20 }}>
