@@ -17,6 +17,8 @@ export default function MissionDetailsPanel({
   const [evidence, setEvidence] = useState<any[]>([]);
   const [notes, setNotes] = useState<any[]>([]);
   const [noteText, setNoteText] = useState("");
+  const [messages, setMessages] = useState<any[]>([]);
+  const [messageText, setMessageText] = useState("");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -26,23 +28,26 @@ export default function MissionDetailsPanel({
       setLoading(true);
 
       try {
-        const [missionRes, timelineRes, evidenceRes, notesRes] =
+        const [missionRes, timelineRes, evidenceRes, notesRes, messagesRes] =
           await Promise.all([
             fetchWithAuth(`/api/dispatch/missions/${missionId}`),
             fetchWithAuth(`/api/dispatch/missions/${missionId}/timeline`),
             fetchWithAuth(`/api/dispatch/missions/${missionId}/evidence`),
-            fetchWithAuth(`/api/dispatch/missions/${missionId}/notes`)
+            fetchWithAuth(`/api/dispatch/missions/${missionId}/notes`),
+            fetchWithAuth(`/api/dispatch/missions/${missionId}/messages`)
           ]);
 
         const missionJson = await missionRes.json();
         const timelineJson = await timelineRes.json();
         const evidenceJson = await evidenceRes.json();
         const notesJson = await notesRes.json();
+        const messagesJson = await messagesRes.json();
 
         setMission(missionJson.mission);
         setTimeline(timelineJson.timeline || []);
         setEvidence(evidenceJson.evidence || []);
         setNotes(notesJson.notes || []);
+        setMessages(messagesJson.messages || []);
       } finally {
         setLoading(false);
       }
@@ -71,6 +76,29 @@ export default function MissionDetailsPanel({
 
     setNotes([result.note, ...notes]);
     setNoteText("");
+  }
+
+  async function sendMessage() {
+    if (!missionId || !messageText.trim()) return;
+
+    const response = await fetchWithAuth(`/api/dispatch/missions/${missionId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: messageText.trim(),
+        senderRole: "dispatcher",
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      setMessage(result.error || "Failed to send message.");
+      return;
+    }
+
+    setMessages((current) => [...current, result.message]);
+    setMessageText("");
   }
 
   if (!missionId) {
@@ -168,6 +196,64 @@ export default function MissionDetailsPanel({
             ))
           )}
         </div>
+      </div>
+
+      <div style={{ marginTop: 24, paddingTop: 18, borderTop: "1px solid #e5e7eb" }}>
+        <h3 style={{ marginBottom: 8 }}>Mission Chat</h3>
+
+        <div style={{ display: "grid", gap: 10, maxHeight: 220, overflowY: "auto", marginBottom: 12 }}>
+          {messages.length === 0 ? (
+            <div style={{ color: "#64748b" }}>No messages yet.</div>
+          ) : (
+            messages.map((chat: any) => (
+              <div
+                key={chat.id}
+                style={{
+                  padding: 10,
+                  borderRadius: 10,
+                  background: chat.sender_role === "dispatcher" ? "#eff6ff" : "#ecfeff",
+                  border: "1px solid #e2e8f0"
+                }}
+              >
+                <strong>{chat.sender_role || "user"}</strong>
+                <div>{chat.message}</div>
+                <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
+                  {chat.created_at ? new Date(chat.created_at).toLocaleString() : "Just now"}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <textarea
+          value={messageText}
+          onChange={(event) => setMessageText(event.target.value)}
+          placeholder="Send mission message..."
+          style={{
+            width: "100%",
+            minHeight: 80,
+            padding: 10,
+            borderRadius: 10,
+            border: "1px solid #cbd5e1",
+            marginBottom: 8
+          }}
+        />
+
+        <button
+          type="button"
+          onClick={sendMessage}
+          style={{
+            padding: "9px 12px",
+            borderRadius: 10,
+            border: 0,
+            background: "#2563eb",
+            color: "#ffffff",
+            fontWeight: 800,
+            cursor: "pointer"
+          }}
+        >
+          Send Message
+        </button>
       </div>
     </div>
   );
