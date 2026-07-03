@@ -235,11 +235,48 @@ export default function MissionDetailsPanel({
                 <div style={{ color: "#64748b", fontSize: 13 }}>
                   {item.notes || item.file_path || "Mission evidence"}
                 </div>
-                {item.file_url && (
-                  <a href={item.file_url} target="_blank" rel="noreferrer" style={{ color: "#2563eb", fontWeight: 800, fontSize: 13 }}>
-                    Open file
+                {item.file_url && item.metadata?.fileType?.startsWith("image/") && (
+                  <a href={item.file_url} target="_blank" rel="noreferrer">
+                    <img
+                      src={item.file_url}
+                      alt={item.notes || "Mission evidence"}
+                      style={{
+                        width: "100%",
+                        maxHeight: 220,
+                        objectFit: "cover",
+                        borderRadius: 10,
+                        marginTop: 8,
+                        border: "1px solid #e5e7eb"
+                      }}
+                    />
                   </a>
                 )}
+
+                {item.file_url && item.metadata?.fileType?.startsWith("video/") && (
+                  <video controls style={{ width: "100%", borderRadius: 10, marginTop: 8 }}>
+                    <source src={item.file_url} type={item.metadata.fileType} />
+                  </video>
+                )}
+
+                {item.file_url && item.metadata?.fileType?.startsWith("audio/") && (
+                  <audio controls src={item.file_url} style={{ width: "100%", marginTop: 8 }} />
+                )}
+
+                {item.file_url && item.metadata?.fileType === "application/pdf" && (
+                  <a href={item.file_url} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 8, color: "#2563eb", fontWeight: 800, fontSize: 13 }}>
+                    Open PDF
+                  </a>
+                )}
+
+                {item.file_url &&
+                  !item.metadata?.fileType?.startsWith("image/") &&
+                  !item.metadata?.fileType?.startsWith("video/") &&
+                  !item.metadata?.fileType?.startsWith("audio/") &&
+                  item.metadata?.fileType !== "application/pdf" && (
+                    <a href={item.file_url} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 8, color: "#2563eb", fontWeight: 800, fontSize: 13 }}>
+                      Open Attachment
+                    </a>
+                  )}
               </div>
             ))
           )}
