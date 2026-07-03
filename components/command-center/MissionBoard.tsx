@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
 import { subscribeCommandCenterRealtime } from "@/lib/realtime/commandCenterEvents";
+import MissionDetailsPanel from "@/components/dispatch/MissionDetailsPanel";
 
 const statuses = ["Pending", "Assigned", "Accepted", "En Route", "Arrived", "In Progress", "Completed", "Cancelled"];
 
@@ -24,6 +25,7 @@ export default function MissionBoard() {
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [selectedMissionId, setSelectedMissionId] = useState<string | null>(null);
 
   async function loadMissions() {
     try {
@@ -119,7 +121,8 @@ export default function MissionBoard() {
             ))}
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(320px, 1fr)", gap: 18, alignItems: "start" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 }}>
             {statuses.map((status) => {
               const group = missions.filter((mission) => mission.status === status);
 
@@ -135,9 +138,19 @@ export default function MissionBoard() {
                         const next = nextStatus(mission.status);
 
                         return (
-                          <div key={mission.id} style={{ padding: 12, borderRadius: 14, background: "#ffffff", border: "1px solid #e5e7eb" }}>
+                          <div
+  key={mission.id}
+  onClick={() => setSelectedMissionId(mission.id)}
+  style={{
+    padding: 12,
+    borderRadius: 14,
+    background: "#ffffff",
+    border: selectedMissionId === mission.id ? "2px solid #2563eb" : "1px solid #e5e7eb",
+    cursor: "pointer"
+  }}
+>
                             <div style={{ fontWeight: 900 }}>
-                              {mission.mission_type || "dispatch"} · {mission.priority || "normal"}
+                              {mission.mission_type || "dispatch"} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· {mission.priority || "normal"}
                             </div>
 
                             <div style={{ color: "#64748b", fontSize: 13, marginTop: 5 }}>
@@ -173,6 +186,9 @@ export default function MissionBoard() {
                 </div>
               );
             })}
+            </div>
+
+            <MissionDetailsPanel missionId={selectedMissionId} />
           </div>
         </>
       )}
