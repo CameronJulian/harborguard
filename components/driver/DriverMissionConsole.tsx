@@ -32,6 +32,8 @@ export default function DriverMissionConsole({ vehicleId }: { vehicleId: string 
   const [mission, setMission] = useState<any | null>(null);
   const [missions, setMissions] = useState<any[]>([]);
   const [timeline, setTimeline] = useState<any[]>([]);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [chatText, setChatText] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [evidenceNotes, setEvidenceNotes] = useState("");
@@ -69,8 +71,10 @@ export default function DriverMissionConsole({ vehicleId }: { vehicleId: string 
 
       if (currentMission?.id) {
         await loadTimeline(currentMission.id);
+        await loadChatMessages(currentMission.id);
       } else {
         setTimeline([]);
+        setChatMessages([]);
       }
     } catch (error: any) {
       setMessage(error.message || "Failed to load mission.");
@@ -92,6 +96,44 @@ export default function DriverMissionConsole({ vehicleId }: { vehicleId: string 
     }
 
     setTimeline(result.timeline || []);
+  }
+
+  async function loadChatMessages(missionId: string) {
+    const response = await fetchWithAuth(`/api/dispatch/missions/${missionId}/messages`, {
+      method: "GET",
+      cache: "no-store",
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || "Failed to load mission chat.");
+    }
+
+    setChatMessages(result.messages || []);
+  }
+
+  async function sendDriverMessage() {
+    if (!mission?.id || !chatText.trim()) return;
+
+    const response = await fetchWithAuth(`/api/dispatch/missions/${mission.id}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: chatText.trim(),
+        senderRole: "driver",
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      setMessage(result.error || "Failed to send message.");
+      return;
+    }
+
+    setChatMessages((current) => [...current, result.message]);
+    setChatText("");
   }
 
   async function updateMission(status: string) {
@@ -288,7 +330,7 @@ export default function DriverMissionConsole({ vehicleId }: { vehicleId: string 
 
             <div style={{ marginTop: 14, color: "#334155" }}>
               Incident: {mission.incidents?.incident_code || "None linked"}
-              {mission.incidents?.severity ? ` ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ${mission.incidents.severity}` : ""}
+              {mission.incidents?.severity ? ` ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ${mission.incidents.severity}` : ""}
             </div>
 
             <div style={{ marginTop: 6, color: "#334155" }}>
@@ -297,7 +339,7 @@ export default function DriverMissionConsole({ vehicleId }: { vehicleId: string 
 
             {route && (
               <div style={{ marginTop: 6, color: "#334155" }}>
-                Route: {route.label || "Selected route"} ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· {route.duration || "ETA unavailable"}
+                Route: {route.label || "Selected route"} ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· {route.duration || "ETA unavailable"}
               </div>
             )}
 
