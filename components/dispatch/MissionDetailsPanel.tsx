@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
+import { subscribeCommandCenterRealtime } from "@/lib/realtime/commandCenterEvents";
 
 type Props = {
   missionId: string | null;
@@ -54,6 +55,10 @@ export default function MissionDetailsPanel({
     }
 
     load();
+
+    const unsubscribe = subscribeCommandCenterRealtime(load);
+
+    return () => unsubscribe();
   }, [missionId]);
 
   async function saveNote() {
