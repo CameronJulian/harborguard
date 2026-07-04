@@ -249,6 +249,39 @@ export default function MissionDetailsPanel({
         {evidence.length}
       </div>
 
+      <div style={{ marginTop: 20, padding: 14, borderRadius: 14, background: "#eff6ff", border: "1px solid #bfdbfe" }}>
+        <h3 style={{ marginTop: 0, marginBottom: 12 }}>Mission KPI Summary</h3>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10 }}>
+          <div style={{ padding: 10, borderRadius: 12, background: "#ffffff", border: "1px solid #dbeafe" }}>
+            <div style={{ color: "#64748b", fontSize: 12 }}>GPS Updates</div>
+            <div style={{ fontSize: 22, fontWeight: 900 }}>{tracking.length}</div>
+          </div>
+
+          <div style={{ padding: 10, borderRadius: 12, background: "#ffffff", border: "1px solid #dbeafe" }}>
+            <div style={{ color: "#64748b", fontSize: 12 }}>Messages</div>
+            <div style={{ fontSize: 22, fontWeight: 900 }}>{messages.length}</div>
+          </div>
+
+          <div style={{ padding: 10, borderRadius: 12, background: "#ffffff", border: "1px solid #dbeafe" }}>
+            <div style={{ color: "#64748b", fontSize: 12 }}>Evidence</div>
+            <div style={{ fontSize: 22, fontWeight: 900 }}>{evidence.length}</div>
+          </div>
+
+          <div style={{ padding: 10, borderRadius: 12, background: "#ffffff", border: "1px solid #dbeafe" }}>
+            <div style={{ color: "#64748b", fontSize: 12 }}>Timeline Events</div>
+            <div style={{ fontSize: 22, fontWeight: 900 }}>{timeline.length}</div>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, fontSize: 13 }}>
+          <div><strong>Assigned:</strong> {mission?.assigned_at ? new Date(mission.assigned_at).toLocaleString() : "Unknown"}</div>
+          <div><strong>Accepted:</strong> {mission?.accepted_at ? new Date(mission.accepted_at).toLocaleString() : "Pending"}</div>
+          <div><strong>Arrived:</strong> {mission?.arrived_at ? new Date(mission.arrived_at).toLocaleString() : "Pending"}</div>
+          <div><strong>Completed:</strong> {mission?.completed_at ? new Date(mission.completed_at).toLocaleString() : "Pending"}</div>
+        </div>
+      </div>
+
       <div style={{ marginTop: 20, padding: 14, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
         <h3 style={{ marginTop: 0, marginBottom: 12 }}>Mission Timeline</h3>
 
