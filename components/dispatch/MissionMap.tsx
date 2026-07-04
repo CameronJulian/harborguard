@@ -40,9 +40,10 @@ type TrackingPoint = {
 
 type Props = {
   tracking: TrackingPoint[];
+  mission?: any;
 };
 
-export default function MissionMap({ tracking }: Props) {
+export default function MissionMap({ tracking, mission }: Props) {
   const validTracking = tracking.filter(
     (point) =>
       typeof point.latitude === "number" &&
@@ -50,6 +51,14 @@ export default function MissionMap({ tracking }: Props) {
   );
 
   const latest = validTracking[0] || null;
+
+  const destination =
+    mission?.destination_lat && mission?.destination_lng
+      ? {
+          lat: Number(mission.destination_lat),
+          lng: Number(mission.destination_lng),
+        }
+      : null;
 
   const center = useMemo<[number, number]>(() => {
     return latest
@@ -75,6 +84,36 @@ export default function MissionMap({ tracking }: Props) {
             positions={routePositions}
             pathOptions={{ color: "#2563eb", weight: 4 }}
           />
+        )}
+
+        {latest && destination && (
+          <Polyline
+            positions={[
+              [latest.latitude, latest.longitude],
+              [destination.lat, destination.lng],
+            ]}
+            pathOptions={{ color: "#0f766e", weight: 3, dashArray: "8 8" }}
+          />
+        )}
+
+        {destination && (
+          <CircleMarker
+            center={[destination.lat, destination.lng]}
+            radius={9}
+            pathOptions={{
+              color: "#111827",
+              fillColor: "#facc15",
+              fillOpacity: 0.95,
+            }}
+          >
+            <Popup>
+              <strong>Mission Destination</strong>
+              <br />
+              Lat: {destination.lat}
+              <br />
+              Lng: {destination.lng}
+            </Popup>
+          </CircleMarker>
         )}
 
         {latest && (
@@ -133,7 +172,7 @@ export default function MissionMap({ tracking }: Props) {
             color: "#1d4ed8",
           }}
         >
-          Live driver tracking · {latest.recorded_at ? new Date(latest.recorded_at).toLocaleTimeString() : "waiting"}
+          Live driver tracking - {latest.recorded_at ? new Date(latest.recorded_at).toLocaleTimeString() : "waiting"}
         </div>
       )}
     </div>

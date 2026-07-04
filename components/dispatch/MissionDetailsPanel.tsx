@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
@@ -250,7 +250,7 @@ export default function MissionDetailsPanel({
       </div>
 
       <div style={{ marginTop: 20 }}>
-        <MissionMap tracking={tracking} />
+        <MissionMap tracking={tracking} mission={mission} />
       </div>
 
       <div style={{ marginTop: 20, padding: 14, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
@@ -445,4 +445,5 @@ export default function MissionDetailsPanel({
     </div>
   );
 }
+
 
