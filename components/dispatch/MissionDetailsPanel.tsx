@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
 import { subscribeCommandCenterRealtime } from "@/lib/realtime/commandCenterEvents";
+import { subscribeMissionMessages } from "@/lib/realtime/missionMessages";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 
 type Props = {
@@ -60,7 +61,26 @@ export default function MissionDetailsPanel({
 
     const unsubscribe = subscribeCommandCenterRealtime(load);
 
-    return () => unsubscribe();
+    const unsubscribeMessages =
+      subscribeMissionMessages(
+        missionId,
+        (payload) => {
+          setMessages(current => {
+            const exists = current.some(
+              (m:any) => m.id === payload.new.id
+            );
+
+            if (exists) return current;
+
+            return [...current, payload.new];
+          });
+        }
+      );
+
+    return () => {
+      unsubscribe();
+      unsubscribeMessages();
+    };
   }, [missionId]);
 
   async function uploadEvidenceFile(file: File) {
