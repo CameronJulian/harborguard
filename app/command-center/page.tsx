@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { fetchWithAuth } from "@/lib/auth-fetch";
 import { supabase } from "@/lib/supabase";
@@ -12,7 +12,10 @@ import VehicleIntelligencePanel from "@/components/command-center/VehicleIntelli
 import FleetDigitalTwinDashboard from "@/components/command-center/FleetDigitalTwinDashboard";
 import IncidentCommandDashboard from "@/components/command-center/IncidentCommandDashboard";
 import IncidentInvestigationTimeline from "@/components/command-center/IncidentInvestigationTimeline";
-import HERETrafficOverlay from "@/components/command-center/HERETrafficOverlay";
+const HERETrafficOverlay = dynamic(
+  () => import("@/components/command-center/HERETrafficOverlay"),
+  { ssr: false }
+);
 import TrafficFlowDashboard from "@/components/command-center/TrafficFlowDashboard";
 import FleetOptimizationDashboard from "@/components/command-center/FleetOptimizationDashboard";
 import MissionBoard from "@/components/command-center/MissionBoard";
@@ -1867,17 +1870,17 @@ if (
               fontSize: 14,
             }}
           >
-            <div>â€¢ Speed: {threat.speed} km/h</div>
-            <div>â€¢ Open Alerts: {threat.openAlerts}</div>
+            <div>Ã¢â‚¬Â¢ Speed: {threat.speed} km/h</div>
+            <div>Ã¢â‚¬Â¢ Open Alerts: {threat.openAlerts}</div>
             <div>
-              â€¢ Critical Alerts: {threat.criticalAlerts}
+              Ã¢â‚¬Â¢ Critical Alerts: {threat.criticalAlerts}
             </div>
             <div>
-              â€¢ Near Incident Zone:{" "}
+              Ã¢â‚¬Â¢ Near Incident Zone:{" "}
               {threat.nearIncident ? "Yes" : "No"}
             </div>
             <div>
-              â€¢ Offline: {threat.isOffline ? "Yes" : "No"}
+              Ã¢â‚¬Â¢ Offline: {threat.isOffline ? "Yes" : "No"}
             </div>
           </div>
         </div>
@@ -1922,8 +1925,8 @@ if (
                 </div>
 
                 <div style={{ marginTop: 6, color: "#64748b", fontSize: 14 }}>
-                  Type: {incident.type.replaceAll("_", " ")} • Severity:{" "}
-                  {incident.severity.toUpperCase()} • Radius:{" "}
+                  Type: {incident.type.replaceAll("_", " ")} â€¢ Severity:{" "}
+                  {incident.severity.toUpperCase()} â€¢ Radius:{" "}
                   {incident.radius_meters}m
                 </div>
               </div>
@@ -2119,6 +2122,11 @@ if (
                 incidents={incidents}
                 visible={showHeatmap}
               />
+
+              <HERETrafficOverlay
+                incidents={incidents}
+                enabled={showTrafficOverlay}
+              />
 			  
 			  {incidents.map((incident) => {
   const coords = cleanLatLng(incident.latitude, incident.longitude);
@@ -2274,7 +2282,7 @@ if (
                             <strong>Speed:</strong> {Math.round(vehicle.speedKmh || 0)} km/h
                           </div>
                           <div>
-                            <strong>Heading:</strong> {Math.round(vehicle.heading || 0)}Â°
+                            <strong>Heading:</strong> {Math.round(vehicle.heading || 0)}Ã‚Â°
                           </div>
                           <div>
                             <strong>Last Seen:</strong> {formatDateTime(vehicle.lastSeen)}
@@ -3124,7 +3132,7 @@ if (
           lineHeight: 1.5,
         }}
       >
-        âš  {incident.title} ({incident.severity})
+        Ã¢Å¡Â  {incident.title} ({incident.severity})
       </div>
     ))}
   </div>
