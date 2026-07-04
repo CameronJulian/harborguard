@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
 import { subscribeCommandCenterRealtime } from "@/lib/realtime/commandCenterEvents";
 import { subscribeMissionMessages } from "@/lib/realtime/missionMessages";
+import { subscribeMissionTracking } from "@/lib/realtime/missionTracking";
 import MissionMap from "@/components/dispatch/MissionMap";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 
@@ -82,9 +83,26 @@ export default function MissionDetailsPanel({
         }
       );
 
+    const unsubscribeTracking =
+      subscribeMissionTracking(
+        missionId,
+        (payload) => {
+          setTracking(current => {
+            const exists = current.some(
+              (point:any) => point.id === payload.new.id
+            );
+
+            if (exists) return current;
+
+            return [payload.new, ...current];
+          });
+        }
+      );
+
     return () => {
       unsubscribe();
       unsubscribeMessages();
+      unsubscribeTracking();
     };
   }, [missionId]);
 
