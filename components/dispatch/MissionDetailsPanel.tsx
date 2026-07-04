@@ -309,6 +309,53 @@ export default function MissionDetailsPanel({
       </div>
 
       <div style={{ marginTop: 20, padding: 14, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+        <h3 style={{ marginTop: 0, marginBottom: 12 }}>Driver Activity Feed</h3>
+
+        {[
+          ...tracking.slice(0, 5).map((item: any) => ({
+            id: `tracking-${item.id || item.recorded_at}`,
+            type: "GPS",
+            title: "GPS position updated",
+            detail: `${item.latitude}, ${item.longitude}`,
+            time: item.recorded_at || item.created_at,
+          })),
+          ...messages.slice(-5).map((item: any) => ({
+            id: `message-${item.id}`,
+            type: "CHAT",
+            title: `${item.sender_role || "user"} sent a message`,
+            detail: item.message,
+            time: item.created_at,
+          })),
+          ...evidence.slice(0, 5).map((item: any) => ({
+            id: `evidence-${item.id}`,
+            type: "EVIDENCE",
+            title: `${item.evidence_type || "evidence"} uploaded`,
+            detail: item.notes || item.file_path || "Mission evidence added",
+            time: item.created_at,
+          })),
+        ]
+          .filter((item) => item.time)
+          .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+          .slice(0, 10)
+          .map((item) => (
+            <div key={item.id} style={{ padding: "10px 0", borderBottom: "1px solid #e2e8f0" }}>
+              <div style={{ fontSize: 12, fontWeight: 900, color: "#2563eb" }}>
+                {item.type}
+              </div>
+              <div style={{ fontWeight: 800 }}>{item.title}</div>
+              <div style={{ color: "#475569", fontSize: 13 }}>{item.detail}</div>
+              <div style={{ color: "#64748b", fontSize: 12, marginTop: 3 }}>
+                {new Date(item.time).toLocaleString()}
+              </div>
+            </div>
+          ))}
+
+        {tracking.length === 0 && messages.length === 0 && evidence.length === 0 && (
+          <div style={{ color: "#64748b" }}>No driver activity yet.</div>
+        )}
+      </div>
+
+      <div style={{ marginTop: 20, padding: 14, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
         <h3 style={{ marginTop: 0, marginBottom: 8 }}>Assignment Intelligence</h3>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, fontSize: 13 }}>
