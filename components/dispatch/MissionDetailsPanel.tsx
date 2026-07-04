@@ -249,6 +249,61 @@ export default function MissionDetailsPanel({
         {evidence.length}
       </div>
 
+      <div style={{ marginTop: 20, padding: 14, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+        <h3 style={{ marginTop: 0, marginBottom: 12 }}>Mission Timeline</h3>
+
+        {timeline.length === 0 ? (
+          <div style={{ color: "#64748b" }}>No timeline events yet.</div>
+        ) : (
+          <div style={{ display: "grid", gap: 10 }}>
+            {timeline.map((event: any, index: number) => (
+              <div
+                key={event.id || index}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "28px 1fr",
+                  gap: 10,
+                  alignItems: "start",
+                }}
+              >
+                <div
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 999,
+                    background: index === 0 ? "#2563eb" : "#cbd5e1",
+                    color: "#ffffff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 12,
+                    fontWeight: 900,
+                  }}
+                >
+                  {index + 1}
+                </div>
+
+                <div style={{ paddingBottom: 10, borderBottom: "1px solid #e2e8f0" }}>
+                  <div style={{ fontWeight: 900 }}>
+                    {event.title || event.event_type || "Mission event"}
+                  </div>
+
+                  {event.detail && (
+                    <div style={{ color: "#475569", fontSize: 13, marginTop: 3 }}>
+                      {event.detail}
+                    </div>
+                  )}
+
+                  <div style={{ color: "#64748b", fontSize: 12, marginTop: 4 }}>
+                    {event.created_at ? new Date(event.created_at).toLocaleString() : "Time unknown"}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div style={{ marginTop: 20 }}>
         <MissionMap tracking={tracking} mission={mission} />
       </div>
