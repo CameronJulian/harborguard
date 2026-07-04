@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
@@ -251,6 +251,61 @@ export default function MissionDetailsPanel({
 
       <div style={{ marginTop: 20 }}>
         <MissionMap tracking={tracking} mission={mission} />
+      </div>
+
+      <div style={{ marginTop: 20, padding: 14, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+        <h3 style={{ marginTop: 0, marginBottom: 8 }}>Assignment Intelligence</h3>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, fontSize: 13 }}>
+          <div>
+            <strong>Recommended Vehicle:</strong>{" "}
+            {mission?.route_data?.optimization?.vehicleName ||
+              mission?.vehicles?.registration_number ||
+              mission?.vehicles?.nickname ||
+              "Unknown"}
+          </div>
+
+          <div>
+            <strong>Optimization Score:</strong>{" "}
+            {mission?.route_data?.optimization?.score ??
+              mission?.route_data?.optimization?.riskScore ??
+              "Unknown"}
+          </div>
+
+          <div>
+            <strong>Route Provider:</strong>{" "}
+            {mission?.route_data?.provider || "Unknown"}
+          </div>
+
+          <div>
+            <strong>ETA:</strong>{" "}
+            {mission?.route_data?.selectedRoute?.durationSeconds
+              ? `${Math.round(mission.route_data.selectedRoute.durationSeconds / 60)} min`
+              : mission?.route_data?.selectedRoute?.travelTime
+                ? `${Math.round(mission.route_data.selectedRoute.travelTime / 60)} min`
+                : "Unknown"}
+          </div>
+
+          <div>
+            <strong>Distance:</strong>{" "}
+            {mission?.route_data?.selectedRoute?.distanceMeters
+              ? `${(mission.route_data.selectedRoute.distanceMeters / 1000).toFixed(1)} km`
+              : mission?.route_data?.selectedRoute?.length
+                ? `${(mission.route_data.selectedRoute.length / 1000).toFixed(1)} km`
+                : "Unknown"}
+          </div>
+
+          <div>
+            <strong>Status:</strong>{" "}
+            Assigned using Fleet Optimization
+          </div>
+        </div>
+
+        <div style={{ marginTop: 10, color: "#475569", fontSize: 13 }}>
+          <strong>Recommendation:</strong>{" "}
+          {mission?.route_data?.routeRecommendation ||
+            "No route recommendation available."}
+        </div>
       </div>
 
       <div style={{ marginTop: 20, padding: 14, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
