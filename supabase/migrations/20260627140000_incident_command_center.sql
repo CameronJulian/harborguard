@@ -1,4 +1,4 @@
-﻿-- Incident Command Center response workflow
+-- Incident Command Center response workflow
 
 CREATE TABLE IF NOT EXISTS public.incident_command_actions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

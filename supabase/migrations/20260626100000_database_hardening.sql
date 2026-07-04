@@ -1,4 +1,4 @@
-﻿-- Database hardening for operations, notifications, and route safety logs
+-- Database hardening for operations, notifications, and route safety logs
 
 ALTER TABLE public.route_safety_escalation_logs
   ADD CONSTRAINT route_safety_escalation_logs_vehicle_fk

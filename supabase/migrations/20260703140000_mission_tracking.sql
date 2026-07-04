@@ -1,4 +1,4 @@
-﻿create table if not exists public.mission_tracking (
+create table if not exists public.mission_tracking (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations(id) on delete cascade,
   mission_id uuid not null references public.dispatch_missions(id) on delete cascade,

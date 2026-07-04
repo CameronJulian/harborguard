@@ -1,4 +1,4 @@
-﻿create table if not exists public.dispatch_missions (
+create table if not exists public.dispatch_missions (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations(id) on delete cascade,
   incident_id uuid null references public.incidents(id) on delete set null,
