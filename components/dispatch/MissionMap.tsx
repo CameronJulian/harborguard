@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useMemo } from "react";
 import dynamic from "next/dynamic";
@@ -63,7 +63,7 @@ export default function MissionMap({ tracking }: Props) {
     .map((point) => [point.latitude, point.longitude] as [number, number]);
 
   return (
-    <div style={{ height: 360, borderRadius: 16, overflow: "hidden", border: "1px solid #cbd5e1", background: "#f8fafc" }}>
+    <div style={{ height: 360, borderRadius: 16, overflow: "hidden", border: "1px solid #cbd5e1", background: "#f8fafc", position: "relative" }}>
       <MapContainer center={center} zoom={latest ? 15 : 10} style={{ height: "100%", width: "100%" }}>
         <TileLayer
           attribution="&copy; OpenStreetMap contributors"
@@ -78,6 +78,18 @@ export default function MissionMap({ tracking }: Props) {
         )}
 
         {latest && (
+          <>
+          <CircleMarker
+            center={[latest.latitude, latest.longitude]}
+            radius={18}
+            pathOptions={{
+              color: "#93c5fd",
+              fillColor: "#bfdbfe",
+              fillOpacity: 0.35,
+              weight: 2,
+            }}
+          />
+
           <CircleMarker
             center={[latest.latitude, latest.longitude]}
             radius={10}
@@ -101,8 +113,29 @@ export default function MissionMap({ tracking }: Props) {
               Last update: {latest.recorded_at ? new Date(latest.recorded_at).toLocaleString() : "Unknown"}
             </Popup>
           </CircleMarker>
+          </>
         )}
       </MapContainer>
+
+      {latest && (
+        <div
+          style={{
+            position: "absolute",
+            left: 12,
+            bottom: 12,
+            zIndex: 500,
+            padding: "8px 10px",
+            borderRadius: 12,
+            background: "rgba(255,255,255,0.92)",
+            border: "1px solid #dbeafe",
+            fontSize: 12,
+            fontWeight: 800,
+            color: "#1d4ed8",
+          }}
+        >
+          Live driver tracking · {latest.recorded_at ? new Date(latest.recorded_at).toLocaleTimeString() : "waiting"}
+        </div>
+      )}
     </div>
   );
 }
