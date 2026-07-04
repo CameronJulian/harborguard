@@ -80,9 +80,85 @@ export default function MissionMap({ tracking, mission }: Props) {
   const latestPosition: [number, number] | null = latest
     ? [latest.latitude, latest.longitude]
     : null;
+	
+	const totalDistance =
+  destination && latest
+    ? Math.sqrt(
+        Math.pow(destination.lat - latest.latitude, 2) +
+        Math.pow(destination.lng - latest.longitude, 2)
+      )
+    : 0;
+
+const travelledDistance =
+  routePositions.length > 1
+    ? routePositions.length - 1
+    : 0;
+
+const progress =
+  totalDistance > 0
+    ? Math.min(
+        100,
+        Math.round(
+          (travelledDistance /
+            (travelledDistance + totalDistance * 100)) *
+            100
+        )
+      )
+    : 0;
 
   return (
     <div style={{ height: 360, borderRadius: 16, overflow: "hidden", border: "1px solid #cbd5e1", background: "#f8fafc", position: "relative" }}>
+	<div
+  style={{
+    marginBottom: 12,
+    padding: 14,
+    borderRadius: 12,
+    background: "#ffffff",
+    border: "1px solid #dbeafe",
+  }}
+>
+  <div
+    style={{
+      fontWeight: 700,
+      marginBottom: 8,
+    }}
+  >
+    Mission Progress
+  </div>
+
+  <div
+    style={{
+      height: 10,
+      background: "#e5e7eb",
+      borderRadius: 999,
+      overflow: "hidden",
+      marginBottom: 8,
+    }}
+  >
+    <div
+      style={{
+        width: `${progress}%`,
+        height: "100%",
+        background: "#2563eb",
+        transition: "width .4s ease",
+      }}
+    />
+  </div>
+
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      fontSize: 13,
+    }}
+  >
+    <span>{progress}% Complete</span>
+
+    <span>
+      {mission?.status ?? "Pending"}
+    </span>
+  </div>
+</div>
       <MapContainer center={center} zoom={latest ? 15 : 10} style={{ height: "100%", width: "100%" }}>
         <TileLayer
           attribution="&copy; OpenStreetMap contributors"
