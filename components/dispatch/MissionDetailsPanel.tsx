@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
 import { subscribeCommandCenterRealtime } from "@/lib/realtime/commandCenterEvents";
 import { subscribeMissionMessages } from "@/lib/realtime/missionMessages";
+import MissionMap from "@/components/dispatch/MissionMap";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 
 type Props = {
@@ -21,6 +22,7 @@ export default function MissionDetailsPanel({
   const [notes, setNotes] = useState<any[]>([]);
   const [noteText, setNoteText] = useState("");
   const [messages, setMessages] = useState<any[]>([]);
+  const [tracking, setTracking] = useState<any[]>([]);
   const [messageText, setMessageText] = useState("");
   const [uploadingEvidence, setUploadingEvidence] = useState(false);
   const [message, setMessage] = useState("");
@@ -32,13 +34,14 @@ export default function MissionDetailsPanel({
       setLoading(true);
 
       try {
-        const [missionRes, timelineRes, evidenceRes, notesRes, messagesRes] =
+        const [missionRes, timelineRes, evidenceRes, notesRes, messagesRes, trackingRes] =
           await Promise.all([
             fetchWithAuth(`/api/dispatch/missions/${missionId}`),
             fetchWithAuth(`/api/dispatch/missions/${missionId}/timeline`),
             fetchWithAuth(`/api/dispatch/missions/${missionId}/evidence`),
             fetchWithAuth(`/api/dispatch/missions/${missionId}/notes`),
-            fetchWithAuth(`/api/dispatch/missions/${missionId}/messages`)
+            fetchWithAuth(`/api/dispatch/missions/${missionId}/messages`),
+            fetchWithAuth(`/api/dispatch/missions/${missionId}/tracking`)
           ]);
 
         const missionJson = await missionRes.json();
@@ -46,12 +49,14 @@ export default function MissionDetailsPanel({
         const evidenceJson = await evidenceRes.json();
         const notesJson = await notesRes.json();
         const messagesJson = await messagesRes.json();
+        const trackingJson = await trackingRes.json();
 
         setMission(missionJson.mission);
         setTimeline(timelineJson.timeline || []);
         setEvidence(evidenceJson.evidence || []);
         setNotes(notesJson.notes || []);
         setMessages(messagesJson.messages || []);
+        setTracking(trackingJson.tracking || []);
       } finally {
         setLoading(false);
       }
@@ -224,6 +229,10 @@ export default function MissionDetailsPanel({
       <div>
         <strong>Evidence:</strong>{" "}
         {evidence.length}
+      </div>
+
+      <div style={{ marginTop: 20 }}>
+        <MissionMap tracking={tracking} />
       </div>
 
       <div style={{ marginTop: 20, padding: 14, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
