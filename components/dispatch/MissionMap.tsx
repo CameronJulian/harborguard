@@ -1,8 +1,40 @@
 ﻿"use client";
 
+import { useMemo } from "react";
+import dynamic from "next/dynamic";
+
+const MapContainer = dynamic(
+  () => import("react-leaflet").then((m) => m.MapContainer),
+  { ssr: false }
+);
+
+const TileLayer = dynamic(
+  () => import("react-leaflet").then((m) => m.TileLayer),
+  { ssr: false }
+);
+
+const CircleMarker = dynamic(
+  () => import("react-leaflet").then((m) => m.CircleMarker),
+  { ssr: false }
+);
+
+const Polyline = dynamic(
+  () => import("react-leaflet").then((m) => m.Polyline),
+  { ssr: false }
+);
+
+const Popup = dynamic(
+  () => import("react-leaflet").then((m) => m.Popup),
+  { ssr: false }
+);
+
 type TrackingPoint = {
+  id?: string;
   latitude: number;
   longitude: number;
+  speed?: number | null;
+  heading?: number | null;
+  accuracy?: number | null;
   recorded_at?: string;
 };
 
@@ -10,61 +42,67 @@ type Props = {
   tracking: TrackingPoint[];
 };
 
-export default function MissionMap({
-  tracking,
-}: Props) {
-  const latest =
-    tracking.length > 0
-      ? tracking[0]
-      : null;
+export default function MissionMap({ tracking }: Props) {
+  const validTracking = tracking.filter(
+    (point) =>
+      typeof point.latitude === "number" &&
+      typeof point.longitude === "number"
+  );
+
+  const latest = validTracking[0] || null;
+
+  const center = useMemo<[number, number]>(() => {
+    return latest
+      ? [latest.latitude, latest.longitude]
+      : [-33.9249, 18.4241];
+  }, [latest]);
+
+  const routePositions = validTracking
+    .slice()
+    .reverse()
+    .map((point) => [point.latitude, point.longitude] as [number, number]);
 
   return (
-    <div
-      style={{
-        height: 360,
-        borderRadius: 16,
-        border: "1px solid #cbd5e1",
-        background: "#f8fafc",
-        padding: 20,
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <h3 style={{ marginBottom: 10 }}>
-        Live Mission Map
-      </h3>
+    <div style={{ height: 360, borderRadius: 16, overflow: "hidden", border: "1px solid #cbd5e1", background: "#f8fafc" }}>
+      <MapContainer center={center} zoom={latest ? 15 : 10} style={{ height: "100%", width: "100%" }}>
+        <TileLayer
+          attribution="&copy; OpenStreetMap contributors"
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
 
-      {latest ? (
-        <>
-          <div>
-            Latitude:
-            {" "}
-            {latest.latitude}
-          </div>
+        {routePositions.length > 1 && (
+          <Polyline
+            positions={routePositions}
+            pathOptions={{ color: "#2563eb", weight: 4 }}
+          />
+        )}
 
-          <div>
-            Longitude:
-            {" "}
-            {latest.longitude}
-          </div>
-
-          <div
-            style={{
-              marginTop: 10,
+        {latest && (
+          <CircleMarker
+            center={[latest.latitude, latest.longitude]}
+            radius={10}
+            pathOptions={{
               color: "#2563eb",
-              fontWeight: 700,
+              fillColor: "#2563eb",
+              fillOpacity: 0.9,
             }}
           >
-            Live GPS Connected
-          </div>
-        </>
-      ) : (
-        <div style={{ color: "#64748b" }}>
-          Waiting for driver GPS...
-        </div>
-      )}
+            <Popup>
+              <strong>Live Driver Position</strong>
+              <br />
+              Lat: {latest.latitude}
+              <br />
+              Lng: {latest.longitude}
+              <br />
+              Speed: {latest.speed ?? "Unknown"}
+              <br />
+              Accuracy: {latest.accuracy ?? "Unknown"}
+              <br />
+              Last update: {latest.recorded_at ? new Date(latest.recorded_at).toLocaleString() : "Unknown"}
+            </Popup>
+          </CircleMarker>
+        )}
+      </MapContainer>
     </div>
   );
 }
