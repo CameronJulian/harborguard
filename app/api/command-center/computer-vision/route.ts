@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 import { analyseFrame } from "@/lib/vision/provider";
 
@@ -76,6 +76,38 @@ export async function GET() {
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to load computer vision analytics." },
+      { status: error.message === "Unauthorized" ? 401 : 500 }
+    );
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    await requireOrganization();
+
+    const body = await req.json();
+
+    const analysis = await analyseFrame({
+      vehicleId: body.vehicleId,
+      vehicleName: body.vehicleName,
+      cameraName: body.cameraName,
+      imageUrl: body.imageUrl,
+      frameBase64: body.frameBase64,
+      metadata: {
+        source: "manual_computer_vision_analysis",
+        receivedAt: new Date().toISOString(),
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      provider: analysis.provider,
+      detections: analysis.detections,
+      analysedAt: analysis.analysedAt,
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message || "Computer vision analysis failed." },
       { status: error.message === "Unauthorized" ? 401 : 500 }
     );
   }
