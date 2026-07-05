@@ -1,16 +1,6 @@
 ﻿import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
-
-function statusForVehicle(vehicle: any, index: number) {
-  if (!vehicle.is_active) return "offline";
-  if (index % 5 === 0) return "warning";
-  return "online";
-}
-
-function recordingForStatus(status: string) {
-  if (status === "offline") return false;
-  return true;
-}
+import { loadDashcams } from "@/lib/dashcam/provider";
 
 export async function GET() {
   try {
@@ -27,26 +17,8 @@ export async function GET() {
       return NextResponse.json({ error: vehiclesError.message }, { status: 500 });
     }
 
-    const cameras = (vehicles || []).map((vehicle: any, index: number) => {
-      const status = statusForVehicle(vehicle, index);
-      const recording = recordingForStatus(status);
-
-      return {
-        id: `dashcam-${vehicle.id}`,
-        vehicleId: vehicle.id,
-        vehicleName: vehicle.registration_number || vehicle.id,
-        nickname: vehicle.nickname || null,
-        cameraName: `${vehicle.registration_number || "Vehicle"} Front Dashcam`,
-        vendor: "HarborGuard DemoCam",
-        status,
-        recording,
-        storageUsedPercent: status === "offline" ? 0 : Math.min(92, 35 + index * 7),
-        lastHeartbeat: status === "offline" ? null : new Date(Date.now() - index * 7 * 60 * 1000).toISOString(),
-        lastClipAt: recording ? new Date(Date.now() - index * 11 * 60 * 1000).toISOString() : null,
-        latestClipLabel: recording ? `Road view clip ${index + 1}` : null,
-        aiEvents: status === "warning" ? ["Camera health warning"] : [],
-      };
-    });
+    const result = await loadDashcams(vehicles || []);
+    const cameras = result.cameras;
 
     const summary = {
       totalCameras: cameras.length,
@@ -54,13 +26,15 @@ export async function GET() {
       warning: cameras.filter((item) => item.status === "warning").length,
       offline: cameras.filter((item) => item.status === "offline").length,
       recording: cameras.filter((item) => item.recording).length,
+      provider: result.provider,
     };
 
     return NextResponse.json({
       success: true,
       summary,
       cameras,
-      generatedAt: new Date().toISOString(),
+      provider: result.provider,
+      generatedAt: result.generatedAt,
     });
   } catch (error: any) {
     return NextResponse.json(
