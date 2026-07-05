@@ -1,60 +1,9 @@
 ﻿import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
+import { analyseFrame } from "@/lib/vision/provider";
 
-const eventTypes = [
-  "road_obstruction",
-  "driver_distraction",
-  "phone_usage",
-  "seatbelt_warning",
-  "pedestrian_near_vehicle",
-  "lane_blockage",
-];
-
-function eventForVehicle(vehicle: any, index: number) {
-  const type = eventTypes[index % eventTypes.length];
-  const confidence = Math.min(96, 58 + index * 6);
-  const severity =
-    confidence >= 85 ? "high" :
-    confidence >= 70 ? "medium" :
-    "low";
-
-  return {
-    id: `vision-${vehicle.id}-${index}`,
-    vehicleId: vehicle.id,
-    vehicleName: vehicle.registration_number || vehicle.id,
-    nickname: vehicle.nickname || null,
-    cameraName: `${vehicle.registration_number || "Vehicle"} Front Dashcam`,
-    eventType: type,
-    severity,
-    confidence,
-    status: confidence >= 85 ? "review_required" : "monitoring",
-    detectedAt: new Date(Date.now() - index * 9 * 60 * 1000).toISOString(),
-    description: descriptionFor(type),
-    recommendedAction: recommendationFor(type, severity),
-  };
-}
-
-function descriptionFor(type: string) {
-  if (type === "road_obstruction") return "Possible road obstruction detected in the vehicle camera frame.";
-  if (type === "driver_distraction") return "Possible driver distraction pattern detected.";
-  if (type === "phone_usage") return "Possible mobile phone usage detected.";
-  if (type === "seatbelt_warning") return "Possible seatbelt compliance warning.";
-  if (type === "pedestrian_near_vehicle") return "Pedestrian detected near the vehicle path.";
-  if (type === "lane_blockage") return "Possible lane blockage detected ahead.";
-
-  return "Vision event detected.";
-}
-
-function recommendationFor(type: string, severity: string) {
-  if (severity === "high") {
-    return "Send to dispatcher review and attach to active incident if related.";
-  }
-
-  if (type === "driver_distraction" || type === "phone_usage" || type === "seatbelt_warning") {
-    return "Flag for driver safety review.";
-  }
-
-  return "Continue monitoring and correlate with vehicle telemetry.";
+function statusFor(confidence: number) {
+  return confidence >= 85 ? "review_required" : "monitoring";
 }
 
 export async function GET() {
@@ -73,7 +22,39 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const events = (vehicles || []).map(eventForVehicle);
+    const results = await Promise.all(
+      (vehicles || []).map(async (vehicle: any, index: number) => {
+        const cameraName = `${vehicle.registration_number || "Vehicle"} Front Dashcam`;
+
+        const analysis = await analyseFrame({
+          vehicleId: vehicle.id,
+          vehicleName: vehicle.registration_number || vehicle.id,
+          cameraName,
+          metadata: {
+            source: "command_center_computer_vision",
+            index,
+          },
+        });
+
+        return analysis.detections.map((detection, detectionIndex) => ({
+          id: `vision-${vehicle.id}-${index}-${detectionIndex}`,
+          vehicleId: vehicle.id,
+          vehicleName: vehicle.registration_number || vehicle.id,
+          nickname: vehicle.nickname || null,
+          cameraName,
+          eventType: detection.label,
+          severity: detection.severity,
+          confidence: detection.confidence,
+          status: statusFor(detection.confidence),
+          detectedAt: analysis.analysedAt,
+          description: detection.description,
+          recommendedAction: detection.recommendedAction,
+          provider: analysis.provider,
+        }));
+      })
+    );
+
+    const events = results.flat();
 
     const summary = {
       analysedCameras: vehicles?.length || 0,
@@ -83,6 +64,7 @@ export async function GET() {
       averageConfidence: events.length
         ? Math.round(events.reduce((sum, item) => sum + item.confidence, 0) / events.length)
         : 0,
+      provider: events[0]?.provider || "mock",
     };
 
     return NextResponse.json({
