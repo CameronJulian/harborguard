@@ -48,20 +48,47 @@ export async function GET() {
       }
     }
 
+    const { data: persistedEvents, error: eventsError } = await supabase
+      .from("dashcam_events")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("captured_at", { ascending: false })
+      .limit(100);
+
+    if (eventsError) {
+      throw eventsError;
+    }
+
+    const persistedCameras = (persistedEvents || []).map((event: any) => ({
+      id: event.id,
+      vehicleId: event.vehicle_id,
+      vehicleName: event.vehicle_name || "Unknown vehicle",
+      nickname: null,
+      cameraName: event.camera_name || "Unknown camera",
+      vendor: event.vendor || event.provider || "mock",
+      status: event.status,
+      recording: event.recording,
+      storageUsedPercent: Number(event.storage_used_percent || 0),
+      lastHeartbeat: event.last_heartbeat,
+      lastClipAt: event.last_clip_at,
+      latestClipLabel: event.latest_clip_label,
+      aiEvents: Array.isArray(event.ai_events) ? event.ai_events : [],
+    }));
+
     const summary = {
-      totalCameras: cameras.length,
-      online: cameras.filter((item) => item.status === "online").length,
-      warning: cameras.filter((item) => item.status === "warning").length,
-      offline: cameras.filter((item) => item.status === "offline").length,
-      recording: cameras.filter((item) => item.recording).length,
-      provider: result.provider,
+      totalCameras: persistedCameras.length,
+      online: persistedCameras.filter((item) => item.status === "online").length,
+      warning: persistedCameras.filter((item) => item.status === "warning").length,
+      offline: persistedCameras.filter((item) => item.status === "offline").length,
+      recording: persistedCameras.filter((item) => item.recording).length,
+      provider: persistedEvents?.[0]?.provider || result.provider,
     };
 
     return NextResponse.json({
       success: true,
       summary,
-      cameras,
-      provider: result.provider,
+      cameras: persistedCameras,
+      provider: summary.provider,
       generatedAt: result.generatedAt,
     });
   } catch (error: any) {
