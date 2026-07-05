@@ -83,7 +83,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    await requireOrganization();
+    const { supabase, organizationId } = await requireOrganization();
 
     const body = await req.json();
 
@@ -99,10 +99,37 @@ export async function POST(req: Request) {
       },
     });
 
+    const rows = analysis.detections.map((detection) => ({
+      organization_id: organizationId,
+      vehicle_id: body.vehicleId || null,
+      vehicle_name: body.vehicleName || null,
+      camera_name: body.cameraName || null,
+      provider: analysis.provider,
+      event_type: detection.label,
+      severity: detection.severity,
+      confidence: detection.confidence,
+      status: detection.confidence >= 85 ? "review_required" : "monitoring",
+      image_url: body.imageUrl || null,
+      description: detection.description,
+      recommended_action: detection.recommendedAction,
+      raw_response: analysis.rawResponse || {},
+      detected_at: analysis.analysedAt,
+    }));
+
+    const { data: savedEvents, error: insertError } = await supabase
+      .from("vision_events")
+      .insert(rows)
+      .select();
+
+    if (insertError) {
+      throw insertError;
+    }
+
     return NextResponse.json({
       success: true,
       provider: analysis.provider,
       detections: analysis.detections,
+      savedEvents: savedEvents || [],
       analysedAt: analysis.analysedAt,
     });
   } catch (error: any) {
