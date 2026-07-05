@@ -10,67 +10,47 @@ export async function GET() {
   try {
     const { supabase, organizationId } = await requireOrganization();
 
-    const { data: vehicles, error } = await supabase
-      .from("vehicles")
-      .select("id, registration_number, nickname, is_active, created_at")
+    const { data: events, error } = await supabase
+      .from("vision_events")
+      .select("*")
       .eq("organization_id", organizationId)
-      .eq("is_active", true)
-      .order("created_at", { ascending: false })
-      .limit(12);
+      .order("detected_at", { ascending: false })
+      .limit(100);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const results = await Promise.all(
-      (vehicles || []).map(async (vehicle: any, index: number) => {
-        const cameraName = `${vehicle.registration_number || "Vehicle"} Front Dashcam`;
-
-        const analysis = await analyseFrame({
-          vehicleId: vehicle.id,
-          vehicleName: vehicle.registration_number || vehicle.id,
-          cameraName,
-          metadata: {
-            source: "command_center_computer_vision",
-            index,
-          },
-        });
-
-        return analysis.detections.map((detection, detectionIndex) => ({
-          id: `vision-${vehicle.id}-${index}-${detectionIndex}`,
-          vehicleId: vehicle.id,
-          vehicleName: vehicle.registration_number || vehicle.id,
-          nickname: vehicle.nickname || null,
-          cameraName,
-          eventType: detection.label,
-          severity: detection.severity,
-          confidence: detection.confidence,
-          status: statusFor(detection.confidence),
-          detectedAt: analysis.analysedAt,
-          description: detection.description,
-          recommendedAction: detection.recommendedAction,
-          provider: analysis.provider,
-        }));
-      })
-    );
-
-    const events = results.flat();
+    const responseEvents = (events || []).map((event: any) => ({
+      id: event.id,
+      vehicleId: event.vehicle_id,
+      vehicleName: event.vehicle_name || "Unknown vehicle",
+      cameraName: event.camera_name || "Unknown camera",
+      eventType: event.event_type,
+      severity: event.severity,
+      confidence: Number(event.confidence || 0),
+      status: event.status,
+      detectedAt: event.detected_at,
+      description: event.description || "Vision event detected.",
+      recommendedAction: event.recommended_action || "Review detection in Command Center.",
+      provider: event.provider,
+    }));
 
     const summary = {
-      analysedCameras: vehicles?.length || 0,
-      visionEvents: events.length,
-      reviewRequired: events.filter((item) => item.status === "review_required").length,
-      highConfidence: events.filter((item) => item.confidence >= 85).length,
-      averageConfidence: events.length
-        ? Math.round(events.reduce((sum, item) => sum + item.confidence, 0) / events.length)
+      analysedCameras: new Set((events || []).map((event: any) => event.camera_name).filter(Boolean)).size,
+      visionEvents: events?.length || 0,
+      reviewRequired: (events || []).filter((item: any) => item.status === "review_required").length,
+      highConfidence: (events || []).filter((item: any) => Number(item.confidence || 0) >= 85).length,
+      averageConfidence: events && events.length
+        ? Math.round(events.reduce((sum: number, item: any) => sum + Number(item.confidence || 0), 0) / events.length)
         : 0,
-      provider: events[0]?.provider || "mock",
+      provider: events?.[0]?.provider || "mock",
     };
 
     return NextResponse.json({
       success: true,
       summary,
-      events,
+      events: responseEvents,
       generatedAt: new Date().toISOString(),
     });
   } catch (error: any) {
