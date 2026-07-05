@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 import { loadDashcams } from "@/lib/dashcam/provider";
 
@@ -19,6 +19,34 @@ export async function GET() {
 
     const result = await loadDashcams(vehicles || []);
     const cameras = result.cameras;
+
+    const rows = cameras.map((camera) => ({
+      organization_id: organizationId,
+      vehicle_id: camera.vehicleId || null,
+      vehicle_name: camera.vehicleName || null,
+      camera_name: camera.cameraName || null,
+      provider: result.provider,
+      vendor: camera.vendor || null,
+      status: camera.status,
+      recording: camera.recording,
+      storage_used_percent: camera.storageUsedPercent,
+      last_heartbeat: camera.lastHeartbeat,
+      last_clip_at: camera.lastClipAt,
+      latest_clip_label: camera.latestClipLabel,
+      ai_events: camera.aiEvents || [],
+      raw_response: camera,
+      captured_at: result.generatedAt,
+    }));
+
+    if (rows.length > 0) {
+      const { error: insertError } = await supabase
+        .from("dashcam_events")
+        .insert(rows);
+
+      if (insertError) {
+        throw insertError;
+      }
+    }
 
     const summary = {
       totalCameras: cameras.length,
