@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 import { loadANPRDetections } from "@/lib/anpr/provider";
 
@@ -19,6 +19,34 @@ export async function GET() {
 
     const result = await loadANPRDetections(vehicles || []);
     const detections = result.detections;
+
+    const rows = detections.map((detection) => ({
+      organization_id: organizationId,
+      vehicle_id: detection.vehicleId || null,
+      plate_number: detection.plateNumber,
+      vehicle_name: detection.vehicleName || null,
+      nickname: detection.nickname || null,
+      camera_name: detection.cameraName || null,
+      provider: result.provider,
+      source: detection.source || null,
+      confidence: detection.confidence,
+      status: detection.status,
+      watchlist_match: detection.watchlistMatch,
+      detected_at: detection.detectedAt,
+      location: detection.location || null,
+      recommended_action: detection.recommendedAction || null,
+      raw_response: detection,
+    }));
+
+    if (rows.length > 0) {
+      const { error: insertError } = await supabase
+        .from("anpr_events")
+        .insert(rows);
+
+      if (insertError) {
+        throw insertError;
+      }
+    }
 
     const summary = {
       scannedPlates: detections.length,
