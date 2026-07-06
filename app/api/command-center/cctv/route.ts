@@ -22,6 +22,38 @@ export async function GET() {
 
     const result = await loadCCTVCameras(vehicles || []);
     const cameras = result.cameras;
+	
+	const rows = cameras.map((camera) => ({
+  organization_id: organizationId,
+  camera_name: camera.cameraName,
+  provider: result.provider,
+  vendor: camera.vendor || null,
+  location: camera.location || null,
+  linked_vehicle_id: camera.linkedVehicleId || null,
+  linked_vehicle: camera.linkedVehicle || null,
+  status: camera.status,
+  recording: camera.recording,
+  motion_detected: camera.motionDetected,
+  ai_event_count: camera.aiEventCount,
+  person_count: camera.personCount,
+  vehicle_count: camera.vehicleCount,
+  latency_ms: camera.latencyMs,
+  last_frame_at: camera.lastFrameAt,
+  last_event: camera.lastEvent,
+  recommended_action: camera.recommendedAction,
+  raw_response: camera,
+  captured_at: result.generatedAt,
+}));
+
+if (rows.length > 0) {
+  const { error: insertError } = await supabase
+    .from("cctv_events")
+    .insert(rows);
+
+  if (insertError) {
+    throw insertError;
+  }
+}
 
     const summary = {
       totalCameras: cameras.length,
