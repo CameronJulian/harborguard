@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
+import { supabaseBrowser } from "@/lib/supabase/browser";
 import { fetchWithAuth } from "@/lib/auth-fetch";
 
 type CCTVCamera = {
@@ -65,8 +66,28 @@ export default function CCTVMonitoring() {
 
   useEffect(() => {
     loadCCTV();
+
     const interval = setInterval(loadCCTV, 30000);
-    return () => clearInterval(interval);
+
+    const channel = supabaseBrowser
+      .channel("cctv-events-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "cctv_events",
+        },
+        () => {
+          loadCCTV();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabaseBrowser.removeChannel(channel);
+    };
   }, []);
 
   return (
@@ -157,12 +178,12 @@ export default function CCTVMonitoring() {
                     <div>
                       <strong>{camera.cameraName}</strong>
                       <div style={{ color: "#64748b", marginTop: 4 }}>
-                        {camera.location} · {camera.vendor} · Linked vehicle: {camera.linkedVehicle}
+                        {camera.location} Â· {camera.vendor} Â· Linked vehicle: {camera.linkedVehicle}
                       </div>
                     </div>
 
                     <div style={{ color: statusColor(camera.status), fontWeight: 900 }}>
-                      {camera.status.toUpperCase()} · {camera.recording ? "REC" : "NO REC"}
+                      {camera.status.toUpperCase()} Â· {camera.recording ? "REC" : "NO REC"}
                     </div>
                   </div>
 
@@ -180,7 +201,7 @@ export default function CCTVMonitoring() {
                     <div>
                       <strong>AI detections</strong>
                       <div style={{ color: "#64748b" }}>
-                        {camera.aiEventCount} events · {camera.personCount} people · {camera.vehicleCount} vehicles
+                        {camera.aiEventCount} events Â· {camera.personCount} people Â· {camera.vehicleCount} vehicles
                       </div>
                     </div>
                   </div>
@@ -201,3 +222,4 @@ export default function CCTVMonitoring() {
     </section>
   );
 }
+
