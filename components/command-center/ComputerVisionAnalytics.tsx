@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
+import { supabaseBrowser } from "@/lib/supabase/browser";
 import { fetchWithAuth } from "@/lib/auth-fetch";
 
 type VisionEvent = {
@@ -60,8 +61,28 @@ export default function ComputerVisionAnalytics() {
 
   useEffect(() => {
     loadVision();
+
     const interval = setInterval(loadVision, 30000);
-    return () => clearInterval(interval);
+
+    const channel = supabaseBrowser
+      .channel("vision-events-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "vision_events",
+        },
+        () => {
+          loadVision();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabaseBrowser.removeChannel(channel);
+    };
   }, []);
 
   return (
@@ -152,12 +173,12 @@ export default function ComputerVisionAnalytics() {
                       <strong>{formatEventType(event.eventType)}</strong>
                       <div style={{ color: "#64748b", marginTop: 4 }}>
                         {event.vehicleName}
-                        {event.nickname ? ` / ${event.nickname}` : ""} · {event.cameraName}
+                        {event.nickname ? ` / ${event.nickname}` : ""} Â· {event.cameraName}
                       </div>
                     </div>
 
                     <div style={{ color: severityColor(event.severity), fontWeight: 900 }}>
-                      {event.severity.toUpperCase()} · {event.confidence}% confidence
+                      {event.severity.toUpperCase()} Â· {event.confidence}% confidence
                     </div>
                   </div>
 
@@ -170,7 +191,7 @@ export default function ComputerVisionAnalytics() {
                   </div>
 
                   <div style={{ marginTop: 8, color: "#94a3b8", fontSize: 12 }}>
-                    Detected: {new Date(event.detectedAt).toLocaleString()} · Status: {event.status.replaceAll("_", " ")}
+                    Detected: {new Date(event.detectedAt).toLocaleString()} Â· Status: {event.status.replaceAll("_", " ")}
                   </div>
                 </div>
               ))}
@@ -181,3 +202,4 @@ export default function ComputerVisionAnalytics() {
     </section>
   );
 }
+
