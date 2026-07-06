@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 import { loadCCTVCameras } from "@/lib/cctv/provider";
 
@@ -55,22 +55,52 @@ if (rows.length > 0) {
   }
 }
 
+    const { data: persistedEvents, error: eventsError } = await supabase
+      .from("cctv_events")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("captured_at", { ascending: false })
+      .limit(100);
+
+    if (eventsError) {
+      throw eventsError;
+    }
+
+    const persistedCameras = (persistedEvents || []).map((event: any) => ({
+      id: event.id,
+      cameraName: event.camera_name,
+      vendor: event.vendor || event.provider || "mock",
+      location: event.location || "Unknown location",
+      linkedVehicleId: event.linked_vehicle_id,
+      linkedVehicle: event.linked_vehicle || "Unknown vehicle",
+      status: event.status,
+      recording: event.recording,
+      motionDetected: event.motion_detected,
+      aiEventCount: Number(event.ai_event_count || 0),
+      personCount: Number(event.person_count || 0),
+      vehicleCount: Number(event.vehicle_count || 0),
+      latencyMs: event.latency_ms,
+      lastFrameAt: event.last_frame_at,
+      lastEvent: event.last_event || "No recent event.",
+      recommendedAction: event.recommended_action || "Continue CCTV monitoring.",
+    }));
+
     const summary = {
-      totalCameras: cameras.length,
-      online: cameras.filter(c => c.status === "online").length,
-      warning: cameras.filter(c => c.status === "warning").length,
-      offline: cameras.filter(c => c.status === "offline").length,
-      recording: cameras.filter(c => c.recording).length,
-      motionEvents: cameras.filter(c => c.motionDetected).length,
-      aiEvents: cameras.reduce((sum, c) => sum + c.aiEventCount, 0),
-      provider: result.provider,
+      totalCameras: persistedCameras.length,
+      online: persistedCameras.filter(c => c.status === "online").length,
+      warning: persistedCameras.filter(c => c.status === "warning").length,
+      offline: persistedCameras.filter(c => c.status === "offline").length,
+      recording: persistedCameras.filter(c => c.recording).length,
+      motionEvents: persistedCameras.filter(c => c.motionDetected).length,
+      aiEvents: persistedCameras.reduce((sum, c) => sum + c.aiEventCount, 0),
+      provider: persistedEvents?.[0]?.provider || result.provider,
     };
 
     return NextResponse.json({
       success: true,
       summary,
-      cameras,
-      provider: result.provider,
+      cameras: persistedCameras,
+      provider: summary.provider,
       generatedAt: result.generatedAt,
     });
 
