@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 import { loadANPRDetections } from "@/lib/anpr/provider";
 
@@ -48,22 +48,50 @@ export async function GET() {
       }
     }
 
+    const { data: persisted, error: readError } = await supabase
+      .from("anpr_events")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("detected_at", { ascending: false })
+      .limit(100);
+
+    if (readError) {
+      throw readError;
+    }
+
+    const detectionsToReturn = (persisted || []).map((item: any) => ({
+      id: item.id,
+      vehicleId: item.vehicle_id,
+      plateNumber: item.plate_number,
+      vehicleName: item.vehicle_name,
+      nickname: item.nickname,
+      cameraName: item.camera_name,
+      provider: item.provider,
+      source: item.source,
+      confidence: Number(item.confidence || 0),
+      status: item.status,
+      watchlistMatch: item.watchlist_match,
+      detectedAt: item.detected_at,
+      location: item.location,
+      recommendedAction: item.recommended_action,
+    }));
+
     const summary = {
-      scannedPlates: detections.length,
-      verified: detections.filter((item) => item.status === "verified").length,
-      review: detections.filter((item) => item.status === "review").length,
-      watchlist: detections.filter((item) => item.watchlistMatch).length,
-      averageConfidence: detections.length
-        ? Math.round(detections.reduce((sum, item) => sum + item.confidence, 0) / detections.length)
+      scannedPlates: detectionsToReturn.length,
+      verified: detectionsToReturn.filter((item) => item.status === "verified").length,
+      review: detectionsToReturn.filter((item) => item.status === "review").length,
+      watchlist: detectionsToReturn.filter((item) => item.watchlistMatch).length,
+      averageConfidence: detectionsToReturn.length
+        ? Math.round(detectionsToReturn.reduce((sum, item) => sum + item.confidence, 0) / detectionsToReturn.length)
         : 0,
-      provider: result.provider,
+      provider: persisted?.[0]?.provider || result.provider,
     };
 
     return NextResponse.json({
       success: true,
       summary,
-      detections,
-      provider: result.provider,
+      detections: detectionsToReturn,
+      provider: summary.provider,
       generatedAt: result.generatedAt,
     });
   } catch (error: any) {
