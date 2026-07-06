@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
@@ -127,6 +127,8 @@ export default function CCTVMonitoring() {
               ["Offline", summary?.offline || 0],
               ["Motion", summary?.motionEvents || 0],
               ["AI Events", summary?.aiEvents || 0],
+              ["Provider", summary?.provider || "mock"],
+              ["Source", "Persisted DB"],
             ].map(([label, value]) => (
               <div key={String(label)} style={{ padding: 14, borderRadius: 16, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
                 <div style={{ color: "#64748b", fontSize: 13, fontWeight: 800 }}>{label}</div>
