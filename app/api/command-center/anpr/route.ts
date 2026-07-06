@@ -1,15 +1,6 @@
 ﻿import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
-
-function confidenceFor(index: number) {
-  return Math.min(98, 72 + index * 4);
-}
-
-function statusFor(confidence: number, index: number) {
-  if (index % 7 === 0) return "watchlist_review";
-  if (confidence >= 90) return "verified";
-  return "review";
-}
+import { loadANPRDetections } from "@/lib/anpr/provider";
 
 export async function GET() {
   try {
@@ -26,31 +17,8 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const detections = (vehicles || []).map((vehicle: any, index: number) => {
-      const confidence = confidenceFor(index);
-      const status = statusFor(confidence, index);
-
-      return {
-        id: `anpr-${vehicle.id}-${index}`,
-        vehicleId: vehicle.id,
-        plateNumber: vehicle.registration_number || "UNKNOWN",
-        vehicleName: vehicle.registration_number || vehicle.id,
-        nickname: vehicle.nickname || null,
-        cameraName: `${vehicle.registration_number || "Vehicle"} ANPR Camera`,
-        source: "HarborGuard Demo ANPR",
-        confidence,
-        status,
-        watchlistMatch: status === "watchlist_review",
-        detectedAt: new Date(Date.now() - index * 8 * 60 * 1000).toISOString(),
-        location: index % 2 === 0 ? "Command route corridor" : "Depot access point",
-        recommendedAction:
-          status === "watchlist_review"
-            ? "Review possible watchlist match and escalate if confirmed."
-            : confidence >= 90
-            ? "Plate verified. Continue monitoring."
-            : "Review plate confidence and confirm vehicle identity.",
-      };
-    });
+    const result = await loadANPRDetections(vehicles || []);
+    const detections = result.detections;
 
     const summary = {
       scannedPlates: detections.length,
@@ -60,13 +28,15 @@ export async function GET() {
       averageConfidence: detections.length
         ? Math.round(detections.reduce((sum, item) => sum + item.confidence, 0) / detections.length)
         : 0,
+      provider: result.provider,
     };
 
     return NextResponse.json({
       success: true,
       summary,
       detections,
-      generatedAt: new Date().toISOString(),
+      provider: result.provider,
+      generatedAt: result.generatedAt,
     });
   } catch (error: any) {
     return NextResponse.json(
