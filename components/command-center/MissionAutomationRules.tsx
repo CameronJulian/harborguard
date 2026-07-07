@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
-import { subscribeCommandCenterTables } from "@/lib/realtime/commandCenterEvents";
+import { useRealtimeRefresh } from "@/lib/realtime/useRealtimeRefresh";
 
 type AutomationRule = {
   id: string;
@@ -55,10 +55,10 @@ export default function MissionAutomationRules() {
     }
   }
 
-  useEffect(() => {
-    loadAutomation();
-    return subscribeCommandCenterTables(["vehicle_alerts", "incidents", "dispatch_missions"], loadAutomation);
-  }, []);
+  useRealtimeRefresh({
+    tables: ["vehicle_alerts", "incidents", "dispatch_missions"],
+    refresh: loadAutomation,
+  });
 
   return (
     <div
@@ -182,5 +182,6 @@ export default function MissionAutomationRules() {
     </div>
   );
 }
+
 
 
