@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
-import { subscribeCommandCenterTables } from "@/lib/realtime/commandCenterEvents";
+import { useRealtimeRefresh } from "@/lib/realtime/useRealtimeRefresh";
 
 type MissionTask = {
   id: string;
@@ -56,10 +56,10 @@ export default function FleetMissionQueue() {
     }
   }
 
-  useEffect(() => {
-    loadQueue();
-    return subscribeCommandCenterTables(["vehicle_alerts", "incidents", "road_incidents"], loadQueue);
-  }, []);
+  useRealtimeRefresh({
+    tables: ["vehicle_alerts", "incidents", "road_incidents"],
+    refresh: loadQueue,
+  });
 
   const stats = useMemo(() => {
     return {
@@ -177,5 +177,6 @@ export default function FleetMissionQueue() {
     </div>
   );
 }
+
 
 
