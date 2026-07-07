@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
-import { subscribeCommandCenterTables } from "@/lib/realtime/commandCenterEvents";
+import { useRealtimeRefresh } from "@/lib/realtime/useRealtimeRefresh";
 
 type TrackingItem = {
   missionId: string;
@@ -59,17 +59,11 @@ export default function LiveMissionTrackingDashboard() {
     }
   }
 
-  useEffect(() => {
-    loadTracking();
-
-    const interval = setInterval(loadTracking, 15000);
-    const unsubscribe = subscribeCommandCenterTables(["vehicle_locations", "dispatch_missions", "route_assignments", "vehicle_trips"], loadTracking);
-
-    return () => {
-      clearInterval(interval);
-      unsubscribe();
-    };
-  }, []);
+  useRealtimeRefresh({
+    tables: ["vehicle_locations", "dispatch_missions", "route_assignments", "vehicle_trips"],
+    refresh: loadTracking,
+    pollingMs: 15000,
+  });
 
   const stats = useMemo(() => {
     const moving = tracking.filter((item) => item.speedKmh >= 5).length;
@@ -183,5 +177,6 @@ export default function LiveMissionTrackingDashboard() {
     </section>
   );
 }
+
 
 
