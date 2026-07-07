@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
+import { supabaseBrowser } from "@/lib/supabase/browser";
 import { fetchWithAuth } from "@/lib/auth-fetch";
 
 type Dashcam = {
@@ -62,8 +63,28 @@ export default function DashcamMonitoring() {
 
   useEffect(() => {
     loadDashcams();
+
     const interval = setInterval(loadDashcams, 30000);
-    return () => clearInterval(interval);
+
+    const channel = supabaseBrowser
+      .channel("dashcam-events-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "dashcam_events",
+        },
+        () => {
+          loadDashcams();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabaseBrowser.removeChannel(channel);
+    };
   }, []);
 
   return (
@@ -154,12 +175,12 @@ export default function DashcamMonitoring() {
                       <strong>{camera.cameraName}</strong>
                       <div style={{ color: "#64748b", marginTop: 4 }}>
                         {camera.vehicleName}
-                        {camera.nickname ? ` / ${camera.nickname}` : ""} · {camera.vendor}
+                        {camera.nickname ? ` / ${camera.nickname}` : ""} Â· {camera.vendor}
                       </div>
                     </div>
 
                     <div style={{ color: statusColor(camera.status), fontWeight: 900 }}>
-                      {camera.status.toUpperCase()} · {camera.recording ? "REC" : "NOT RECORDING"}
+                      {camera.status.toUpperCase()} Â· {camera.recording ? "REC" : "NOT RECORDING"}
                     </div>
                   </div>
 
@@ -196,3 +217,4 @@ export default function DashcamMonitoring() {
     </section>
   );
 }
+
