@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
-import { subscribeCommandCenterTables } from "@/lib/realtime/commandCenterEvents";
+import { useRealtimeRefresh } from "@/lib/realtime/useRealtimeRefresh";
 import MissionDetailsPanel from "@/components/dispatch/MissionDetailsPanel";
 
 const statuses = ["Pending", "Assigned", "Accepted", "En Route", "Arrived", "In Progress", "Completed", "Cancelled"];
@@ -75,21 +75,15 @@ export default function MissionBoard() {
     }
   }
 
-  useEffect(() => {
-    loadMissions();
-
-    const unsubscribe = subscribeCommandCenterTables(
-      [
-        "dispatch_missions",
-        "mission_timeline_events",
-        "mission_messages",
-        "mission_evidence",
-      ],
-      loadMissions
-    );
-
-    return () => unsubscribe();
-  }, []);
+  useRealtimeRefresh({
+    tables: [
+      "dispatch_missions",
+      "mission_timeline_events",
+      "mission_messages",
+      "mission_evidence",
+    ],
+    refresh: loadMissions,
+  });
 
   return (
     <section style={{ padding: 22, borderRadius: 22, background: "#ffffff", border: "1px solid #e5e7eb", boxShadow: "0 12px 32px rgba(15, 23, 42, 0.08)", marginBottom: 24 }}>
@@ -203,4 +197,5 @@ export default function MissionBoard() {
     </section>
   );
 }
+
 
