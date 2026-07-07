@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState } from "react";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { useState } from "react";
+import { useRealtimeRefresh } from "@/lib/realtime/useRealtimeRefresh";
 import { fetchWithAuth } from "@/lib/auth-fetch";
 
 type ANPRDetection = {
@@ -60,31 +60,11 @@ export default function ANPRDashboard() {
     }
   }
 
-  useEffect(() => {
-    loadANPR();
-
-    const interval = setInterval(loadANPR, 30000);
-
-    const channel = supabaseBrowser
-      .channel("anpr-events-realtime")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "anpr_events",
-        },
-        () => {
-          loadANPR();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      clearInterval(interval);
-      supabaseBrowser.removeChannel(channel);
-    };
-  }, []);
+  useRealtimeRefresh({
+    tables: ["anpr_events"],
+    refresh: loadANPR,
+    pollingMs: 30000,
+  });
 
   return (
     <section
@@ -174,17 +154,17 @@ export default function ANPRDashboard() {
                       <strong style={{ fontSize: 20 }}>{item.plateNumber}</strong>
                       <div style={{ color: "#64748b", marginTop: 4 }}>
                         {item.vehicleName}
-                        {item.nickname ? ` / ${item.nickname}` : ""} Ãƒâ€šÃ‚Â· {item.cameraName}
+                        {item.nickname ? ` / ${item.nickname}` : ""} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· {item.cameraName}
                       </div>
                     </div>
 
                     <div style={{ color: statusColor(item.status), fontWeight: 900 }}>
-                      {formatStatus(item.status).toUpperCase()} Ãƒâ€šÃ‚Â· {item.confidence}%
+                      {formatStatus(item.status).toUpperCase()} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· {item.confidence}%
                     </div>
                   </div>
 
                   <div style={{ color: "#475569", marginTop: 10 }}>
-                    Source: {item.source} Ãƒâ€šÃ‚Â· Location: {item.location}
+                    Source: {item.source} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· Location: {item.location}
                   </div>
 
                   <div style={{ marginTop: 10, color: "#0f172a", fontWeight: 800 }}>
@@ -203,3 +183,4 @@ export default function ANPRDashboard() {
     </section>
   );
 }
+
