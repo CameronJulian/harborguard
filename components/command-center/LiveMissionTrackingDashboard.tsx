@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
+import { subscribeCommandCenterRealtime } from "@/lib/realtime/commandCenterEvents";
 
 type TrackingItem = {
   missionId: string;
@@ -60,8 +61,14 @@ export default function LiveMissionTrackingDashboard() {
 
   useEffect(() => {
     loadTracking();
+
     const interval = setInterval(loadTracking, 15000);
-    return () => clearInterval(interval);
+    const unsubscribe = subscribeCommandCenterRealtime(loadTracking);
+
+    return () => {
+      clearInterval(interval);
+      unsubscribe();
+    };
   }, []);
 
   const stats = useMemo(() => {
@@ -176,3 +183,4 @@ export default function LiveMissionTrackingDashboard() {
     </section>
   );
 }
+
