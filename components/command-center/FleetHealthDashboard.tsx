@@ -1,8 +1,8 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
-import { supabase } from "@/lib/supabase";
+import { useRealtimeRefresh } from "@/lib/realtime/useRealtimeRefresh";
 
 type FleetHealth = {
   healthScore: number;
@@ -72,40 +72,16 @@ export default function FleetHealthDashboard() {
     }
   }
 
-  useEffect(() => {
-    loadFleetHealth();
-
-    const channel = supabase
-      .channel("fleet-health-live")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "vehicle_locations" },
-        () => loadFleetHealth()
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "vehicle_alerts" },
-        () => loadFleetHealth()
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "vehicle_trips" },
-        () => loadFleetHealth()
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "incidents" },
-        () => loadFleetHealth()
-      )
-      .subscribe();
-
-    const interval = setInterval(loadFleetHealth, 60000);
-
-    return () => {
-      supabase.removeChannel(channel);
-      clearInterval(interval);
-    };
-  }, []);
+  useRealtimeRefresh({
+    tables: [
+      "vehicle_locations",
+      "vehicle_alerts",
+      "vehicle_trips",
+      "incidents",
+    ],
+    refresh: loadFleetHealth,
+    pollingMs: 60000,
+  });
 
   if (loading) {
     return (
@@ -277,3 +253,4 @@ export default function FleetHealthDashboard() {
     </div>
   );
 }
+
