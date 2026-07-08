@@ -58,13 +58,6 @@ import {
 } from "react";
 import { useMap } from "react-leaflet";
 import AppShell from "@/components/AppShell";
-import type {
-  CommandCenterGeofence,
-  FleetAlert,
-  FleetStop,
-  RoadIncident,
-  FleetVehicle,
-} from "./types";
 import { useCommandCenterNotifications } from "./hooks/useCommandCenterNotifications";
 
 const MapContainer = dynamic(
@@ -95,6 +88,71 @@ const HeatmapLayer = dynamic<any>(
   () => import("react-leaflet-heatmap-layer-v3").then((m: any) => m.default || m.HeatmapLayer || m),
   { ssr: false }
 );
+
+type CommandCenterGeofence = {
+  id: string;
+  name: string;
+  center_lat: number;
+  center_lng: number;
+  radius_meters: number;
+  is_active: boolean;
+};
+
+type FleetAlert = {
+  id?: string;
+  alert_type?: string | null;
+  severity?: string | null;
+  message?: string | null;
+  created_at?: string | null;
+};
+
+type FleetStop = {
+  id: string;
+  latitude: number | string;
+  longitude: number | string;
+  started_at?: string | null;
+  ended_at?: string | null;
+  duration_seconds?: number | null;
+};
+
+type RoadIncident = {
+  id: string;
+  type: string;
+  title: string;
+  latitude: number;
+  longitude: number;
+  severity: string;
+  radius_meters: number;
+};
+
+type FleetVehicle = {
+  id: string;
+  nickname: string | null;
+  registrationNumber: string;
+  driverName?: string | null;
+  isOffline?: boolean;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  speedKmh?: number | null;
+  heading?: number | null;
+  lastSeen?: string | null;
+  openAlerts?: FleetAlert[];
+  route?: any[];
+  stops?: FleetStop[];
+    activeTrip?: {
+      id: string;
+      status: string | null;
+      expectedRoute?: {
+        points?: {
+          name?: string;
+          latitude: number;
+          longitude: number;
+        }[];
+      } | null;
+      originPort?: string | null;
+      destinationFishery?: string | null;
+    } | null;
+};
 
 const cardStyle: CSSProperties = {
   background: "#ffffff",
