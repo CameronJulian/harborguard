@@ -1,6 +1,7 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useRealtimeRefresh } from "@/lib/realtime/useRealtimeRefresh";
 import { fetchWithAuth } from "@/lib/auth-fetch";
 
 export default function FleetDigitalTwinDashboard() {
@@ -26,11 +27,11 @@ export default function FleetDigitalTwinDashboard() {
     }
   }
 
-  useEffect(() => {
-    loadDigitalTwin();
-    const interval = setInterval(loadDigitalTwin, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  useRealtimeRefresh({
+    tables: ["vehicle_locations", "vehicles", "vehicle_trips", "vehicle_alerts"],
+    refresh: loadDigitalTwin,
+    pollingMs: 30000,
+  });
 
   if (loading) {
     return (
@@ -82,3 +83,4 @@ export default function FleetDigitalTwinDashboard() {
     </div>
   );
 }
+
