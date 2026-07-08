@@ -1,6 +1,7 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useRealtimeRefresh } from "@/lib/realtime/useRealtimeRefresh";
 import { fetchWithAuth } from "@/lib/auth-fetch";
 
 type Detection = {
@@ -55,11 +56,16 @@ export default function AIAccidentDetection() {
     }
   }
 
-  useEffect(() => {
-    loadDetection();
-    const interval = setInterval(loadDetection, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  useRealtimeRefresh({
+    tables: [
+      "vehicle_alerts",
+      "incidents",
+      "road_incidents",
+      "vehicle_locations",
+    ],
+    refresh: loadDetection,
+    pollingMs: 30000,
+  });
 
   return (
     <section
@@ -178,3 +184,4 @@ export default function AIAccidentDetection() {
     </section>
   );
 }
+
