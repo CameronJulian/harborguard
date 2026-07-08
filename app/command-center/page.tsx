@@ -58,6 +58,7 @@ import {
 } from "react";
 import { useMap } from "react-leaflet";
 import AppShell from "@/components/AppShell";
+import { useCommandCenterOperations } from "./hooks/useCommandCenterOperations";
 import type {
   CommandCenterGeofence,
   FleetAlert,
@@ -404,8 +405,12 @@ export default function CommandCenterPage() {
   const [routePredictionLoading, setRoutePredictionLoading] = useState(false);
   const [routeRerouteLoading, setRouteRerouteLoading] = useState(false);
   const [routeAssignLoading, setRouteAssignLoading] = useState(false);
-  const [operationsSummary, setOperationsSummary] = useState<any | null>(null);
-  const [operationsTimeline, setOperationsTimeline] = useState<any[]>([]);
+  const {
+    operationsSummary,
+    operationsTimeline,
+    loadOperationsSummary,
+    loadOperationsTimeline,
+  } = useCommandCenterOperations();
   const [geofences, setGeofences] = useState<CommandCenterGeofence[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showTrafficOverlay, setShowTrafficOverlay] = useState(true);
@@ -545,40 +550,6 @@ const {
       }
     } catch (error) {
       console.error("Failed to load geofence overlay:", error);
-    }
-  }
-
-  async function loadOperationsTimeline() {
-    try {
-      const response = await fetchWithAuth("/api/fleet/operations-timeline", {
-        method: "GET",
-        cache: "no-store",
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        setOperationsTimeline(result.events || []);
-      }
-    } catch (error) {
-      console.error("Failed to load operations timeline:", error);
-    }
-  }
-
-  async function loadOperationsSummary() {
-    try {
-      const response = await fetchWithAuth("/api/fleet/operations-summary", {
-        method: "GET",
-        cache: "no-store",
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        setOperationsSummary(result.summary || null);
-      }
-    } catch (error) {
-      console.error("Failed to load operations summary:", error);
     }
   }
 
