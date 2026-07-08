@@ -1,8 +1,8 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
-import { subscribeCommandCenterRealtime } from "@/lib/realtime/commandCenterEvents";
+import { useRealtimeRefresh } from "@/lib/realtime/useRealtimeRefresh";
 
 type Prediction = {
   vehicleId: string;
@@ -65,10 +65,17 @@ export default function PredictiveIncidentIntelligence() {
     }
   }
 
-  useEffect(() => {
-    loadPredictions();
-    return subscribeCommandCenterRealtime(loadPredictions);
-  }, []);
+  useRealtimeRefresh({
+    tables: [
+      "vehicle_alerts",
+      "vehicle_locations",
+      "dispatch_missions",
+      "incidents",
+      "road_incidents",
+      "vehicle_trips",
+    ],
+    refresh: loadPredictions,
+  });
 
   return (
     <div
@@ -222,3 +229,4 @@ export default function PredictiveIncidentIntelligence() {
     </div>
   );
 }
+
