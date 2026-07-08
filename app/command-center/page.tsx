@@ -30,6 +30,7 @@ import CommandWall from "@/components/command-center/CommandWall";
 import AuditPlayback from "@/components/command-center/AuditPlayback";
 import DispatcherCollaboration from "@/components/command-center/DispatcherCollaboration";
 import CommandCenterVoiceSection from "./sections/CommandCenterVoiceSection";
+import CommandCenterStatusSection from "./sections/CommandCenterStatusSection";
 import CommandCenterThemeSwitcher from "@/components/command-center/CommandCenterThemeSwitcher";
 import IncidentAssignmentBoard from "@/components/command-center/IncidentAssignmentBoard";
 import AIAccidentDetection from "@/components/command-center/AIAccidentDetection";
@@ -1235,165 +1236,11 @@ if (
           Live GPS command map with route trails, stop detection, risk alerts, replay, and emergency escalation.
         </p>
       </div>
-	  <div
-  style={{
-    ...cardStyle,
-    padding: 24,
-    marginBottom: 24,
-    background:
-      globalThreatScore >= 80
-        ? "linear-gradient(135deg,#7f1d1d,#991b1b)"
-        : globalThreatScore >= 60
-        ? "linear-gradient(135deg,#9a3412,#c2410c)"
-        : "linear-gradient(135deg,#0f172a,#1e293b)",
-    color: "#fff",
-  }}
->
-  <div
-    style={{
-      display: "flex",
-      justifyContent: "space-between",
-      gap: 24,
-      flexWrap: "wrap",
-      alignItems: "center",
-    }}
-  >
-    <div>
-      <div
-        style={{
-          fontSize: 14,
-          opacity: 0.85,
-          marginBottom: 8,
-        }}
-      >
-        AI OPERATIONAL STATUS
-      </div>
-
-      <div
-        style={{
-          fontSize: 42,
-          fontWeight: 900,
-          lineHeight: 1,
-        }}
-      >
-        {operationalStatus}
-      </div>
-
-      <div
-        style={{
-          marginTop: 12,
-          fontSize: 16,
-          opacity: 0.92,
-        }}
-      >
-        Fleet-wide autonomous threat intelligence.
-      </div>
-    </div>
-
-    <div
-      style={{
-        textAlign: "right",
-      }}
-    >
-      <div
-        style={{
-          fontSize: 14,
-          opacity: 0.85,
-          marginBottom: 8,
-        }}
-      >
-        GLOBAL THREAT SCORE
-      </div>
-
-      <div
-        style={{
-          fontSize: 72,
-          fontWeight: 900,
-          color: "#fff",
-          lineHeight: 1,
-        }}
-      >
-        {globalThreatScore}
-      </div>
-
-      <div
-        style={{
-          fontSize: 15,
-          opacity: 0.85,
-        }}
-      >
-        /100 Risk Index
-      </div>
-    </div>
-  </div>
-
-  <div
-    style={{
-      marginTop: 24,
-      display: "grid",
-      gridTemplateColumns:
-        "repeat(auto-fit,minmax(220px,1fr))",
-      gap: 14,
-    }}
-  >
-    {topThreatVehicles.map((threat, index) => (
-      <div
-        key={index}
-        style={{
-          background: "rgba(255,255,255,0.08)",
-          border:
-            "1px solid rgba(255,255,255,0.12)",
-          borderRadius: 16,
-          padding: 16,
-        }}
-      >
-        <div
-          style={{
-            fontWeight: 900,
-            fontSize: 18,
-          }}
-        >
-          {threat.registrationNumber}
-        </div>
-
-        <div
-          style={{
-            opacity: 0.82,
-            marginTop: 4,
-            fontSize: 14,
-          }}
-        >
-          {threat.nickname || "Fleet Vehicle"}
-        </div>
-
-        <div
-          style={{
-            marginTop: 14,
-            fontSize: 36,
-            fontWeight: 900,
-          }}
-        >
-          {threat.probability}%
-        </div>
-
-        <div
-          style={{
-            marginTop: 4,
-            color:
-              threat.level === "Critical"
-                ? "#fecaca"
-                : threat.level === "High"
-                ? "#fdba74"
-                : "#fde68a",
-            fontWeight: 800,
-          }}
-        >
-          {threat.level}
-        </div>
-      </div>
-    ))}
-  </div>
-</div>
+	<CommandCenterStatusSection
+  operationalStatus={operationalStatus}
+  globalThreatScore={globalThreatScore}
+  topThreatVehicles={topThreatVehicles}
+/>
 
       <div
         style={{
