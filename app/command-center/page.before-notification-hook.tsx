@@ -58,7 +58,6 @@ import {
 } from "react";
 import { useMap } from "react-leaflet";
 import AppShell from "@/components/AppShell";
-import { useCommandCenterNotifications } from "./hooks/useCommandCenterNotifications";
 
 const MapContainer = dynamic(
   () => import("react-leaflet").then((m) => m.MapContainer),
