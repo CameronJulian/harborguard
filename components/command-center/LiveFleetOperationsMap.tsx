@@ -1,6 +1,7 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useRealtimeRefresh } from "@/lib/realtime/useRealtimeRefresh";
 import dynamic from "next/dynamic";
 
 const MapContainer = dynamic(
@@ -81,11 +82,16 @@ export default function LiveFleetOperationsMap() {
     }
   }
 
-  useEffect(() => {
-    loadTracking();
-    const interval = setInterval(loadTracking, 15000);
-    return () => clearInterval(interval);
-  }, []);
+  useRealtimeRefresh({
+    tables: [
+      "vehicle_locations",
+      "dispatch_missions",
+      "route_assignments",
+      "vehicle_trips",
+    ],
+    refresh: loadTracking,
+    pollingMs: 15000,
+  });
 
   const center = useMemo<[number, number]>(() => {
     const first = tracking.find((item) => item.latitude && item.longitude);
@@ -170,3 +176,4 @@ export default function LiveFleetOperationsMap() {
     </section>
   );
 }
+
