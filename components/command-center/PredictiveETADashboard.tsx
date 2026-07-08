@@ -1,6 +1,7 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useRealtimeRefresh } from "@/lib/realtime/useRealtimeRefresh";
 import { fetchWithAuth } from "@/lib/auth-fetch";
 
 type ETAPrediction = {
@@ -45,13 +46,16 @@ export default function PredictiveETADashboard() {
     }
   }
 
-  useEffect(() => {
-    loadPredictions();
-
-    const interval = setInterval(loadPredictions, 60000);
-
-    return () => clearInterval(interval);
-  }, []);
+  useRealtimeRefresh({
+    tables: [
+      "vehicle_locations",
+      "vehicle_trips",
+      "route_assignments",
+      "vehicles",
+    ],
+    refresh: loadPredictions,
+    pollingMs: 60000,
+  });
 
   return (
     <div
@@ -148,3 +152,4 @@ export default function PredictiveETADashboard() {
     </div>
   );
 }
+
