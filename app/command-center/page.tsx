@@ -29,6 +29,7 @@ import MissionAutomationRules from "@/components/command-center/MissionAutomatio
 import CommandWall from "@/components/command-center/CommandWall";
 import AuditPlayback from "@/components/command-center/AuditPlayback";
 import DispatcherCollaboration from "@/components/command-center/DispatcherCollaboration";
+import CommandCenterVoiceSection from "./sections/CommandCenterVoiceSection";
 import CommandCenterThemeSwitcher from "@/components/command-center/CommandCenterThemeSwitcher";
 import IncidentAssignmentBoard from "@/components/command-center/IncidentAssignmentBoard";
 import AIAccidentDetection from "@/components/command-center/AIAccidentDetection";
@@ -1220,154 +1221,12 @@ if (
           animation: hgLivePulse 2s infinite;
         }
       `}</style>
-<div
-  style={{
-    ...cardStyle,
-    padding: 24,
-    marginBottom: 24,
-    background:
-      "linear-gradient(135deg,#111827,#1e293b)",
-    color: "#fff",
-  }}
->
-  <div
-    style={{
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      flexWrap: "wrap",
-      gap: 20,
-    }}
-  >
-    <div>
-      <div
-        style={{
-          fontSize: 14,
-          opacity: 0.8,
-          marginBottom: 8,
-          fontWeight: 700,
-        }}
-      >
-        AI VOICE COMMAND CENTER
-      </div>
-
-      <div
-        style={{
-          fontSize: 40,
-          fontWeight: 900,
-          lineHeight: 1,
-        }}
-      >
-        {voiceEnabled
-          ? "VOICE ACTIVE"
-          : "VOICE STANDBY"}
-      </div>
-
-      <div
-        style={{
-          marginTop: 12,
-          opacity: 0.9,
-          maxWidth: 700,
-          lineHeight: 1.6,
-        }}
-      >
-        Speak operational commands directly to
-        HarborGuard AI.
-      </div>
-    </div>
-
-    <button
-      onClick={() =>
-        setVoiceEnabled((v) => !v)
-      }
-      style={{
-        border: "none",
-        borderRadius: 18,
-        padding: "18px 24px",
-        cursor: "pointer",
-        fontWeight: 900,
-        fontSize: 16,
-        background: voiceEnabled
-          ? "#dc2626"
-          : "#2563eb",
-        color: "#fff",
-      }}
-    >
-      {voiceEnabled
-        ? "Disable Voice AI"
-        : "Enable Voice AI"}
-    </button>
-  </div>
-
-  <div
-    style={{
-      marginTop: 24,
-      display: "grid",
-      gridTemplateColumns:
-        "repeat(auto-fit,minmax(320px,1fr))",
-      gap: 18,
-    }}
-  >
-    <div
-      style={{
-        background:
-          "rgba(255,255,255,0.08)",
-        borderRadius: 18,
-        padding: 18,
-      }}
-    >
-      <div
-        style={{
-          fontSize: 13,
-          opacity: 0.75,
-          marginBottom: 8,
-        }}
-      >
-        LAST VOICE COMMAND
-      </div>
-
-      <div
-        style={{
-          fontSize: 18,
-          fontWeight: 700,
-          lineHeight: 1.5,
-        }}
-      >
-        {voiceTranscript ||
-          "Awaiting voice command..."}
-      </div>
-    </div>
-
-    <div
-      style={{
-        background:
-          "rgba(255,255,255,0.08)",
-        borderRadius: 18,
-        padding: 18,
-      }}
-    >
-      <div
-        style={{
-          fontSize: 13,
-          opacity: 0.75,
-          marginBottom: 8,
-        }}
-      >
-        AI RESPONSE
-      </div>
-
-      <div
-        style={{
-          fontSize: 16,
-          lineHeight: 1.7,
-        }}
-      >
-        {copilotResponse ||
-          "AI operational response pending..."}
-      </div>
-    </div>
-  </div>
-</div>
+<CommandCenterVoiceSection
+  voiceEnabled={voiceEnabled}
+  voiceTranscript={voiceTranscript}
+  copilotResponse={copilotResponse}
+  onToggleVoice={() => setVoiceEnabled((v) => !v)}
+/>
       <div style={{ ...cardStyle, padding: 24, marginBottom: 24 }}>
         <h1 style={{ fontSize: 34, margin: "0 0 8px 0" }}>
           Command Center
