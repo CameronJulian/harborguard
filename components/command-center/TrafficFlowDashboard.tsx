@@ -1,6 +1,7 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useRealtimeRefresh } from "@/lib/realtime/useRealtimeRefresh";
 import { fetchWithAuth } from "@/lib/auth-fetch";
 
 type TrafficFlow = {
@@ -53,11 +54,16 @@ export default function TrafficFlowDashboard() {
     }
   }
 
-  useEffect(() => {
-    loadTrafficFlow();
-    const interval = setInterval(loadTrafficFlow, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  useRealtimeRefresh({
+    tables: [
+      "traffic_flow",
+      "road_incidents",
+      "route_assignments",
+      "vehicle_locations",
+    ],
+    refresh: loadTrafficFlow,
+    pollingMs: 30000,
+  });
 
   return (
     <section
@@ -179,3 +185,4 @@ export default function TrafficFlowDashboard() {
     </section>
   );
 }
+
