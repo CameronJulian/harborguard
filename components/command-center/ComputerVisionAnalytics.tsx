@@ -1,7 +1,7 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { useState } from "react";
+import { useRealtimeRefresh } from "@/lib/realtime/useRealtimeRefresh";
 import { fetchWithAuth } from "@/lib/auth-fetch";
 
 type VisionEvent = {
@@ -59,31 +59,11 @@ export default function ComputerVisionAnalytics() {
     }
   }
 
-  useEffect(() => {
-    loadVision();
-
-    const interval = setInterval(loadVision, 30000);
-
-    const channel = supabaseBrowser
-      .channel("vision-events-realtime")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "vision_events",
-        },
-        () => {
-          loadVision();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      clearInterval(interval);
-      supabaseBrowser.removeChannel(channel);
-    };
-  }, []);
+  useRealtimeRefresh({
+    tables: ["vision_events"],
+    refresh: loadVision,
+    pollingMs: 30000,
+  });
 
   return (
     <section
@@ -202,4 +182,5 @@ export default function ComputerVisionAnalytics() {
     </section>
   );
 }
+
 
