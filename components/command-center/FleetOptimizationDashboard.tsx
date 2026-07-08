@@ -1,6 +1,7 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useRealtimeRefresh } from "@/lib/realtime/useRealtimeRefresh";
 import { fetchWithAuth } from "@/lib/auth-fetch";
 
 type Candidate = {
@@ -54,11 +55,17 @@ export default function FleetOptimizationDashboard() {
     }
   }
 
-  useEffect(() => {
-    loadOptimization();
-    const interval = setInterval(loadOptimization, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  useRealtimeRefresh({
+    tables: [
+      "vehicles",
+      "vehicle_locations",
+      "vehicle_alerts",
+      "vehicle_trips",
+      "route_assignments",
+    ],
+    refresh: loadOptimization,
+    pollingMs: 30000,
+  });
 
   const best = summary?.bestCandidate;
 
@@ -194,3 +201,4 @@ export default function FleetOptimizationDashboard() {
     </section>
   );
 }
+
