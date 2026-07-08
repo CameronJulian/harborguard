@@ -1,8 +1,8 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
-import { supabase } from "@/lib/supabase";
+import { useRealtimeRefresh } from "@/lib/realtime/useRealtimeRefresh";
 
 type Notification = {
   id: string;
@@ -74,27 +74,16 @@ export default function NotificationCenter() {
     });
 
     loadNotifications();
-  }
-
-  useEffect(() => {
-    loadNotifications();
-
-    const channel = supabase
-      .channel("notification-center-live")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "command_center_notifications" },
-        () => loadNotifications()
-      )
-      .subscribe();
-
-    const interval = setInterval(loadNotifications, 60000);
-
-    return () => {
-      supabase.removeChannel(channel);
-      clearInterval(interval);
-    };
-  }, []);
+  }  useRealtimeRefresh({
+    tables: [
+      "command_center_notifications",
+      "incidents",
+      "vehicle_alerts",
+      "dispatch_missions",
+    ],
+    refresh: loadNotifications,
+    pollingMs: 60000,
+  });
 
   return (
     <div
@@ -150,6 +139,7 @@ export default function NotificationCenter() {
     </div>
   );
 }
+
 
 
 
