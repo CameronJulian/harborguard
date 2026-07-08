@@ -1,8 +1,8 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
-import { subscribeCommandCenterRealtime } from "@/lib/realtime/commandCenterEvents";
+import { useRealtimeRefresh } from "@/lib/realtime/useRealtimeRefresh";
 
 type Correlation = {
   id: string;
@@ -60,10 +60,17 @@ export default function AIIncidentCorrelationDashboard() {
     }
   }
 
-  useEffect(() => {
-    loadCorrelations();
-    return subscribeCommandCenterRealtime(loadCorrelations);
-  }, []);
+  useRealtimeRefresh({
+    tables: [
+      "incidents",
+      "vehicle_alerts",
+      "vehicle_locations",
+      "road_incidents",
+      "dispatch_missions",
+      "vehicle_trips",
+    ],
+    refresh: loadCorrelations,
+  });
 
   return (
     <div
@@ -210,3 +217,4 @@ export default function AIIncidentCorrelationDashboard() {
     </div>
   );
 }
+
