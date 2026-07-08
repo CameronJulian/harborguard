@@ -45,3 +45,23 @@ structure.txt
 .env.sentry-build-plugin
 
 supabase/.temp/
+
+
+# ========================================
+# HarborGuard Generated Files
+# ========================================
+
+# Architecture reports
+HarborGuard-Architecture-Data.json
+HarborGuard-Architecture-Report.md
+HarborGuard-Dependency-Graph.txt
+HarborGuard-Project-Map.txt
+
+# Local review archives
+HarborGuard-*.zip
+
+# Temporary analysis output
+HarborGuard-*.log
+
+# OS artifacts
+Thumbs.db
