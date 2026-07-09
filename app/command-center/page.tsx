@@ -1456,7 +1456,6 @@ if (
         </div>
       <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 24 }}>
         <div style={{ ...cardStyle, padding: 20 }}>
-          <h2 style={{ fontSize: 28, margin: "0 0 4px 0" }}>
         <div style={{ ...cardStyle, padding: 22, marginBottom: 24 }}>
           <h2 style={{ fontSize: 26, margin: "0 0 14px 0" }}>
             Fleet Operations Snapshot
@@ -1617,8 +1616,6 @@ if (
 
         <NotificationCenter />
 
-            Live Tactical Fleet Map
-          </h2>
           <div style={{ color: "#64748b", marginBottom: 12 }}>
             Pulsing markers show live vehicles. Blue trails show movement history. Purple circles show stops. Orange/red circles show Route Safety threats. Green circles show active geofences.
           </div>
