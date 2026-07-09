@@ -4,6 +4,7 @@ import { fetchWithAuth } from "@/lib/auth-fetch";
 import CommandCenterDriverContactSection from "./sections/CommandCenterDriverContactSection";
 import CommandCenterRouteSafetySection from "./sections/CommandCenterRouteSafetySection";
 import CommandCenterPriorityQueueSection from "./sections/CommandCenterPriorityQueueSection";
+import CommandCenterVehicleCard from "./sections/CommandCenterVehicleCard";
 import CommandCenterVehicleTimelineSection from "./sections/CommandCenterVehicleTimelineSection";
 import { supabase } from "@/lib/supabase";
 import NotificationCenter from "@/components/command-center/NotificationCenter";
@@ -1930,282 +1931,29 @@ if (
             <div style={{ color: "#64748b" }}>No vehicles found.</div>
           ) : (
             <div style={{ display: "grid", gap: 14, maxHeight: 620, overflowY: "auto" }}>
-              {filteredFleet.map((vehicle) => {
-                const risk = vehicleRisk(vehicle);
-                const alerts = vehicle.openAlerts || [];
-                const selected = selectedVehicleId === vehicle.id;
-                const routePoints = cleanRoute(vehicle.route);
-                const status = movementStatus(vehicle);
-				const nearbyIncidents = incidents.filter((incident) => {
-  const coords = cleanLatLng(
-    vehicle.latitude,
-    vehicle.longitude
-  );
-
-  if (!coords) return false;
-
-  const distance = calculateDistanceMeters(
-    coords[0],
-    coords[1],
-    incident.latitude,
-    incident.longitude
-  );
-
-  return distance <= incident.radius_meters;
-});
-
-                const routeThreatScore = nearbyIncidents.reduce((total, incident) => {
-                    if (incident.type === "smash_grab_hotspot") return total + 40;
-                    if (incident.type === "roadblock") return total + 25;
-                    if (incident.type === "traffic_light_outage") return total + 15;
-                    return total + 10;
-                  }, 0);
-
-                  const vehicleRiskScore = Math.min(
-                    100,
-                    routeThreatScore +
-                      alerts.length * 10 +
-                      alerts.filter((alert) => alert.severity === "critical").length * 20 +
-                      (risk === "offline" ? 15 : 0) +
-                      (status === "Stopped" ? 5 : 0)
-                  );
-
-                  const vehicleRiskLevel =
-                    vehicleRiskScore >= 80
-                      ? "CRITICAL"
-                      : vehicleRiskScore >= 60
-                      ? "HIGH"
-                      : vehicleRiskScore >= 35
-                      ? "MEDIUM"
-                      : "LOW";
-
-                  return (
-                  <div
-                    key={vehicle.id}
-                    onClick={() => setSelectedVehicleId(vehicle.id)}
-                    style={{
-                      border: selected
-                        ? "2px solid #2563eb"
-                        : `1px solid ${risk === "normal" ? "#e5e7eb" : "#fecaca"}`,
-                      borderRadius: 16,
-                      padding: 16,
-                      background: risk === "critical" ? "#fff7f7" : selected ? "#eff6ff" : "#fff",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-                      <div>
-                        <div style={{ fontWeight: 900, fontSize: 18 }}>
-                          {vehicle.registrationNumber}
-                        </div>
-                        <div style={{ color: "#64748b", fontSize: 14 }}>
-                          {vehicle.nickname || "-"}
-                        </div>
-                      </div>
-
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ color: riskColor(risk), fontWeight: 900 }}>
-                          {riskText(risk)}
-                        </div>
-                        <div style={{ color: movementColor(status), fontWeight: 800, fontSize: 13 }}>
-                          {status}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={{ color: "#334155", fontSize: 14, marginTop: 10 }}>
-                      Driver: {vehicle.driverName || "-"}
-                    </div>
-                    <div style={{ color: "#334155", fontSize: 14 }}>
-                      Speed: {Math.round(vehicle.speedKmh || 0)} km/h
-                    </div>
-                    <div style={{ color: "#334155", fontSize: 14 }}>
-                      Updated: {secondsSince(vehicle.lastSeen)}s ago
-                    </div>
-                    <div style={{ color: "#334155", fontSize: 14 }}>
-                      Last Seen: {formatDateTime(vehicle.lastSeen)}
-                    </div>
-                    <div style={{ color: "#334155", fontSize: 14 }}>
-                      Route Points: {routePoints.length} | Stops: {vehicle.stops?.length || 0}
-                    </div>
-
-                      <div
-                        style={{
-                          marginTop: 10,
-                          padding: 10,
-                          borderRadius: 12,
-                          background:
-                            vehicleRiskLevel === "CRITICAL"
-                              ? "#fee2e2"
-                              : vehicleRiskLevel === "HIGH"
-                              ? "#ffedd5"
-                              : vehicleRiskLevel === "MEDIUM"
-                              ? "#fef3c7"
-                              : "#dcfce7",
-                          border: "1px solid #e5e7eb",
-                          fontWeight: 900,
-                        }}
-                      >
-                        Risk Score: {vehicleRiskScore}/100 - {vehicleRiskLevel}
-                      </div>
-                        <div
-                          style={{
-                            marginTop: 10,
-                            padding: 10,
-                            borderRadius: 12,
-                            background: "#eff6ff",
-                            border: "1px solid #bfdbfe",
-                            color: "#1e3a8a",
-                            fontSize: 13,
-                            lineHeight: 1.5,
-                          }}
-                        >
-                          <strong>AI Dispatch Recommendation</strong>
-                          <br />
-                          {vehicleRiskLevel === "CRITICAL"
-                            ? "Escalate immediately. Contact driver, create/confirm incident case, and dispatch response support."
-                            : vehicleRiskLevel === "HIGH"
-                            ? "Contact driver now. Monitor route threats closely and prepare escalation if no response."
-                            : vehicleRiskLevel === "MEDIUM"
-                            ? "Warn driver and continue monitoring. Review nearby route threats before next stop."
-                            : nearbyIncidents.length > 0
-                            ? "Route threat nearby. Advise caution and monitor vehicle movement."
-                            : "Continue normal monitoring."}
-                        </div>
-
-                    {alerts.length > 0 ? (
-                      <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
-                        {alerts.slice(0, 3).map((alert, index) => (
-                          <div
-                            key={alert.id || index}
-                            style={{
-                              padding: 10,
-                              borderRadius: 12,
-                              background: "#f8fafc",
-                              border: "1px solid #e2e8f0",
-                              fontSize: 13,
-                            }}
-                          >
-                            <strong>{alertLabel(alert.alert_type)}</strong>
-                            <br />
-                            {alert.message || "No message"}
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
-					
-					{nearbyIncidents.length > 0 && (
-  <div
-    style={{
-      marginTop: 12,
-      padding: 12,
-      borderRadius: 14,
-      background: "rgba(220, 38, 38, 0.12)",
-      border: "1px solid rgba(220,38,38,0.35)",
-      display: "grid",
-      gap: 8,
-    }}
-  >
-    <div
-      style={{
-        fontWeight: 800,
-        color: "#dc2626",
-      }}
-    >
-      Threat Alerts
-    </div>
-
-    {nearbyIncidents.map((incident) => (
-      <div
-        key={incident.id}
-        style={{
-          color: "#991b1b",
-          fontSize: 14,
-          lineHeight: 1.5,
-        }}
-      >
-        Ã¢Å¡Â  {incident.title} ({incident.severity})
-      </div>
-    ))}
-  </div>
-)}
-
-                    <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-                      <Link
-                        href={replayHref(vehicle)}
-                        onClick={(e) => e.stopPropagation()}
-                        style={{
-                          textDecoration: "none",
-                          borderRadius: 10,
-                          background: "#2563eb",
-                          color: "#fff",
-                          padding: "8px 10px",
-                          fontWeight: 800,
-                          fontSize: 13,
-                        }}
-                      >
-                        Replay
-                      </Link>
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          triggerPanic(vehicle);
-                        }}
-                        style={{
-                          borderRadius: 10,
-                          background: "#dc2626",
-                          color: "#fff",
-                          padding: "8px 10px",
-                          fontWeight: 800,
-                          border: "none",
-                          cursor: "pointer",
-                          fontSize: 13,
-                        }}
-                      >
-                        Panic
-                      </button>
-
-                      {alerts.length > 0 ? (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            resolveFirstAlert(vehicle);
-                          }}
-                          style={{
-                            borderRadius: 10,
-                            border: "1px solid #16a34a",
-                            color: "#16a34a",
-                            padding: "8px 10px",
-                            fontWeight: 800,
-                            background: "#fff",
-                            cursor: "pointer",
-                            fontSize: 13,
-                          }}
-                        >
-                          Resolve
-                        </button>
-                      ) : null}
-
-                      <Link
-                        href="/risk-dashboard"
-                        onClick={(e) => e.stopPropagation()}
-                        style={{
-                          textDecoration: "none",
-                          borderRadius: 10,
-                          border: "1px solid #cbd5e1",
-                          color: "#0f172a",
-                          padding: "8px 10px",
-                          fontWeight: 800,
-                          fontSize: 13,
-                        }}
-                      >
-                        Risk Details
-                      </Link>
-                    </div>
-                  </div>
-                );
-              })}
+              {filteredFleet.map((vehicle) => (
+                <CommandCenterVehicleCard
+                  key={vehicle.id}
+                  vehicle={vehicle}
+                  selectedVehicleId={selectedVehicleId}
+                  incidents={incidents}
+                  setSelectedVehicleId={setSelectedVehicleId}
+                  vehicleRisk={vehicleRisk}
+                  movementStatus={movementStatus}
+                  cleanRoute={cleanRoute}
+                  cleanLatLng={cleanLatLng}
+                  calculateDistanceMeters={calculateDistanceMeters}
+                  riskColor={riskColor}
+                  riskText={riskText}
+                  movementColor={movementColor}
+                  secondsSince={secondsSince}
+                  formatDateTime={formatDateTime}
+                  alertLabel={alertLabel}
+                  replayHref={replayHref}
+                  triggerPanic={triggerPanic}
+                  resolveFirstAlert={resolveFirstAlert}
+                />
+              ))}
             </div>
           )}
         </div>
