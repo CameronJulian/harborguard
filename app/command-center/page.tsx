@@ -5,6 +5,7 @@ import CommandCenterDriverContactSection from "./sections/CommandCenterDriverCon
 import CommandCenterRouteSafetySection from "./sections/CommandCenterRouteSafetySection";
 import CommandCenterPriorityQueueSection from "./sections/CommandCenterPriorityQueueSection";
 import CommandCenterVehicleCard from "./sections/CommandCenterVehicleCard";
+import CommandCenterActiveOperationsSection from "./sections/CommandCenterActiveOperationsSection";
 import CommandCenterVehicleTimelineSection from "./sections/CommandCenterVehicleTimelineSection";
 import { supabase } from "@/lib/supabase";
 import NotificationCenter from "@/components/command-center/NotificationCenter";
@@ -1907,55 +1908,29 @@ if (
   loadSaferRouteOptions={loadSaferRouteOptions}
 />
 
-          <h2 style={{ fontSize: 28, margin: "0 0 16px 0" }}>
-            Active Operations
-          </h2>
-
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search vehicle, driver, status..."
-            style={{
-              width: "100%",
-              padding: "12px 14px",
-              borderRadius: 12,
-              border: "1px solid #cbd5e1",
-              marginBottom: 16,
-              fontSize: 14,
-            }}
+          <CommandCenterActiveOperationsSection
+            search={search}
+            setSearch={setSearch}
+            loading={loading}
+            filteredFleet={filteredFleet}
+            selectedVehicleId={selectedVehicleId}
+            incidents={incidents}
+            setSelectedVehicleId={setSelectedVehicleId}
+            vehicleRisk={vehicleRisk}
+            movementStatus={movementStatus}
+            cleanRoute={cleanRoute}
+            cleanLatLng={cleanLatLng}
+            calculateDistanceMeters={calculateDistanceMeters}
+            riskColor={riskColor}
+            riskText={riskText}
+            movementColor={movementColor}
+            secondsSince={secondsSince}
+            formatDateTime={formatDateTime}
+            alertLabel={alertLabel}
+            replayHref={replayHref}
+            triggerPanic={triggerPanic}
+            resolveFirstAlert={resolveFirstAlert}
           />
-
-          {loading ? (
-            <div>Loading command center...</div>
-          ) : filteredFleet.length === 0 ? (
-            <div style={{ color: "#64748b" }}>No vehicles found.</div>
-          ) : (
-            <div style={{ display: "grid", gap: 14, maxHeight: 620, overflowY: "auto" }}>
-              {filteredFleet.map((vehicle) => (
-                <CommandCenterVehicleCard
-                  key={vehicle.id}
-                  vehicle={vehicle}
-                  selectedVehicleId={selectedVehicleId}
-                  incidents={incidents}
-                  setSelectedVehicleId={setSelectedVehicleId}
-                  vehicleRisk={vehicleRisk}
-                  movementStatus={movementStatus}
-                  cleanRoute={cleanRoute}
-                  cleanLatLng={cleanLatLng}
-                  calculateDistanceMeters={calculateDistanceMeters}
-                  riskColor={riskColor}
-                  riskText={riskText}
-                  movementColor={movementColor}
-                  secondsSince={secondsSince}
-                  formatDateTime={formatDateTime}
-                  alertLabel={alertLabel}
-                  replayHref={replayHref}
-                  triggerPanic={triggerPanic}
-                  resolveFirstAlert={resolveFirstAlert}
-                />
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </AppShell>
