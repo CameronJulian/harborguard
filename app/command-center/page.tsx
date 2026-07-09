@@ -1,6 +1,8 @@
 "use client";
 
 import { fetchWithAuth } from "@/lib/auth-fetch";
+import CommandCenterDriverContactSection from "./sections/CommandCenterDriverContactSection";
+import CommandCenterRouteSafetySection from "./sections/CommandCenterRouteSafetySection";
 import CommandCenterVehicleTimelineSection from "./sections/CommandCenterVehicleTimelineSection";
 import { supabase } from "@/lib/supabase";
 import NotificationCenter from "@/components/command-center/NotificationCenter";
@@ -34,7 +36,6 @@ import CommandCenterVoiceSection from "./sections/CommandCenterVoiceSection";
 import CommandCenterStatusSection from "./sections/CommandCenterStatusSection";
 import CommandCenterSummaryCards from "./sections/CommandCenterSummaryCards";
 import CommandCenterToolbarSection from "./sections/CommandCenterToolbarSection";
-import CommandCenterDriverContactSection from "./sections/CommandCenterDriverContactSection";
 import CommandCenterThemeSwitcher from "@/components/command-center/CommandCenterThemeSwitcher";
 import IncidentAssignmentBoard from "@/components/command-center/IncidentAssignmentBoard";
 import AIAccidentDetection from "@/components/command-center/AIAccidentDetection";
@@ -2008,218 +2009,19 @@ if (
               filteredFleet={filteredFleet}
               selectedVehicleId={selectedVehicleId}
               setMessage={setMessage}
-            />
-
-            <div style={{ ...cardStyle, padding: 20, marginBottom: 24, border: "1px solid #bfdbfe", background: "#eff6ff" }}>
-              <h2 style={{ fontSize: 24, margin: "0 0 12px 0" }}>
-                Route Safety Prediction
-              </h2>
-
-              {(() => {
-                const selectedPredictionVehicle =
-                  filteredFleet.find((vehicle) => vehicle.id === selectedVehicleId) ||
-                  filteredFleet[0];
-
-                return (
-                  <div>
-                    <div style={{ color: "#475569", marginBottom: 12 }}>
-                      Predict roadblock, robot outage, and hotspot exposure for the selected vehicle route.
-                    </div>
-
-                    {selectedPredictionVehicle ? (
-                      <button
-                        onClick={() => loadRouteSafetyPrediction(selectedPredictionVehicle)}
-                        disabled={routePredictionLoading}
-                        style={{
-                          padding: "10px 14px",
-                          borderRadius: 12,
-                          border: "none",
-                          background: "#2563eb",
-                          color: "#fff",
-                          fontWeight: 900,
-                          cursor: "pointer",
-                          marginBottom: 12,
-                        }}
-                      >
-                        {routePredictionLoading ? "Analyzing..." : `Run Route Safety Prediction for ${selectedPredictionVehicle.registrationNumber}`}
-                      </button>
-                    ) : null}
-
-                    {routePrediction ? (
-                      <div style={{ padding: 12, borderRadius: 14, background: "#ffffff", border: "1px solid #bfdbfe" }}>
-                        <strong>
-                          {routePrediction.vehicle?.registrationNumber} - Route Risk{" "}
-                          {routePrediction.riskScore}/100 {routePrediction.riskLevel}
-                        </strong>
-
-                        <div style={{ marginTop: 8, color: "#1e3a8a", fontWeight: 800 }}>
-                          {routePrediction.driverWarning}
-                        </div>
-
-                        {routePrediction.routeEstimate ? (
-                          <div
-                            style={{
-                              marginTop: 10,
-                              padding: 10,
-                              borderRadius: 12,
-                              background: "#ecfeff",
-                              border: "1px solid #a5f3fc",
-                              color: "#155e75",
-                              fontSize: 13,
-                              fontWeight: 800,
-                            }}
-                          >
-                            Google traffic-aware route checked.
-                            <br />
-                            Distance: {Math.round((routePrediction.routeEstimate.distanceMeters || 0) / 1000)} km
-                            <br />
-                            ETA: {routePrediction.routeEstimate.duration || "N/A"}
-                          </div>
-                        ) : (
-                          <div style={{ marginTop: 10, color: "#64748b", fontSize: 13 }}>
-                            Google route estimate unavailable. Check GOOGLE_ROUTES_API_KEY if this persists.
-                          </div>
-                        )}
-
-                          {routePrediction.saferRoutes?.length > 0 ? (
-                            <div
-                              style={{
-                                marginTop: 10,
-                                padding: 10,
-                                borderRadius: 12,
-                                background: "#f0fdf4",
-                                border: "1px solid #bbf7d0",
-                                color: "#14532d",
-                                fontSize: 13,
-                              }}
-                            >
-                              <strong>Recommended safer route options</strong>
-                              <br />
-                              {routePrediction.rerouteRecommendation || "Google returned alternate route options."}
-
-                              <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
-                                {routePrediction.saferRoutes.slice(0, 3).map((route: any) => (
-                                  <div
-                                    key={route.index}
-                                    style={{
-                                      padding: 8,
-                                      borderRadius: 10,
-                                      background: "#ffffff",
-                                      border: "1px solid #dcfce7",
-                                    }}
-                                  >
-                                    <strong>{route.label}</strong>
-                                    <br />
-                                    Distance: {Math.round((route.distanceMeters || 0) / 1000)} km
-                                    <br />
-                                    ETA: {route.duration || "N/A"}
-                                    {route.description ? (
-                                      <>
-                                        <br />
-                                        Via: {route.description}
-                                      </>
-                                    ) : null}
-
-                                      <button
-                                        type="button"
-                                        onClick={() => assignSaferRouteToDriver(route)}
-                                        disabled={routeAssignLoading}
-                                        style={{
-                                          marginTop: 8,
-                                          padding: "8px 12px",
-                                          borderRadius: 10,
-                                          border: "none",
-                                          background: "#0f172a",
-                                          color: "#ffffff",
-                                          fontWeight: 900,
-                                          cursor: routeAssignLoading ? "not-allowed" : "pointer",
-                                          width: "100%",
-                                        }}
-                                      >
-                                        {routeAssignLoading ? "Sending Route..." : "Send Route To Driver"}
-                                      </button>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ) : null}
-
-                        {routePrediction.threats?.length > 0 ? (
-                          <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
-                            {routePrediction.threats.slice(0, 5).map((threat: any) => (
-                              <div
-                                key={threat.id}
-                                style={{
-                                  padding: 10,
-                                  borderRadius: 12,
-                                  background: "#fff7ed",
-                                  border: "1px solid #fed7aa",
-                                  fontSize: 13,
-                                }}
-                              >
-                                <strong>{threat.title}</strong>
-                                <br />
-                                Type: {threat.type?.replaceAll("_", " ")} | Severity:{" "}
-                                {threat.severity?.toUpperCase()} | Score: {threat.score}
-                                <br />
-                                Distance from vehicle: {threat.distanceFromOrigin}m
-                                  <button
-                                    type="button"
-                                    onClick={() => escalateRouteThreat(threat)}
-                                    style={{
-                                      marginTop: 10,
-                                      padding: "8px 12px",
-                                      borderRadius: 10,
-                                      border: "none",
-                                      background: "#dc2626",
-                                      color: "#ffffff",
-                                      fontWeight: 900,
-                                      cursor: "pointer",
-                                      width: "100%",
-                                    }}
-                                  >
-                                    Escalate Route Threat
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => loadSaferRouteOptions()}
-                                    disabled={routeRerouteLoading}
-                                    style={{
-                                      marginTop: 8,
-                                      padding: "8px 12px",
-                                      borderRadius: 10,
-                                      border: "none",
-                                      background: "#16a34a",
-                                      color: "#ffffff",
-                                      fontWeight: 900,
-                                      cursor: routeRerouteLoading ? "not-allowed" : "pointer",
-                                      width: "100%",
-                                    }}
-                                  >
-                                    {routeRerouteLoading ? "Calculating Safer Route..." : "Use Safer Route"}
-                                  </button>
-
-                                {threat.suggestedRoute ? (
-                                  <>
-                                    <br />
-                                    Suggested route: {threat.suggestedRoute}
-                                  </>
-                                ) : null}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div style={{ marginTop: 10, color: "#64748b" }}>
-                            No route safety threats predicted.
-                          </div>
-                        )}
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })()}
-            </div>
+			  />
+          <CommandCenterRouteSafetySection
+  filteredFleet={filteredFleet}
+  selectedVehicleId={selectedVehicleId}
+  routePrediction={routePrediction}
+  routePredictionLoading={routePredictionLoading}
+  routeAssignLoading={routeAssignLoading}
+  routeRerouteLoading={routeRerouteLoading}
+  loadRouteSafetyPrediction={loadRouteSafetyPrediction}
+  assignSaferRouteToDriver={assignSaferRouteToDriver}
+  escalateRouteThreat={escalateRouteThreat}
+  loadSaferRouteOptions={loadSaferRouteOptions}
+/>
 
           <h2 style={{ fontSize: 28, margin: "0 0 16px 0" }}>
             Active Operations
