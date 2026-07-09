@@ -33,6 +33,7 @@ import CommandCenterVoiceSection from "./sections/CommandCenterVoiceSection";
 import CommandCenterStatusSection from "./sections/CommandCenterStatusSection";
 import CommandCenterSummaryCards from "./sections/CommandCenterSummaryCards";
 import CommandCenterToolbarSection from "./sections/CommandCenterToolbarSection";
+import CommandCenterDriverContactSection from "./sections/CommandCenterDriverContactSection";
 import CommandCenterThemeSwitcher from "@/components/command-center/CommandCenterThemeSwitcher";
 import IncidentAssignmentBoard from "@/components/command-center/IncidentAssignmentBoard";
 import AIAccidentDetection from "@/components/command-center/AIAccidentDetection";
@@ -2109,115 +2110,11 @@ if (
               })()}
             </div>
 
-            <div
-              style={{
-                borderRadius: 18,
-                border: "1px solid #e5e7eb",
-                background: "#ffffff",
-                padding: 16,
-                marginBottom: 24,
-              }}
-            >
-              <h2 style={{ fontSize: 24, margin: "0 0 12px 0" }}>
-                Live Driver Contact Center
-              </h2>
-
-              {(() => {
-                const contactVehicle =
-                  filteredFleet.find((vehicle) => vehicle.id === selectedVehicleId) ||
-                  filteredFleet[0];
-
-                if (!contactVehicle) {
-                  return (
-                    <div style={{ color: "#64748b" }}>
-                      Select a vehicle to contact the driver.
-                    </div>
-                  );
-                }
-
-                const dispatchMessage = `HarborGuard Dispatch: Please confirm your status for vehicle ${contactVehicle.registrationNumber}.`;
-
-                return (
-                  <div style={{ display: "grid", gap: 12 }}>
-                    <div>
-                      <div style={{ fontWeight: 900 }}>
-                        {contactVehicle.registrationNumber}
-                      </div>
-                      <div style={{ color: "#64748b" }}>
-                        Driver: {contactVehicle.driverName || "Unassigned"}
-                      </div>
-                    </div>
-
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <button
-                        onClick={() => {
-                          setMessage(`Prepared driver call for ${contactVehicle.registrationNumber}. Add driver phone numbers to enable click-to-call.`);
-                        }}
-                        style={{
-                          padding: "10px 12px",
-                          borderRadius: 10,
-                          border: "none",
-                          background: "#2563eb",
-                          color: "#fff",
-                          fontWeight: 800,
-                          cursor: "pointer",
-                        }}
-                      >
-                        Call Driver
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          navigator.clipboard?.writeText(dispatchMessage);
-                          setMessage("Dispatch message copied to clipboard.");
-                        }}
-                        style={{
-                          padding: "10px 12px",
-                          borderRadius: 10,
-                          border: "1px solid #cbd5e1",
-                          background: "#ffffff",
-                          color: "#0f172a",
-                          fontWeight: 800,
-                          cursor: "pointer",
-                        }}
-                      >
-                        Copy Dispatch Message
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setMessage(`Driver status check queued for ${contactVehicle.registrationNumber}.`);
-                        }}
-                        style={{
-                          padding: "10px 12px",
-                          borderRadius: 10,
-                          border: "1px solid #cbd5e1",
-                          background: "#ffffff",
-                          color: "#0f172a",
-                          fontWeight: 800,
-                          cursor: "pointer",
-                        }}
-                      >
-                        Request Status Check
-                      </button>
-                    </div>
-
-                    <div
-                      style={{
-                        padding: 12,
-                        borderRadius: 12,
-                        background: "#f8fafc",
-                        border: "1px solid #e2e8f0",
-                        color: "#475569",
-                        fontSize: 14,
-                      }}
-                    >
-                      Suggested message: {dispatchMessage}
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
+            <CommandCenterDriverContactSection
+              filteredFleet={filteredFleet}
+              selectedVehicleId={selectedVehicleId}
+              setMessage={setMessage}
+            />
 
             <div style={{ ...cardStyle, padding: 20, marginBottom: 24, border: "1px solid #bfdbfe", background: "#eff6ff" }}>
               <h2 style={{ fontSize: 24, margin: "0 0 12px 0" }}>
