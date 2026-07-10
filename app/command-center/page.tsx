@@ -318,6 +318,10 @@ export default function CommandCenterPage() {
     loadIncidents,
     loadThreatFeed,
     loadGeofenceOverlay,
+    runRiskDetection,
+    triggerPanic,
+    resolveFirstAlert,
+
   } = useCommandCenterData();
 
   const {
@@ -421,87 +425,8 @@ const {
 
 
 
-  async function runRiskDetection() {
-    setMessage("Running risk detection...");
 
-    try {
-      const response = await fetchWithAuth("/api/fleet/detect-risks", {
-        method: "POST",
-      });
-      const result = await response.json();
 
-      if (!response.ok) {
-        setMessage(result.error || "Risk detection failed.");
-        return;
-      }
-
-      setMessage(`Risk detection complete. New alerts: ${result.createdCount || 0}`);
-      await loadFleet();
-    } catch (err: any) {
-      setMessage(err.message || "Risk detection failed.");
-    }
-  }
-
-  async function triggerPanic(vehicle: FleetVehicle) {
-    setMessage(`Triggering panic escalation for ${vehicle.registrationNumber}...`);
-
-    try {
-      const response = await fetchWithAuth("/api/fleet/panic", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          vehicleId: vehicle.id,
-          message: `PANIC triggered from Command Center for ${vehicle.registrationNumber}`,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        setMessage(result.error || "Panic escalation failed.");
-        return;
-      }
-
-      setMessage(`Panic escalation triggered for ${vehicle.registrationNumber}.`);
-      await loadFleet();
-    } catch (err: any) {
-      setMessage(err.message || "Panic escalation failed.");
-    }
-  }
-
-  async function resolveFirstAlert(vehicle: FleetVehicle) {
-    const alert = vehicle.openAlerts?.[0];
-
-    if (!alert?.id) {
-      setMessage("No alert available to resolve.");
-      return;
-    }
-
-    setMessage(`Resolving first alert for ${vehicle.registrationNumber}...`);
-
-    try {
-      const response = await fetchWithAuth("/api/fleet/resolve-alert", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          alertId: alert.id,
-          resolutionNotes: "Resolved from Command Center.",
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        setMessage(result.error || "Alert resolve failed.");
-        return;
-      }
-
-      setMessage(`Alert resolved for ${vehicle.registrationNumber}.`);
-      await loadFleet();
-    } catch (err: any) {
-      setMessage(err.message || "Alert resolve failed.");
-    }
-  }
  useEffect(() => {
   loadFleet();
   loadIncidents();
@@ -803,6 +728,8 @@ if (
     </AppShell>
   );
 }
+
+
 
 
 
