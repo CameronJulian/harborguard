@@ -11,6 +11,7 @@ import CommandCenterLiveOperationsTimeline from "./sections/CommandCenterLiveOpe
 import CommandCenterIntelligenceModulesSection from "./sections/CommandCenterIntelligenceModulesSection";
 import CommandCenterRouteThreatFeedSection from "./sections/CommandCenterRouteThreatFeedSection";
 import CommandCenterThreatIntelligenceSection from "./sections/CommandCenterThreatIntelligenceSection";
+import CommandCenterLiveFleetMapSection from "./sections/CommandCenterLiveFleetMapSection";
 import CommandCenterVehicleTimelineSection from "./sections/CommandCenterVehicleTimelineSection";
 import { supabase } from "@/lib/supabase";
 import NotificationCenter from "@/components/command-center/NotificationCenter";
@@ -1294,255 +1295,42 @@ if (
 
         <NotificationCenter />
 
-          <div style={{ color: "#64748b", marginBottom: 12 }}>
-            Pulsing markers show live vehicles. Blue trails show movement history. Purple circles show stops. Orange/red circles show Route Safety threats. Green circles show active geofences.
-          </div>
-
-          <div
-            style={{
-              borderRadius: 18,
-              overflow: "hidden",
-              border: "1px solid #e5e7eb",
-              height: 620,
-            }}
-          >
-            <MapContainer center={mapCenter} zoom={10} style={{ height: "100%", width: "100%" }}>
-              <TileLayer
-                attribution="&copy; OpenStreetMap contributors"
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-
-              <MapFollower position={selectedPosition} enabled={followSelected} />
-
-              <FleetRiskHeatMap
-                incidents={incidents}
-                visible={showHeatmap}
-              />
-
-              <HERETrafficOverlay
-                incidents={incidents}
-                enabled={showTrafficOverlay}
-              />
-			  
-			  {incidents.map((incident) => {
-  const coords = cleanLatLng(incident.latitude, incident.longitude);
-  if (!coords) return null;
-
-  const color =
-    incident.severity === "critical"
-      ? "#dc2626"
-      : incident.severity === "high"
-        ? "#ea580c"
-        : "#d97706";
-
-  return (
-    <CircleMarker
-      key={incident.id}
-      center={coords}
-      radius={14}
-      pathOptions={{
-        color,
-        fillColor: color,
-        fillOpacity: 0.35,
-        weight: 3,
-      }}
-    >
-      <Popup>
-        <div style={{ minWidth: 220 }}>
-          <strong>{incident.title}</strong>
-          <br />
-          Type: {incident.type}
-          <br />
-          Severity: {incident.severity}
-          <br />
-          Radius: {incident.radius_meters}m
-        </div>
-      </Popup>
-    </CircleMarker>
-  );
-})}
-
-              {vehiclesWithLocation.map((vehicle) => {
-                const risk = vehicleRisk(vehicle);
-                const icon = icons[vehicle.id];
-                const coords = cleanLatLng(vehicle.latitude, vehicle.longitude);
-                const routePoints = cleanRoute(vehicle.route);
-                const selected = selectedVehicleId === vehicle.id;
-                const markerPosition = animatedPositions[vehicle.id] || coords;
-
-                if (!icon || !coords || !markerPosition) return null;
-
-                return (
-                  <Fragment key={vehicle.id}>
-                    {showRoutes && routePoints.length > 1 ? (
-                      <>
-                        <Polyline
-                          positions={routePoints}
-                          pathOptions={{
-                            color: "#0f172a",
-                            weight: selected ? 10 : 7,
-                            opacity: selected ? 0.18 : 0.12,
-                            lineJoin: "round",
-                            lineCap: "round",
-                          }}
-                        />
-                        <Polyline
-                          positions={routePoints}
-                          pathOptions={{
-                            color: selected ? "#2563eb" : "#3b82f6",
-                            weight: selected ? 5 : 3,
-                            opacity: selected ? 0.98 : 0.85,
-                            lineJoin: "round",
-                            lineCap: "round",
-                          }}
-                        />
-                        <Polyline
-                          positions={routePoints}
-                          pathOptions={{
-                            color: "#bfdbfe",
-                            weight: selected ? 2 : 1,
-                            opacity: selected ? 0.95 : 0.75,
-                            lineJoin: "round",
-                            lineCap: "round",
-                          }}
-                        />
-                      </>
-                    ) : null}
-
-                    {showStops &&
-                      (vehicle.stops || []).map((stop) => {
-                        const stopCoords = cleanLatLng(stop.latitude, stop.longitude);
-                        if (!stopCoords) return null;
-
-                        return (
-                          <CircleMarker
-                            key={stop.id}
-                            center={stopCoords}
-                            radius={selected ? 8 : 6}
-                            pathOptions={{
-                              color: "#7c3aed",
-                              fillColor: "#a855f7",
-                              fillOpacity: 0.65,
-                              weight: 2,
-                            }}
-                          >
-                            <Popup>
-                              <div style={{ minWidth: 180 }}>
-                                <strong>Stop detected</strong>
-                                <br />
-                                Vehicle: {vehicle.registrationNumber}
-                                <br />
-                                Started: {formatDateTime(stop.started_at)}
-                                <br />
-                                Ended: {formatDateTime(stop.ended_at)}
-                                <br />
-                                Duration: {Math.round((stop.duration_seconds || 0) / 60)} min
-                              </div>
-                            </Popup>
-                          </CircleMarker>
-                        );
-                      })}
-
-                    <Marker
-                      position={markerPosition}
-                      icon={icon}
-                      eventHandlers={{
-                        click: () => setSelectedVehicleId(vehicle.id),
-                      }}
-                    >
-                      <Popup>
-                        <div style={{ minWidth: 250 }}>
-                          <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 6 }}>
-                            {vehicle.registrationNumber}
-                          </div>
-                          <div style={{ color: "#64748b", marginBottom: 8 }}>
-                            Nickname: {vehicle.nickname || "-"}
-                          </div>
-
-                          <div>
-                            <strong>Status:</strong>{" "}
-                            <span style={{ color: riskColor(risk), fontWeight: 800 }}>
-                              {riskText(risk)}
-                            </span>
-                          </div>
-                          <div>
-                            <strong>Movement:</strong>{" "}
-                            <span style={{ color: movementColor(movementStatus(vehicle)), fontWeight: 800 }}>
-                              {movementStatus(vehicle)}
-                            </span>
-                          </div>
-                          <div>
-                            <strong>Driver:</strong> {vehicle.driverName || "-"}
-                          </div>
-                          <div>
-                            <strong>Speed:</strong> {Math.round(vehicle.speedKmh || 0)} km/h
-                          </div>
-                          <div>
-                            <strong>Heading:</strong> {Math.round(vehicle.heading || 0)}Ã‚Â°
-                          </div>
-                          <div>
-                            <strong>Last Seen:</strong> {formatDateTime(vehicle.lastSeen)}
-                          </div>
-                          <div>
-                            <strong>Updated:</strong> {secondsSince(vehicle.lastSeen)}s ago
-                          </div>
-
-                          <div style={{ marginTop: 8 }}>
-                            <strong>Route Points:</strong> {routePoints.length}
-                            <br />
-                            <strong>Stops:</strong> {vehicle.stops?.length || 0}
-                          </div>
-
-                          <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                            <Link
-                              href={replayHref(vehicle)}
-                              style={{
-                                textDecoration: "none",
-                                borderRadius: 10,
-                                background: "#2563eb",
-                                color: "#fff",
-                                padding: "8px 10px",
-                                fontWeight: 800,
-                              }}
-                            >
-                              Replay
-                            </Link>
-
-                            <button
-                              onClick={() => triggerPanic(vehicle)}
-                              style={{
-                                borderRadius: 10,
-                                background: "#dc2626",
-                                color: "#fff",
-                                padding: "8px 10px",
-                                fontWeight: 800,
-                                border: "none",
-                                cursor: "pointer",
-                              }}
-                            >
-                              Panic
-                            </button>
-                          </div>
-                        </div>
-                      </Popup>
-                    </Marker>
-                  </Fragment>
-                );
-              })}
-              {saferRoutePolylines.length > 0 ? (
-                <Polyline
-                  key="best-safer-route"
-                  positions={saferRoutePolylines[0]}
-                  pathOptions={{
-                    color: "#16a34a",
-                    weight: 7,
-                    opacity: 0.9,
-                  }}
-                />
-              ) : null}
-
-            </MapContainer>
-          </div>
+          <CommandCenterLiveFleetMapSection
+            MapContainer={MapContainer}
+            TileLayer={TileLayer}
+            Marker={Marker}
+            Popup={Popup}
+            Polyline={Polyline}
+            CircleMarker={CircleMarker}
+            MapFollower={MapFollower}
+            FleetRiskHeatMap={FleetRiskHeatMap}
+            HERETrafficOverlay={HERETrafficOverlay}
+            mapCenter={mapCenter}
+            selectedPosition={selectedPosition}
+            followSelected={followSelected}
+            incidents={incidents}
+            showHeatmap={showHeatmap}
+            showTrafficOverlay={showTrafficOverlay}
+            vehiclesWithLocation={vehiclesWithLocation}
+            icons={icons}
+            animatedPositions={animatedPositions}
+            selectedVehicleId={selectedVehicleId}
+            setSelectedVehicleId={setSelectedVehicleId}
+            showRoutes={showRoutes}
+            showStops={showStops}
+            saferRoutePolylines={saferRoutePolylines}
+            cleanLatLng={cleanLatLng}
+            cleanRoute={cleanRoute}
+            vehicleRisk={vehicleRisk}
+            riskColor={riskColor}
+            riskText={riskText}
+            movementColor={movementColor}
+            movementStatus={movementStatus}
+            formatDateTime={formatDateTime}
+            secondsSince={secondsSince}
+            replayHref={replayHref}
+            triggerPanic={triggerPanic}
+          />
         </div>
 
         <div style={{ ...cardStyle, padding: 24 }}>
