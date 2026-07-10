@@ -1,4 +1,4 @@
-type ThreatItem = {
+ï»¿type ThreatItem = {
   registrationNumber: string;
   nickname?: string | null;
   level: string;
@@ -141,13 +141,13 @@ export default function CommandCenterThreatIntelligenceSection({
                   fontSize: 14,
                 }}
               >
-                <div>• Speed: {threat.speed} km/h</div>
-                <div>• Open Alerts: {threat.openAlerts}</div>
-                <div>• Critical Alerts: {threat.criticalAlerts}</div>
+                <div>- Speed: {threat.speed} km/h</div>
+                <div>- Open Alerts: {threat.openAlerts}</div>
+                <div>- Critical Alerts: {threat.criticalAlerts}</div>
                 <div>
-                  • Near Incident Zone: {threat.nearIncident ? "Yes" : "No"}
+                  - Near Incident Zone: {threat.nearIncident ? "Yes" : "No"}
                 </div>
-                <div>• Offline: {threat.isOffline ? "Yes" : "No"}</div>
+                <div>- Offline: {threat.isOffline ? "Yes" : "No"}</div>
               </div>
             </div>
           ))}
@@ -156,3 +156,5 @@ export default function CommandCenterThreatIntelligenceSection({
     </div>
   );
 }
+
+
