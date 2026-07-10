@@ -82,6 +82,7 @@ import { useCommandCenterFleet } from "./hooks/useCommandCenterFleet";
 import { useCommandCenterRouteSafety } from "./hooks/useCommandCenterRouteSafety";
 import { useCommandCenterVoice } from "./hooks/useCommandCenterVoice";
 import { useCommandCenterData } from "./hooks/useCommandCenterData";
+import { useCommandCenterRealtime } from "./hooks/useCommandCenterRealtime";
 import type {
   CommandCenterGeofence,
   FleetAlert,
@@ -427,62 +428,14 @@ const {
 
 
 
- useEffect(() => {
-  loadFleet();
-  loadIncidents();
-  loadThreatFeed();
+  useCommandCenterRealtime({
+    loadFleet,
+    loadIncidents,
+    loadThreatFeed,
+    loadOperationsSummary,
+    loadOperationsTimeline,
+  });
 
-  const refreshCommandCenter = () => {
-    loadFleet();
-    loadIncidents();
-    loadThreatFeed();
-    loadOperationsSummary();
-    loadOperationsTimeline();
-  };
-
-  const vehicleLocationsChannel = supabase
-    .channel("command-center-vehicle-locations-live")
-    .on(
-      "postgres_changes",
-      { event: "INSERT", schema: "public", table: "vehicle_locations" },
-      refreshCommandCenter
-    )
-    .subscribe();
-
-  const alertsChannel = supabase
-    .channel("command-center-vehicle-alerts-live")
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "vehicle_alerts" },
-      refreshCommandCenter
-    )
-    .subscribe();
-
-  const incidentsChannel = supabase
-    .channel("command-center-incidents-live")
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "incidents" },
-      refreshCommandCenter
-    )
-    .subscribe();
-
-  const tripsChannel = supabase
-    .channel("command-center-trips-live")
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "vehicle_trips" },
-      refreshCommandCenter
-    )
-    .subscribe();
-
-  return () => {
-    supabase.removeChannel(vehicleLocationsChannel);
-    supabase.removeChannel(alertsChannel);
-    supabase.removeChannel(incidentsChannel);
-    supabase.removeChannel(tripsChannel);
-  };
-}, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -728,6 +681,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
