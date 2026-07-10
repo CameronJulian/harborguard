@@ -81,6 +81,7 @@ import { useCommandCenterOperations } from "./hooks/useCommandCenterOperations";
 import { useCommandCenterFleet } from "./hooks/useCommandCenterFleet";
 import { useCommandCenterRouteSafety } from "./hooks/useCommandCenterRouteSafety";
 import { useCommandCenterVoice } from "./hooks/useCommandCenterVoice";
+import { useCommandCenterData } from "./hooks/useCommandCenterData";
 import type {
   CommandCenterGeofence,
   FleetAlert,
@@ -305,11 +306,20 @@ async function createVehicleIcon(
 
 export default function CommandCenterPage() {
 	
-  const [fleet, setFleet] = useState<FleetVehicle[]>([]);
-  const [incidents, setIncidents] = useState<RoadIncident[]>([]);
-  const [threatFeed, setThreatFeed] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
+  const {
+    fleet,
+    incidents,
+    threatFeed,
+    geofences,
+    loading,
+    message,
+    setMessage,
+    loadFleet,
+    loadIncidents,
+    loadThreatFeed,
+    loadGeofenceOverlay,
+  } = useCommandCenterData();
+
   const {
     routePrediction,
     routePredictionLoading,
@@ -333,7 +343,6 @@ export default function CommandCenterPage() {
     loadOperationsSummary,
     loadOperationsTimeline,
   } = useCommandCenterOperations();
-  const [geofences, setGeofences] = useState<CommandCenterGeofence[]>([]);
   const {
     notifications,
     notificationStats,
@@ -365,57 +374,6 @@ const {
   
  
 
-  async function loadFleet() {
-    try {
-      const response = await fetchWithAuth("/api/fleet/live", { cache: "no-store" });
-      const result = await response.json();
-
-      if (!response.ok) {
-        setMessage(result.error || "Failed to load command center.");
-        return;
-      }
-
-      setFleet(result.fleet || []);
-      setMessage("");
-    } catch (err: any) {
-      setMessage(err.message || "Failed to load command center.");
-    } finally {
-      setLoading(false);
-    }
-  }
-  
-  async function loadIncidents() {
-  try {
-    const response = await fetchWithAuth("/api/route-safety/active", { cache: "no-store" });
-    const result = await response.json();
-
-    if (!response.ok) {
-      setMessage(result.error || "Failed to load road incidents.");
-      return;
-    }
-
-    setIncidents(result.incidents || []);
-  } catch (err: any) {
-    setMessage(err.message || "Failed to load road incidents.");
-  }
-}
-
-  async function loadGeofenceOverlay() {
-    try {
-      const response = await fetchWithAuth("/api/geofences", {
-        method: "GET",
-        cache: "no-store",
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        setGeofences((result.geofences || []).filter((zone: CommandCenterGeofence) => zone.is_active));
-      }
-    } catch (error) {
-      console.error("Failed to load geofence overlay:", error);
-    }
-  }
 
 
   useEffect(() => {
@@ -462,25 +420,6 @@ const {
   }, []);
 
 
-async function loadThreatFeed() {
-  try {
-    const response = await fetchWithAuth("/api/fleet/predict-threats", {
-      cache: "no-store",
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) return;
-
-    const sorted = (result.predictions || []).sort(
-      (a: any, b: any) => b.probability - a.probability
-    );
-
-    setThreatFeed(sorted);
-  } catch {
-    // silent fail
-  }
-}
 
   async function runRiskDetection() {
     setMessage("Running risk detection...");
@@ -864,6 +803,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
