@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { fetchWithAuth } from "@/lib/auth-fetch";
 import CommandCenterDriverContactSection from "./sections/CommandCenterDriverContactSection";
@@ -12,6 +12,7 @@ import CommandCenterIntelligenceModulesSection from "./sections/CommandCenterInt
 import CommandCenterRouteThreatFeedSection from "./sections/CommandCenterRouteThreatFeedSection";
 import CommandCenterThreatIntelligenceSection from "./sections/CommandCenterThreatIntelligenceSection";
 import CommandCenterLiveFleetMapSection from "./sections/CommandCenterLiveFleetMapSection";
+import CommandCenterOperationsPanelSection from "./sections/CommandCenterOperationsPanelSection";
 import CommandCenterVehicleTimelineSection from "./sections/CommandCenterVehicleTimelineSection";
 import { supabase } from "@/lib/supabase";
 import NotificationCenter from "@/components/command-center/NotificationCenter";
@@ -1333,68 +1334,38 @@ if (
           />
         </div>
 
-        <div style={{ ...cardStyle, padding: 24 }}>
-        <CommandCenterPriorityQueueSection
+        <CommandCenterOperationsPanelSection
+          search={search}
+          setSearch={setSearch}
+          loading={loading}
           filteredFleet={filteredFleet}
+          selectedVehicleId={selectedVehicleId}
+          incidents={incidents}
           setSelectedVehicleId={setSelectedVehicleId}
+          setMessage={setMessage}
           vehicleRisk={vehicleRisk}
           movementStatus={movementStatus}
-          triggerPanic={triggerPanic}
+          cleanRoute={cleanRoute}
+          cleanLatLng={cleanLatLng}
+          calculateDistanceMeters={calculateDistanceMeters}
+          riskColor={riskColor}
+          riskText={riskText}
+          movementColor={movementColor}
+          secondsSince={secondsSince}
+          formatDateTime={formatDateTime}
+          alertLabel={alertLabel}
           replayHref={replayHref}
+          triggerPanic={triggerPanic}
+          resolveFirstAlert={resolveFirstAlert}
+          routePrediction={routePrediction}
+          routePredictionLoading={routePredictionLoading}
+          routeAssignLoading={routeAssignLoading}
+          routeRerouteLoading={routeRerouteLoading}
+          loadRouteSafetyPrediction={loadRouteSafetyPrediction}
+          assignSaferRouteToDriver={assignSaferRouteToDriver}
+          escalateRouteThreat={escalateRouteThreat}
+          loadSaferRouteOptions={loadSaferRouteOptions}
         />
-    <CommandCenterVehicleTimelineSection
-  filteredFleet={filteredFleet}
-  selectedVehicleId={selectedVehicleId}
-  incidents={incidents}
-  cleanLatLng={cleanLatLng}
-  calculateDistanceMeters={calculateDistanceMeters}
-  alertLabel={alertLabel}
-  movementStatus={movementStatus}
-  formatDateTime={formatDateTime}
-/>
-
-            <CommandCenterDriverContactSection
-              filteredFleet={filteredFleet}
-              selectedVehicleId={selectedVehicleId}
-              setMessage={setMessage}
-			  />
-          <CommandCenterRouteSafetySection
-  filteredFleet={filteredFleet}
-  selectedVehicleId={selectedVehicleId}
-  routePrediction={routePrediction}
-  routePredictionLoading={routePredictionLoading}
-  routeAssignLoading={routeAssignLoading}
-  routeRerouteLoading={routeRerouteLoading}
-  loadRouteSafetyPrediction={loadRouteSafetyPrediction}
-  assignSaferRouteToDriver={assignSaferRouteToDriver}
-  escalateRouteThreat={escalateRouteThreat}
-  loadSaferRouteOptions={loadSaferRouteOptions}
-/>
-
-          <CommandCenterActiveOperationsSection
-            search={search}
-            setSearch={setSearch}
-            loading={loading}
-            filteredFleet={filteredFleet}
-            selectedVehicleId={selectedVehicleId}
-            incidents={incidents}
-            setSelectedVehicleId={setSelectedVehicleId}
-            vehicleRisk={vehicleRisk}
-            movementStatus={movementStatus}
-            cleanRoute={cleanRoute}
-            cleanLatLng={cleanLatLng}
-            calculateDistanceMeters={calculateDistanceMeters}
-            riskColor={riskColor}
-            riskText={riskText}
-            movementColor={movementColor}
-            secondsSince={secondsSince}
-            formatDateTime={formatDateTime}
-            alertLabel={alertLabel}
-            replayHref={replayHref}
-            triggerPanic={triggerPanic}
-            resolveFirstAlert={resolveFirstAlert}
-          />
-        </div>
       </div>
     </AppShell>
   );
