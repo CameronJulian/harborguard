@@ -85,6 +85,20 @@ import type {
   RoadIncident,
   FleetVehicle,
 } from "./types";
+import {
+  cleanRoute,
+  cleanLatLng,
+  formatDateTime,
+  calculateDistanceMeters,
+  secondsSince,
+  alertLabel,
+  vehicleRisk,
+  riskText,
+  riskColor,
+  movementStatus,
+  movementColor,
+  replayHref,
+} from "./utils";
 import { useCommandCenterNotifications } from "./hooks/useCommandCenterNotifications";
 
 const MapContainer = dynamic(
@@ -139,20 +153,6 @@ function toNumber(value: unknown) {
   return NaN;
 }
 
-function cleanRoute(route?: any[]) {
-  return (route || [])
-    .map((p) => {
-      const lat = Array.isArray(p) ? toNumber(p[0]) : toNumber(p?.latitude);
-      const lng = Array.isArray(p) ? toNumber(p[1]) : toNumber(p?.longitude);
-
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
-      if (lat === 0 && lng === 0) return null;
-
-      return [lat, lng] as [number, number];
-    })
-    .filter((p): p is [number, number] => p !== null);
-}
 
 function decodePolyline(encoded: string) {
   const points: [number, number][] = [];
@@ -193,16 +193,6 @@ function decodePolyline(encoded: string) {
   return points;
 }
 
-function cleanLatLng(latitude: unknown, longitude: unknown): [number, number] | null {
-  const lat = toNumber(latitude);
-  const lng = toNumber(longitude);
-
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
-  if (lat === 0 && lng === 0) return null;
-
-  return [lat, lng];
-}
 
 function lerp(a: number, b: number, t: number) {
   return a + (b - a) * t;
@@ -216,109 +206,6 @@ function interpolatePosition(
   return [lerp(start[0], end[0], t), lerp(start[1], end[1], t)];
 }
 
-function formatDateTime(value?: string | null) {
-  if (!value) return "-";
-  return new Date(value).toLocaleString();
-}
-function calculateDistanceMeters(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
-) {
-  const earthRadiusMeters = 6371e3;
-
-  const lat1Rad = (lat1 * Math.PI) / 180;
-  const lat2Rad = (lat2 * Math.PI) / 180;
-
-  const deltaLatRad = ((lat2 - lat1) * Math.PI) / 180;
-  const deltaLonRad = ((lon2 - lon1) * Math.PI) / 180;
-
-  const a =
-    Math.sin(deltaLatRad / 2) * Math.sin(deltaLatRad / 2) +
-    Math.cos(lat1Rad) *
-      Math.cos(lat2Rad) *
-      Math.sin(deltaLonRad / 2) *
-      Math.sin(deltaLonRad / 2);
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return earthRadiusMeters * c;
-}
-
-function secondsSince(value?: string | null) {
-  if (!value) return 9999;
-
-  const time = new Date(value).getTime();
-  if (Number.isNaN(time)) return 9999;
-
-  return Math.max(0, Math.floor((Date.now() - time) / 1000));
-}
-
-function alertLabel(value?: string | null) {
-  return (value || "unknown_alert").replace(/_/g, " ").toUpperCase();
-}
-
-function vehicleRisk(vehicle: FleetVehicle) {
-  const alerts = vehicle.openAlerts || [];
-  if (alerts.some((a) => a.severity === "critical")) return "critical";
-  if (alerts.some((a) => a.severity === "high")) return "high";
-  if (alerts.length > 0) return "alert";
-  if (vehicle.isOffline) return "offline";
-  return "normal";
-}
-
-function riskText(risk: string) {
-  if (risk === "critical") return "Critical";
-  if (risk === "high") return "High Risk";
-  if (risk === "alert") return "Alert";
-  if (risk === "offline") return "Offline";
-  return "Normal";
-}
-
-function riskColor(risk: string) {
-  if (risk === "critical") return "#dc2626";
-  if (risk === "high") return "#ea580c";
-  if (risk === "alert") return "#d97706";
-  if (risk === "offline") return "#64748b";
-  return "#16a34a";
-}
-
-function movementStatus(vehicle: FleetVehicle) {
-  if (vehicle.isOffline) return "Offline";
-
-  const age = secondsSince(vehicle.lastSeen);
-  if (age > 90) return "Stale";
-
-  const speed = Number(vehicle.speedKmh || 0);
-
-  if (speed <= 2) return "Stopped";
-  if (speed <= 10) return "Slow";
-  return "Moving";
-}
-
-function movementColor(status: string) {
-  if (status === "Moving") return "#16a34a";
-  if (status === "Slow") return "#d97706";
-  if (status === "Stopped") return "#7c3aed";
-  if (status === "Stale") return "#ea580c";
-  return "#64748b";
-}
-
-function replayHref(vehicle: FleetVehicle) {
-  const replayDate = vehicle.lastSeen ? new Date(vehicle.lastSeen) : new Date();
-
-  const startDate = new Date(replayDate);
-  startDate.setHours(0, 0, 0, 0);
-
-  const endDate = new Date(replayDate);
-  endDate.setHours(23, 59, 59, 999);
-
-  const start = encodeURIComponent(startDate.toISOString());
-  const end = encodeURIComponent(endDate.toISOString());
-
-  return `/route-replay?vehicleId=${vehicle.id}&start=${start}&end=${end}&autoplay=1`;
-}
 
 function MapFollower({
   position,
