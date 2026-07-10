@@ -13,6 +13,7 @@ import CommandCenterRouteThreatFeedSection from "./sections/CommandCenterRouteTh
 import CommandCenterThreatIntelligenceSection from "./sections/CommandCenterThreatIntelligenceSection";
 import CommandCenterLiveFleetMapSection from "./sections/CommandCenterLiveFleetMapSection";
 import CommandCenterOperationsPanelSection from "./sections/CommandCenterOperationsPanelSection";
+import CommandCenterDashboardColumnSection from "./sections/CommandCenterDashboardColumnSection";
 import CommandCenterVehicleTimelineSection from "./sections/CommandCenterVehicleTimelineSection";
 import { supabase } from "@/lib/supabase";
 import NotificationCenter from "@/components/command-center/NotificationCenter";
@@ -1280,59 +1281,44 @@ if (
           incidents={incidents}
         />
       <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 24 }}>
-        <div style={{ ...cardStyle, padding: 20 }}>
-        <CommandCenterFleetOperationsSnapshot
+        <CommandCenterDashboardColumnSection
           operationsSummary={operationsSummary}
-        />
-
-        <CommandCenterLiveOperationsTimeline
           operationsTimeline={operationsTimeline}
+          incidents={incidents}
+          MapContainer={MapContainer}
+          TileLayer={TileLayer}
+          Marker={Marker}
+          Popup={Popup}
+          Polyline={Polyline}
+          CircleMarker={CircleMarker}
+          MapFollower={MapFollower}
+          FleetRiskHeatMap={FleetRiskHeatMap}
+          HERETrafficOverlay={HERETrafficOverlay}
+          mapCenter={mapCenter}
+          selectedPosition={selectedPosition}
+          followSelected={followSelected}
+          showHeatmap={showHeatmap}
+          showTrafficOverlay={showTrafficOverlay}
+          vehiclesWithLocation={vehiclesWithLocation}
+          icons={icons}
+          animatedPositions={animatedPositions}
+          selectedVehicleId={selectedVehicleId}
+          setSelectedVehicleId={setSelectedVehicleId}
+          showRoutes={showRoutes}
+          showStops={showStops}
+          saferRoutePolylines={saferRoutePolylines}
+          cleanLatLng={cleanLatLng}
+          cleanRoute={cleanRoute}
+          vehicleRisk={vehicleRisk}
+          riskColor={riskColor}
+          riskText={riskText}
+          movementColor={movementColor}
+          movementStatus={movementStatus}
+          formatDateTime={formatDateTime}
+          secondsSince={secondsSince}
+          replayHref={replayHref}
+          triggerPanic={triggerPanic}
         />
-
-
-        <CommandCenterIntelligenceModulesSection
-          operationsTimeline={operationsTimeline}
-        />
-
-        <NotificationCenter />
-
-          <CommandCenterLiveFleetMapSection
-            MapContainer={MapContainer}
-            TileLayer={TileLayer}
-            Marker={Marker}
-            Popup={Popup}
-            Polyline={Polyline}
-            CircleMarker={CircleMarker}
-            MapFollower={MapFollower}
-            FleetRiskHeatMap={FleetRiskHeatMap}
-            HERETrafficOverlay={HERETrafficOverlay}
-            mapCenter={mapCenter}
-            selectedPosition={selectedPosition}
-            followSelected={followSelected}
-            incidents={incidents}
-            showHeatmap={showHeatmap}
-            showTrafficOverlay={showTrafficOverlay}
-            vehiclesWithLocation={vehiclesWithLocation}
-            icons={icons}
-            animatedPositions={animatedPositions}
-            selectedVehicleId={selectedVehicleId}
-            setSelectedVehicleId={setSelectedVehicleId}
-            showRoutes={showRoutes}
-            showStops={showStops}
-            saferRoutePolylines={saferRoutePolylines}
-            cleanLatLng={cleanLatLng}
-            cleanRoute={cleanRoute}
-            vehicleRisk={vehicleRisk}
-            riskColor={riskColor}
-            riskText={riskText}
-            movementColor={movementColor}
-            movementStatus={movementStatus}
-            formatDateTime={formatDateTime}
-            secondsSince={secondsSince}
-            replayHref={replayHref}
-            triggerPanic={triggerPanic}
-          />
-        </div>
 
         <CommandCenterOperationsPanelSection
           search={search}
