@@ -8,6 +8,7 @@ import CommandCenterVehicleCard from "./sections/CommandCenterVehicleCard";
 import CommandCenterActiveOperationsSection from "./sections/CommandCenterActiveOperationsSection";
 import CommandCenterFleetOperationsSnapshot from "./sections/CommandCenterFleetOperationsSnapshot";
 import CommandCenterLiveOperationsTimeline from "./sections/CommandCenterLiveOperationsTimeline";
+import CommandCenterIntelligenceModulesSection from "./sections/CommandCenterIntelligenceModulesSection";
 import CommandCenterVehicleTimelineSection from "./sections/CommandCenterVehicleTimelineSection";
 import { supabase } from "@/lib/supabase";
 import NotificationCenter from "@/components/command-center/NotificationCenter";
@@ -1467,72 +1468,9 @@ if (
         />
 
 
-        <CommandCenterThemeSwitcher />
-
-        <CommandWall />
-
-        <AuditPlayback />
-
-        <DispatcherCollaboration />
-
-        <IncidentAssignmentBoard />
-
-        <AIAccidentDetection />
-
-        <DashcamMonitoring />
-
-        <ComputerVisionAnalytics />
-
-        <ANPRDashboard />
-
-        <CCTVMonitoring />
-
-        <InsuranceResponseCenter />
-
-        <TrafficFlowDashboard />
-
-        <FleetOptimizationDashboard />
-
-        <MissionBoard />
-
-        <LiveMissionTrackingDashboard />
-
-        <LiveFleetOperationsMap />
-
-        <ExecutiveOperationsDashboard />
-
-        <FleetHealthDashboard />
-
-        <AICommandAssistant />
-
-        <FleetMissionQueue />
-
-        <MissionAutomationRules />
-
-        <SupervisorEscalationCenter />
-
-        <AIIncidentCorrelationDashboard />
-
-        <PredictiveIncidentIntelligence />
-
-        <PrescriptiveResponseIntelligence />
-
-        <FleetDigitalTwinDashboard />
-
-        <PredictiveETADashboard />
-
-        <MissionReplayTimeline
-          events={operationsTimeline}
-          title="Mission Replay Timeline"
+        <CommandCenterIntelligenceModulesSection
+          operationsTimeline={operationsTimeline}
         />
-
-        <AIShiftSummary />
-
-        <DispatcherRecommendations />
-
-        <IncidentCommandDashboard />
-
-        <IncidentInvestigationTimeline />
 
         <NotificationCenter />
 
