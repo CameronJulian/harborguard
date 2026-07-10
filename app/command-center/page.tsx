@@ -14,6 +14,7 @@ import CommandCenterThreatIntelligenceSection from "./sections/CommandCenterThre
 import CommandCenterLiveFleetMapSection from "./sections/CommandCenterLiveFleetMapSection";
 import CommandCenterOperationsPanelSection from "./sections/CommandCenterOperationsPanelSection";
 import CommandCenterDashboardColumnSection from "./sections/CommandCenterDashboardColumnSection";
+import CommandCenterHeaderSection from "./sections/CommandCenterHeaderSection";
 import CommandCenterVehicleTimelineSection from "./sections/CommandCenterVehicleTimelineSection";
 import { supabase } from "@/lib/supabase";
 import NotificationCenter from "@/components/command-center/NotificationCenter";
@@ -1238,28 +1239,15 @@ if (
           animation: hgLivePulse 2s infinite;
         }
       `}</style>
-<CommandCenterVoiceSection
-  voiceEnabled={voiceEnabled}
-  voiceTranscript={voiceTranscript}
-  copilotResponse={copilotResponse}
-  onToggleVoice={() => setVoiceEnabled((v) => !v)}
-/>
-      <div style={{ ...cardStyle, padding: 24, marginBottom: 24 }}>
-        <h1 style={{ fontSize: 34, margin: "0 0 8px 0" }}>
-          Command Center
-        </h1>
-        <p style={{ color: "#64748b", margin: 0 }}>
-          Live GPS command map with route trails, stop detection, risk alerts, replay, and emergency escalation.
-        </p>
-      </div>
-	<CommandCenterStatusSection
-  operationalStatus={operationalStatus}
-  globalThreatScore={globalThreatScore}
-  topThreatVehicles={topThreatVehicles}
-/>
-
-      <CommandCenterSummaryCards summary={summary} />
-      <CommandCenterToolbarSection
+      <CommandCenterHeaderSection
+        voiceEnabled={voiceEnabled}
+        voiceTranscript={voiceTranscript}
+        copilotResponse={copilotResponse}
+        setVoiceEnabled={setVoiceEnabled}
+        operationalStatus={operationalStatus}
+        globalThreatScore={globalThreatScore}
+        topThreatVehicles={topThreatVehicles}
+        summary={summary}
         buttonStyle={buttonStyle}
         loadFleet={loadFleet}
         runRiskDetection={runRiskDetection}
