@@ -333,13 +333,14 @@ export default function CommandCenterPage() {
     loadOperationsTimeline,
   } = useCommandCenterOperations();
   const [geofences, setGeofences] = useState<CommandCenterGeofence[]>([]);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const {
+    notifications,
+    notificationStats,
+    loadNotifications,
+    markNotificationRead,
+    resolveNotification,
+  } = useCommandCenterNotifications();
   const [showTrafficOverlay, setShowTrafficOverlay] = useState(true);
-  const [notificationStats, setNotificationStats] = useState<any>({
-    unreadCount: 0,
-    criticalCount: 0,
-    total: 0,
-  });
   const [animatedPositions, setAnimatedPositions] = useState<
     Record<string, [number, number]>
   >({});
@@ -415,55 +416,6 @@ const {
     }
   }
 
-  async function loadNotifications() {
-    try {
-      const response = await fetchWithAuth("/api/command-center/notifications", {
-        method: "GET",
-        cache: "no-store",
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        setNotifications(result.notifications || []);
-        setNotificationStats(result.stats || {
-          unreadCount: 0,
-          criticalCount: 0,
-          total: 0,
-        });
-      }
-    } catch (error) {
-      console.error("Failed to load command center notifications:", error);
-    }
-  }
-
-  async function markNotificationRead(notificationId: string) {
-    try {
-      await fetchWithAuth("/api/command-center/notifications/read", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notificationId }),
-      });
-
-      loadNotifications();
-    } catch (error) {
-      console.error("Failed to mark notification read:", error);
-    }
-  }
-
-  async function resolveNotification(notificationId: string) {
-    try {
-      await fetchWithAuth("/api/command-center/notifications/resolve", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notificationId }),
-      });
-
-      loadNotifications();
-    } catch (error) {
-      console.error("Failed to resolve notification:", error);
-    }
-  }
 
   useEffect(() => {
     loadOperationsSummary();
