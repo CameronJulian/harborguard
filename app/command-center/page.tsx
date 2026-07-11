@@ -201,18 +201,6 @@ function decodePolyline(encoded: string) {
 }
 
 
-function lerp(a: number, b: number, t: number) {
-  return a + (b - a) * t;
-}
-
-function interpolatePosition(
-  start: [number, number],
-  end: [number, number],
-  t: number
-): [number, number] {
-  return [lerp(start[0], end[0], t), lerp(start[1], end[1], t)];
-}
-
 
 function MapFollower({
   position,
@@ -232,79 +220,6 @@ function MapFollower({
   }, [enabled, position, map]);
 
   return null;
-}
-
-async function createVehicleIcon(
-  risk: string,
-  selected: boolean,
-  heading = 0,
-  status = "Stopped"
-) {
-  const L = (await import("leaflet")).default;
-  const color = riskColor(risk);
-  const size = selected ? 36 : 28;
-  const coreSize = selected ? 30 : 22;
-  const isLive = risk !== "offline" && status !== "Stale";
-
-  return L.divIcon({
-    className: "",
-    html: `
-      <div style="
-        position:relative;
-        width:${size}px;
-        height:${size}px;
-      ">
-        ${
-          isLive
-            ? `<div class="hg-live-pulse" style="
-                position:absolute;
-                left:50%;
-                top:50%;
-                width:${coreSize}px;
-                height:${coreSize}px;
-                margin-left:-${coreSize / 2}px;
-                margin-top:-${coreSize / 2}px;
-                border-radius:9999px;
-                background:${color};
-                opacity:0.28;
-              "></div>`
-            : ""
-        }
-
-        <div style="
-          position:absolute;
-          left:50%;
-          top:50%;
-          width:${coreSize}px;
-          height:${coreSize}px;
-          margin-left:-${coreSize / 2}px;
-          margin-top:-${coreSize / 2}px;
-          border-radius:9999px;
-          background:${color};
-          border:4px solid white;
-          box-shadow:0 0 0 ${selected ? "7px" : "4px"} rgba(37,99,235,0.18),0 12px 28px rgba(15,23,42,0.3);
-        ">
-          <div style="
-            position:absolute;
-            left:50%;
-            top:-8px;
-            width:0;
-            height:0;
-            margin-left:-5px;
-            border-left:5px solid transparent;
-            border-right:5px solid transparent;
-            border-bottom:10px solid ${color};
-            transform-origin:50% ${coreSize / 2 + 8}px;
-            transform:rotate(${Number.isFinite(heading) ? heading : 0}deg);
-            filter:drop-shadow(0 1px 1px rgba(15,23,42,0.25));
-          "></div>
-        </div>
-      </div>
-    `,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-    popupAnchor: [0, -16],
-  });
 }
 
 export default function CommandCenterPage() {
@@ -615,6 +530,8 @@ if (
     </AppShell>
   );
 }
+
+
 
 
 
