@@ -23,10 +23,11 @@ export default function MapFollower({
       position,
       Math.max(map.getZoom(), 13),
       {
-        duration: 0.8,
+        duration: 1.2,
       }
     );
   }, [enabled, position, map]);
 
   return null;
 }
+
