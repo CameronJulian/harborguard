@@ -72,7 +72,6 @@ import {
   Fragment,
   useEffect,
   useMemo,
-  useState,
 } from "react";
 import { useMap } from "react-leaflet";
 import AppShell from "@/components/AppShell";
@@ -310,10 +309,12 @@ export default function CommandCenterPage() {
     fleet,
     selectedVehicleId
   );
-  const [voiceEnabled, setVoiceEnabled] = useState(false);
-const [voiceTranscript, setVoiceTranscript] = useState("");
-const [copilotResponse, setCopilotResponse] = useState("");
-
+  const {
+    voiceEnabled,
+    setVoiceEnabled,
+    voiceTranscript,
+    copilotResponse,
+  } = useCommandCenterVoice();
 const {
   premiumAllowed,
   subscriptionLoaded,
@@ -502,6 +503,9 @@ if (
     </AppShell>
   );
 }
+
+
+
 
 
 
