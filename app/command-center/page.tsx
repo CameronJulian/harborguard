@@ -83,6 +83,7 @@ import { useCommandCenterRouteSafety } from "./hooks/useCommandCenterRouteSafety
 import { useCommandCenterVoice } from "./hooks/useCommandCenterVoice";
 import { useCommandCenterData } from "./hooks/useCommandCenterData";
 import { useCommandCenterRealtime } from "./hooks/useCommandCenterRealtime";
+import { useCommandCenterMap } from "./hooks/useCommandCenterMap";
 import type {
   CommandCenterGeofence,
   FleetAlert,
@@ -356,11 +357,15 @@ export default function CommandCenterPage() {
     resolveNotification,
   } = useCommandCenterNotifications();
   const [showTrafficOverlay, setShowTrafficOverlay] = useState(true);
-  const [animatedPositions, setAnimatedPositions] = useState<
-    Record<string, [number, number]>
-  >({});
-  const [icons, setIcons] = useState<Record<string, any>>({});
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
+
+  const {
+    animatedPositions,
+    icons,
+  } = useCommandCenterMap(
+    fleet,
+    selectedVehicleId
+  );
   const [showRoutes, setShowRoutes] = useState(true);
   const [showStops, setShowStops] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(true);
@@ -437,55 +442,7 @@ const {
   });
 
 
-  useEffect(() => {
-    let cancelled = false;
 
-    async function buildIcons() {
-      const next: Record<string, any> = {};
-
-      for (const vehicle of fleet) {
-        next[vehicle.id] = await createVehicleIcon(
-          vehicleRisk(vehicle),
-          selectedVehicleId === vehicle.id,
-          Number(vehicle.heading || 0),
-          movementStatus(vehicle)
-        );
-      }
-
-      if (!cancelled) setIcons(next);
-    }
-
-    buildIcons();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [fleet, selectedVehicleId]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setAnimatedPositions((prev) => {
-        const next: Record<string, [number, number]> = {};
-
-        fleet.forEach((vehicle) => {
-          const coords = cleanLatLng(vehicle.latitude, vehicle.longitude);
-          if (!coords) return;
-
-          const previous = prev[vehicle.id];
-
-          if (!previous) {
-            next[vehicle.id] = coords;
-          } else {
-            next[vehicle.id] = interpolatePosition(previous, coords, 0.18);
-          }
-        });
-
-        return next;
-      });
-    }, 80);
-
-    return () => clearInterval(interval);
-  }, [fleet]);
 
   const {
     vehiclesWithLocation,
@@ -681,6 +638,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
