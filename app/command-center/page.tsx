@@ -70,11 +70,9 @@ import dynamic from "next/dynamic";
 import {
   CSSProperties,
   Fragment,
-  useEffect,
-  useMemo,
 } from "react";
-import { useMap } from "react-leaflet";
 import AppShell from "@/components/AppShell";
+import MapFollower from "./components/MapFollower";
 import { useCommandCenterOperations } from "./hooks/useCommandCenterOperations";
 import { useCommandCenterOperationsRealtime } from "./hooks/useCommandCenterOperationsRealtime";
 import { useCommandCenterViewState } from "./hooks/useCommandCenterViewState";
@@ -202,25 +200,6 @@ function decodePolyline(encoded: string) {
 
 
 
-function MapFollower({
-  position,
-  enabled,
-}: {
-  position: [number, number] | null;
-  enabled: boolean;
-}) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (!enabled || !position) return;
-
-    map.flyTo(position, Math.max(map.getZoom(), 13), {
-      duration: 1.2,
-    });
-  }, [enabled, position, map]);
-
-  return null;
-}
 
 export default function CommandCenterPage() {
 	
@@ -503,6 +482,8 @@ if (
     </AppShell>
   );
 }
+
+
 
 
 
