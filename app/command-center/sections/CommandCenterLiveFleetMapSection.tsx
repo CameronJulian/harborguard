@@ -2,6 +2,7 @@
 import type { LatLngExpression } from "leaflet";
 import type { FleetVehicle, RoadIncident } from "../types";
 import FleetVehicleLayers from "../components/FleetVehicleLayers";
+import RouteOverlayLayers from "../components/RouteOverlayLayers";
 
 type Props = {
   MapContainer: any;
@@ -104,47 +105,19 @@ export default function CommandCenterLiveFleetMapSection({
 
           <MapFollower position={selectedPosition} enabled={followSelected} />
 
-          <FleetRiskHeatMap incidents={incidents} visible={showHeatmap} />
+          <RouteOverlayLayers
+            incidents={incidents}
+            showHeatmap={showHeatmap}
+            showTrafficOverlay={showTrafficOverlay}
+            saferRoutePolylines={saferRoutePolylines}
+            CircleMarker={CircleMarker}
+            Popup={Popup}
+            Polyline={Polyline}
+            FleetRiskHeatMap={FleetRiskHeatMap}
+            HERETrafficOverlay={HERETrafficOverlay}
+            cleanLatLng={cleanLatLng}
+          />
 
-          <HERETrafficOverlay incidents={incidents} enabled={showTrafficOverlay} />
-
-          {incidents.map((incident) => {
-            const coords = cleanLatLng(incident.latitude, incident.longitude);
-            if (!coords) return null;
-
-            const color =
-              incident.severity === "critical"
-                ? "#dc2626"
-                : incident.severity === "high"
-                ? "#ea580c"
-                : "#d97706";
-
-            return (
-              <CircleMarker
-                key={incident.id}
-                center={coords}
-                radius={14}
-                pathOptions={{
-                  color,
-                  fillColor: color,
-                  fillOpacity: 0.35,
-                  weight: 3,
-                }}
-              >
-                <Popup>
-                  <div style={{ minWidth: 220 }}>
-                    <strong>{incident.title}</strong>
-                    <br />
-                    Type: {incident.type}
-                    <br />
-                    Severity: {incident.severity}
-                    <br />
-                    Radius: {incident.radius_meters}m
-                  </div>
-                </Popup>
-              </CircleMarker>
-            );
-          })}
 
           <FleetVehicleLayers
             vehiclesWithLocation={vehiclesWithLocation}
@@ -172,20 +145,10 @@ export default function CommandCenterLiveFleetMapSection({
           />
 
 
-          {saferRoutePolylines.length > 0 ? (
-            <Polyline
-              key="best-safer-route"
-              positions={saferRoutePolylines[0]}
-              pathOptions={{
-                color: "#16a34a",
-                weight: 7,
-                opacity: 0.9,
-              }}
-            />
-          ) : null}
         </MapContainer>
       </div>
     </>
   );
 }
+
 
