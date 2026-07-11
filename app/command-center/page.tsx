@@ -16,7 +16,6 @@ import CommandCenterOperationsPanelSection from "./sections/CommandCenterOperati
 import CommandCenterDashboardColumnSection from "./sections/CommandCenterDashboardColumnSection";
 import CommandCenterHeaderSection from "./sections/CommandCenterHeaderSection";
 import CommandCenterVehicleTimelineSection from "./sections/CommandCenterVehicleTimelineSection";
-import { supabase } from "@/lib/supabase";
 import NotificationCenter from "@/components/command-center/NotificationCenter";
 import FleetHealthDashboard from "@/components/command-center/FleetHealthDashboard";
 import DispatcherRecommendations from "@/components/command-center/DispatcherRecommendations";
@@ -78,6 +77,7 @@ import {
 import { useMap } from "react-leaflet";
 import AppShell from "@/components/AppShell";
 import { useCommandCenterOperations } from "./hooks/useCommandCenterOperations";
+import { useCommandCenterOperationsRealtime } from "./hooks/useCommandCenterOperationsRealtime";
 import { useCommandCenterFleet } from "./hooks/useCommandCenterFleet";
 import { useCommandCenterRouteSafety } from "./hooks/useCommandCenterRouteSafety";
 import { useCommandCenterVoice } from "./hooks/useCommandCenterVoice";
@@ -316,48 +316,11 @@ const {
 
 
 
-  useEffect(() => {
-    loadOperationsSummary();
-    loadOperationsTimeline();
+  useCommandCenterOperationsRealtime({
+    loadOperationsSummary,
+    loadOperationsTimeline,
+  });
 
-    const refreshOperations = () => {
-      loadOperationsSummary();
-      loadOperationsTimeline();
-    };
-
-    const routeAssignmentsChannel = supabase
-      .channel("command-center-route-assignments-live")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "route_assignments" },
-        refreshOperations
-      )
-      .subscribe();
-
-    const routeEscalationsChannel = supabase
-      .channel("command-center-route-escalations-live")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "route_safety_escalation_logs" },
-        refreshOperations
-      )
-      .subscribe();
-
-    const notificationsChannel = supabase
-      .channel("command-center-notifications-live")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "command_center_notifications" },
-        refreshOperations
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(routeAssignmentsChannel);
-      supabase.removeChannel(routeEscalationsChannel);
-      supabase.removeChannel(notificationsChannel);
-    };
-  }, []);
 
 
 
@@ -530,6 +493,8 @@ if (
     </AppShell>
   );
 }
+
+
 
 
 
