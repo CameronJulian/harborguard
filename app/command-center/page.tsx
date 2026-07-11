@@ -368,17 +368,20 @@ if (
           replayHref={replayHref}
           triggerPanic={triggerPanic}
           resolveFirstAlert={resolveFirstAlert}
-          routePrediction={routePrediction}
-          routePredictionLoading={routePredictionLoading}
-          routeAssignLoading={routeAssignLoading}
-          routeRerouteLoading={routeRerouteLoading}
-          loadRouteSafetyPrediction={loadRouteSafetyPrediction}
-          assignSaferRouteToDriver={assignSaferRouteToDriver}
-          escalateRouteThreat={escalateRouteThreat}
-          loadSaferRouteOptions={loadSaferRouteOptions}
+          routeSafety={{
+            routePrediction,
+            routePredictionLoading,
+            routeAssignLoading,
+            routeRerouteLoading,
+            loadRouteSafetyPrediction,
+            assignSaferRouteToDriver,
+            escalateRouteThreat,
+            loadSaferRouteOptions,
+          }}
         />
       </div>
     </AppShell>
   );
 }
+
 

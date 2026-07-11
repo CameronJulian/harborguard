@@ -5,6 +5,16 @@ import CommandCenterDriverContactSection from "./CommandCenterDriverContactSecti
 import CommandCenterRouteSafetySection from "./CommandCenterRouteSafetySection";
 import CommandCenterActiveOperationsSection from "./CommandCenterActiveOperationsSection";
 
+type RouteSafetyBundle = {
+  routePrediction: any;
+  routePredictionLoading: boolean;
+  routeAssignLoading: boolean;
+  routeRerouteLoading: boolean;
+  loadRouteSafetyPrediction: (...args: any[]) => any;
+  assignSaferRouteToDriver: (...args: any[]) => any;
+  escalateRouteThreat: (...args: any[]) => any;
+  loadSaferRouteOptions: (...args: any[]) => any;
+};
 type Props = {
   search: string;
   setSearch: (value: string) => void;
@@ -29,15 +39,8 @@ type Props = {
   replayHref: (...args: any[]) => any;
   triggerPanic: (...args: any[]) => any;
   resolveFirstAlert: (...args: any[]) => any;
+  routeSafety: RouteSafetyBundle;
 
-  routePrediction: any;
-  routePredictionLoading: boolean;
-  routeAssignLoading: boolean;
-  routeRerouteLoading: boolean;
-  loadRouteSafetyPrediction: (...args: any[]) => any;
-  assignSaferRouteToDriver: (...args: any[]) => any;
-  escalateRouteThreat: (...args: any[]) => any;
-  loadSaferRouteOptions: (...args: any[]) => any;
 };
 
 export default function CommandCenterOperationsPanelSection(props: Props) {
@@ -64,6 +67,10 @@ export default function CommandCenterOperationsPanelSection(props: Props) {
     replayHref,
     triggerPanic,
     resolveFirstAlert,
+    routeSafety,
+  } = props;
+
+  const {
     routePrediction,
     routePredictionLoading,
     routeAssignLoading,
@@ -72,7 +79,7 @@ export default function CommandCenterOperationsPanelSection(props: Props) {
     assignSaferRouteToDriver,
     escalateRouteThreat,
     loadSaferRouteOptions,
-  } = props;
+  } = routeSafety;
 
   return (
     <div
@@ -148,5 +155,6 @@ export default function CommandCenterOperationsPanelSection(props: Props) {
     </div>
   );
 }
+
 
 
