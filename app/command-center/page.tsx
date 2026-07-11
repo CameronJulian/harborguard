@@ -26,16 +26,11 @@ import VehicleIntelligencePanel from "@/components/command-center/VehicleIntelli
 import FleetDigitalTwinDashboard from "@/components/command-center/FleetDigitalTwinDashboard";
 import IncidentCommandDashboard from "@/components/command-center/IncidentCommandDashboard";
 import IncidentInvestigationTimeline from "@/components/command-center/IncidentInvestigationTimeline";
-const HERETrafficOverlay = dynamic(
-  () => import("@/components/command-center/HERETrafficOverlay"),
-  { ssr: false }
-);
 import TrafficFlowDashboard from "@/components/command-center/TrafficFlowDashboard";
 import FleetOptimizationDashboard from "@/components/command-center/FleetOptimizationDashboard";
 import MissionBoard from "@/components/command-center/MissionBoard";
 import LiveMissionTrackingDashboard from "@/components/command-center/LiveMissionTrackingDashboard";
 import LiveFleetOperationsMap from "@/components/command-center/LiveFleetOperationsMap";
-import FleetRiskHeatMap from "@/components/command-center/FleetRiskHeatMap";
 import MissionReplayTimeline from "@/components/command-center/MissionReplayTimeline";
 import AICommandAssistant from "@/components/command-center/AICommandAssistant";
 import FleetMissionQueue from "@/components/command-center/FleetMissionQueue";
@@ -72,7 +67,6 @@ import {
   Fragment,
 } from "react";
 import AppShell from "@/components/AppShell";
-import MapFollower from "./components/MapFollower";
 import {
   toNumber,
   decodePolyline,
@@ -110,30 +104,6 @@ import {
 } from "./utils";
 import { useCommandCenterNotifications } from "./hooks/useCommandCenterNotifications";
 
-const MapContainer = dynamic(
-  () => import("react-leaflet").then((m) => m.MapContainer),
-  { ssr: false }
-);
-const TileLayer = dynamic(
-  () => import("react-leaflet").then((m) => m.TileLayer),
-  { ssr: false }
-);
-const Marker = dynamic(
-  () => import("react-leaflet").then((m) => m.Marker),
-  { ssr: false }
-);
-const Popup = dynamic(
-  () => import("react-leaflet").then((m) => m.Popup),
-  { ssr: false }
-);
-const Polyline = dynamic(
-  () => import("react-leaflet").then((m) => m.Polyline),
-  { ssr: false }
-);
-const CircleMarker = dynamic(
-  () => import("react-leaflet").then((m) => m.CircleMarker),
-  { ssr: false }
-);
 const HeatmapLayer = dynamic<any>(
   () => import("react-leaflet-heatmap-layer-v3").then((m: any) => m.default || m.HeatmapLayer || m),
   { ssr: false }
@@ -366,15 +336,6 @@ if (
           operationsSummary={operationsSummary}
           operationsTimeline={operationsTimeline}
           incidents={incidents}
-          MapContainer={MapContainer}
-          TileLayer={TileLayer}
-          Marker={Marker}
-          Popup={Popup}
-          Polyline={Polyline}
-          CircleMarker={CircleMarker}
-          MapFollower={MapFollower}
-          FleetRiskHeatMap={FleetRiskHeatMap}
-          HERETrafficOverlay={HERETrafficOverlay}
           mapCenter={mapCenter}
           selectedPosition={selectedPosition}
           followSelected={followSelected}
@@ -437,6 +398,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 

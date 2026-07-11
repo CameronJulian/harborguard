@@ -3,17 +3,46 @@ import type { LatLngExpression } from "leaflet";
 import type { FleetVehicle, RoadIncident } from "../types";
 import FleetVehicleLayers from "../components/FleetVehicleLayers";
 import RouteOverlayLayers from "../components/RouteOverlayLayers";
+import dynamic from "next/dynamic";
+import MapFollower from "../components/MapFollower";
+import FleetRiskHeatMap from "@/components/command-center/FleetRiskHeatMap";
+
+const HERETrafficOverlay = dynamic(
+  () => import("@/components/command-center/HERETrafficOverlay"),
+  { ssr: false }
+);
+
+const MapContainer = dynamic(
+  () => import("react-leaflet").then((m) => m.MapContainer),
+  { ssr: false }
+);
+
+const TileLayer = dynamic(
+  () => import("react-leaflet").then((m) => m.TileLayer),
+  { ssr: false }
+);
+
+const Marker = dynamic(
+  () => import("react-leaflet").then((m) => m.Marker),
+  { ssr: false }
+);
+
+const Popup = dynamic(
+  () => import("react-leaflet").then((m) => m.Popup),
+  { ssr: false }
+);
+
+const Polyline = dynamic(
+  () => import("react-leaflet").then((m) => m.Polyline),
+  { ssr: false }
+);
+
+const CircleMarker = dynamic(
+  () => import("react-leaflet").then((m) => m.CircleMarker),
+  { ssr: false }
+);
 
 type Props = {
-  MapContainer: any;
-  TileLayer: any;
-  Marker: any;
-  Popup: any;
-  Polyline: any;
-  CircleMarker: any;
-  MapFollower: any;
-  FleetRiskHeatMap: any;
-  HERETrafficOverlay: any;
   mapCenter: LatLngExpression;
   selectedPosition: [number, number] | null;
   followSelected: boolean;
@@ -42,15 +71,6 @@ type Props = {
 };
 
 export default function CommandCenterLiveFleetMapSection({
-  MapContainer,
-  TileLayer,
-  Marker,
-  Popup,
-  Polyline,
-  CircleMarker,
-  MapFollower,
-  FleetRiskHeatMap,
-  HERETrafficOverlay,
   mapCenter,
   selectedPosition,
   followSelected,
@@ -150,5 +170,6 @@ export default function CommandCenterLiveFleetMapSection({
     </>
   );
 }
+
 
 

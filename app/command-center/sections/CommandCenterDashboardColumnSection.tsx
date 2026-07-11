@@ -11,15 +11,6 @@ type Props = {
   operationsTimeline: any[];
   incidents: any[];
 
-  MapContainer: any;
-  TileLayer: any;
-  Marker: any;
-  Popup: any;
-  Polyline: any;
-  CircleMarker: any;
-  MapFollower: any;
-  FleetRiskHeatMap: any;
-  HERETrafficOverlay: any;
 
   mapCenter: any;
   selectedPosition: any;
@@ -54,15 +45,6 @@ export default function CommandCenterDashboardColumnSection({
   operationsSummary,
   operationsTimeline,
   incidents,
-  MapContainer,
-  TileLayer,
-  Marker,
-  Popup,
-  Polyline,
-  CircleMarker,
-  MapFollower,
-  FleetRiskHeatMap,
-  HERETrafficOverlay,
   mapCenter,
   selectedPosition,
   followSelected,
@@ -112,15 +94,6 @@ export default function CommandCenterDashboardColumnSection({
       <NotificationCenter />
 
       <CommandCenterLiveFleetMapSection
-        MapContainer={MapContainer}
-        TileLayer={TileLayer}
-        Marker={Marker}
-        Popup={Popup}
-        Polyline={Polyline}
-        CircleMarker={CircleMarker}
-        MapFollower={MapFollower}
-        FleetRiskHeatMap={FleetRiskHeatMap}
-        HERETrafficOverlay={HERETrafficOverlay}
         mapCenter={mapCenter}
         selectedPosition={selectedPosition}
         followSelected={followSelected}
