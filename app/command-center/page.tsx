@@ -1,6 +1,5 @@
 ﻿"use client";
 
-import { fetchWithAuth } from "@/lib/auth-fetch";
 import CommandCenterDriverContactSection from "./sections/CommandCenterDriverContactSection";
 import CommandCenterRouteSafetySection from "./sections/CommandCenterRouteSafetySection";
 import CommandCenterPriorityQueueSection from "./sections/CommandCenterPriorityQueueSection";
@@ -60,15 +59,11 @@ import TrialBanner from "@/components/billing/TrialBanner";
 import { usePremiumAccess } from "@/hooks/usePremiumAccess";
 import PremiumGate from "@/components/PremiumGate";
 
-import Link from "next/link";
-import dynamic from "next/dynamic";
 import {
   CSSProperties,
-  Fragment,
 } from "react";
 import AppShell from "@/components/AppShell";
 import {
-  toNumber,
   decodePolyline,
 } from "./utils/polyline";
 import { useCommandCenterOperations } from "./hooks/useCommandCenterOperations";
@@ -82,11 +77,6 @@ import { useCommandCenterRealtime } from "./hooks/useCommandCenterRealtime";
 import { useCommandCenterMap } from "./hooks/useCommandCenterMap";
 import { useCommandCenterAnalytics } from "./hooks/useCommandCenterAnalytics";
 import type {
-  CommandCenterGeofence,
-  FleetAlert,
-  FleetStop,
-  RoadIncident,
-  FleetVehicle,
 } from "./types";
 import {
   cleanRoute,
@@ -103,11 +93,6 @@ import {
   replayHref,
 } from "./utils";
 import { useCommandCenterNotifications } from "./hooks/useCommandCenterNotifications";
-
-const HeatmapLayer = dynamic<any>(
-  () => import("react-leaflet-heatmap-layer-v3").then((m: any) => m.default || m.HeatmapLayer || m),
-  { ssr: false }
-);
 
 const cardStyle: CSSProperties = {
   background: "#ffffff",
@@ -398,4 +383,5 @@ if (
     </AppShell>
   );
 }
+
 
