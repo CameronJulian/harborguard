@@ -76,8 +76,6 @@ import { useCommandCenterData } from "./hooks/useCommandCenterData";
 import { useCommandCenterRealtime } from "./hooks/useCommandCenterRealtime";
 import { useCommandCenterMap } from "./hooks/useCommandCenterMap";
 import { useCommandCenterAnalytics } from "./hooks/useCommandCenterAnalytics";
-import type {
-} from "./types";
 import {
   cleanRoute,
   cleanLatLng,
@@ -383,5 +381,4 @@ if (
     </AppShell>
   );
 }
-
 
