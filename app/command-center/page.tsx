@@ -78,6 +78,7 @@ import { useMap } from "react-leaflet";
 import AppShell from "@/components/AppShell";
 import { useCommandCenterOperations } from "./hooks/useCommandCenterOperations";
 import { useCommandCenterOperationsRealtime } from "./hooks/useCommandCenterOperationsRealtime";
+import { useCommandCenterViewState } from "./hooks/useCommandCenterViewState";
 import { useCommandCenterFleet } from "./hooks/useCommandCenterFleet";
 import { useCommandCenterRouteSafety } from "./hooks/useCommandCenterRouteSafety";
 import { useCommandCenterVoice } from "./hooks/useCommandCenterVoice";
@@ -286,9 +287,22 @@ export default function CommandCenterPage() {
     markNotificationRead,
     resolveNotification,
   } = useCommandCenterNotifications();
-  const [showTrafficOverlay, setShowTrafficOverlay] = useState(true);
-  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
-
+  const {
+    showTrafficOverlay,
+    setShowTrafficOverlay,
+    selectedVehicleId,
+    setSelectedVehicleId,
+    showRoutes,
+    setShowRoutes,
+    showStops,
+    setShowStops,
+    showHeatmap,
+    setShowHeatmap,
+    followSelected,
+    setFollowSelected,
+    search,
+    setSearch,
+  } = useCommandCenterViewState();
   const {
     animatedPositions,
     icons,
@@ -296,11 +310,6 @@ export default function CommandCenterPage() {
     fleet,
     selectedVehicleId
   );
-  const [showRoutes, setShowRoutes] = useState(true);
-  const [showStops, setShowStops] = useState(true);
-  const [showHeatmap, setShowHeatmap] = useState(true);
-  const [followSelected, setFollowSelected] = useState(true);
-  const [search, setSearch] = useState("");
   const [voiceEnabled, setVoiceEnabled] = useState(false);
 const [voiceTranscript, setVoiceTranscript] = useState("");
 const [copilotResponse, setCopilotResponse] = useState("");
@@ -493,6 +502,9 @@ if (
     </AppShell>
   );
 }
+
+
+
 
 
 
