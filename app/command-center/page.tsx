@@ -284,7 +284,13 @@ if (
           animation: hgLivePulse 2s infinite;
         }
       `}</style>
-      <CommandCenterExecutiveWarRoomSection />
+      <CommandCenterExecutiveWarRoomSection
+        operationsSummary={operationsSummary}
+        summary={summary}
+        incidents={incidents}
+        globalThreatScore={globalThreatScore}
+        operationalStatus={operationalStatus}
+      />
 
       <CommandCenterHeaderSection
         voiceEnabled={voiceEnabled}
@@ -384,10 +390,4 @@ if (
     </AppShell>
   );
 }
-
-
-
-
-
-
 
