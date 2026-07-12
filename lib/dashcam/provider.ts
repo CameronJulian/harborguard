@@ -14,6 +14,10 @@ import {
   loadLocalDashcams,
 } from "@/lib/dashcam/providers/local";
 
+import {
+  loadSamsaraDashcams,
+} from "@/lib/dashcam/providers/samsara";
+
 export async function loadDashcams(
   vehicles: DashcamVehicle[]
 ): Promise<DashcamProviderResult> {
@@ -30,9 +34,13 @@ export async function loadDashcams(
     case "local":
       return loadLocalDashcams(vehicles);
 
+    case "samsara":
+      return loadSamsaraDashcams(vehicles);
+
     default:
       throw new Error(
         `Dashcam provider ${provider} is not configured yet.`
       );
   }
 }
+
