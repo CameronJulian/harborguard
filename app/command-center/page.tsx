@@ -13,6 +13,7 @@ import CommandCenterThreatIntelligenceSection from "./sections/CommandCenterThre
 import CommandCenterLiveFleetMapSection from "./sections/CommandCenterLiveFleetMapSection";
 import CommandCenterOperationsPanelSection from "./sections/CommandCenterOperationsPanelSection";
 import CommandCenterDashboardColumnSection from "./sections/CommandCenterDashboardColumnSection";
+import CommandCenterExecutiveWarRoomSection from "./sections/CommandCenterExecutiveWarRoomSection";
 import CommandCenterHeaderSection from "./sections/CommandCenterHeaderSection";
 import CommandCenterVehicleTimelineSection from "./sections/CommandCenterVehicleTimelineSection";
 import NotificationCenter from "@/components/command-center/NotificationCenter";
@@ -283,6 +284,8 @@ if (
           animation: hgLivePulse 2s infinite;
         }
       `}</style>
+      <CommandCenterExecutiveWarRoomSection />
+
       <CommandCenterHeaderSection
         voiceEnabled={voiceEnabled}
         voiceTranscript={voiceTranscript}
@@ -381,6 +384,7 @@ if (
     </AppShell>
   );
 }
+
 
 
 
