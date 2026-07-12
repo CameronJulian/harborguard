@@ -2,19 +2,49 @@
 import { requireOrganization } from "@/lib/server-auth";
 
 type LocationPoint = {
+  vehicle_id: string;
   latitude: number | string | null;
   longitude: number | string | null;
   speed_kmh?: number | string | null;
+  heading?: number | string | null;
+  recorded_at?: string | null;
+};
+
+type VehicleStop = {
+  vehicle_id: string;
+  [key: string]: unknown;
+};
+
+type VehicleAlert = {
+  id: string;
+  vehicle_id: string;
+  alert_type: string | null;
+  severity: string | null;
+  message: string | null;
+  created_at: string | null;
+};
+
+type ActiveTrip = {
+  id: string;
+  vehicle_id: string;
+  status: string;
+  expected_route: unknown;
+  origin_port: string | null;
+  destination_fishery: string | null;
 };
 
 function toNumber(value: unknown) {
   if (typeof value === "number") return value;
-  if (typeof value === "string" && value.trim() !== "") return Number(value);
+
+  if (typeof value === "string" && value.trim() !== "") {
+    return Number(value);
+  }
+
   return NaN;
 }
 
 function reduceRoute(points: [number, number][], step = 8) {
-  return points.filter((_, i) => i % step === 0);
+  return points.filter((_, index) => index % step === 0);
 }
 
 function buildDriverProfile(params: {
@@ -37,6 +67,7 @@ function buildDriverProfile(params: {
   score = Math.max(0, Math.min(100, score));
 
   let riskLevel = "Low";
+
   if (score < 40) riskLevel = "Critical";
   else if (score < 60) riskLevel = "High";
   else if (score < 80) riskLevel = "Medium";
@@ -45,10 +76,10 @@ function buildDriverProfile(params: {
     riskLevel === "Critical"
       ? "Driver behavior requires immediate operational review."
       : riskLevel === "High"
-      ? "Driver shows elevated operational risk patterns."
-      : riskLevel === "Medium"
-      ? "Driver shows moderate risk indicators."
-      : "Driver behavior currently appears stable.";
+        ? "Driver shows elevated operational risk patterns."
+        : riskLevel === "Medium"
+          ? "Driver shows moderate risk indicators."
+          : "Driver behavior currently appears stable.";
 
   return {
     driverScore: score,
@@ -64,168 +95,252 @@ function buildDriverProfile(params: {
   };
 }
 
-async function snapToRoad(route: [number, number][]) {
-  if (!process.env.ORS_API_KEY || route.length < 2) return route;
-
-  try {
-    const response = await fetch(
-      "https://api.openrouteservice.org/v2/directions/driving-car/geojson",
-      {
-        method: "POST",
-        headers: {
-          Authorization: process.env.ORS_API_KEY,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          coordinates: route.map(([lat, lng]) => [lng, lat]),
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      console.error("ORS snapping failed:", response.status, await response.text());
-      return route;
-    }
-
-    const data = await response.json();
-
-    return (
-      data?.features?.[0]?.geometry?.coordinates?.map(
-        ([lng, lat]: [number, number]) => [lat, lng] as [number, number]
-      ) || route
-    );
-  } catch (err) {
-    console.error("ORS snapping failed:", err);
-    return route;
-  }
-}
-
 export async function GET() {
   try {
-    const { supabase, organizationId } = await requireOrganization();
+    const { supabase, organizationId } =
+      await requireOrganization();
 
-    const { data: vehicles, error: vehiclesError } = await supabase
-      .from("vehicles")
-      .select("id, nickname, registration_number")
-      .eq("organization_id", organizationId);
+    const { data: vehicles, error: vehiclesError } =
+      await supabase
+        .from("vehicles")
+        .select("id, nickname, registration_number")
+        .eq("organization_id", organizationId);
 
     if (vehiclesError) {
-      return NextResponse.json({ error: vehiclesError.message }, { status: 500 });
+      throw vehiclesError;
     }
 
-    const fleet = await Promise.all(
-      (vehicles || []).map(async (vehicle) => {
-        const { data: latest } = await supabase
-          .from("vehicle_locations")
-          .select("*")
-          .eq("vehicle_id", vehicle.id)
-          .order("recorded_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+    const vehicleList = vehicles || [];
+    const vehicleIds = vehicleList.map((vehicle) => vehicle.id);
 
-        const { data: route } = await supabase
-          .from("vehicle_locations")
-          .select("latitude, longitude, speed_kmh")
-          .eq("vehicle_id", vehicle.id)
-          .order("recorded_at", { ascending: true })
-          .limit(50);
+    if (vehicleIds.length === 0) {
+      return NextResponse.json({ fleet: [] });
+    }
 
-        const { data: stops } = await supabase
-          .from("vehicle_stops")
-          .select("*")
-          .eq("vehicle_id", vehicle.id)
-          .order("started_at", { ascending: false })
-          .limit(10);
+    /*
+     * Fetch enough recent records to build:
+     * - the latest position for each vehicle;
+     * - up to 50 recent route points per vehicle;
+     * - up to 10 recent stops per vehicle.
+     *
+     * These are global safety limits. The records are grouped and limited
+     * per vehicle below.
+     */
+    const locationLimit = Math.max(vehicleIds.length * 75, 250);
+    const stopLimit = Math.max(vehicleIds.length * 15, 100);
 
-        const { data: openAlerts } = await supabase
-          .from("vehicle_alerts")
-          .select("id, alert_type, severity, message, created_at")
-          .eq("vehicle_id", vehicle.id)
-          .eq("is_resolved", false)
-          .order("created_at", { ascending: false });
-        const { data: activeTrip } = await supabase
-          .from("vehicle_trips")
-          .select(`
-            id,
-            status,
-            expected_route,
-            origin_port,
-            destination_fishery
-          `)
-          .eq("vehicle_id", vehicle.id)
-          .eq("organization_id", organizationId)
-          .in("status", [
-            "scheduled",
-            "en_route_to_port",
-            "collecting",
-            "en_route_to_fishery",
-            "emergency"
-          ])
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+    const [
+      locationsResult,
+      stopsResult,
+      alertsResult,
+      tripsResult,
+    ] = await Promise.all([
+      supabase
+        .from("vehicle_locations")
+        .select(
+          "vehicle_id, latitude, longitude, speed_kmh, heading, recorded_at"
+        )
+        .in("vehicle_id", vehicleIds)
+        .order("recorded_at", { ascending: false })
+        .limit(locationLimit),
 
+      supabase
+        .from("vehicle_stops")
+        .select("*")
+        .in("vehicle_id", vehicleIds)
+        .order("started_at", { ascending: false })
+        .limit(stopLimit),
 
-        const routePoints = (route || [])
-          .map((p: LocationPoint) => {
-            const lat = toNumber(p.latitude);
-            const lng = toNumber(p.longitude);
+      supabase
+        .from("vehicle_alerts")
+        .select(
+          "id, vehicle_id, alert_type, severity, message, created_at"
+        )
+        .in("vehicle_id", vehicleIds)
+        .eq("is_resolved", false)
+        .order("created_at", { ascending: false }),
 
-            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-            if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+      supabase
+        .from("vehicle_trips")
+        .select(`
+          id,
+          vehicle_id,
+          status,
+          expected_route,
+          origin_port,
+          destination_fishery,
+          created_at
+        `)
+        .eq("organization_id", organizationId)
+        .in("vehicle_id", vehicleIds)
+        .in("status", [
+          "scheduled",
+          "en_route_to_port",
+          "collecting",
+          "en_route_to_fishery",
+          "emergency"
+        ])
+        .order("created_at", { ascending: false }),
+    ]);
 
-            return [lat, lng] as [number, number];
-          })
-          .filter((p): p is [number, number] => p !== null);
+    if (locationsResult.error) throw locationsResult.error;
+    if (stopsResult.error) throw stopsResult.error;
+    if (alertsResult.error) throw alertsResult.error;
+    if (tripsResult.error) throw tripsResult.error;
 
-        const speedKmh = Number(latest?.speed_kmh || 0);
-        const alerts = openAlerts || [];
-        const criticalAlertCount = alerts.filter(
-          (alert) => alert.severity === "critical"
-        ).length;
+    const locationsByVehicle =
+      new Map<string, LocationPoint[]>();
 
-        const driverProfile = buildDriverProfile({
-          speedKmh,
-          alertCount: alerts.length,
-          criticalAlertCount,
-          stopCount: stops?.length || 0,
-          routePointCount: routePoints.length,
-        });
+    for (const location of locationsResult.data || []) {
+      const points =
+        locationsByVehicle.get(location.vehicle_id) || [];
 
-        const snappedRoute = reduceRoute(routePoints, 8);
+      if (points.length < 50) {
+        points.push(location as LocationPoint);
+        locationsByVehicle.set(location.vehicle_id, points);
+      }
+    }
 
-        return {
-          id: vehicle.id,
-          nickname: vehicle.nickname,
-          registrationNumber: vehicle.registration_number,
-          latitude: latest?.latitude ?? null,
-          longitude: latest?.longitude ?? null,
-          speedKmh: latest?.speed_kmh ?? null,
-          heading: latest?.heading ?? null,
-          lastSeen: latest?.recorded_at ?? null,
-          activeTrip: activeTrip
-            ? {
-                id: activeTrip.id,
-                status: activeTrip.status,
-                expectedRoute: activeTrip.expected_route,
-                originPort: activeTrip.origin_port,
-                destinationFishery: activeTrip.destination_fishery,
-              }
-            : null,
-          route: snappedRoute,
-          stops: stops || [],
-          openAlerts: alerts,
-          driverProfile,
-        };
-      })
-    );
+    const stopsByVehicle =
+      new Map<string, VehicleStop[]>();
+
+    for (const stop of stopsResult.data || []) {
+      const stops =
+        stopsByVehicle.get(stop.vehicle_id) || [];
+
+      if (stops.length < 10) {
+        stops.push(stop as VehicleStop);
+        stopsByVehicle.set(stop.vehicle_id, stops);
+      }
+    }
+
+    const alertsByVehicle =
+      new Map<string, VehicleAlert[]>();
+
+    for (const alert of alertsResult.data || []) {
+      const alerts =
+        alertsByVehicle.get(alert.vehicle_id) || [];
+
+      alerts.push(alert as VehicleAlert);
+      alertsByVehicle.set(alert.vehicle_id, alerts);
+    }
+
+    const activeTripByVehicle =
+      new Map<string, ActiveTrip>();
+
+    for (const trip of tripsResult.data || []) {
+      if (!activeTripByVehicle.has(trip.vehicle_id)) {
+        activeTripByVehicle.set(
+          trip.vehicle_id,
+          trip as ActiveTrip
+        );
+      }
+    }
+
+    const fleet = vehicleList.map((vehicle) => {
+      /*
+       * Locations were fetched newest first.
+       * The first point is the current/latest position.
+       * Reverse a copy so route rendering remains chronological.
+       */
+      const recentLocations =
+        locationsByVehicle.get(vehicle.id) || [];
+
+      const latest = recentLocations[0] || null;
+
+      const routePoints = [...recentLocations]
+        .reverse()
+        .map((point) => {
+          const latitude = toNumber(point.latitude);
+          const longitude = toNumber(point.longitude);
+
+          if (
+            !Number.isFinite(latitude) ||
+            !Number.isFinite(longitude)
+          ) {
+            return null;
+          }
+
+          if (
+            latitude < -90 ||
+            latitude > 90 ||
+            longitude < -180 ||
+            longitude > 180
+          ) {
+            return null;
+          }
+
+          return [
+            latitude,
+            longitude,
+          ] as [number, number];
+        })
+        .filter(
+          (point): point is [number, number] =>
+            point !== null
+        );
+
+      const stops = stopsByVehicle.get(vehicle.id) || [];
+      const alerts = alertsByVehicle.get(vehicle.id) || [];
+      const activeTrip =
+        activeTripByVehicle.get(vehicle.id) || null;
+
+      const speedKmh = Number(latest?.speed_kmh || 0);
+
+      const criticalAlertCount = alerts.filter(
+        (alert) => alert.severity === "critical"
+      ).length;
+
+      const driverProfile = buildDriverProfile({
+        speedKmh,
+        alertCount: alerts.length,
+        criticalAlertCount,
+        stopCount: stops.length,
+        routePointCount: routePoints.length,
+      });
+
+      return {
+        id: vehicle.id,
+        nickname: vehicle.nickname,
+        registrationNumber: vehicle.registration_number,
+        latitude: latest?.latitude ?? null,
+        longitude: latest?.longitude ?? null,
+        speedKmh: latest?.speed_kmh ?? null,
+        heading: latest?.heading ?? null,
+        lastSeen: latest?.recorded_at ?? null,
+
+        activeTrip: activeTrip
+          ? {
+              id: activeTrip.id,
+              status: activeTrip.status,
+              expectedRoute: activeTrip.expected_route,
+              originPort: activeTrip.origin_port,
+              destinationFishery:
+                activeTrip.destination_fishery,
+            }
+          : null,
+
+        route: reduceRoute(routePoints, 8),
+        stops,
+        openAlerts: alerts,
+        driverProfile,
+      };
+    });
 
     return NextResponse.json({ fleet });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to load fleet.";
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Failed to load fleet.";
+
     const status = message === "Unauthorized" ? 401 : 500;
 
-    return NextResponse.json({ error: message }, { status });
+    console.error("Fleet live error:", error);
+
+    return NextResponse.json(
+      { error: message },
+      { status }
+    );
   }
 }
-
