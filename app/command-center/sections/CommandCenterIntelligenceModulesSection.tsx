@@ -1,4 +1,4 @@
-import CommandCenterThemeSwitcher from "@/components/command-center/CommandCenterThemeSwitcher";
+﻿import CommandCenterThemeSwitcher from "@/components/command-center/CommandCenterThemeSwitcher";
 import CommandWall from "@/components/command-center/CommandWall";
 import AuditPlayback from "@/components/command-center/AuditPlayback";
 import DispatcherCollaboration from "@/components/command-center/DispatcherCollaboration";
@@ -28,6 +28,7 @@ import PredictiveETADashboard from "@/components/command-center/PredictiveETADas
 import MissionReplayTimeline from "@/components/command-center/MissionReplayTimeline";
 import AIShiftSummary from "@/components/command-center/AIShiftSummary";
 import DispatcherRecommendations from "@/components/command-center/DispatcherRecommendations";
+import DeferredMount from "../components/DeferredMount";
 import IncidentCommandDashboard from "@/components/command-center/IncidentCommandDashboard";
 import IncidentInvestigationTimeline from "@/components/command-center/IncidentInvestigationTimeline";
 
@@ -80,3 +81,4 @@ export default function CommandCenterIntelligenceModulesSection({
     </>
   );
 }
+
