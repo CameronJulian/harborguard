@@ -639,10 +639,18 @@ export default function ComputerVisionAnalytics() {
 
                 <div
                   style={{
-                    fontSize: 30,
+                    fontSize:
+                      String(value).length > 14
+                        ? 22
+                        : 30,
                     fontWeight: 900,
+                    lineHeight: 1.15,
                     marginTop: 4,
+                    minWidth: 0,
+                    overflowWrap: "anywhere",
+                    wordBreak: "break-word",
                   }}
+                  title={String(value)}
                 >
                   {value}
                 </div>
