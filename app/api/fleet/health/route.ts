@@ -1,5 +1,6 @@
 ﻿import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
+import { buildTrafficIntelligence } from "@/lib/traffic/intelligence";
 
 const OFFLINE_MINUTES = 15;
 const STOP_SPEED_KMH = 3;
@@ -56,21 +57,17 @@ export async function GET() {
     let trafficWarning: string | null = null;
 
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-      const response = await fetch(`${baseUrl}/api/traffic-intelligence`, {
-        cache: "no-store",
-        headers: { "x-harborguard-internal": "fleet-health" },
-      });
+      const trafficResult = await buildTrafficIntelligence(
+        supabase,
+        organizationId
+      );
 
-      const result = await response.json();
-
-      if (response.ok) {
-        trafficSummary = result.summary;
-      } else {
-        trafficWarning = result.error || "Traffic intelligence unavailable.";
-      }
-    } catch (trafficError: any) {
-      trafficWarning = trafficError.message || "Traffic intelligence unavailable.";
+      trafficSummary = trafficResult.summary;
+    } catch (trafficError: unknown) {
+      trafficWarning =
+        trafficError instanceof Error
+          ? trafficError.message
+          : "Traffic intelligence unavailable.";
     }
 
     const vehicles = vehiclesResult.data || [];
@@ -244,3 +241,5 @@ export async function GET() {
     );
   }
 }
+
+
