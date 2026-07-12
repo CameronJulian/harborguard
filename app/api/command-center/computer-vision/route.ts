@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 import { analyseFrame } from "@/lib/vision/provider";
 
@@ -112,10 +112,17 @@ export async function POST(req: Request) {
       savedEvents: savedEvents || [],
       analysedAt: analysis.analysedAt,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Computer vision analysis failed.";
+
+    console.error("[computer-vision POST]", message);
+
     return NextResponse.json(
-      { error: error.message || "Computer vision analysis failed." },
-      { status: error.message === "Unauthorized" ? 401 : 500 }
+      { error: message },
+      { status: message === "Unauthorized" ? 401 : 500 }
     );
   }
 }
