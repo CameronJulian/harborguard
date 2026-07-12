@@ -46,36 +46,62 @@ export default function CommandCenterIntelligenceModulesSection({
       <AuditPlayback />
       <DispatcherCollaboration />
       <IncidentAssignmentBoard />
-      <AIAccidentDetection />
-      <DashcamMonitoring />
-      <ComputerVisionAnalytics />
-      <ANPRDashboard />
-      <CCTVMonitoring />
+      <DeferredMount delayMs={1500}>
+        <AIAccidentDetection />
+      </DeferredMount>
+      <DeferredMount delayMs={1800}>
+        <DashcamMonitoring />
+      </DeferredMount>
+      <DeferredMount delayMs={2000}>
+        <ComputerVisionAnalytics />
+      </DeferredMount>
+      <DeferredMount delayMs={2200}>
+        <ANPRDashboard />
+      </DeferredMount>
+      <DeferredMount delayMs={2400}>
+        <CCTVMonitoring />
+      </DeferredMount>
       <InsuranceResponseCenter />
       <TrafficFlowDashboard />
-      <FleetOptimizationDashboard />
+      <DeferredMount delayMs={2600}>
+        <FleetOptimizationDashboard />
+      </DeferredMount>
       <MissionBoard />
       <LiveMissionTrackingDashboard />
       <LiveFleetOperationsMap />
-      <ExecutiveOperationsDashboard />
+      <DeferredMount delayMs={3000}>
+        <ExecutiveOperationsDashboard />
+      </DeferredMount>
       <FleetHealthDashboard />
       <AICommandAssistant />
       <FleetMissionQueue />
       <MissionAutomationRules />
       <SupervisorEscalationCenter />
       <AIIncidentCorrelationDashboard />
-      <PredictiveIncidentIntelligence />
-      <PrescriptiveResponseIntelligence />
-      <FleetDigitalTwinDashboard />
-      <PredictiveETADashboard />
+      <DeferredMount delayMs={3200}>
+        <PredictiveIncidentIntelligence />
+      </DeferredMount>
+      <DeferredMount delayMs={3400}>
+        <PrescriptiveResponseIntelligence />
+      </DeferredMount>
+      <DeferredMount delayMs={3600}>
+        <FleetDigitalTwinDashboard />
+      </DeferredMount>
+      <DeferredMount delayMs={3800}>
+        <PredictiveETADashboard />
+      </DeferredMount>
 
       <MissionReplayTimeline
         events={operationsTimeline}
         title="Mission Replay Timeline"
       />
 
-      <AIShiftSummary />
-      <DispatcherRecommendations />
+      <DeferredMount delayMs={4000}>
+        <AIShiftSummary />
+      </DeferredMount>
+      <DeferredMount delayMs={4200}>
+        <DispatcherRecommendations />
+      </DeferredMount>
       <IncidentCommandDashboard />
       <IncidentInvestigationTimeline />
     </>
