@@ -30,21 +30,55 @@ async function analyseNewDashcamSnapshots(params: {
     const imageUrl = camera.latestSnapshotUrl.trim();
 
     try {
-      const { data: existingEvent, error: existingError } =
-        await params.supabase
+      let existingSnapshot = null;
+
+      if (camera.snapshotId) {
+        const {
+          data,
+          error,
+        } = await params.supabase
+          .from("dashcam_events")
+          .select("id")
+          .eq(
+            "organization_id",
+            params.organizationId
+          )
+          .eq("camera_name", camera.cameraName)
+          .contains("raw_response", {
+            snapshotId: camera.snapshotId,
+          })
+          .limit(1)
+          .maybeSingle();
+
+        if (error) {
+          throw error;
+        }
+
+        existingSnapshot = data;
+      } else {
+        const {
+          data,
+          error,
+        } = await params.supabase
           .from("vision_events")
           .select("id")
-          .eq("organization_id", params.organizationId)
+          .eq(
+            "organization_id",
+            params.organizationId
+          )
           .eq("camera_name", camera.cameraName)
           .eq("image_url", imageUrl)
           .limit(1)
           .maybeSingle();
 
-      if (existingError) {
-        throw existingError;
+        if (error) {
+          throw error;
+        }
+
+        existingSnapshot = data;
       }
 
-      if (existingEvent) {
+      if (existingSnapshot) {
         results.push({
           cameraId: camera.id,
           status: "skipped",
