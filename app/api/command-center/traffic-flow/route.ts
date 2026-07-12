@@ -98,8 +98,10 @@ export async function GET(request: Request) {
         }
       );
 
-    const flow = Array.isArray(trafficResult?.flow)
-      ? trafficResult.flow
+    const flow = Array.isArray(
+      trafficResult?.intelligence?.flow
+    )
+      ? trafficResult.intelligence.flow
       : [];
 
     const serviceSummary =
@@ -171,7 +173,7 @@ export async function GET(request: Request) {
       flow,
 
       incidents:
-        trafficResult?.incidents || [],
+        trafficResult?.intelligence?.incidents || [],
 
       generatedAt:
         trafficResult?.generatedAt ||
@@ -194,3 +196,4 @@ export async function GET(request: Request) {
     );
   }
 }
+
