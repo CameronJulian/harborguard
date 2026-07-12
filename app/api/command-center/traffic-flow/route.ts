@@ -1,59 +1,196 @@
 ﻿import { NextResponse } from "next/server";
+
 import { requireOrganization } from "@/lib/server-auth";
-import { getHereTrafficFlow } from "@/lib/here/traffic";
+import { buildTrafficIntelligence } from "@/lib/traffic/intelligence";
+
+const DEFAULT_LATITUDE = -33.9249;
+const DEFAULT_LONGITUDE = 18.4241;
+const DEFAULT_RADIUS_METERS = 10000;
+
+function parseCoordinate(
+  value: string | null,
+  fallback: number,
+  minimum: number,
+  maximum: number
+) {
+  if (value === null || value.trim() === "") {
+    return fallback;
+  }
+
+  const parsed = Number(value);
+
+  if (
+    !Number.isFinite(parsed) ||
+    parsed < minimum ||
+    parsed > maximum
+  ) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function parseRadius(value: string | null) {
+  if (value === null || value.trim() === "") {
+    return DEFAULT_RADIUS_METERS;
+  }
+
+  const parsed = Number(value);
+
+  if (
+    !Number.isFinite(parsed) ||
+    parsed < 100 ||
+    parsed > 100000
+  ) {
+    return null;
+  }
+
+  return Math.round(parsed);
+}
 
 export async function GET(request: Request) {
   try {
-    await requireOrganization();
+    const { supabase, organizationId } =
+      await requireOrganization();
 
     const { searchParams } = new URL(request.url);
 
-    const latitude = Number(searchParams.get("latitude") || -33.9249);
-    const longitude = Number(searchParams.get("longitude") || 18.4241);
-    const radiusMeters = Number(searchParams.get("radiusMeters") || 10000);
+    const latitude = parseCoordinate(
+      searchParams.get("latitude"),
+      DEFAULT_LATITUDE,
+      -90,
+      90
+    );
 
-    const traffic = await getHereTrafficFlow({
-      latitude,
-      longitude,
-      radiusMeters,
-    });
+    const longitude = parseCoordinate(
+      searchParams.get("longitude"),
+      DEFAULT_LONGITUDE,
+      -180,
+      180
+    );
 
-    const flow = traffic.flow;
+    const radiusMeters = parseRadius(
+      searchParams.get("radiusMeters")
+    );
+
+    if (
+      latitude === null ||
+      longitude === null ||
+      radiusMeters === null
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Invalid latitude, longitude, or radiusMeters.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const trafficResult: any =
+      await buildTrafficIntelligence(
+        supabase,
+        organizationId,
+        {
+          latitude,
+          longitude,
+          radiusMeters,
+        }
+      );
+
+    const flow = Array.isArray(trafficResult?.flow)
+      ? trafficResult.flow
+      : [];
+
+    const serviceSummary =
+      trafficResult?.summary || {};
+
+    const averageCongestion =
+      serviceSummary.averageCongestion ??
+      (flow.length > 0
+        ? Math.round(
+            flow.reduce(
+              (sum: number, item: any) =>
+                sum +
+                Number(item.congestion || 0),
+              0
+            ) / flow.length
+          )
+        : 0);
+
+    const averageDelay =
+      serviceSummary.averageDelay ??
+      (flow.length > 0
+        ? Math.round(
+            flow.reduce(
+              (sum: number, item: any) =>
+                sum +
+                Number(item.delayMinutes || 0),
+              0
+            ) / flow.length
+          )
+        : 0);
 
     return NextResponse.json({
       success: true,
+
       summary: {
-        corridors: flow.length,
-        critical: flow.filter((item: any) => item.riskLevel === "critical").length,
-        high: flow.filter((item: any) => item.riskLevel === "high").length,
-        averageCongestion: flow.length
-          ? Math.round(
-              flow.reduce(
-                (sum: number, item: any) => sum + Number(item.congestion || 0),
-                0
-              ) / flow.length
-            )
-          : 0,
-        averageDelay: flow.length
-          ? Math.round(
-              flow.reduce(
-                (sum: number, item: any) => sum + Number(item.delayMinutes || 0),
-                0
-              ) / flow.length
-            )
-          : 0,
-        rawCount: traffic.rawCount,
+        ...serviceSummary,
+
+        corridors:
+          serviceSummary.corridors ??
+          flow.length,
+
+        critical:
+          serviceSummary.critical ??
+          flow.filter(
+            (item: any) =>
+              item.riskLevel === "critical"
+          ).length,
+
+        high:
+          serviceSummary.high ??
+          flow.filter(
+            (item: any) =>
+              item.riskLevel === "high"
+          ).length,
+
+        averageCongestion,
+        averageDelay,
+
+        rawCount:
+          serviceSummary.rawCount ??
+          trafficResult?.rawCount ??
+          flow.length,
+
         latitude,
         longitude,
         radiusMeters,
       },
+
       flow,
-      generatedAt: new Date().toISOString(),
+
+      incidents:
+        trafficResult?.incidents || [],
+
+      generatedAt:
+        trafficResult?.generatedAt ||
+        new Date().toISOString(),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Failed to load traffic intelligence.";
+
     return NextResponse.json(
-      { error: error.message || "Failed to load HERE traffic flow." },
-      { status: error.message === "Unauthorized" ? 401 : 500 }
+      { error: message },
+      {
+        status:
+          message === "Unauthorized"
+            ? 401
+            : 500,
+      }
     );
   }
 }
