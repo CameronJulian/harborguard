@@ -1,4 +1,4 @@
-import type { DashcamProviderResult, DashcamStatus } from "@/lib/dashcam/types";
+﻿import type { DashcamProviderResult, DashcamStatus } from "@/lib/dashcam/types";
 
 export async function loadDashcams(vehicles: any[]): Promise<DashcamProviderResult> {
   const provider = String(process.env.DASHCAM_PROVIDER || "mock").toLowerCase();
@@ -25,6 +25,8 @@ export async function loadDashcams(vehicles: any[]): Promise<DashcamProviderResu
       lastHeartbeat: offline ? null : new Date(Date.now() - index * 4 * 60 * 1000).toISOString(),
       lastClipAt: index % 3 === 0 ? new Date(Date.now() - index * 9 * 60 * 1000).toISOString() : null,
       latestClipLabel: index % 3 === 0 ? "Latest road safety clip" : null,
+      latestSnapshotUrl: null,
+      snapshotId: null,
       aiEvents: warning ? ["review recommended"] : [],
     };
   });
@@ -35,3 +37,4 @@ export async function loadDashcams(vehicles: any[]): Promise<DashcamProviderResu
     generatedAt: new Date().toISOString(),
   };
 }
+

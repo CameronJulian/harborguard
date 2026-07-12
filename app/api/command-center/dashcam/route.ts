@@ -1,7 +1,134 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 import { loadDashcams } from "@/lib/dashcam/provider";
+import { analyseFrame } from "@/lib/vision/provider";
 
+const MAX_AUTO_ANALYSES_PER_REFRESH = 1;
+
+async function analyseNewDashcamSnapshots(params: {
+  supabase: any;
+  organizationId: string;
+  cameras: any[];
+}) {
+  const candidates = params.cameras
+    .filter(
+      (camera) =>
+        camera.status !== "offline" &&
+        typeof camera.latestSnapshotUrl === "string" &&
+        camera.latestSnapshotUrl.trim() !== ""
+    )
+    .slice(0, MAX_AUTO_ANALYSES_PER_REFRESH);
+
+  const results: Array<{
+    cameraId: string;
+    status: "analysed" | "skipped" | "failed";
+    detections?: number;
+    message?: string;
+  }> = [];
+
+  for (const camera of candidates) {
+    const imageUrl = camera.latestSnapshotUrl.trim();
+
+    try {
+      const { data: existingEvent, error: existingError } =
+        await params.supabase
+          .from("vision_events")
+          .select("id")
+          .eq("organization_id", params.organizationId)
+          .eq("camera_name", camera.cameraName)
+          .eq("image_url", imageUrl)
+          .limit(1)
+          .maybeSingle();
+
+      if (existingError) {
+        throw existingError;
+      }
+
+      if (existingEvent) {
+        results.push({
+          cameraId: camera.id,
+          status: "skipped",
+          message: "Snapshot already analysed.",
+        });
+
+        continue;
+      }
+
+      const analysis = await analyseFrame({
+        vehicleId: camera.vehicleId,
+        vehicleName: camera.vehicleName,
+        cameraName: camera.cameraName,
+        imageUrl,
+        metadata: {
+          source: "automatic_dashcam_snapshot",
+          dashcamProvider: camera.vendor,
+          snapshotId: camera.snapshotId,
+          receivedAt: new Date().toISOString(),
+        },
+      });
+
+      const rows = analysis.detections.map((detection) => ({
+        organization_id: params.organizationId,
+        vehicle_id: camera.vehicleId || null,
+        vehicle_name: camera.vehicleName || null,
+        camera_name: camera.cameraName || null,
+        provider: analysis.provider,
+        event_type: detection.label,
+        severity: detection.severity,
+        confidence: detection.confidence,
+        status:
+          detection.confidence >= 85
+            ? "review_required"
+            : "monitoring",
+        image_url: imageUrl,
+        description: detection.description,
+        recommended_action: detection.recommendedAction,
+        raw_response: {
+          ...(analysis.rawResponse || {}),
+          source: "automatic_dashcam_snapshot",
+          dashcamProvider: camera.vendor,
+          snapshotId: camera.snapshotId,
+        },
+        detected_at: analysis.analysedAt,
+      }));
+
+      if (rows.length > 0) {
+        const { error: insertError } =
+          await params.supabase
+            .from("vision_events")
+            .insert(rows);
+
+        if (insertError) {
+          throw insertError;
+        }
+      }
+
+      results.push({
+        cameraId: camera.id,
+        status: "analysed",
+        detections: rows.length,
+      });
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Automatic dashcam analysis failed.";
+
+      console.error(
+        `[dashcam-auto-vision] ${camera.cameraName}:`,
+        message
+      );
+
+      results.push({
+        cameraId: camera.id,
+        status: "failed",
+        message,
+      });
+    }
+  }
+
+  return results;
+}
 export async function GET() {
   try {
     const { supabase, organizationId } = await requireOrganization();
@@ -20,6 +147,13 @@ export async function GET() {
     const result = await loadDashcams(vehicles || []);
     const cameras = result.cameras;
 
+    const automaticVision =
+      await analyseNewDashcamSnapshots({
+        supabase,
+        organizationId,
+        cameras,
+      });
+
     const rows = cameras.map((camera) => ({
       organization_id: organizationId,
       vehicle_id: camera.vehicleId || null,
@@ -34,7 +168,13 @@ export async function GET() {
       last_clip_at: camera.lastClipAt,
       latest_clip_label: camera.latestClipLabel,
       ai_events: camera.aiEvents || [],
-      raw_response: camera,
+      raw_response: {
+        ...camera,
+        latestSnapshotUrl:
+          camera.latestSnapshotUrl || null,
+        snapshotId:
+          camera.snapshotId || null,
+      },
       captured_at: result.generatedAt,
     }));
 
@@ -89,6 +229,17 @@ export async function GET() {
       summary,
       cameras: persistedCameras,
       provider: summary.provider,
+      automaticVision: {
+        enabled: true,
+        maximumPerRefresh:
+          MAX_AUTO_ANALYSES_PER_REFRESH,
+        candidates: cameras.filter(
+          (camera) =>
+            camera.status !== "offline" &&
+            Boolean(camera.latestSnapshotUrl)
+        ).length,
+        results: automaticVision,
+      },
       generatedAt: result.generatedAt,
     });
   } catch (error: any) {
@@ -98,3 +249,4 @@ export async function GET() {
     );
   }
 }
+

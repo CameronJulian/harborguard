@@ -13,6 +13,8 @@ export type DashcamCamera = {
   lastHeartbeat: string | null;
   lastClipAt: string | null;
   latestClipLabel: string | null;
+  latestSnapshotUrl: string | null;
+  snapshotId: string | null;
   aiEvents: string[];
 };
 
@@ -21,3 +23,4 @@ export type DashcamProviderResult = {
   cameras: DashcamCamera[];
   generatedAt: string;
 };
+
