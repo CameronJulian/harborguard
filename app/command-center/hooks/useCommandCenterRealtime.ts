@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+﻿import { useEffect } from "react";
 
 import { supabase } from "@/lib/supabase";
 
@@ -6,16 +6,12 @@ type Options = {
   loadFleet: () => Promise<void>;
   loadIncidents: () => Promise<void>;
   loadThreatFeed: () => Promise<void>;
-  loadOperationsSummary: () => Promise<void>;
-  loadOperationsTimeline: () => Promise<void>;
 };
 
 export function useCommandCenterRealtime({
   loadFleet,
   loadIncidents,
   loadThreatFeed,
-  loadOperationsSummary,
-  loadOperationsTimeline,
 }: Options) {
 
   useEffect(() => {
@@ -29,9 +25,6 @@ export function useCommandCenterRealtime({
       loadFleet();
       loadIncidents();
       loadThreatFeed();
-      loadOperationsSummary();
-      loadOperationsTimeline();
-
     };
 
     const channels = [

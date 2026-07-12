@@ -227,8 +227,6 @@ const {
     loadFleet,
     loadIncidents,
     loadThreatFeed,
-    loadOperationsSummary,
-    loadOperationsTimeline,
   });
 
 
@@ -383,5 +381,9 @@ if (
     </AppShell>
   );
 }
+
+
+
+
 
 

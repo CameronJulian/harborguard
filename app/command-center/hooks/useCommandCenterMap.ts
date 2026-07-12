@@ -122,9 +122,13 @@ export function useCommandCenterMap(
 
   useEffect(()=>{
 
-    const interval=setInterval(()=>{
+    const interval = setInterval(() => {
 
-      setAnimatedPositions(prev=>{
+      if (document.visibilityState !== "visible") {
+        return;
+      }
+
+      setAnimatedPositions(prev => {
 
         const next:Record<
           string,
@@ -155,7 +159,7 @@ export function useCommandCenterMap(
 
       });
 
-    },80);
+    }, 250);
 
     return ()=>clearInterval(interval);
 
@@ -167,3 +171,4 @@ export function useCommandCenterMap(
   };
 
 }
+

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
@@ -6,7 +6,7 @@ import { subscribeCommandCenterRealtime } from "@/lib/realtime/commandCenterEven
 import { subscribeMissionMessages } from "@/lib/realtime/missionMessages";
 import { subscribeMissionTracking } from "@/lib/realtime/missionTracking";
 import MissionMap from "@/components/dispatch/MissionMap";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabase } from "@/lib/supabase";
 
 type Props = {
   missionId: string | null;
@@ -116,7 +116,7 @@ export default function MissionDetailsPanel({
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
       const filePath = `missions/${missionId}/${Date.now()}-${safeName}`;
 
-      const { error: uploadError } = await supabaseBrowser.storage
+      const { error: uploadError } = await supabase.storage
         .from("mission-evidence")
         .upload(filePath, file, {
           cacheControl: "3600",
@@ -127,7 +127,7 @@ export default function MissionDetailsPanel({
         throw uploadError;
       }
 
-      const { data: publicUrlData } = supabaseBrowser.storage
+      const { data: publicUrlData } = supabase.storage
         .from("mission-evidence")
         .getPublicUrl(filePath);
 
@@ -635,5 +635,6 @@ export default function MissionDetailsPanel({
     </div>
   );
 }
+
 
 

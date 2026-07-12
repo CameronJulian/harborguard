@@ -1,10 +1,10 @@
-﻿import { supabaseBrowser } from "@/lib/supabase/browser";
+﻿import { supabase } from "@/lib/supabase";
 
 export function subscribeMissionMessages(
   missionId: string,
   onInsert: (payload: any) => void
 ) {
-  const channel = supabaseBrowser
+  const channel = supabase
     .channel(`mission-messages-${missionId}`)
     .on(
       "postgres_changes",
@@ -19,6 +19,7 @@ export function subscribeMissionMessages(
     .subscribe();
 
   return () => {
-    supabaseBrowser.removeChannel(channel);
+    supabase.removeChannel(channel);
   };
 }
+

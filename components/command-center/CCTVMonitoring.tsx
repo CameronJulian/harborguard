@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabase } from "@/lib/supabase";
 import { fetchWithAuth } from "@/lib/auth-fetch";
 
 type CCTVCamera = {
@@ -69,7 +69,7 @@ export default function CCTVMonitoring() {
 
     const interval = setInterval(loadCCTV, 30000);
 
-    const channel = supabaseBrowser
+    const channel = supabase
       .channel("cctv-events-realtime")
       .on(
         "postgres_changes",
@@ -86,7 +86,7 @@ export default function CCTVMonitoring() {
 
     return () => {
       clearInterval(interval);
-      supabaseBrowser.removeChannel(channel);
+      supabase.removeChannel(channel);
     };
   }, []);
 
@@ -222,4 +222,5 @@ export default function CCTVMonitoring() {
     </section>
   );
 }
+
 

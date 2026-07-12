@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { supabase } from "@/lib/supabase";
 import { fetchWithAuth } from "@/lib/auth-fetch";
 
 type Dashcam = {
@@ -66,7 +66,7 @@ export default function DashcamMonitoring() {
 
     const interval = setInterval(loadDashcams, 30000);
 
-    const channel = supabaseBrowser
+    const channel = supabase
       .channel("dashcam-events-realtime")
       .on(
         "postgres_changes",
@@ -83,7 +83,7 @@ export default function DashcamMonitoring() {
 
     return () => {
       clearInterval(interval);
-      supabaseBrowser.removeChannel(channel);
+      supabase.removeChannel(channel);
     };
   }, []);
 
@@ -217,4 +217,5 @@ export default function DashcamMonitoring() {
     </section>
   );
 }
+
 
