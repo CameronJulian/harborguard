@@ -578,7 +578,43 @@ export default function ComputerVisionAnalytics() {
               ],
               [
                 "Provider",
-                summary?.provider || "mock",
+                summary?.providerStatus?.provider ||
+                  summary?.provider ||
+                  "mock",
+              ],
+              [
+                "Vision Model",
+                summary?.providerStatus?.model ||
+                  "Not applicable",
+              ],
+              [
+                "Provider Service",
+                summary?.providerStatus?.serviceAvailable
+                  ? "Available"
+                  : "Unavailable",
+              ],
+              [
+                "Model Installed",
+                summary?.providerStatus?.modelInstalled === null ||
+                summary?.providerStatus?.modelInstalled === undefined
+                  ? "Not applicable"
+                  : summary.providerStatus.modelInstalled
+                  ? "Yes"
+                  : "No",
+              ],
+              [
+                "Model State",
+                summary?.providerStatus?.modelLoaded === null ||
+                summary?.providerStatus?.modelLoaded === undefined
+                  ? "Not applicable"
+                  : summary.providerStatus.modelLoaded
+                  ? "Loaded"
+                  : "On demand",
+              ],
+              [
+                "Execution",
+                summary?.providerStatus?.execution ||
+                  "Unknown",
               ],
               ["Storage", "Persisted DB"],
             ].map(([label, value]) => (
@@ -614,6 +650,31 @@ export default function ComputerVisionAnalytics() {
             ))}
           </div>
 
+          {summary?.providerStatus?.message ? (
+            <div
+              style={{
+                padding: 14,
+                marginBottom: 18,
+                borderRadius: 14,
+                background:
+                  summary.providerStatus.serviceAvailable
+                    ? "#ecfdf5"
+                    : "#fef2f2",
+                border:
+                  summary.providerStatus.serviceAvailable
+                    ? "1px solid #a7f3d0"
+                    : "1px solid #fecaca",
+                color:
+                  summary.providerStatus.serviceAvailable
+                    ? "#166534"
+                    : "#b91c1c",
+                fontWeight: 800,
+              }}
+            >
+              Vision provider status:{" "}
+              {summary.providerStatus.message}
+            </div>
+          ) : null}
           {events.length === 0 ? (
             <div style={{ color: "#64748b" }}>
               No computer vision events detected yet.
@@ -721,3 +782,4 @@ export default function ComputerVisionAnalytics() {
     </section>
   );
 }
+
