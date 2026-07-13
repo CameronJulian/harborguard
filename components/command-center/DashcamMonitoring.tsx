@@ -19,6 +19,19 @@ type Dashcam = {
   latestClipLabel: string | null;
   aiEvents: string[];
 };
+type AutomaticVisionResult = {
+  cameraId: string;
+  status: "analysed" | "skipped" | "failed";
+  detections?: number;
+  message?: string;
+};
+
+type AutomaticVision = {
+  enabled: boolean;
+  maximumPerRefresh: number;
+  candidates: number;
+  results: AutomaticVisionResult[];
+};
 
 function statusColor(status: string) {
   if (status === "online") return "#16a34a";
@@ -34,6 +47,8 @@ function formatDate(value?: string | null) {
 export default function DashcamMonitoring() {
   const [cameras, setCameras] = useState<Dashcam[]>([]);
   const [summary, setSummary] = useState<any>(null);
+  const [automaticVision, setAutomaticVision] =
+    useState<AutomaticVision | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
@@ -54,6 +69,9 @@ export default function DashcamMonitoring() {
 
       setSummary(result.summary);
       setCameras(result.cameras || []);
+      setAutomaticVision(
+        result.automaticVision || null
+      );
     } catch (error: any) {
       setMessage(error.message || "Failed to load dashcam monitoring.");
     } finally {
@@ -154,6 +172,268 @@ export default function DashcamMonitoring() {
             ))}
           </div>
 
+          {automaticVision ? (
+            <div
+              style={{
+                marginBottom: 18,
+                padding: 18,
+                borderRadius: 18,
+                background: "#f0fdfa",
+                border: "1px solid #99f6e4",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  gap: 12,
+                  flexWrap: "wrap",
+                  marginBottom: 14,
+                }}
+              >
+                <div>
+                  <div
+                    style={{
+                      color: "#0f766e",
+                      fontSize: 13,
+                      fontWeight: 900,
+                      marginBottom: 4,
+                    }}
+                  >
+                    AUTOMATIC AI ANALYSIS
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: 21,
+                      fontWeight: 900,
+                    }}
+                  >
+                    Dashcam Vision Pipeline
+                  </div>
+
+                  <div
+                    style={{
+                      color: "#64748b",
+                      marginTop: 4,
+                    }}
+                  >
+                    New provider snapshots are automatically
+                    analysed and saved as vision events.
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    padding: "7px 11px",
+                    borderRadius: 999,
+                    background: automaticVision.enabled
+                      ? "#dcfce7"
+                      : "#fee2e2",
+                    color: automaticVision.enabled
+                      ? "#166534"
+                      : "#b91c1c",
+                    fontWeight: 900,
+                    fontSize: 12,
+                  }}
+                >
+                  {automaticVision.enabled
+                    ? "ENABLED"
+                    : "DISABLED"}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "repeat(auto-fit, minmax(145px, 1fr))",
+                  gap: 10,
+                  marginBottom:
+                    automaticVision.results?.length > 0
+                      ? 14
+                      : 0,
+                }}
+              >
+                {[
+                  [
+                    "Active Provider",
+                    summary?.provider || "Unknown",
+                  ],
+                  [
+                    "Snapshot Candidates",
+                    automaticVision.candidates || 0,
+                  ],
+                  [
+                    "Maximum Per Refresh",
+                    automaticVision.maximumPerRefresh || 0,
+                  ],
+                  [
+                    "Latest Results",
+                    automaticVision.results?.length || 0,
+                  ],
+                ].map(([label, value]) => (
+                  <div
+                    key={String(label)}
+                    style={{
+                      padding: 12,
+                      borderRadius: 14,
+                      background: "#ffffff",
+                      border: "1px solid #ccfbf1",
+                    }}
+                  >
+                    <div
+                      style={{
+                        color: "#64748b",
+                        fontSize: 12,
+                        fontWeight: 800,
+                      }}
+                    >
+                      {label}
+                    </div>
+
+                    <div
+                      style={{
+                        marginTop: 4,
+                        fontSize:
+                          String(value).length > 14
+                            ? 18
+                            : 25,
+                        lineHeight: 1.15,
+                        fontWeight: 900,
+                        overflowWrap: "anywhere",
+                      }}
+                    >
+                      {value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {automaticVision.results?.length > 0 ? (
+                <div
+                  style={{
+                    display: "grid",
+                    gap: 8,
+                  }}
+                >
+                  {automaticVision.results.map(
+                    (result, index) => {
+                      const success =
+                        result.status === "analysed";
+
+                      const skipped =
+                        result.status === "skipped";
+
+                      const background = success
+                        ? "#ecfdf5"
+                        : skipped
+                        ? "#eff6ff"
+                        : "#fef2f2";
+
+                      const border = success
+                        ? "#a7f3d0"
+                        : skipped
+                        ? "#bfdbfe"
+                        : "#fecaca";
+
+                      const color = success
+                        ? "#166534"
+                        : skipped
+                        ? "#1d4ed8"
+                        : "#b91c1c";
+
+                      return (
+                        <div
+                          key={`${result.cameraId}-${index}`}
+                          style={{
+                            padding: 11,
+                            borderRadius: 12,
+                            background,
+                            border: `1px solid ${border}`,
+                            color,
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent:
+                                "space-between",
+                              gap: 10,
+                              flexWrap: "wrap",
+                            }}
+                          >
+                            <strong>
+                              {result.status === "analysed"
+                                ? "Analysis completed"
+                                : result.status === "skipped"
+                                ? "Analysis skipped"
+                                : "Analysis failed"}
+                            </strong>
+
+                            <span
+                              style={{
+                                fontSize: 12,
+                                fontWeight: 900,
+                                textTransform: "uppercase",
+                              }}
+                            >
+                              {result.status}
+                            </span>
+                          </div>
+
+                          <div
+                            style={{
+                              marginTop: 4,
+                              fontSize: 13,
+                            }}
+                          >
+                            Camera: {result.cameraId}
+                          </div>
+
+                          {typeof result.detections ===
+                          "number" ? (
+                            <div
+                              style={{
+                                marginTop: 3,
+                                fontSize: 13,
+                              }}
+                            >
+                              Detections saved:{" "}
+                              {result.detections}
+                            </div>
+                          ) : null}
+
+                          {result.message ? (
+                            <div
+                              style={{
+                                marginTop: 3,
+                                fontSize: 13,
+                              }}
+                            >
+                              {result.message}
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    }
+                  )}
+                </div>
+              ) : (
+                <div
+                  style={{
+                    color: "#64748b",
+                    fontSize: 13,
+                    fontWeight: 700,
+                  }}
+                >
+                  No snapshot analysis was required during
+                  the latest refresh.
+                </div>
+              )}
+            </div>
+          ) : null}
           {cameras.length === 0 ? (
             <div style={{ color: "#64748b" }}>
               No dashcams registered yet. Cameras will appear here once vehicles are linked to dashcam devices.
@@ -217,5 +497,4 @@ export default function DashcamMonitoring() {
     </section>
   );
 }
-
 
