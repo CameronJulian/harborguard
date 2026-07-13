@@ -249,6 +249,61 @@ export async function GET() {
       aiEvents: Array.isArray(event.ai_events) ? event.ai_events : [],
     }));
 
+    const {
+      data: recentVisionRows,
+      error: recentVisionError,
+    } = await supabase
+      .from("vision_events")
+      .select(`
+        id,
+        vehicle_id,
+        vehicle_name,
+        camera_name,
+        provider,
+        event_type,
+        severity,
+        confidence,
+        status,
+        description,
+        recommended_action,
+        detected_at
+      `)
+      .eq("organization_id", organizationId)
+      .order("detected_at", { ascending: false })
+      .limit(8);
+
+    if (recentVisionError) {
+      throw recentVisionError;
+    }
+
+    const recentVisionEvents = (
+      recentVisionRows || []
+    ).map((event: any) => ({
+      id: event.id,
+      vehicleId: event.vehicle_id,
+      vehicleName:
+        event.vehicle_name || "Unknown vehicle",
+      cameraName:
+        event.camera_name || "Unknown camera",
+      provider:
+        event.provider || "unknown",
+      eventType:
+        event.event_type || "vision_event",
+      severity:
+        event.severity || "low",
+      confidence:
+        Number(event.confidence || 0),
+      status:
+        event.status || "monitoring",
+      description:
+        event.description ||
+        "Vision event detected.",
+      recommendedAction:
+        event.recommended_action ||
+        "Review the detection.",
+      detectedAt:
+        event.detected_at,
+    }));
     const summary = {
       totalCameras: persistedCameras.length,
       online: persistedCameras.filter((item) => item.status === "online").length,
@@ -262,6 +317,7 @@ export async function GET() {
       success: true,
       summary,
       cameras: persistedCameras,
+      recentVisionEvents,
       provider: summary.provider,
       automaticVision: {
         enabled: true,

@@ -33,6 +33,21 @@ type AutomaticVision = {
   results: AutomaticVisionResult[];
 };
 
+type RecentVisionEvent = {
+  id: string;
+  vehicleId?: string | null;
+  vehicleName: string;
+  cameraName: string;
+  provider: string;
+  eventType: string;
+  severity: string;
+  confidence: number;
+  status: string;
+  description: string;
+  recommendedAction: string;
+  detectedAt: string;
+};
+
 function statusColor(status: string) {
   if (status === "online") return "#16a34a";
   if (status === "warning") return "#d97706";
@@ -49,6 +64,9 @@ export default function DashcamMonitoring() {
   const [summary, setSummary] = useState<any>(null);
   const [automaticVision, setAutomaticVision] =
     useState<AutomaticVision | null>(null);
+
+  const [recentVisionEvents, setRecentVisionEvents] =
+    useState<RecentVisionEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
@@ -71,6 +89,10 @@ export default function DashcamMonitoring() {
       setCameras(result.cameras || []);
       setAutomaticVision(
         result.automaticVision || null
+      );
+
+      setRecentVisionEvents(
+        result.recentVisionEvents || []
       );
     } catch (error: any) {
       setMessage(error.message || "Failed to load dashcam monitoring.");
@@ -434,6 +456,220 @@ export default function DashcamMonitoring() {
               )}
             </div>
           ) : null}
+          <div
+            style={{
+              marginBottom: 18,
+              padding: 18,
+              borderRadius: 18,
+              background: "#ffffff",
+              border: "1px solid #e2e8f0",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+                flexWrap: "wrap",
+                marginBottom: 14,
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    color: "#7c3aed",
+                    fontSize: 13,
+                    fontWeight: 900,
+                    marginBottom: 4,
+                  }}
+                >
+                  RECENT AI VISION EVENTS
+                </div>
+
+                <div
+                  style={{
+                    fontSize: 21,
+                    fontWeight: 900,
+                  }}
+                >
+                  Latest Dashcam Detections
+                </div>
+
+                <div
+                  style={{
+                    color: "#64748b",
+                    marginTop: 4,
+                  }}
+                >
+                  Recent detections produced by the active
+                  HarborGuard vision provider.
+                </div>
+              </div>
+
+              <div
+                style={{
+                  height: "fit-content",
+                  padding: "7px 11px",
+                  borderRadius: 999,
+                  background: "#f3e8ff",
+                  color: "#6d28d9",
+                  fontSize: 12,
+                  fontWeight: 900,
+                }}
+              >
+                {recentVisionEvents.length} EVENTS
+              </div>
+            </div>
+
+            {recentVisionEvents.length === 0 ? (
+              <div
+                style={{
+                  padding: 14,
+                  borderRadius: 14,
+                  background: "#f8fafc",
+                  color: "#64748b",
+                }}
+              >
+                No recent AI vision events are available.
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: "grid",
+                  gap: 10,
+                }}
+              >
+                {recentVisionEvents.map((event) => {
+                  const highSeverity =
+                    event.severity === "high" ||
+                    event.severity === "critical";
+
+                  const reviewRequired =
+                    event.status === "review_required";
+
+                  return (
+                    <div
+                      key={event.id}
+                      style={{
+                        padding: 14,
+                        borderRadius: 15,
+                        background: highSeverity
+                          ? "#fef2f2"
+                          : "#f8fafc",
+                        border: highSeverity
+                          ? "1px solid #fecaca"
+                          : "1px solid #e2e8f0",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent:
+                            "space-between",
+                          gap: 12,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <div>
+                          <div
+                            style={{
+                              fontSize: 17,
+                              fontWeight: 900,
+                              textTransform: "capitalize",
+                            }}
+                          >
+                            {event.eventType.replaceAll(
+                              "_",
+                              " "
+                            )}
+                          </div>
+
+                          <div
+                            style={{
+                              color: "#64748b",
+                              marginTop: 3,
+                              fontSize: 13,
+                            }}
+                          >
+                            {event.vehicleName} -{" "}
+                            {event.cameraName}
+                          </div>
+                        </div>
+
+                        <div
+                          style={{
+                            textAlign: "right",
+                          }}
+                        >
+                          <div
+                            style={{
+                              color: highSeverity
+                                ? "#dc2626"
+                                : "#2563eb",
+                              fontWeight: 900,
+                            }}
+                          >
+                            {event.confidence}% confidence
+                          </div>
+
+                          <div
+                            style={{
+                              marginTop: 3,
+                              color: reviewRequired
+                                ? "#b91c1c"
+                                : "#64748b",
+                              fontSize: 12,
+                              fontWeight: 900,
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            {event.status.replaceAll(
+                              "_",
+                              " "
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          marginTop: 9,
+                          color: "#475569",
+                        }}
+                      >
+                        {event.description}
+                      </div>
+
+                      <div
+                        style={{
+                          marginTop: 8,
+                          color: "#0f172a",
+                          fontSize: 13,
+                          fontWeight: 800,
+                        }}
+                      >
+                        Recommended action:{" "}
+                        {event.recommendedAction}
+                      </div>
+
+                      <div
+                        style={{
+                          marginTop: 7,
+                          color: "#94a3b8",
+                          fontSize: 12,
+                        }}
+                      >
+                        {new Date(
+                          event.detectedAt
+                        ).toLocaleString()}{" "}
+                        - Provider: {event.provider}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
           {cameras.length === 0 ? (
             <div style={{ color: "#64748b" }}>
               No dashcams registered yet. Cameras will appear here once vehicles are linked to dashcam devices.
