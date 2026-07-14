@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -46,6 +46,18 @@ type RecentVisionEvent = {
   description: string;
   recommendedAction: string;
   detectedAt: string;
+  incidentId?: string | null;
+  reviewedAt?: string | null;
+  reviewedBy?: string | null;
+  reviewNote?: string | null;
+};
+
+type OpenIncident = {
+  id: string;
+  incident_code: string;
+  summary: string;
+  severity: string;
+  status: string;
 };
 
 function statusColor(status: string) {
@@ -67,6 +79,22 @@ export default function DashcamMonitoring() {
 
   const [recentVisionEvents, setRecentVisionEvents] =
     useState<RecentVisionEvent[]>([]);
+
+  const [openIncidents, setOpenIncidents] =
+    useState<OpenIncident[]>([]);
+
+  const [reviewingEventId, setReviewingEventId] =
+    useState<string | null>(null);
+
+  const [selectedIncidentId, setSelectedIncidentId] =
+    useState("");
+
+  const [reviewNote, setReviewNote] =
+    useState("");
+
+  const [savingReview, setSavingReview] =
+    useState(false);
+
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
@@ -101,8 +129,39 @@ export default function DashcamMonitoring() {
     }
   }
 
+  async function loadOpenIncidents() {
+    try {
+      const response = await fetchWithAuth(
+        "/api/incidents/command",
+        {
+          cache: "no-store",
+        }
+      );
+
+      if (!response.ok) {
+        return;
+      }
+
+      const result = await response.json();
+
+      setOpenIncidents(
+        (result.incidents || []).filter(
+          (incident: OpenIncident) =>
+            String(incident.status).toLowerCase() !==
+            "resolved"
+        )
+      );
+    } catch (error) {
+      console.error(
+        "Failed to load incidents for vision review:",
+        error
+      );
+    }
+  }
+
   useEffect(() => {
     loadDashcams();
+    loadOpenIncidents();
 
     const interval = setInterval(loadDashcams, 30000);
 
