@@ -1074,12 +1074,12 @@ export default function DashcamMonitoring() {
                       <strong>{camera.cameraName}</strong>
                       <div style={{ color: "#64748b", marginTop: 4 }}>
                         {camera.vehicleName}
-                        {camera.nickname ? ` / ${camera.nickname}` : ""} Ã‚Â· {camera.vendor}
+                        {camera.nickname ? ` / ${camera.nickname}` : ""} - {camera.vendor}
                       </div>
                     </div>
 
                     <div style={{ color: statusColor(camera.status), fontWeight: 900 }}>
-                      {camera.status.toUpperCase()} Ã‚Â· {camera.recording ? "REC" : "NOT RECORDING"}
+                      {camera.status.toUpperCase()} - {camera.recording ? "REC" : "NOT RECORDING"}
                     </div>
                   </div>
 
