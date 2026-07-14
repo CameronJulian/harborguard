@@ -159,6 +159,74 @@ export default function DashcamMonitoring() {
     }
   }
 
+  function beginReview(event: RecentVisionEvent) {
+    setReviewingEventId(event.id);
+    setSelectedIncidentId(event.incidentId || "");
+    setReviewNote(event.reviewNote || "");
+    setMessage("");
+  }
+
+  function cancelReview() {
+    setReviewingEventId(null);
+    setSelectedIncidentId("");
+    setReviewNote("");
+  }
+
+  async function saveVisionReview(eventId: string) {
+    try {
+      setSavingReview(true);
+      setMessage("");
+
+      const response = await fetchWithAuth(
+        "/api/command-center/vision-events/review",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            visionEventId: eventId,
+            status: "reviewed",
+            reviewNote,
+            incidentId: selectedIncidentId || null,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setMessage(
+          result.error ||
+            "Failed to save the vision-event review."
+        );
+        return;
+      }
+
+      setRecentVisionEvents((current) =>
+        current.map((event) =>
+          event.id === eventId
+            ? {
+                ...event,
+                ...result.event,
+              }
+            : event
+        )
+      );
+
+      setMessage("Vision event reviewed successfully.");
+      cancelReview();
+    } catch (error: unknown) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Failed to save the vision-event review."
+      );
+    } finally {
+      setSavingReview(false);
+    }
+  }
+
   useEffect(() => {
     loadDashcams();
     loadOpenIncidents();
@@ -723,6 +791,262 @@ export default function DashcamMonitoring() {
                         ).toLocaleString()}{" "}
                         - Provider: {event.provider}
                       </div>
+
+                      {event.reviewedAt ? (
+                        <div
+                          style={{
+                            marginTop: 12,
+                            padding: 12,
+                            borderRadius: 12,
+                            background: "#ecfdf5",
+                            border: "1px solid #a7f3d0",
+                          }}
+                        >
+                          <div
+                            style={{
+                              color: "#166534",
+                              fontWeight: 900,
+                            }}
+                          >
+                            Reviewed
+                          </div>
+
+                          <div
+                            style={{
+                              marginTop: 4,
+                              color: "#475569",
+                              fontSize: 13,
+                            }}
+                          >
+                            {new Date(
+                              event.reviewedAt
+                            ).toLocaleString()}
+                          </div>
+
+                          {event.reviewNote ? (
+                            <div
+                              style={{
+                                marginTop: 7,
+                                color: "#334155",
+                                fontSize: 13,
+                              }}
+                            >
+                              Note: {event.reviewNote}
+                            </div>
+                          ) : null}
+
+                          {event.incidentId ? (
+                            <a
+                              href={`/incidents/${event.incidentId}`}
+                              style={{
+                                display: "inline-block",
+                                marginTop: 9,
+                                color: "#2563eb",
+                                fontWeight: 900,
+                                textDecoration: "none",
+                              }}
+                            >
+                              View linked incident
+                            </a>
+                          ) : null}
+                        </div>
+                      ) : null}
+
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 8,
+                          flexWrap: "wrap",
+                          marginTop: 12,
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => beginReview(event)}
+                          disabled={
+                            savingReview &&
+                            reviewingEventId === event.id
+                          }
+                          style={{
+                            padding: "9px 12px",
+                            borderRadius: 10,
+                            border: "0",
+                            background: event.reviewedAt
+                              ? "#475569"
+                              : "#7c3aed",
+                            color: "#ffffff",
+                            fontWeight: 900,
+                            cursor: savingReview
+                              ? "not-allowed"
+                              : "pointer",
+                          }}
+                        >
+                          {event.reviewedAt
+                            ? "Update Review"
+                            : "Review Event"}
+                        </button>
+
+                        {event.incidentId ? (
+                          <a
+                            href={`/incidents/${event.incidentId}`}
+                            style={{
+                              padding: "9px 12px",
+                              borderRadius: 10,
+                              border: "1px solid #bfdbfe",
+                              background: "#eff6ff",
+                              color: "#1d4ed8",
+                              fontWeight: 900,
+                              textDecoration: "none",
+                            }}
+                          >
+                            Open Incident
+                          </a>
+                        ) : null}
+                      </div>
+
+                      {reviewingEventId === event.id ? (
+                        <div
+                          style={{
+                            marginTop: 12,
+                            padding: 14,
+                            borderRadius: 14,
+                            background: "#ffffff",
+                            border: "1px solid #ddd6fe",
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontWeight: 900,
+                              marginBottom: 10,
+                            }}
+                          >
+                            Review Vision Event
+                          </div>
+
+                          <label
+                            style={{
+                              display: "grid",
+                              gap: 6,
+                              color: "#334155",
+                              fontSize: 13,
+                              fontWeight: 800,
+                            }}
+                          >
+                            Link an existing incident
+                            <select
+                              value={selectedIncidentId}
+                              onChange={(changeEvent) =>
+                                setSelectedIncidentId(
+                                  changeEvent.target.value
+                                )
+                              }
+                              disabled={savingReview}
+                              style={{
+                                padding: 10,
+                                borderRadius: 10,
+                                border: "1px solid #cbd5e1",
+                                background: "#ffffff",
+                              }}
+                            >
+                              <option value="">
+                                No incident link
+                              </option>
+
+                              {openIncidents.map((incident) => (
+                                <option
+                                  key={incident.id}
+                                  value={incident.id}
+                                >
+                                  {incident.incident_code} -{" "}
+                                  {incident.summary}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+
+                          <label
+                            style={{
+                              display: "grid",
+                              gap: 6,
+                              marginTop: 10,
+                              color: "#334155",
+                              fontSize: 13,
+                              fontWeight: 800,
+                            }}
+                          >
+                            Review note
+                            <textarea
+                              value={reviewNote}
+                              onChange={(changeEvent) =>
+                                setReviewNote(
+                                  changeEvent.target.value
+                                )
+                              }
+                              disabled={savingReview}
+                              rows={3}
+                              placeholder="Record the operator's findings or action taken."
+                              style={{
+                                padding: 10,
+                                borderRadius: 10,
+                                border: "1px solid #cbd5e1",
+                                resize: "vertical",
+                                fontFamily: "inherit",
+                              }}
+                            />
+                          </label>
+
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: 8,
+                              flexWrap: "wrap",
+                              marginTop: 12,
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={() =>
+                                saveVisionReview(event.id)
+                              }
+                              disabled={savingReview}
+                              style={{
+                                padding: "9px 12px",
+                                borderRadius: 10,
+                                border: "0",
+                                background: "#16a34a",
+                                color: "#ffffff",
+                                fontWeight: 900,
+                                cursor: savingReview
+                                  ? "not-allowed"
+                                  : "pointer",
+                              }}
+                            >
+                              {savingReview
+                                ? "Saving..."
+                                : "Save Review"}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={cancelReview}
+                              disabled={savingReview}
+                              style={{
+                                padding: "9px 12px",
+                                borderRadius: 10,
+                                border: "1px solid #cbd5e1",
+                                background: "#ffffff",
+                                color: "#334155",
+                                fontWeight: 900,
+                                cursor: savingReview
+                                  ? "not-allowed"
+                                  : "pointer",
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   );
                 })}
@@ -750,12 +1074,12 @@ export default function DashcamMonitoring() {
                       <strong>{camera.cameraName}</strong>
                       <div style={{ color: "#64748b", marginTop: 4 }}>
                         {camera.vehicleName}
-                        {camera.nickname ? ` / ${camera.nickname}` : ""} Â· {camera.vendor}
+                        {camera.nickname ? ` / ${camera.nickname}` : ""} Ã‚Â· {camera.vendor}
                       </div>
                     </div>
 
                     <div style={{ color: statusColor(camera.status), fontWeight: 900 }}>
-                      {camera.status.toUpperCase()} Â· {camera.recording ? "REC" : "NOT RECORDING"}
+                      {camera.status.toUpperCase()} Ã‚Â· {camera.recording ? "REC" : "NOT RECORDING"}
                     </div>
                   </div>
 
