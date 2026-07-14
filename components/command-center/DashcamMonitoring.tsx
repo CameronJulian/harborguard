@@ -95,8 +95,32 @@ export default function DashcamMonitoring() {
   const [savingReview, setSavingReview] =
     useState(false);
 
+  const [visionFilter, setVisionFilter] = useState<
+    "all" | "review_required" | "reviewed" | "linked"
+  >("all");
+
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+
+  const filteredVisionEvents =
+    recentVisionEvents.filter((event) => {
+      if (visionFilter === "review_required") {
+        return (
+          event.status === "review_required" &&
+          !event.reviewedAt
+        );
+      }
+
+      if (visionFilter === "reviewed") {
+        return Boolean(event.reviewedAt);
+      }
+
+      if (visionFilter === "linked") {
+        return Boolean(event.incidentId);
+      }
+
+      return true;
+    });
 
   async function loadDashcams() {
     try {
@@ -305,25 +329,107 @@ export default function DashcamMonitoring() {
       ) : (
         <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 18 }}>
-            {[
-              ["Total Cameras", summary?.totalCameras || 0],
-              ["Online", summary?.online || 0],
-              ["Warning", summary?.warning || 0],
-              ["Offline", summary?.offline || 0],
-              ["Recording", summary?.recording || 0],
-              ["Vision Events", summary?.totalVisionEvents || 0],
-              ["Review Required", summary?.reviewRequired || 0],
-              ["Reviewed", summary?.reviewed || 0],
-              ["Linked Incidents", summary?.linkedIncidents || 0],
-              ["High Confidence", summary?.highConfidence || 0],
-              ["Provider", summary?.provider || "mock"],
-              ["Source", "Provider API"],
-            ].map(([label, value]) => (
-              <div key={String(label)} style={{ padding: 14, borderRadius: 16, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-                <div style={{ color: "#64748b", fontSize: 13, fontWeight: 800 }}>{label}</div>
-                <div style={{ fontSize: 30, fontWeight: 900, marginTop: 4 }}>{value}</div>
-              </div>
-            ))}
+            {([
+              ["Total Cameras", summary?.totalCameras || 0, null],
+              ["Online", summary?.online || 0, null],
+              ["Warning", summary?.warning || 0, null],
+              ["Offline", summary?.offline || 0, null],
+              ["Recording", summary?.recording || 0, null],
+              ["Vision Events", summary?.totalVisionEvents || 0, "all"],
+              [
+                "Review Required",
+                summary?.reviewRequired || 0,
+                "review_required",
+              ],
+              ["Reviewed", summary?.reviewed || 0, "reviewed"],
+              [
+                "Linked Incidents",
+                summary?.linkedIncidents || 0,
+                "linked",
+              ],
+              [
+                "High Confidence",
+                summary?.highConfidence || 0,
+                null,
+              ],
+              ["Provider", summary?.provider || "mock", null],
+              ["Source", "Provider API", null],
+            ] as const).map(([label, value, filter]) => {
+              const active =
+                filter !== null &&
+                visionFilter === filter;
+
+              const cardStyle = {
+                width: "100%",
+                padding: 14,
+                borderRadius: 16,
+                background: active
+                  ? "#f5f3ff"
+                  : "#f8fafc",
+                border: active
+                  ? "2px solid #7c3aed"
+                  : "1px solid #e2e8f0",
+                textAlign: "left" as const,
+                cursor: filter
+                  ? "pointer"
+                  : "default",
+                boxShadow: active
+                  ? "0 8px 20px rgba(124, 58, 237, 0.14)"
+                  : "none",
+              };
+
+              const content = (
+                <>
+                  <div
+                    style={{
+                      color: active
+                        ? "#6d28d9"
+                        : "#64748b",
+                      fontSize: 13,
+                      fontWeight: 800,
+                    }}
+                  >
+                    {label}
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: 30,
+                      fontWeight: 900,
+                      marginTop: 4,
+                    }}
+                  >
+                    {value}
+                  </div>
+                </>
+              );
+
+              if (filter) {
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() =>
+                      setVisionFilter(filter)
+                    }
+                    aria-pressed={active}
+                    title={`Filter vision events by ${label}`}
+                    style={cardStyle}
+                  >
+                    {content}
+                  </button>
+                );
+              }
+
+              return (
+                <div
+                  key={label}
+                  style={cardStyle}
+                >
+                  {content}
+                </div>
+              );
+            })}
           </div>
 
           {automaticVision ? (
@@ -649,11 +755,54 @@ export default function DashcamMonitoring() {
                   fontWeight: 900,
                 }}
               >
-                {recentVisionEvents.length} EVENTS
+                {filteredVisionEvents.length} EVENTS
               </div>
             </div>
 
-            {recentVisionEvents.length === 0 ? (
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                flexWrap: "wrap",
+                marginBottom: 14,
+              }}
+            >
+              {([
+                ["all", "All Events"],
+                ["review_required", "Review Required"],
+                ["reviewed", "Reviewed"],
+                ["linked", "Linked to Incident"],
+              ] as const).map(([value, label]) => {
+                const active = visionFilter === value;
+
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setVisionFilter(value)}
+                    style={{
+                      padding: "9px 12px",
+                      borderRadius: 999,
+                      border: active
+                        ? "1px solid #7c3aed"
+                        : "1px solid #cbd5e1",
+                      background: active
+                        ? "#7c3aed"
+                        : "#ffffff",
+                      color: active
+                        ? "#ffffff"
+                        : "#475569",
+                      fontWeight: 900,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {filteredVisionEvents.length === 0 ? (
               <div
                 style={{
                   padding: 14,
@@ -671,7 +820,7 @@ export default function DashcamMonitoring() {
                   gap: 10,
                 }}
               >
-                {recentVisionEvents.map((event) => {
+                {filteredVisionEvents.map((event) => {
                   const highSeverity =
                     event.severity === "high" ||
                     event.severity === "critical";
