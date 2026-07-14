@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 import { loadDashcams } from "@/lib/dashcam/provider";
 import { analyseFrame } from "@/lib/vision/provider";
@@ -266,7 +266,11 @@ export async function GET() {
         status,
         description,
         recommended_action,
-        detected_at
+        detected_at,
+        incident_id,
+        reviewed_at,
+        reviewed_by,
+        review_note
       `)
       .eq("organization_id", organizationId)
       .order("detected_at", { ascending: false })
@@ -303,6 +307,14 @@ export async function GET() {
         "Review the detection.",
       detectedAt:
         event.detected_at,
+      incidentId:
+        event.incident_id || null,
+      reviewedAt:
+        event.reviewed_at || null,
+      reviewedBy:
+        event.reviewed_by || null,
+      reviewNote:
+        event.review_note || null,
     }));
     const summary = {
       totalCameras: persistedCameras.length,
