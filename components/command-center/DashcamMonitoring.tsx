@@ -311,6 +311,11 @@ export default function DashcamMonitoring() {
               ["Warning", summary?.warning || 0],
               ["Offline", summary?.offline || 0],
               ["Recording", summary?.recording || 0],
+              ["Vision Events", summary?.totalVisionEvents || 0],
+              ["Review Required", summary?.reviewRequired || 0],
+              ["Reviewed", summary?.reviewed || 0],
+              ["Linked Incidents", summary?.linkedIncidents || 0],
+              ["High Confidence", summary?.highConfidence || 0],
               ["Provider", summary?.provider || "mock"],
               ["Source", "Provider API"],
             ].map(([label, value]) => (
