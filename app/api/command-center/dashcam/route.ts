@@ -323,6 +323,24 @@ export async function GET() {
       offline: persistedCameras.filter((item) => item.status === "offline").length,
       recording: persistedCameras.filter((item) => item.recording).length,
       provider: persistedEvents?.[0]?.provider || result.provider,
+
+      totalVisionEvents: recentVisionEvents.length,
+
+      reviewRequired: recentVisionEvents.filter(
+        (event) => event.status === "review_required"
+      ).length,
+
+      reviewed: recentVisionEvents.filter(
+        (event) => Boolean(event.reviewedAt)
+      ).length,
+
+      linkedIncidents: recentVisionEvents.filter(
+        (event) => Boolean(event.incidentId)
+      ).length,
+
+      highConfidence: recentVisionEvents.filter(
+        (event) => Number(event.confidence || 0) >= 85
+      ).length,
     };
 
     return NextResponse.json({
