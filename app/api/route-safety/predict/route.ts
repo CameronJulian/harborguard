@@ -1,5 +1,6 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
+import { loadWeather } from "@/lib/weather/provider";
 
 function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
   const earthRadius = 6371000;
@@ -97,6 +98,45 @@ function recommendationFor(type: string | null, severity: string | null) {
   return "Route safety threat ahead. Continue monitoring and advise driver to proceed with caution.";
 }
 
+async function loadRouteWeather(
+  latitude: number,
+  longitude: number,
+  location: "origin" | "destination"
+) {
+  try {
+    const result = await loadWeather(
+      latitude,
+      longitude
+    );
+
+    return {
+      available: true,
+      location,
+      provider: result.provider,
+      weather: result.weather,
+      error: null,
+    };
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Weather data unavailable.";
+
+    console.error(
+      `[route safety weather ${location}]`,
+      message
+    );
+
+    return {
+      available: false,
+      location,
+      provider: null,
+      weather: null,
+      error: message,
+    };
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { supabase, organizationId } = await requireOrganization();
@@ -123,6 +163,26 @@ export async function POST(req: NextRequest) {
     const originLng = Number(origin.lng);
     const destinationLat = Number(destination.lat);
     const destinationLng = Number(destination.lng);
+
+    const [originWeather, destinationWeather] =
+      await Promise.all([
+        loadRouteWeather(
+          originLat,
+          originLng,
+          "origin"
+        ),
+        loadRouteWeather(
+          destinationLat,
+          destinationLng,
+          "destination"
+        ),
+      ]);
+
+    const routeWeather = {
+      origin: originWeather,
+      destination: destinationWeather,
+      fetchedAt: new Date().toISOString(),
+    };
 
     const { data: alerts, error } = await supabase
       .from("route_safety_alerts")
@@ -384,6 +444,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       routeEstimate,
+      routeWeather,
       riskScore,
       riskLevel,
       threats: routeThreats,
