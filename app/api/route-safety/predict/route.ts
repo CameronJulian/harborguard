@@ -137,6 +137,79 @@ async function loadRouteWeather(
   }
 }
 
+type RouteWeatherLocation = {
+  available: boolean;
+  location: "origin" | "destination";
+  provider: string | null;
+  weather: {
+    riskLevel: "low" | "medium" | "high" | "critical";
+    riskReasons: string[];
+  } | null;
+  error: string | null;
+};
+
+function weatherRiskRank(
+  level: "low" | "medium" | "high" | "critical"
+) {
+  if (level === "critical") return 4;
+  if (level === "high") return 3;
+  if (level === "medium") return 2;
+  return 1;
+}
+
+function buildRouteWeatherAssessment(
+  origin: RouteWeatherLocation,
+  destination: RouteWeatherLocation
+) {
+  const originRisk =
+    origin.weather?.riskLevel || null;
+
+  const destinationRisk =
+    destination.weather?.riskLevel || null;
+
+  const availableRisks = [
+    originRisk,
+    destinationRisk,
+  ].filter(
+    (level): level is
+      "low" | "medium" | "high" | "critical" =>
+      level !== null
+  );
+
+  const highestRisk =
+    availableRisks.length > 0
+      ? availableRisks.reduce(
+          (highest, current) =>
+            weatherRiskRank(current) >
+            weatherRiskRank(highest)
+              ? current
+              : highest
+        )
+      : null;
+
+  const summary = Array.from(
+    new Set([
+      ...(origin.weather?.riskReasons || []),
+      ...(destination.weather?.riskReasons || []),
+    ])
+  );
+
+  return {
+    available:
+      origin.available || destination.available,
+    highestRisk,
+    originRisk,
+    destinationRisk,
+    summary,
+    provider: origin.provider || destination.provider,
+    partial:
+      origin.available !== destination.available,
+    errors: [origin.error, destination.error].filter(
+      (error): error is string => Boolean(error)
+    ),
+  };
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { supabase, organizationId } = await requireOrganization();
@@ -183,6 +256,12 @@ export async function POST(req: NextRequest) {
       destination: destinationWeather,
       fetchedAt: new Date().toISOString(),
     };
+
+    const weatherAssessment =
+      buildRouteWeatherAssessment(
+        originWeather,
+        destinationWeather
+      );
 
     const { data: alerts, error } = await supabase
       .from("route_safety_alerts")
@@ -445,6 +524,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       routeEstimate,
       routeWeather,
+      weatherAssessment,
       riskScore,
       riskLevel,
       threats: routeThreats,
