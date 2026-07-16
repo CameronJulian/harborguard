@@ -101,6 +101,91 @@ export default function CommandCenterRouteSafetySection({
               </div>
             )}
 
+            <div
+              style={{
+                marginTop: 12,
+                padding: 14,
+                borderRadius: 14,
+                border: "1px solid #dbeafe",
+                background: "#eff6ff",
+              }}
+            >
+              <strong style={{ color: "#1e3a8a" }}>
+                Risk Fusion
+              </strong>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "repeat(auto-fit,minmax(160px,1fr))",
+                  gap: 10,
+                  marginTop: 12,
+                }}
+              >
+                {[
+                  [
+                    "Route Threat",
+                    routePrediction.routeThreatScore,
+                  ],
+                  [
+                    "Weather Score",
+                    routePrediction.weatherRiskScore,
+                  ],
+                  [
+                    "Weather Contribution",
+                    routePrediction.weatherContribution,
+                  ],
+                  [
+                    "Combined Risk",
+                    routePrediction.combinedRiskScore,
+                  ],
+                ].map(([label,value]) => (
+                  <div
+                    key={String(label)}
+                    style={{
+                      background:"#fff",
+                      border:"1px solid #dbeafe",
+                      borderRadius:12,
+                      padding:10,
+                    }}
+                  >
+                    <div
+                      style={{
+                        color:"#64748b",
+                        fontSize:12,
+                        fontWeight:800,
+                      }}
+                    >
+                      {label}
+                    </div>
+
+                    <div
+                      style={{
+                        marginTop:4,
+                        fontSize:24,
+                        fontWeight:900,
+                      }}
+                    >
+                      {value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div
+                style={{
+                  marginTop:12,
+                  fontWeight:900,
+                  color:"#1e3a8a",
+                }}
+              >
+                Combined Level:
+                {" "}
+                {routePrediction.combinedRiskLevel}
+              </div>
+            </div>
+
             {routePrediction.weatherAssessment ? (
               <div
                 style={{
