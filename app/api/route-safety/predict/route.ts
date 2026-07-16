@@ -142,6 +142,7 @@ type RouteWeatherLocation = {
   location: "origin" | "destination";
   provider: string | null;
   weather: {
+    riskScore: number;
     riskLevel: "low" | "medium" | "high" | "critical";
     riskReasons: string[];
   } | null;
@@ -194,6 +195,18 @@ function buildRouteWeatherAssessment(
     ])
   );
 
+  const originScore =
+    origin.weather?.riskScore ?? 0;
+
+  const destinationScore =
+    destination.weather?.riskScore ?? 0;
+
+  const weatherRiskScore =
+    Math.max(originScore, destinationScore);
+
+  const weatherContribution =
+    Math.round(weatherRiskScore * 0.5);
+
   return {
     available:
       origin.available || destination.available,
@@ -207,6 +220,8 @@ function buildRouteWeatherAssessment(
     errors: [origin.error, destination.error].filter(
       (error): error is string => Boolean(error)
     ),
+    weatherRiskScore,
+    weatherContribution,
   };
 }
 
@@ -402,6 +417,35 @@ export async function POST(req: NextRequest) {
         ? "MEDIUM"
         : "LOW";
 
+    const routeThreatScore = riskScore;
+
+    const weatherRiskScore =
+      weatherAssessment.weatherRiskScore;
+
+    const weatherContribution =
+      weatherAssessment.weatherContribution;
+
+    const combinedRiskScore = Math.min(
+      100,
+      routeThreatScore + weatherContribution
+    );
+
+    const combinedRiskLevel =
+      combinedRiskScore >= 80
+        ? "CRITICAL"
+        : combinedRiskScore >= 60
+        ? "HIGH"
+        : combinedRiskScore >= 35
+        ? "MEDIUM"
+        : "LOW";
+
+    const riskBreakdown = {
+      routeThreats: routeThreatScore,
+      weatherRaw: weatherRiskScore,
+      weatherContribution,
+      combined: combinedRiskScore,
+    };
+
     let autoEscalated = false;
     let autoEscalationResult: any = null;
     let autoRouteAssigned = false;
@@ -525,6 +569,12 @@ export async function POST(req: NextRequest) {
       routeEstimate,
       routeWeather,
       weatherAssessment,
+      routeThreatScore,
+      weatherRiskScore,
+      weatherContribution,
+      combinedRiskScore,
+      combinedRiskLevel,
+      riskBreakdown,
       riskScore,
       riskLevel,
       threats: routeThreats,
