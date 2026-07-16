@@ -101,6 +101,220 @@ export default function CommandCenterRouteSafetySection({
               </div>
             )}
 
+            {routePrediction.weatherAssessment ? (
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: 14,
+                  borderRadius: 14,
+                  border: "1px solid #bae6fd",
+                  background: "#f0f9ff",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    gap: 12,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <div>
+                    <strong style={{ color: "#0c4a6e" }}>
+                      Route Weather Assessment
+                    </strong>
+
+                    <div
+                      style={{
+                        marginTop: 4,
+                        color: "#475569",
+                        fontSize: 13,
+                      }}
+                    >
+                      Provider:{" "}
+                      {routePrediction.weatherAssessment.provider ||
+                        "Unavailable"}
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: 999,
+                      fontSize: 12,
+                      fontWeight: 900,
+                      textTransform: "uppercase",
+                      color:
+                        routePrediction.weatherAssessment.highestRisk ===
+                        "critical"
+                          ? "#991b1b"
+                          : routePrediction.weatherAssessment.highestRisk ===
+                              "high"
+                            ? "#c2410c"
+                            : routePrediction.weatherAssessment.highestRisk ===
+                                "medium"
+                              ? "#a16207"
+                              : "#166534",
+                      background:
+                        routePrediction.weatherAssessment.highestRisk ===
+                        "critical"
+                          ? "#fee2e2"
+                          : routePrediction.weatherAssessment.highestRisk ===
+                              "high"
+                            ? "#ffedd5"
+                            : routePrediction.weatherAssessment.highestRisk ===
+                                "medium"
+                              ? "#fef3c7"
+                              : "#dcfce7",
+                    }}
+                  >
+                    {routePrediction.weatherAssessment.highestRisk
+                      ? `${routePrediction.weatherAssessment.highestRisk} weather risk`
+                      : "Weather unavailable"}
+                  </div>
+                </div>
+
+                {routePrediction.weatherAssessment.available ? (
+                  <>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns:
+                          "repeat(auto-fit, minmax(150px, 1fr))",
+                        gap: 10,
+                        marginTop: 12,
+                      }}
+                    >
+                      <div
+                        style={{
+                          padding: 10,
+                          borderRadius: 12,
+                          background: "#ffffff",
+                          border: "1px solid #e0f2fe",
+                        }}
+                      >
+                        <div
+                          style={{
+                            color: "#64748b",
+                            fontSize: 12,
+                            fontWeight: 800,
+                          }}
+                        >
+                          Origin
+                        </div>
+                        <div
+                          style={{
+                            marginTop: 3,
+                            fontWeight: 900,
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          {routePrediction.weatherAssessment.originRisk ||
+                            "Unavailable"}
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          padding: 10,
+                          borderRadius: 12,
+                          background: "#ffffff",
+                          border: "1px solid #e0f2fe",
+                        }}
+                      >
+                        <div
+                          style={{
+                            color: "#64748b",
+                            fontSize: 12,
+                            fontWeight: 800,
+                          }}
+                        >
+                          Destination
+                        </div>
+                        <div
+                          style={{
+                            marginTop: 3,
+                            fontWeight: 900,
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          {routePrediction.weatherAssessment
+                            .destinationRisk || "Unavailable"}
+                        </div>
+                      </div>
+                    </div>
+
+                    {routePrediction.weatherAssessment.partial ? (
+                      <div
+                        style={{
+                          marginTop: 10,
+                          color: "#a16207",
+                          fontSize: 13,
+                          fontWeight: 800,
+                        }}
+                      >
+                        Partial weather data is available for this route.
+                      </div>
+                    ) : null}
+
+                    {routePrediction.weatherAssessment.summary?.length >
+                    0 ? (
+                      <div
+                        style={{
+                          marginTop: 12,
+                          display: "grid",
+                          gap: 6,
+                        }}
+                      >
+                        {routePrediction.weatherAssessment.summary.map(
+                          (reason: string, index: number) => (
+                            <div
+                              key={`${reason}-${index}`}
+                              style={{
+                                color: "#334155",
+                                fontSize: 13,
+                              }}
+                            >
+                              - {reason}
+                            </div>
+                          )
+                        )}
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          marginTop: 10,
+                          color: "#166534",
+                          fontSize: 13,
+                        }}
+                      >
+                        No significant environmental hazards detected.
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div
+                    style={{
+                      marginTop: 10,
+                      color: "#b91c1c",
+                      fontSize: 13,
+                    }}
+                  >
+                    Weather intelligence is currently unavailable.
+                    {routePrediction.weatherAssessment.errors?.length >
+                    0 ? (
+                      <div style={{ marginTop: 6 }}>
+                        {routePrediction.weatherAssessment.errors.join(
+                          " "
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            ) : null}
+
             {routePrediction.saferRoutes?.length > 0 ? (
               <div style={{ marginTop: 10 }}>
                 <strong>Recommended safer route options</strong>
