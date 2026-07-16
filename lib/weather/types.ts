@@ -17,6 +17,7 @@ export type WeatherSnapshot = {
 
   weatherCode: number | null;
 
+  riskScore: number;
   riskLevel: WeatherRiskLevel;
   riskReasons: string[];
 };

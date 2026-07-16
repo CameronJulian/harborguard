@@ -68,6 +68,7 @@ function calculateWeatherRisk(input: {
   visibilityKm: number | null;
   weatherCode: number | null;
 }): {
+  riskScore: number;
   riskLevel: WeatherRiskLevel;
   riskReasons: string[];
 } {
@@ -183,12 +184,17 @@ function calculateWeatherRisk(input: {
     );
   }
 
+  const riskScore = Math.min(
+    100,
+    Math.max(0, score)
+  );
+
   const riskLevel: WeatherRiskLevel =
-    score >= 70
+    riskScore >= 70
       ? "critical"
-      : score >= 45
+      : riskScore >= 45
       ? "high"
-      : score >= 20
+      : riskScore >= 20
       ? "medium"
       : "low";
 
@@ -199,6 +205,7 @@ function calculateWeatherRisk(input: {
   }
 
   return {
+    riskScore,
     riskLevel,
     riskReasons,
   };
@@ -362,6 +369,7 @@ export async function loadOpenMeteoWeather(
         precipitationMm,
         visibilityKm,
         weatherCode,
+        riskScore: risk.riskScore,
         riskLevel: risk.riskLevel,
         riskReasons: risk.riskReasons,
       },
