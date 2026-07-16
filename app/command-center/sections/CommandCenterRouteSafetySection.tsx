@@ -184,6 +184,145 @@ export default function CommandCenterRouteSafetySection({
                 {" "}
                 {routePrediction.combinedRiskLevel}
               </div>
+
+              <div
+                style={{
+                  marginTop: 14,
+                  padding: 12,
+                  borderRadius: 12,
+                  background: "#ffffff",
+                  border: "1px solid #dbeafe",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: 10,
+                  }}
+                >
+                  <strong style={{ color: "#1e3a8a" }}>
+                    Combined Risk Gauge
+                  </strong>
+
+                  <span
+                    style={{
+                      fontWeight: 900,
+                      color:
+                        routePrediction.combinedRiskLevel === "CRITICAL"
+                          ? "#b91c1c"
+                          : routePrediction.combinedRiskLevel === "HIGH"
+                            ? "#c2410c"
+                            : routePrediction.combinedRiskLevel === "MEDIUM"
+                              ? "#a16207"
+                              : "#166534",
+                    }}
+                  >
+                    {routePrediction.combinedRiskScore}/100
+                  </span>
+                </div>
+
+                <div
+                  style={{
+                    height: 16,
+                    marginTop: 10,
+                    overflow: "hidden",
+                    borderRadius: 999,
+                    background: "#e2e8f0",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        Math.max(
+                          0,
+                          Number(
+                            routePrediction.combinedRiskScore || 0
+                          )
+                        )
+                      )}%`,
+                      height: "100%",
+                      borderRadius: 999,
+                      background:
+                        routePrediction.combinedRiskLevel === "CRITICAL"
+                          ? "#dc2626"
+                          : routePrediction.combinedRiskLevel === "HIGH"
+                            ? "#ea580c"
+                            : routePrediction.combinedRiskLevel === "MEDIUM"
+                              ? "#ca8a04"
+                              : "#16a34a",
+                      transition: "width 300ms ease",
+                    }}
+                  />
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gap: 10,
+                    marginTop: 14,
+                  }}
+                >
+                  {[
+                    {
+                      label: "Route Threat Contribution",
+                      value: routePrediction.routeThreatScore || 0,
+                    },
+                    {
+                      label: "Raw Weather Risk",
+                      value: routePrediction.weatherRiskScore || 0,
+                    },
+                    {
+                      label: "Weighted Weather Contribution",
+                      value:
+                        routePrediction.weatherContribution || 0,
+                    },
+                  ].map((item) => (
+                    <div key={item.label}>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 10,
+                          color: "#475569",
+                          fontSize: 12,
+                          fontWeight: 800,
+                        }}
+                      >
+                        <span>{item.label}</span>
+                        <span>{item.value}</span>
+                      </div>
+
+                      <div
+                        style={{
+                          height: 8,
+                          marginTop: 5,
+                          overflow: "hidden",
+                          borderRadius: 999,
+                          background: "#e2e8f0",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              Math.max(
+                                0,
+                                Number(item.value || 0)
+                              )
+                            )}%`,
+                            height: "100%",
+                            borderRadius: 999,
+                            background: "#2563eb",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {routePrediction.weatherAssessment ? (
