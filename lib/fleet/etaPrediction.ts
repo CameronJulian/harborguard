@@ -1,10 +1,11 @@
-﻿type ETAOptions = {
+type ETAOptions = {
   remainingKm: number;
   speedKmh: number;
   averageDelay: number;
   averageCongestion: number;
   activeIncidents: number;
   trafficRiskLevel: string;
+  weatherDelayMinutes?: number;
 };
 
 function recommendation(delay: number, level: string) {
@@ -38,7 +39,15 @@ export function predictETA(options: ETAOptions) {
       ? Math.min(20, options.activeIncidents * 3)
       : 0;
 
-  const predictedDelay = trafficDelay + incidentDelay;
+  const weatherDelay = Math.max(
+    0,
+    Math.min(
+      30,
+      Math.round(options.weatherDelayMinutes || 0)
+    )
+  );
+
+  const predictedDelay = trafficDelay + incidentDelay + weatherDelay;
 
   const eta = new Date(
     Date.now() + (baseMinutes + predictedDelay) * 60000
@@ -46,6 +55,9 @@ export function predictETA(options: ETAOptions) {
 
   return {
     baseMinutes: Math.round(baseMinutes),
+    trafficDelay,
+    incidentDelay,
+    weatherDelay,
     predictedDelay,
     totalMinutes: Math.round(baseMinutes + predictedDelay),
     estimatedArrival: eta,
