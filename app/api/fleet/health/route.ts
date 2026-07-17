@@ -84,6 +84,58 @@ export async function GET() {
         latestLocationByVehicle.set(location.vehicle_id, location);
       }
     }
+	
+	const weatherByVehicle = new Map<string, any>();
+const weatherByCoordinate = new Map<string, any>();
+const weatherWarnings: string[] = [];
+
+for (const [vehicleId, location] of latestLocationByVehicle.entries()) {
+  if (minutesSince(location?.recorded_at) >= OFFLINE_MINUTES) {
+    continue;
+  }
+
+  const latitude = Number(location?.latitude);
+  const longitude = Number(location?.longitude);
+
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    continue;
+  }
+
+  const coordinateKey =
+    `${latitude.toFixed(3)},${longitude.toFixed(3)}`;
+
+  let weatherResult = weatherByCoordinate.get(coordinateKey);
+
+  if (!weatherResult) {
+    try {
+      weatherResult = await loadWeather(
+        latitude,
+        longitude
+      );
+
+      weatherByCoordinate.set(
+        coordinateKey,
+        weatherResult
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Weather unavailable";
+
+      weatherWarnings.push(
+        `${vehicleId}: ${message}`
+      );
+
+      continue;
+    }
+  }
+
+  weatherByVehicle.set(
+    vehicleId,
+    weatherResult.weather
+  );
+}
 
     const activeTripVehicleIds = new Set(
       trips
