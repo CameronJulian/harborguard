@@ -1,6 +1,7 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 import { buildTrafficIntelligence } from "@/lib/traffic/intelligence";
+import { loadWeather } from "@/lib/weather/provider";
 
 const OFFLINE_MINUTES = 15;
 const STOP_SPEED_KMH = 3;
@@ -41,7 +42,7 @@ export async function GET() {
       incidentsResult,
     ] = await Promise.all([
       supabase.from("vehicles").select("id, nickname, registration_number").eq("organization_id", organizationId),
-      supabase.from("vehicle_locations").select("vehicle_id, speed_kmh, recorded_at").eq("organization_id", organizationId).order("recorded_at", { ascending: false }).limit(1000),
+      supabase.from("vehicle_locations").select("vehicle_id, latitude, longitude, speed_kmh, recorded_at").eq("organization_id", organizationId).order("recorded_at", { ascending: false }).limit(1000),
       supabase.from("vehicle_alerts").select("id, vehicle_id, alert_type, severity, created_at").eq("organization_id", organizationId).eq("is_resolved", false),
       supabase.from("vehicle_trips").select("id, vehicle_id, status").eq("organization_id", organizationId),
       supabase.from("incidents").select("id, severity, status, created_at").eq("organization_id", organizationId),
