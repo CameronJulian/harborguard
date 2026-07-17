@@ -30,6 +30,16 @@ function trafficHealthPenalty(summary: any) {
   );
 }
 
+function weatherHealthPenalty(weather: any) {
+  if (!weather) return 0;
+
+  return Math.round(
+    Math.min(
+      25,
+      (Number(weather.riskScore || 0) / 100) * 25
+    )
+  );
+}
 export async function GET() {
   try {
     const { supabase, organizationId } = await requireOrganization();
@@ -162,6 +172,8 @@ for (const [vehicleId, location] of latestLocationByVehicle.entries()) {
 
     const vehicleHealth = vehicles.map((vehicle: any) => {
       const latest = latestLocationByVehicle.get(vehicle.id);
+      const weather = weatherByVehicle.get(vehicle.id);
+      const weatherPenalty = weatherHealthPenalty(weather);
       const openAlerts = alertsByVehicle.get(vehicle.id) || [];
       const criticalAlerts = openAlerts.filter((a) => a.severity === "critical");
       const highAlerts = openAlerts.filter((a) => a.severity === "high");
@@ -190,6 +202,8 @@ for (const [vehicleId, location] of latestLocationByVehicle.entries()) {
       score -= highAlerts.length * 15;
       score -= Math.max(0, openAlerts.length - criticalAlerts.length - highAlerts.length) * 6;
 
+      score -= weatherPenalty;
+
       score = Math.max(0, Math.min(100, score));
 
       let status = "Available";
@@ -213,6 +227,8 @@ for (const [vehicleId, location] of latestLocationByVehicle.entries()) {
         openAlerts: openAlerts.length,
         criticalAlerts: criticalAlerts.length,
         highAlerts: highAlerts.length,
+        weather,
+        weatherPenalty,
       };
     });
 
@@ -232,6 +248,18 @@ for (const [vehicleId, location] of latestLocationByVehicle.entries()) {
       vehicleHealth.length > 0
         ? Math.round(vehicleHealth.reduce((total, vehicle) => total + vehicle.score, 0) / vehicleHealth.length)
         : 100;
+
+    const affectedByWeather =
+      vehicleHealth.filter(
+        (vehicle: any) => vehicle.weatherPenalty > 0
+      ).length;
+
+    const severeWeatherVehicles =
+      vehicleHealth.filter(
+        (vehicle: any) =>
+          vehicle.weather?.riskLevel === "high" ||
+          vehicle.weather?.riskLevel === "critical"
+      ).length;
 
     const trafficPenalty = trafficHealthPenalty(trafficSummary);
 
@@ -279,6 +307,11 @@ for (const [vehicleId, location] of latestLocationByVehicle.entries()) {
           averageDelay: trafficSummary?.averageDelay || 0,
           activeIncidents: trafficSummary?.activeIncidents || 0,
           warning: trafficWarning,
+        },
+        weatherSummary: {
+          affectedVehicles: affectedByWeather,
+          severeWeatherVehicles,
+          warnings: weatherWarnings,
         },
       },
       trafficIntelligence: trafficSummary,
