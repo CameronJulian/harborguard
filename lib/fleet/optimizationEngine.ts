@@ -3,6 +3,110 @@ import { loadWeather } from "@/lib/weather/provider";
 
 const OFFLINE_MINUTES = 15;
 
+export type DispatchTarget = {
+  latitude: number;
+  longitude: number;
+};
+
+function degreesToRadians(value: number) {
+  return (value * Math.PI) / 180;
+}
+
+function calculateDistanceKm(
+  originLatitude: number,
+  originLongitude: number,
+  targetLatitude: number,
+  targetLongitude: number
+) {
+  const earthRadiusKm = 6371;
+
+  const latitudeDifference = degreesToRadians(
+    targetLatitude - originLatitude
+  );
+
+  const longitudeDifference = degreesToRadians(
+    targetLongitude - originLongitude
+  );
+
+  const originLatitudeRadians =
+    degreesToRadians(originLatitude);
+
+  const targetLatitudeRadians =
+    degreesToRadians(targetLatitude);
+
+  const haversine =
+    Math.sin(latitudeDifference / 2) ** 2 +
+    Math.cos(originLatitudeRadians) *
+      Math.cos(targetLatitudeRadians) *
+      Math.sin(longitudeDifference / 2) ** 2;
+
+  return (
+    earthRadiusKm *
+    2 *
+    Math.atan2(
+      Math.sqrt(haversine),
+      Math.sqrt(1 - haversine)
+    )
+  );
+}
+
+function distancePenalty(distanceKm: number | null) {
+  if (distanceKm === null) return 0;
+  if (distanceKm <= 2) return 0;
+  if (distanceKm <= 5) return 3;
+  if (distanceKm <= 10) return 6;
+  if (distanceKm <= 20) return 10;
+  return 15;
+}
+
+export function rankFleetCandidatesForTarget(
+  candidates: any[],
+  target: DispatchTarget
+) {
+  return candidates
+    .map((candidate) => {
+      const latitude = Number(candidate.latitude);
+      const longitude = Number(candidate.longitude);
+
+      const hasValidLocation =
+        Number.isFinite(latitude) &&
+        Number.isFinite(longitude);
+
+      const distanceKm = hasValidLocation
+        ? calculateDistanceKm(
+            latitude,
+            longitude,
+            target.latitude,
+            target.longitude
+          )
+        : null;
+
+      const targetDistancePenalty =
+        distancePenalty(distanceKm);
+
+      const targetAdjustedScore =
+        candidate.status === "offline"
+          ? candidate.score
+          : Math.max(
+              0,
+              candidate.score - targetDistancePenalty
+            );
+
+      return {
+        ...candidate,
+        baseScore: candidate.score,
+        score: targetAdjustedScore,
+        distanceKm:
+          distanceKm === null
+            ? null
+            : Number(distanceKm.toFixed(2)),
+        distancePenalty: targetDistancePenalty,
+        dispatchTarget: target,
+      };
+    })
+    .sort((a, b) => b.score - a.score);
+}
+
 function minutesSince(value?: string | null) {
   if (!value) return Number.POSITIVE_INFINITY;
 
@@ -72,7 +176,8 @@ function recommendation(score: number) {
 
 export async function buildFleetOptimization(
   supabase: any,
-  organizationId: string
+  organizationId: string,
+  dispatchTarget?: DispatchTarget
 ) {
   const [
     vehiclesResult,
@@ -240,7 +345,7 @@ export async function buildFleetOptimization(
     );
   }
 
-  const candidates = (vehiclesResult.data || [])
+  const baseCandidates = (vehiclesResult.data || [])
     .map((vehicle: any) => {
       const location =
         latestLocationByVehicle.get(vehicle.id);
@@ -297,8 +402,15 @@ export async function buildFleetOptimization(
         weatherStatus,
         recommendation: recommendation(finalScore),
       };
-    })
+        })
     .sort((a: any, b: any) => b.score - a.score);
+
+  const candidates = dispatchTarget
+    ? rankFleetCandidatesForTarget(
+        baseCandidates,
+        dispatchTarget
+      )
+    : baseCandidates;
 
   return {
     summary: {

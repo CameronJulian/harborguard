@@ -1,4 +1,7 @@
-﻿import { buildFleetOptimization } from "@/lib/fleet/optimizationEngine";
+import {
+  buildFleetOptimization,
+  rankFleetCandidatesForTarget,
+} from "@/lib/fleet/optimizationEngine";
 import { buildTrafficIntelligence } from "@/lib/traffic/intelligence";
 import { buildDispatcherRecommendations } from "@/lib/dispatcher/recommendations";
 
@@ -25,6 +28,12 @@ export async function buildDispatchCopilot(
         intelligence_score,
         behavioral_risk,
         created_at,
+        route_safety_alert_id,
+        route_safety_alerts (
+          id,
+          latitude,
+          longitude
+        ),
         vehicles (
           id,
           nickname,
@@ -47,39 +56,88 @@ export async function buildDispatchCopilot(
 
   const alerts = alertsResult.data || [];
   const trafficSummary = trafficResult.summary;
-  const trafficWarning = trafficResult.intelligence?.warnings?.[0] || null;
-  const bestCandidate = optimizationResult.summary?.bestCandidate || null;
+  const trafficWarning =
+    trafficResult.intelligence?.warnings?.[0] || null;
+
+  const bestCandidate =
+    optimizationResult.summary?.bestCandidate || null;
 
   const recommendations = alerts.map((alert: any) => {
-    const baseRecommendation = buildDispatcherRecommendations({
-      alertType: alert.alert_type,
-      severity: alert.severity,
-      message: alert.message,
-      behavioralRisk: alert.behavioral_risk,
-      intelligenceScore: alert.intelligence_score,
-    });
+    const routeSafetyAlert = Array.isArray(
+      alert.route_safety_alerts
+    )
+      ? alert.route_safety_alerts[0]
+      : alert.route_safety_alerts;
 
-    const trafficRiskLevel = trafficSummary?.riskLevel || "unknown";
-    const trafficRiskScore = trafficSummary?.riskScore || 0;
-    const averageCongestion = trafficSummary?.averageCongestion || 0;
-    const averageDelay = trafficSummary?.averageDelay || 0;
+    const targetLatitude = Number(
+      routeSafetyAlert?.latitude
+    );
+
+    const targetLongitude = Number(
+      routeSafetyAlert?.longitude
+    );
+
+    const hasDispatchTarget =
+      Number.isFinite(targetLatitude) &&
+      Number.isFinite(targetLongitude);
+
+    const target = hasDispatchTarget
+      ? {
+          latitude: targetLatitude,
+          longitude: targetLongitude,
+        }
+      : null;
+
+    const targetCandidates = target
+      ? rankFleetCandidatesForTarget(
+          optimizationResult.candidates || [],
+          target
+        )
+      : optimizationResult.candidates || [];
+
+    const alertBestCandidate =
+      targetCandidates[0] || bestCandidate;
+
+    const baseRecommendation =
+      buildDispatcherRecommendations({
+        alertType: alert.alert_type,
+        severity: alert.severity,
+        message: alert.message,
+        behavioralRisk: alert.behavioral_risk,
+        intelligenceScore: alert.intelligence_score,
+      });
+
+    const trafficRiskLevel =
+      trafficSummary?.riskLevel || "unknown";
+
+    const trafficRiskScore =
+      trafficSummary?.riskScore || 0;
+
+    const averageCongestion =
+      trafficSummary?.averageCongestion || 0;
+
+    const averageDelay =
+      trafficSummary?.averageDelay || 0;
 
     const trafficActions =
-      trafficRiskLevel === "critical" || trafficRiskLevel === "high"
+      trafficRiskLevel === "critical" ||
+      trafficRiskLevel === "high"
         ? [
             `Review traffic intelligence risk (${trafficRiskScore}/100).`,
             `Check congestion impact (${averageCongestion}% average congestion).`,
             `Consider reroute if ETA delay exceeds ${averageDelay} minutes.`,
           ]
         : trafficRiskLevel === "medium"
-        ? [
-            `Monitor traffic intelligence risk (${trafficRiskScore}/100).`,
-            `Check current corridor delay (${averageDelay} minutes average).`,
-          ]
-        : [];
+          ? [
+              `Monitor traffic intelligence risk (${trafficRiskScore}/100).`,
+              `Check current corridor delay (${averageDelay} minutes average).`,
+            ]
+          : [];
 
     const trafficReasons =
-      ["critical", "high", "medium"].includes(trafficRiskLevel)
+      ["critical", "high", "medium"].includes(
+        trafficRiskLevel
+      )
         ? [
             `Unified traffic intelligence reports ${trafficRiskLevel} traffic risk with ${averageCongestion}% average congestion.`,
           ]
@@ -98,24 +156,34 @@ export async function buildDispatchCopilot(
       intelligenceScore: alert.intelligence_score,
       behavioralRisk: alert.behavioral_risk,
       createdAt: alert.created_at,
-      recommendedResponder: bestCandidate,
+      recommendedResponder: alertBestCandidate,
+      dispatchTarget: target,
       recommendation: {
         ...baseRecommendation,
         priority:
-          trafficRiskLevel === "critical" && baseRecommendation.priority !== "Critical"
+          trafficRiskLevel === "critical" &&
+          baseRecommendation.priority !== "Critical"
             ? "High"
             : baseRecommendation.priority,
-        actions: [...baseRecommendation.actions, ...trafficActions],
-        reasons: [...baseRecommendation.reasons, ...trafficReasons],
+        actions: [
+          ...baseRecommendation.actions,
+          ...trafficActions,
+        ],
+        reasons: [
+          ...baseRecommendation.reasons,
+          ...trafficReasons,
+        ],
         trafficIntelligence: {
           riskLevel: trafficRiskLevel,
           riskScore: trafficRiskScore,
           averageCongestion,
           averageDelay,
-          activeIncidents: trafficSummary?.activeIncidents || 0,
+          activeIncidents:
+            trafficSummary?.activeIncidents || 0,
           warning: trafficWarning,
         },
-        trafficPriority: trafficPriority(trafficRiskLevel),
+        trafficPriority:
+          trafficPriority(trafficRiskLevel),
       },
     };
   });
@@ -124,13 +192,20 @@ export async function buildDispatchCopilot(
     summary: {
       alertCount: alerts.length,
       bestCandidate,
-      trafficRiskLevel: trafficSummary?.riskLevel || "unknown",
-      trafficRiskScore: trafficSummary?.riskScore || 0,
-      averageCongestion: trafficSummary?.averageCongestion || 0,
-      averageDelay: trafficSummary?.averageDelay || 0,
-      availableVehicles: optimizationResult.summary?.available || 0,
-      busyVehicles: optimizationResult.summary?.busy || 0,
-      offlineVehicles: optimizationResult.summary?.offline || 0,
+      trafficRiskLevel:
+        trafficSummary?.riskLevel || "unknown",
+      trafficRiskScore:
+        trafficSummary?.riskScore || 0,
+      averageCongestion:
+        trafficSummary?.averageCongestion || 0,
+      averageDelay:
+        trafficSummary?.averageDelay || 0,
+      availableVehicles:
+        optimizationResult.summary?.available || 0,
+      busyVehicles:
+        optimizationResult.summary?.busy || 0,
+      offlineVehicles:
+        optimizationResult.summary?.offline || 0,
     },
     trafficIntelligence: trafficSummary,
     trafficWarning,
