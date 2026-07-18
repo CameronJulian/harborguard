@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { Fragment } from "react";
 import type { Dispatch, SetStateAction } from "react";
 
@@ -37,6 +37,106 @@ type Props = {
   replayHref: (vehicle: FleetVehicle) => string;
   triggerPanic: (vehicle: FleetVehicle) => void;
 };
+
+function weatherRiskLabel(penalty?: number) {
+  const value = penalty ?? 0;
+
+  if (value > 45) {
+    return "Extreme";
+  }
+
+  if (value > 25) {
+    return "High";
+  }
+
+  if (value > 10) {
+    return "Moderate";
+  }
+
+  return "Low";
+}
+
+function weatherRiskStyle(penalty?: number) {
+  const value = penalty ?? 0;
+
+  if (value > 45) {
+    return {
+      color: "#991b1b",
+      backgroundColor: "#fee2e2",
+      borderColor: "#fecaca",
+    };
+  }
+
+  if (value > 25) {
+    return {
+      color: "#9a3412",
+      backgroundColor: "#ffedd5",
+      borderColor: "#fed7aa",
+    };
+  }
+
+  if (value > 10) {
+    return {
+      color: "#854d0e",
+      backgroundColor: "#fef9c3",
+      borderColor: "#fde68a",
+    };
+  }
+
+  return {
+    color: "#166534",
+    backgroundColor: "#dcfce7",
+    borderColor: "#bbf7d0",
+  };
+}
+
+function weatherStatusLabel(status?: string | null) {
+  switch (status) {
+    case "available":
+      return "Live";
+
+    case "skipped_offline":
+      return "Offline";
+
+    case "unavailable":
+      return "Unavailable";
+
+    default:
+      return "Unknown";
+  }
+}
+
+function weatherStatusStyle(status?: string | null) {
+  switch (status) {
+    case "available":
+      return {
+        color: "#166534",
+        backgroundColor: "#dcfce7",
+        borderColor: "#bbf7d0",
+      };
+
+    case "skipped_offline":
+      return {
+        color: "#9a3412",
+        backgroundColor: "#ffedd5",
+        borderColor: "#fed7aa",
+      };
+
+    case "unavailable":
+      return {
+        color: "#991b1b",
+        backgroundColor: "#fee2e2",
+        borderColor: "#fecaca",
+      };
+
+    default:
+      return {
+        color: "#374151",
+        backgroundColor: "#f3f4f6",
+        borderColor: "#d1d5db",
+      };
+  }
+}
 
 export default function FleetVehicleLayers({
   vehiclesWithLocation,
@@ -231,6 +331,81 @@ export default function FleetVehicleLayers({
                   <div>
                     <strong>Updated:</strong>{" "}
                     {secondsSince(vehicle.lastSeen)}s ago
+                  </div>
+
+                  <div style={{ marginTop: 12 }}>
+                    <strong>Weather</strong>
+
+                    <div>
+                      <strong>Condition:</strong>{" "}
+                      {vehicle.weather?.condition ?? "Unavailable"}
+                    </div>
+
+                    <div>
+                      <strong>Temperature:</strong>{" "}
+                      {vehicle.weather?.temperatureC != null
+                        ? `${Math.round(vehicle.weather.temperatureC)}\u00B0C`
+                        : "-"}
+                    </div>
+
+                    <div>
+                      <strong>Wind:</strong>{" "}
+                      {vehicle.weather?.windSpeedKmh != null
+                        ? `${Math.round(vehicle.weather.windSpeedKmh)} km/h`
+                        : "-"}
+                    </div>
+
+                    <div>
+                      <strong>Visibility:</strong>{" "}
+                      {vehicle.weather?.visibilityKm != null
+                        ? `${vehicle.weather.visibilityKm} km`
+                        : "-"}
+                    </div>
+
+                    <div>
+                      <strong>Status:</strong>{" "}
+                      <span
+                        style={{
+                          ...weatherStatusStyle(
+                            vehicle.weatherStatus
+                          ),
+                          display: "inline-block",
+                          border: "1px solid",
+                          borderRadius: 999,
+                          padding: "2px 8px",
+                          fontSize: 12,
+                          fontWeight: 800,
+                        }}
+                      >
+                        {weatherStatusLabel(
+                          vehicle.weatherStatus
+                        )}
+                      </span>
+                    </div>
+
+                    <div style={{ marginTop: 6 }}>
+                      <strong>Weather Risk:</strong>{" "}
+                      <span
+                        style={{
+                          ...weatherRiskStyle(
+                            vehicle.weatherPenalty
+                          ),
+                          display: "inline-block",
+                          border: "1px solid",
+                          borderRadius: 999,
+                          padding: "2px 8px",
+                          fontSize: 12,
+                          fontWeight: 800,
+                        }}
+                      >
+                        {weatherRiskLabel(
+                          vehicle.weatherPenalty
+                        )}
+                        {" ("}
+                        {vehicle.weatherPenalty ?? 0}
+                        {")"}
+                      </span>
+                    </div>
                   </div>
 
                   <div style={{ marginTop: 8 }}>

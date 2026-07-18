@@ -1,5 +1,6 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
+import { loadWeather } from "@/lib/weather/provider";
 
 type LocationPoint = {
   vehicle_id: string;
@@ -45,6 +46,25 @@ function toNumber(value: unknown) {
 
 function reduceRoute(points: [number, number][], step = 8) {
   return points.filter((_, index) => index % step === 0);
+}
+
+const OFFLINE_MINUTES = 15;
+
+function minutesSince(value?: string | null) {
+  if (!value) return Number.POSITIVE_INFINITY;
+
+  return (Date.now() - new Date(value).getTime()) / (1000 * 60);
+}
+
+function weatherHealthPenalty(weather: any) {
+  if (!weather) return 0;
+
+  return Math.round(
+    Math.min(
+      25,
+      (Number(weather.riskScore || 0) / 100) * 25
+    )
+  );
 }
 
 function buildDriverProfile(params: {
@@ -237,6 +257,77 @@ export async function GET() {
       }
     }
 
+    const weatherByVehicle =
+      new Map<string, any>();
+
+    const weatherByCoordinate =
+      new Map<string, any>();
+
+    for (
+      const [vehicleId, recentLocations]
+      of locationsByVehicle.entries()
+    ) {
+      const latest = recentLocations[0];
+
+      if (!latest) {
+        continue;
+      }
+
+      if (
+        minutesSince(latest.recorded_at) >=
+        OFFLINE_MINUTES
+      ) {
+        continue;
+      }
+
+      const latitude =
+        Number(latest.latitude);
+
+      const longitude =
+        Number(latest.longitude);
+
+      if (
+        !Number.isFinite(latitude) ||
+        !Number.isFinite(longitude)
+      ) {
+        continue;
+      }
+
+      const coordinateKey =
+        `${latitude.toFixed(3)},${longitude.toFixed(3)}`;
+
+      let weatherResult =
+        weatherByCoordinate.get(coordinateKey);
+
+      if (!weatherResult) {
+        try {
+          weatherResult =
+            await loadWeather(
+              latitude,
+              longitude
+            );
+
+          weatherByCoordinate.set(
+            coordinateKey,
+            weatherResult
+          );
+        }
+        catch (error) {
+          console.warn(
+            `Weather unavailable for vehicle ${vehicleId}:`,
+            error
+          );
+
+          continue;
+        }
+      }
+
+      weatherByVehicle.set(
+        vehicleId,
+        weatherResult.weather
+      );
+    }
+
     const fleet = vehicleList.map((vehicle) => {
       /*
        * Locations were fetched newest first.
@@ -285,6 +376,21 @@ export async function GET() {
       const activeTrip =
         activeTripByVehicle.get(vehicle.id) || null;
 
+      const weather =
+        weatherByVehicle.get(vehicle.id);
+
+      const weatherPenalty =
+        weatherHealthPenalty(weather);
+
+      const weatherStatus =
+        weather
+          ? "available"
+          : latest &&
+              minutesSince(latest.recorded_at) >=
+                OFFLINE_MINUTES
+            ? "skipped_offline"
+            : "unavailable";
+
       const speedKmh = Number(latest?.speed_kmh || 0);
 
       const criticalAlertCount = alerts.filter(
@@ -324,6 +430,9 @@ export async function GET() {
         stops,
         openAlerts: alerts,
         driverProfile,
+        weather,
+        weatherPenalty,
+        weatherStatus,
       };
     });
 

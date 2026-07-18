@@ -11,6 +11,9 @@ type ETAPrediction = {
   currentSpeed: number;
   estimatedArrival: string;
   predictedDelayMinutes: number;
+  trafficDelayMinutes: number;
+  incidentDelayMinutes: number;
+  weatherDelayMinutes: number;
   confidence: number;
   recommendation: string;
 };
@@ -140,6 +143,18 @@ export default function PredictiveETADashboard() {
                   <div style={{ color: "#64748b", fontSize: 12 }}>Confidence</div>
                   <strong>{prediction.confidence}%</strong>
                 </div>
+                <div>
+                  <div style={{ color: "#64748b", fontSize: 12 }}>Traffic delay</div>
+                  <strong>{prediction.trafficDelayMinutes} min</strong>
+                </div>
+                <div>
+                  <div style={{ color: "#64748b", fontSize: 12 }}>Weather delay</div>
+                  <strong>{prediction.weatherDelayMinutes} min</strong>
+                </div>
+                <div>
+                  <div style={{ color: "#64748b", fontSize: 12 }}>Incident delay</div>
+                  <strong>{prediction.incidentDelayMinutes} min</strong>
+                </div>
               </div>
 
               <div style={{ marginTop: 10, color: "#334155" }}>
@@ -152,4 +167,6 @@ export default function PredictiveETADashboard() {
     </div>
   );
 }
+
+
 

@@ -61,4 +61,22 @@ export type FleetVehicle = {
     originPort?: string | null;
     destinationFishery?: string | null;
   } | null;
+
+  weather?: {
+    temperatureC?: number | null;
+    apparentTemperatureC?: number | null;
+    windSpeedKmh?: number | null;
+    windGustKmh?: number | null;
+    visibilityKm?: number | null;
+    precipitationMm?: number | null;
+    condition?: string | null;
+    conditionCode?: number | null;
+  } | null;
+
+  weatherPenalty?: number;
+
+  weatherStatus?:
+    | "available"
+    | "unavailable"
+    | "skipped_offline";
 };
