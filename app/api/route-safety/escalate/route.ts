@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import webpush from "web-push";
 import { requireOrganization, requireRole } from "@/lib/server-auth";
 import { createCommandCenterNotification } from "@/lib/command-center/notifications";
@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
       .eq("vehicle_id", vehicleId)
       .eq("alert_type", "route_safety_threat")
       .eq("is_resolved", false)
-      .ilike("message", `%Route safety alert ID: ${routeAlertId}%`)
+      .eq("route_safety_alert_id", routeAlertId)
       .maybeSingle();
 
     if (existingOpenAlert) {
@@ -166,6 +166,7 @@ export async function POST(req: NextRequest) {
         organization_id: organizationId,
         vehicle_id: vehicleId,
         trip_id: tripId,
+        route_safety_alert_id: routeAlertId,
         alert_type: "route_safety_threat",
         severity,
         message,
