@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 import { loadWeather } from "@/lib/weather/provider";
 
-function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
+function distanceMeters(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+) {
   const earthRadius = 6371000;
   const toRad = (value: number) => (value * Math.PI) / 180;
 
@@ -101,13 +106,10 @@ function recommendationFor(type: string | null, severity: string | null) {
 async function loadRouteWeather(
   latitude: number,
   longitude: number,
-  location: "origin" | "destination"
+  location: "origin" | "destination",
 ) {
   try {
-    const result = await loadWeather(
-      latitude,
-      longitude
-    );
+    const result = await loadWeather(latitude, longitude);
 
     return {
       available: true,
@@ -118,14 +120,9 @@ async function loadRouteWeather(
     };
   } catch (error: unknown) {
     const message =
-      error instanceof Error
-        ? error.message
-        : "Weather data unavailable.";
+      error instanceof Error ? error.message : "Weather data unavailable.";
 
-    console.error(
-      `[route safety weather ${location}]`,
-      message
-    );
+    console.error(`[route safety weather ${location}]`, message);
 
     return {
       available: false,
@@ -149,9 +146,7 @@ type RouteWeatherLocation = {
   error: string | null;
 };
 
-function weatherRiskRank(
-  level: "low" | "medium" | "high" | "critical"
-) {
+function weatherRiskRank(level: "low" | "medium" | "high" | "critical") {
   if (level === "critical") return 4;
   if (level === "high") return 3;
   if (level === "medium") return 2;
@@ -160,31 +155,22 @@ function weatherRiskRank(
 
 function buildRouteWeatherAssessment(
   origin: RouteWeatherLocation,
-  destination: RouteWeatherLocation
+  destination: RouteWeatherLocation,
 ) {
-  const originRisk =
-    origin.weather?.riskLevel || null;
+  const originRisk = origin.weather?.riskLevel || null;
 
-  const destinationRisk =
-    destination.weather?.riskLevel || null;
+  const destinationRisk = destination.weather?.riskLevel || null;
 
-  const availableRisks = [
-    originRisk,
-    destinationRisk,
-  ].filter(
-    (level): level is
-      "low" | "medium" | "high" | "critical" =>
-      level !== null
+  const availableRisks = [originRisk, destinationRisk].filter(
+    (level): level is "low" | "medium" | "high" | "critical" => level !== null,
   );
 
   const highestRisk =
     availableRisks.length > 0
-      ? availableRisks.reduce(
-          (highest, current) =>
-            weatherRiskRank(current) >
-            weatherRiskRank(highest)
-              ? current
-              : highest
+      ? availableRisks.reduce((highest, current) =>
+          weatherRiskRank(current) > weatherRiskRank(highest)
+            ? current
+            : highest,
         )
       : null;
 
@@ -192,33 +178,27 @@ function buildRouteWeatherAssessment(
     new Set([
       ...(origin.weather?.riskReasons || []),
       ...(destination.weather?.riskReasons || []),
-    ])
+    ]),
   );
 
-  const originScore =
-    origin.weather?.riskScore ?? 0;
+  const originScore = origin.weather?.riskScore ?? 0;
 
-  const destinationScore =
-    destination.weather?.riskScore ?? 0;
+  const destinationScore = destination.weather?.riskScore ?? 0;
 
-  const weatherRiskScore =
-    Math.max(originScore, destinationScore);
+  const weatherRiskScore = Math.max(originScore, destinationScore);
 
-  const weatherContribution =
-    Math.round(weatherRiskScore * 0.5);
+  const weatherContribution = Math.round(weatherRiskScore * 0.5);
 
   return {
-    available:
-      origin.available || destination.available,
+    available: origin.available || destination.available,
     highestRisk,
     originRisk,
     destinationRisk,
     summary,
     provider: origin.provider || destination.provider,
-    partial:
-      origin.available !== destination.available,
-    errors: [origin.error, destination.error].filter(
-      (error): error is string => Boolean(error)
+    partial: origin.available !== destination.available,
+    errors: [origin.error, destination.error].filter((error): error is string =>
+      Boolean(error),
     ),
     weatherRiskScore,
     weatherContribution,
@@ -232,8 +212,8 @@ export async function POST(req: NextRequest) {
 
     const origin = body.origin;
     const destination = body.destination;
-      const vehicleId = body.vehicleId || null;
-      const tripId = body.tripId || null;
+    const vehicleId = body.vehicleId || null;
+    const tripId = body.tripId || null;
 
     if (
       !origin?.lat ||
@@ -242,8 +222,11 @@ export async function POST(req: NextRequest) {
       !destination?.lng
     ) {
       return NextResponse.json(
-        { error: "origin.lat, origin.lng, destination.lat and destination.lng are required." },
-        { status: 400 }
+        {
+          error:
+            "origin.lat, origin.lng, destination.lat and destination.lng are required.",
+        },
+        { status: 400 },
       );
     }
 
@@ -252,19 +235,10 @@ export async function POST(req: NextRequest) {
     const destinationLat = Number(destination.lat);
     const destinationLng = Number(destination.lng);
 
-    const [originWeather, destinationWeather] =
-      await Promise.all([
-        loadRouteWeather(
-          originLat,
-          originLng,
-          "origin"
-        ),
-        loadRouteWeather(
-          destinationLat,
-          destinationLng,
-          "destination"
-        ),
-      ]);
+    const [originWeather, destinationWeather] = await Promise.all([
+      loadRouteWeather(originLat, originLng, "origin"),
+      loadRouteWeather(destinationLat, destinationLng, "destination"),
+    ]);
 
     const routeWeather = {
       origin: originWeather,
@@ -272,23 +246,57 @@ export async function POST(req: NextRequest) {
       fetchedAt: new Date().toISOString(),
     };
 
-    const weatherAssessment =
-      buildRouteWeatherAssessment(
-        originWeather,
-        destinationWeather
-      );
+    const weatherAssessment = buildRouteWeatherAssessment(
+      originWeather,
+      destinationWeather,
+    );
 
-    const { data: alerts, error } = await supabase
-      .from("route_safety_alerts")
-      .select("*")
-      .eq("organization_id", organizationId)
-      .eq("status", "active")
-      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
+    const currentTimestamp = new Date().toISOString();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    const [
+      { data: alerts, error: alertsError },
+      { data: historicalIntelligence, error: historicalIntelligenceError },
+    ] = await Promise.all([
+      supabase
+        .from("route_safety_alerts")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .eq("status", "active")
+        .or(`expires_at.is.null,expires_at.gt.${currentTimestamp}`),
+
+      supabase
+        .from("route_intelligence")
+        .select(
+          `
+        id,
+        source,
+        source_record_id,
+        event_type,
+        severity,
+        confidence,
+        latitude,
+        longitude,
+        verification_count,
+        metadata,
+        created_at
+      `,
+        )
+        .eq("organization_id", organizationId)
+        .eq("verified", true)
+        .not("latitude", "is", null)
+        .not("longitude", "is", null),
+    ]);
+
+    if (alertsError) {
+      return NextResponse.json({ error: alertsError.message }, { status: 500 });
     }
 
+    if (historicalIntelligenceError) {
+      console.error(
+        "[Route Safety Prediction] Historical intelligence unavailable:",
+        historicalIntelligenceError.message,
+      );
+    }
     let routeEstimate: any = null;
 
     if (process.env.GOOGLE_ROUTES_API_KEY) {
@@ -324,7 +332,7 @@ export async function POST(req: NextRequest) {
             computeAlternativeRoutes: false,
             units: "METRIC",
           }),
-        }
+        },
       );
 
       const googleData = await googleResponse.json();
@@ -334,7 +342,8 @@ export async function POST(req: NextRequest) {
           distanceMeters: googleData.routes[0].distanceMeters,
           duration: googleData.routes[0].duration,
           staticDuration: googleData.routes[0].staticDuration,
-          encodedPolyline: googleData.routes[0].polyline?.encodedPolyline || null,
+          encodedPolyline:
+            googleData.routes[0].polyline?.encodedPolyline || null,
         };
       }
     }
@@ -355,14 +364,14 @@ export async function POST(req: NextRequest) {
           originLat,
           originLng,
           Number(alert.latitude),
-          Number(alert.longitude)
+          Number(alert.longitude),
         );
 
         const distanceFromDestination = distanceMeters(
           destinationLat,
           destinationLng,
           Number(alert.latitude),
-          Number(alert.longitude)
+          Number(alert.longitude),
         );
 
         const distanceFromRoute = Math.min(
@@ -371,9 +380,9 @@ export async function POST(req: NextRequest) {
               lat,
               lng,
               Number(alert.latitude),
-              Number(alert.longitude)
-            )
-          )
+              Number(alert.longitude),
+            ),
+          ),
         );
 
         const corridorDistance = distanceFromRoute;
@@ -382,7 +391,7 @@ export async function POST(req: NextRequest) {
 
         const score = Math.min(
           100,
-          severityWeight(alert.severity) + typeWeight(alert.type)
+          severityWeight(alert.severity) + typeWeight(alert.type),
         );
 
         return {
@@ -402,45 +411,130 @@ export async function POST(req: NextRequest) {
       })
       .filter((alert: any) => alert.isLikelyOnRoute)
       .sort((a: any, b: any) => b.score - a.score);
+    const activeAlertIds = new Set(
+      (alerts || []).map((alert: any) => String(alert.id)),
+    );
 
+    const historicalThreats = (historicalIntelligence || [])
+      .filter((record: any) => {
+        const duplicatesActiveAlert =
+          record.source === "route_safety" &&
+          record.source_record_id &&
+          activeAlertIds.has(String(record.source_record_id));
+
+        return !duplicatesActiveAlert;
+      })
+      .map((record: any) => {
+        const latitude = Number(record.latitude);
+        const longitude = Number(record.longitude);
+
+        const distanceFromOrigin = distanceMeters(
+          originLat,
+          originLng,
+          latitude,
+          longitude,
+        );
+
+        const distanceFromDestination = distanceMeters(
+          destinationLat,
+          destinationLng,
+          latitude,
+          longitude,
+        );
+
+        const distanceFromRoute = Math.min(
+          ...routePoints.map(([lat, lng]) =>
+            distanceMeters(lat, lng, latitude, longitude),
+          ),
+        );
+
+        const metadata =
+          record.metadata && typeof record.metadata === "object"
+            ? record.metadata
+            : {};
+
+        const radius = Number(metadata.radiusMeters || 1000);
+        const isLikelyOnRoute = distanceFromRoute <= radius + 500;
+
+        const normalScore = Math.min(
+          100,
+          severityWeight(record.severity) + typeWeight(record.event_type),
+        );
+
+        const score = Math.round(normalScore * 0.6);
+
+        return {
+          id: record.id,
+          source: "historical_intelligence",
+          intelligenceSource: record.source,
+          sourceRecordId: record.source_record_id || null,
+          type: record.event_type,
+          title:
+            metadata.title ||
+            `Historical ${String(record.event_type).replaceAll("_", " ")}`,
+          severity: record.severity,
+          confidence: record.confidence,
+          verificationCount: record.verification_count,
+          radiusMeters: radius,
+          distanceFromOrigin: Math.round(distanceFromOrigin),
+          distanceFromDestination: Math.round(distanceFromDestination),
+          distanceFromRoute: Math.round(distanceFromRoute),
+          isLikelyOnRoute,
+          score,
+          recommendation: recommendationFor(record.event_type, record.severity),
+          createdAt: record.created_at,
+        };
+      })
+      .filter((record: any) => record.isLikelyOnRoute)
+      .sort((a: any, b: any) => b.score - a.score);
+
+    const historicalThreatScore = Math.min(
+      100,
+      historicalThreats.reduce(
+        (total: number, threat: any) => total + threat.score,
+        0,
+      ),
+    );
     const riskScore = Math.min(
       100,
-      routeThreats.reduce((total: number, alert: any) => total + alert.score, 0)
+      routeThreats.reduce(
+        (total: number, alert: any) => total + alert.score,
+        0,
+      ),
     );
 
     const riskLevel =
       riskScore >= 80
         ? "CRITICAL"
         : riskScore >= 60
-        ? "HIGH"
-        : riskScore >= 35
-        ? "MEDIUM"
-        : "LOW";
+          ? "HIGH"
+          : riskScore >= 35
+            ? "MEDIUM"
+            : "LOW";
 
     const routeThreatScore = riskScore;
 
-    const weatherRiskScore =
-      weatherAssessment.weatherRiskScore;
+    const weatherRiskScore = weatherAssessment.weatherRiskScore;
 
-    const weatherContribution =
-      weatherAssessment.weatherContribution;
+    const weatherContribution = weatherAssessment.weatherContribution;
 
     const combinedRiskScore = Math.min(
       100,
-      routeThreatScore + weatherContribution
+      routeThreatScore + historicalThreatScore + weatherContribution,
     );
 
     const combinedRiskLevel =
       combinedRiskScore >= 80
         ? "CRITICAL"
         : combinedRiskScore >= 60
-        ? "HIGH"
-        : combinedRiskScore >= 35
-        ? "MEDIUM"
-        : "LOW";
+          ? "HIGH"
+          : combinedRiskScore >= 35
+            ? "MEDIUM"
+            : "LOW";
 
     const riskBreakdown = {
       routeThreats: routeThreatScore,
+      historicalThreats: historicalThreatScore,
       weatherRaw: weatherRiskScore,
       weatherContribution,
       combined: combinedRiskScore,
@@ -455,21 +549,24 @@ export async function POST(req: NextRequest) {
       try {
         const topThreat = routeThreats[0];
 
-        const response = await fetch(`${req.nextUrl.origin}/api/route-safety/escalate`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: req.headers.get("authorization") || "",
+        const response = await fetch(
+          `${req.nextUrl.origin}/api/route-safety/escalate`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: req.headers.get("authorization") || "",
+            },
+            body: JSON.stringify({
+              vehicleId,
+              tripId,
+              alertId: topThreat.id,
+              riskScore,
+              riskLevel,
+              message: `Automatic route safety escalation: ${topThreat.title}. ${topThreat.recommendation}`,
+            }),
           },
-          body: JSON.stringify({
-            vehicleId,
-            tripId,
-            alertId: topThreat.id,
-            riskScore,
-            riskLevel,
-            message: `Automatic route safety escalation: ${topThreat.title}. ${topThreat.recommendation}`,
-          }),
-        });
+        );
 
         autoEscalationResult = await response.json().catch(() => null);
         autoEscalated = response.ok;
@@ -488,7 +585,10 @@ export async function POST(req: NextRequest) {
           response: autoEscalationResult,
         });
       } catch (autoEscalationError) {
-        console.error("Automatic route safety escalation failed:", autoEscalationError);
+        console.error(
+          "Automatic route safety escalation failed:",
+          autoEscalationError,
+        );
       }
     }
 
@@ -496,23 +596,26 @@ export async function POST(req: NextRequest) {
       try {
         const topThreat = routeThreats[0];
 
-        const rerouteResponse = await fetch(`${req.nextUrl.origin}/api/route-safety/reroute`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: req.headers.get("authorization") || "",
+        const rerouteResponse = await fetch(
+          `${req.nextUrl.origin}/api/route-safety/reroute`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: req.headers.get("authorization") || "",
+            },
+            body: JSON.stringify({
+              origin: {
+                lat: originLat,
+                lng: originLng,
+              },
+              destination: {
+                lat: destinationLat,
+                lng: destinationLng,
+              },
+            }),
           },
-          body: JSON.stringify({
-            origin: {
-              lat: originLat,
-              lng: originLng,
-            },
-            destination: {
-              lat: destinationLat,
-              lng: destinationLng,
-            },
-          }),
-        });
+        );
 
         const rerouteResult = await rerouteResponse.json().catch(() => null);
         const recommendedRoute = rerouteResult?.routes?.[0] || null;
@@ -535,20 +638,25 @@ export async function POST(req: NextRequest) {
               createdAt: existingPendingAssignment.created_at,
             };
           } else {
-            const assignResponse = await fetch(`${req.nextUrl.origin}/api/fleet/assign-route`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: req.headers.get("authorization") || "",
+            const assignResponse = await fetch(
+              `${req.nextUrl.origin}/api/fleet/assign-route`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: req.headers.get("authorization") || "",
+                },
+                body: JSON.stringify({
+                  vehicleId,
+                  route: recommendedRoute,
+                  reason: `Automatic safer route assignment due to ${riskLevel} route risk (${riskScore}/100). Top threat: ${topThreat.title}.`,
+                }),
               },
-              body: JSON.stringify({
-                vehicleId,
-                route: recommendedRoute,
-                reason: `Automatic safer route assignment due to ${riskLevel} route risk (${riskScore}/100). Top threat: ${topThreat.title}.`,
-              }),
-            });
+            );
 
-            autoRouteAssignmentResult = await assignResponse.json().catch(() => null);
+            autoRouteAssignmentResult = await assignResponse
+              .json()
+              .catch(() => null);
             autoRouteAssigned = assignResponse.ok;
           }
         } else {
@@ -559,9 +667,14 @@ export async function POST(req: NextRequest) {
         }
       } catch (autoRouteAssignmentError: any) {
         autoRouteAssignmentResult = {
-          error: autoRouteAssignmentError.message || "Automatic route assignment failed.",
+          error:
+            autoRouteAssignmentError.message ||
+            "Automatic route assignment failed.",
         };
-        console.error("Automatic route assignment failed:", autoRouteAssignmentError);
+        console.error(
+          "Automatic route assignment failed:",
+          autoRouteAssignmentError,
+        );
       }
     }
 
@@ -570,6 +683,8 @@ export async function POST(req: NextRequest) {
       routeWeather,
       weatherAssessment,
       routeThreatScore,
+      historicalThreatScore,
+      historicalThreats,
       weatherRiskScore,
       weatherContribution,
       combinedRiskScore,
@@ -586,13 +701,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Unauthorized" },
-      { status: 401 }
+      { status: 401 },
     );
   }
 }
-
-
-
-
-
-
