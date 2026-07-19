@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { fetchWithAuth } from "@/lib/auth-fetch";
 
@@ -13,6 +13,7 @@ type Vehicle = {
   name?: string | null;
   make?: string | null;
   model?: string | null;
+  vehicle_type?: string | null;
   driver_id?: string | null;
   is_active?: boolean | null;
   status?: string | null;
@@ -52,11 +53,13 @@ export default function VehiclesPage() {
   const [editRegistrationNumber, setEditRegistrationNumber] = useState("");
   const [editMake, setEditMake] = useState("");
   const [editModel, setEditModel] = useState("");
+  const [editVehicleType, setEditVehicleType] = useState("general");
 
   const [name, setName] = useState("");
   const [registrationNumber, setRegistrationNumber] = useState("");
   const [make, setMake] = useState("");
   const [model, setModel] = useState("");
+  const [vehicleType, setVehicleType] = useState("general");
 
   async function loadVehicles() {
     try {
@@ -103,6 +106,7 @@ export default function VehiclesPage() {
   registration_number: registrationNumber,
   make,
   model,
+  vehicle_type: vehicleType,
   status: "active",
 
         }),
@@ -119,6 +123,7 @@ export default function VehiclesPage() {
       setRegistrationNumber("");
       setMake("");
       setModel("");
+      setVehicleType("general");
 
       await loadVehicles();
     } catch (err) {
@@ -134,6 +139,7 @@ export default function VehiclesPage() {
     setEditRegistrationNumber(vehicle.registration_number || vehicle.registrationNumber || "");
     setEditMake(vehicle.make || "");
     setEditModel(vehicle.model || "");
+    setEditVehicleType(vehicle.vehicle_type || "general");
   }
 
   async function handleUpdateVehicle(event: FormEvent) {
@@ -153,6 +159,7 @@ export default function VehiclesPage() {
           registration_number: editRegistrationNumber,
           make: editMake,
           model: editModel,
+          vehicle_type: editVehicleType,
         }),
       });
 
@@ -246,6 +253,20 @@ export default function VehiclesPage() {
             onChange={(event) => setModel(event.target.value)}
           />
 
+          <select
+            style={inputStyle}
+            value={vehicleType}
+            onChange={(event) => setVehicleType(event.target.value)}
+            aria-label="Vehicle type"
+          >
+            <option value="general">General</option>
+            <option value="security">Security</option>
+            <option value="medical">Medical</option>
+            <option value="maintenance">Maintenance</option>
+            <option value="fire">Fire</option>
+            <option value="police">Police</option>
+          </select>
+
           <button
             type="submit"
             disabled={saving}
@@ -302,6 +323,20 @@ export default function VehiclesPage() {
               value={editModel}
               onChange={(event) => setEditModel(event.target.value)}
             />
+
+            <select
+              style={inputStyle}
+              value={editVehicleType}
+              onChange={(event) => setEditVehicleType(event.target.value)}
+              aria-label="Vehicle type"
+            >
+              <option value="general">General</option>
+              <option value="security">Security</option>
+              <option value="medical">Medical</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="fire">Fire</option>
+              <option value="police">Police</option>
+            </select>
 
             <div style={{ display: "flex", gap: 10 }}>
               <button
@@ -387,78 +422,6 @@ export default function VehiclesPage() {
               vehicle.is_active === true ||
               vehicle.status === "active" ||
               vehicle.status === "online";
-
-            function startEditing(vehicle: Vehicle) {
-    setEditingVehicle(vehicle);
-    setEditName(vehicle.nickname || vehicle.name || "");
-    setEditRegistrationNumber(vehicle.registration_number || vehicle.registrationNumber || "");
-    setEditMake(vehicle.make || "");
-    setEditModel(vehicle.model || "");
-  }
-
-  async function handleUpdateVehicle(event: FormEvent) {
-    event.preventDefault();
-    if (!editingVehicle) return;
-
-    try {
-      setSaving(true);
-      setError("");
-      setSuccess("");
-
-      const response = await fetch(`/api/fleet/vehicles/${editingVehicle.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nickname: editName,
-          registration_number: editRegistrationNumber,
-          make: editMake,
-          model: editModel,
-        }),
-      });
-
-      const result: VehiclesResponse = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to update vehicle");
-      }
-
-      setSuccess("Vehicle updated successfully.");
-      setEditingVehicle(null);
-      await loadVehicles();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update vehicle");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleDeactivateVehicle(vehicle: Vehicle) {
-    const confirmed = window.confirm("Deactivate this vehicle? It will remain in HarborGuard but can no longer be used.");
-    if (!confirmed) return;
-
-    try {
-      setSaving(true);
-      setError("");
-      setSuccess("");
-
-      const response = await fetch(`/api/fleet/vehicles/${vehicle.id}`, {
-        method: "DELETE",
-      });
-
-      const result: VehiclesResponse = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to delete vehicle");
-      }
-
-      setSuccess("Vehicle deactivated successfully.");
-      await loadVehicles();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete vehicle");
-    } finally {
-      setSaving(false);
-    }
-  }
 
   return (
               <div key={vehicle.id} style={{ ...cardStyle, padding: 20 }}>

@@ -8,6 +8,9 @@ const VehicleUpdateSchema = z.object({
   registration_number: z.string().min(1).max(50).optional(),
   make: z.string().max(100).optional().nullable(),
   model: z.string().max(100).optional().nullable(),
+  vehicle_type: z
+    .enum(["general", "security", "medical", "maintenance", "fire", "police"])
+    .optional(),
 });
 
 export async function PATCH(

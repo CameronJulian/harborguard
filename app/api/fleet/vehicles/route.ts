@@ -142,6 +142,7 @@ export async function POST(req: Request) {
           body.registration_number || body.registrationNumber || null,
         make: body.make || null,
         model: body.model || null,
+        vehicle_type: body.vehicle_type || body.vehicleType || "general",
         is_active: true,
       })
       .select("*")
