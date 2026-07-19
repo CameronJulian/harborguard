@@ -247,6 +247,17 @@ export async function POST(req: Request) {
 
     const body = await req.json();
 
+    const { data: latestLocation } = body.vehicleId
+      ? await supabase
+          .from("vehicle_locations")
+          .select("latitude, longitude, recorded_at")
+          .eq("vehicle_id", body.vehicleId)
+          .eq("organization_id", organizationId)
+          .order("recorded_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      : { data: null };
+
     const analysis = await analyseFrame({
       vehicleId: body.vehicleId,
       vehicleName: body.vehicleName,
@@ -274,6 +285,9 @@ export async function POST(req: Request) {
       recommended_action: detection.recommendedAction,
       raw_response: analysis.rawResponse || {},
       detected_at: analysis.analysedAt,
+      latitude: latestLocation?.latitude ?? null,
+      longitude: latestLocation?.longitude ?? null,
+      location_recorded_at: latestLocation?.recorded_at ?? null,
     }));
 
     const { data: savedEvents, error: insertError } = await supabase
@@ -306,4 +320,5 @@ export async function POST(req: Request) {
     );
   }
 }
+
 
