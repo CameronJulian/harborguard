@@ -65,3 +65,5 @@ HarborGuard-*.log
 
 # OS artifacts
 Thumbs.db
+
+supabase/.branches/
