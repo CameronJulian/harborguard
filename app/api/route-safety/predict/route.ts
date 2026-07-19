@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 
 function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
@@ -135,6 +135,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    const { data: intelligence, error: intelligenceError } = await supabase
+      .from("route_intelligence")
+      .select(`
+        id,
+        source,
+        event_type,
+        severity,
+        confidence,
+        latitude,
+        longitude,
+        metadata,
+        created_at
+      `)
+      .eq("organization_id", organizationId)
+      .eq("verified", true)
+      .not("latitude", "is", null)
+      .not("longitude", "is", null);
+
+    if (intelligenceError) {
+      return NextResponse.json(
+        { error: intelligenceError.message },
+        { status: 500 }
+      );
+    }
+
     let routeEstimate: any = null;
 
     if (process.env.GOOGLE_ROUTES_API_KEY) {
@@ -195,7 +220,36 @@ export async function POST(req: NextRequest) {
       [destinationLat, destinationLng] as [number, number],
     ];
 
-    const routeThreats = (alerts || [])
+    const intelligenceThreatInputs = (intelligence || []).map((item: any) => {
+      const metadata =
+        item.metadata && typeof item.metadata === "object"
+          ? item.metadata
+          : {};
+
+      const fallbackTitle = String(
+        item.event_type || "route intelligence"
+      ).replace(/_/g, " ");
+
+      return {
+        id: item.id,
+        type: item.event_type,
+        title: metadata.description || fallbackTitle,
+        severity: item.severity,
+        latitude: item.latitude,
+        longitude: item.longitude,
+        radius_meters: 1000,
+        suggested_route: null,
+        recommendation_override:
+          metadata.recommendedAction || null,
+      };
+    });
+
+    const threatInputs = [
+      ...(alerts || []),
+      ...intelligenceThreatInputs,
+    ];
+
+    const routeThreats = threatInputs
       .map((alert: any) => {
         const distanceFromOrigin = distanceMeters(
           originLat,
@@ -242,7 +296,9 @@ export async function POST(req: NextRequest) {
           distanceFromRoute: Math.round(distanceFromRoute),
           isLikelyOnRoute,
           score,
-          recommendation: recommendationFor(alert.type, alert.severity),
+          recommendation:
+            alert.recommendation_override ||
+            recommendationFor(alert.type, alert.severity),
           suggestedRoute: alert.suggested_route || null,
         };
       })
