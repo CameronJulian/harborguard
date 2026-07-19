@@ -37,7 +37,8 @@ function typeWeight(type: string | null) {
 function applyIntelligenceWeighting(
   baseScore: number,
   confidence: unknown,
-  verificationCount: unknown
+  verificationCount: unknown,
+  createdAt: unknown
 ) {
   const hasConfidence =
     confidence !== null &&
@@ -49,7 +50,7 @@ function applyIntelligenceWeighting(
     verificationCount !== undefined &&
     verificationCount !== "";
 
-  if (!hasConfidence && !hasVerificationCount) {
+  if (!hasConfidence && !hasVerificationCount && !createdAt) {
     return baseScore;
   }
 
@@ -62,9 +63,40 @@ function applyIntelligenceWeighting(
   const confidenceBonus = normalizedConfidence * 0.2;
   const verificationBonus = normalizedVerificationCount * 0.15;
 
+  const weightedScore =
+    baseScore * (1 + confidenceBonus + verificationBonus);
+
   return Math.round(
-    baseScore * (1 + confidenceBonus + verificationBonus)
+    weightedScore * recencyMultiplier(createdAt)
   );
+}
+
+function recencyMultiplier(createdAt: unknown) {
+  if (!createdAt) {
+    return 1;
+  }
+
+  const createdTime = new Date(String(createdAt)).getTime();
+
+  if (Number.isNaN(createdTime)) {
+    return 1;
+  }
+
+  const ageHours = (Date.now() - createdTime) / (1000 * 60 * 60);
+
+  if (ageHours <= 24) {
+    return 1;
+  }
+
+  if (ageHours <= 24 * 7) {
+    return 0.9;
+  }
+
+  if (ageHours <= 24 * 30) {
+    return 0.75;
+  }
+
+  return 0.6;
 }
 
 function decodePolyline(encoded: string) {
@@ -272,6 +304,7 @@ export async function POST(req: NextRequest) {
         severity: item.severity,
         confidence: item.confidence,
         verification_count: item.verification_count,
+        created_at: item.created_at,
         latitude: item.latitude,
         longitude: item.longitude,
         radius_meters: 1000,
@@ -325,7 +358,8 @@ export async function POST(req: NextRequest) {
           applyIntelligenceWeighting(
             baseScore,
             alert.confidence,
-            alert.verification_count
+            alert.verification_count,
+            alert.created_at
           )
         );
 
