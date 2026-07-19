@@ -3,6 +3,7 @@ import {
   rankFleetCandidatesForTarget,
 } from "@/lib/fleet/optimizationEngine";
 import { rankFleetCandidatesByETA } from "@/lib/dispatch/etaRanking";
+import { filterCandidatesByCapability } from "@/lib/dispatch/capabilityMatcher";
 import { buildTrafficIntelligence } from "@/lib/traffic/intelligence";
 import { buildDispatcherRecommendations } from "@/lib/dispatcher/recommendations";
 
@@ -83,12 +84,21 @@ export async function buildDispatchCopilot(
           }
         : null;
 
+      const capabilityCandidates =
+        filterCandidatesByCapability(
+          optimizationResult.candidates || [],
+          alert.alert_type,
+        );
+
+      const capabilityBestCandidate =
+        capabilityCandidates[0] || null;
+
       const targetCandidates = target
         ? rankFleetCandidatesForTarget(
-            optimizationResult.candidates || [],
+            capabilityCandidates,
             target,
           )
-        : optimizationResult.candidates || [];
+        : capabilityCandidates;
 
       let etaCandidates = targetCandidates;
 
@@ -115,7 +125,7 @@ export async function buildDispatchCopilot(
         }
       }
 
-      const alertBestCandidate = etaCandidates[0] || bestCandidate;
+      const alertBestCandidate = etaCandidates[0] || capabilityBestCandidate;
 
       const baseRecommendation = buildDispatcherRecommendations({
         alertType: alert.alert_type,
