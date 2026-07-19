@@ -33,6 +33,40 @@ function typeWeight(type: string | null) {
   if (type === "protest") return 28;
   return 12;
 }
+
+function applyIntelligenceWeighting(
+  baseScore: number,
+  confidence: unknown,
+  verificationCount: unknown
+) {
+  const hasConfidence =
+    confidence !== null &&
+    confidence !== undefined &&
+    confidence !== "";
+
+  const hasVerificationCount =
+    verificationCount !== null &&
+    verificationCount !== undefined &&
+    verificationCount !== "";
+
+  if (!hasConfidence && !hasVerificationCount) {
+    return baseScore;
+  }
+
+  const normalizedConfidence =
+    Math.min(100, Math.max(0, Number(confidence) || 0)) / 100;
+
+  const normalizedVerificationCount =
+    Math.min(10, Math.max(0, Number(verificationCount) || 0)) / 10;
+
+  const confidenceBonus = normalizedConfidence * 0.2;
+  const verificationBonus = normalizedVerificationCount * 0.15;
+
+  return Math.round(
+    baseScore * (1 + confidenceBonus + verificationBonus)
+  );
+}
+
 function decodePolyline(encoded: string) {
   let index = 0;
   let lat = 0;
@@ -283,9 +317,16 @@ export async function POST(req: NextRequest) {
         const radius = Number(alert.radius_meters || 1000);
         const isLikelyOnRoute = corridorDistance <= radius + 500;
 
+        const baseScore =
+          severityWeight(alert.severity) + typeWeight(alert.type);
+
         const score = Math.min(
           100,
-          severityWeight(alert.severity) + typeWeight(alert.type)
+          applyIntelligenceWeighting(
+            baseScore,
+            alert.confidence,
+            alert.verification_count
+          )
         );
 
         return {
