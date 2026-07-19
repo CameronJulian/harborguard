@@ -85,12 +85,14 @@ export async function buildDispatchCopilot(
           }
         : null;
 
+      const dispatchRule = await loadDispatchRule(
+        supabase,
+        organizationId,
+        alert.alert_type,
+      );
+
       const preferredCapabilities =
-        await loadDispatchRule(
-          supabase,
-          organizationId,
-          alert.alert_type,
-        );
+        dispatchRule.preferredCapabilities;
 
       const capabilityCandidates =
         filterCandidatesByCapability(
@@ -134,6 +136,94 @@ export async function buildDispatchCopilot(
       }
 
       const alertBestCandidate = etaCandidates[0] || capabilityBestCandidate;
+
+      const responderVehicleType = alertBestCandidate
+        ? String(alertBestCandidate.vehicleType || "general")
+            .trim()
+            .toLowerCase()
+        : null;
+
+      const matchedCapability =
+        responderVehicleType &&
+        preferredCapabilities.includes(responderVehicleType as any)
+          ? responderVehicleType
+          : null;
+
+      const etaDurationSeconds = Number(
+        alertBestCandidate?.eta?.durationSeconds,
+      );
+
+      const etaMinutes =
+        Number.isFinite(etaDurationSeconds) &&
+        etaDurationSeconds < Number.MAX_SAFE_INTEGER
+          ? Math.ceil(etaDurationSeconds / 60)
+          : null;
+
+      const straightLineDistanceKm = Number(
+        alertBestCandidate?.distanceKm,
+      );
+
+      const routeDistanceMeters = Number(
+        alertBestCandidate?.eta?.distanceMeters,
+      );
+
+      const distanceKm = Number.isFinite(straightLineDistanceKm)
+        ? straightLineDistanceKm
+        : Number.isFinite(routeDistanceMeters)
+          ? Number((routeDistanceMeters / 1000).toFixed(2))
+          : null;
+
+      const dispatchReasons: string[] = [
+        dispatchRule.source === "organization"
+          ? "Organization dispatch rule applied."
+          : "Built-in fallback dispatch rule applied.",
+      ];
+
+      if (matchedCapability) {
+        dispatchReasons.push(
+          `Vehicle capability "${matchedCapability}" matches the preferred dispatch capabilities.`,
+        );
+      } else if (alertBestCandidate) {
+        dispatchReasons.push(
+          "No exact preferred capability match was available; HarborGuard used the best remaining fleet candidate.",
+        );
+      } else {
+        dispatchReasons.push(
+          "No fleet responder is currently available.",
+        );
+      }
+
+      if (alertBestCandidate?.status === "available") {
+        dispatchReasons.push("Vehicle is currently available.");
+      } else if (alertBestCandidate?.status) {
+        dispatchReasons.push(
+          `Vehicle status is ${alertBestCandidate.status}.`,
+        );
+      }
+
+      if (etaMinutes !== null) {
+        dispatchReasons.push(`Estimated arrival time is ${etaMinutes} minutes.`);
+      } else {
+        dispatchReasons.push("Road-network ETA is currently unavailable.");
+      }
+
+      if (distanceKm !== null) {
+        dispatchReasons.push(
+          `Responder is approximately ${distanceKm} km from the dispatch target.`,
+        );
+      } else {
+        dispatchReasons.push("Distance to the dispatch target is unavailable.");
+      }
+
+      const dispatchExplanation = {
+        ruleSource: dispatchRule.source,
+        preferredCapabilities,
+        matchedCapability,
+        etaMinutes,
+        distanceKm,
+        vehicleStatus: alertBestCandidate?.status ?? null,
+        reasons: dispatchReasons,
+      };
 
       const baseRecommendation = buildDispatcherRecommendations({
         alertType: alert.alert_type,
@@ -189,6 +279,7 @@ export async function buildDispatchCopilot(
         recommendedResponder: alertBestCandidate,
         etaRankedCandidates: etaCandidates,
         dispatchTarget: target,
+        dispatchExplanation,
         recommendation: {
           ...baseRecommendation,
           priority:
