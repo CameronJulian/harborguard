@@ -34,6 +34,50 @@ function typeWeight(type: string | null) {
   return 12;
 }
 
+type IntelligenceFreshness =
+  | "fresh"
+  | "needs_verification"
+  | "stale";
+
+function classifyIntelligenceFreshness(
+  createdAt: unknown,
+  verificationCount: unknown
+): IntelligenceFreshness {
+  if (!createdAt) {
+    return "needs_verification";
+  }
+
+  const createdTime = new Date(String(createdAt)).getTime();
+
+  if (Number.isNaN(createdTime)) {
+    return "needs_verification";
+  }
+
+  const ageHours = Math.max(
+    0,
+    (Date.now() - createdTime) / (1000 * 60 * 60)
+  );
+
+  const normalizedVerificationCount = Math.max(
+    0,
+    Number(verificationCount) || 0
+  );
+
+  if (ageHours <= 24) {
+    return "fresh";
+  }
+
+  if (ageHours <= 24 * 7 && normalizedVerificationCount >= 2) {
+    return "fresh";
+  }
+
+  if (ageHours <= 24 * 30) {
+    return "needs_verification";
+  }
+
+  return "stale";
+}
+
 function applyIntelligenceWeighting(
   baseScore: number,
   confidence: unknown,
@@ -305,6 +349,10 @@ export async function POST(req: NextRequest) {
         confidence: item.confidence,
         verification_count: item.verification_count,
         created_at: item.created_at,
+        freshness: classifyIntelligenceFreshness(
+          item.created_at,
+          item.verification_count
+        ),
         latitude: item.latitude,
         longitude: item.longitude,
         radius_meters: 1000,
@@ -374,6 +422,7 @@ export async function POST(req: NextRequest) {
           distanceFromRoute: Math.round(distanceFromRoute),
           isLikelyOnRoute,
           score,
+          freshness: alert.freshness || null,
           recommendation:
             alert.recommendation_override ||
             recommendationFor(alert.type, alert.severity),
@@ -533,9 +582,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-
-
-
-
-
-
