@@ -146,6 +146,7 @@ export async function POST(req: NextRequest) {
         latitude,
         longitude,
         metadata,
+        verification_count,
         created_at
       `)
       .eq("organization_id", organizationId)
@@ -235,6 +236,8 @@ export async function POST(req: NextRequest) {
         type: item.event_type,
         title: metadata.description || fallbackTitle,
         severity: item.severity,
+        confidence: item.confidence,
+        verification_count: item.verification_count,
         latitude: item.latitude,
         longitude: item.longitude,
         radius_meters: 1000,
