@@ -1,4 +1,5 @@
 import type { FleetVehicle } from "../types";
+import { StatusBadge } from "@/components/ui";
 
 type Props = {
   filteredFleet: FleetVehicle[];
@@ -12,6 +13,21 @@ type Props = {
   escalateRouteThreat: (threat: any) => void;
   loadSaferRouteOptions: () => void;
 };
+
+function freshnessTone(
+  freshness?: string
+): "success" | "warning" | "danger" | "info" {
+  switch (freshness) {
+    case "fresh":
+      return "success";
+    case "needs_verification":
+      return "warning";
+    case "stale":
+      return "danger";
+    default:
+      return "info";
+  }
+}
 
 export default function CommandCenterRouteSafetySection({
   filteredFleet,
@@ -131,7 +147,15 @@ export default function CommandCenterRouteSafetySection({
               <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
                 {routePrediction.threats.slice(0, 5).map((threat: any) => (
                   <div key={threat.id} style={{ padding: 10, borderRadius: 12, background: "#fff7ed" }}>
-                    <strong>{threat.title}</strong>
+                    <strong>{threat.title}</strong>{" "}
+                    <StatusBadge
+                      label={
+                        threat.freshness
+                          ? threat.freshness.replaceAll("_", " ").toUpperCase()
+                          : "UNKNOWN"
+                      }
+                      tone={freshnessTone(threat.freshness)}
+                    />
                     <br />
                     Type: {threat.type?.replaceAll("_", " ")} | Severity:{" "}
                     {threat.severity?.toUpperCase()} | Score: {threat.score}
@@ -159,3 +183,4 @@ export default function CommandCenterRouteSafetySection({
     </div>
   );
 }
+
