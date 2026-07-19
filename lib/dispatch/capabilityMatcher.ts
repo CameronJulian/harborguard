@@ -28,11 +28,8 @@ export function preferredCapabilitiesForAlert(
 
 export function filterCandidatesByCapability(
   candidates: any[],
-  alertType: string | null | undefined,
+  preferredCapabilities: VehicleCapability[],
 ) {
-  const preferredCapabilities =
-    preferredCapabilitiesForAlert(alertType);
-
   const matchingCandidates = candidates.filter((candidate) =>
     preferredCapabilities.includes(
       String(candidate.vehicleType || "general")

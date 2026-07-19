@@ -4,6 +4,7 @@ import {
 } from "@/lib/fleet/optimizationEngine";
 import { rankFleetCandidatesByETA } from "@/lib/dispatch/etaRanking";
 import { filterCandidatesByCapability } from "@/lib/dispatch/capabilityMatcher";
+import { loadDispatchRule } from "@/lib/dispatch/loadDispatchRule";
 import { buildTrafficIntelligence } from "@/lib/traffic/intelligence";
 import { buildDispatcherRecommendations } from "@/lib/dispatcher/recommendations";
 
@@ -84,10 +85,17 @@ export async function buildDispatchCopilot(
           }
         : null;
 
+      const preferredCapabilities =
+        await loadDispatchRule(
+          supabase,
+          organizationId,
+          alert.alert_type,
+        );
+
       const capabilityCandidates =
         filterCandidatesByCapability(
           optimizationResult.candidates || [],
-          alert.alert_type,
+          preferredCapabilities,
         );
 
       const capabilityBestCandidate =
@@ -223,3 +231,4 @@ export async function buildDispatchCopilot(
     generatedAt: new Date().toISOString(),
   };
 }
+
