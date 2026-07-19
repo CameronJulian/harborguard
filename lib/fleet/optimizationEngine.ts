@@ -187,7 +187,7 @@ export async function buildFleetOptimization(
   ] = await Promise.all([
     supabase
       .from("vehicles")
-      .select("id, nickname, registration_number")
+      .select("id, nickname, registration_number, vehicle_type")
       .eq("organization_id", organizationId),
 
     supabase
@@ -386,6 +386,7 @@ export async function buildFleetOptimization(
           vehicle.registration_number ||
           vehicle.nickname ||
           "Unknown vehicle",
+        vehicleType: vehicle.vehicle_type || "general",
         score: finalScore,
         status: isBusy
           ? "busy"
