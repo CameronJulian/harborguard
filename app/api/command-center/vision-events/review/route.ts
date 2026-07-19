@@ -153,7 +153,11 @@ export async function POST(req: Request) {
         status,
         description,
         recommended_action,
+        raw_response,
         detected_at,
+        latitude,
+        longitude,
+        location_recorded_at,
         incident_id,
         reviewed_at,
         reviewed_by,
@@ -163,6 +167,51 @@ export async function POST(req: Request) {
 
     if (updateError) {
       throw updateError;
+    }
+
+    if (requestedStatus === "reviewed") {
+      const { error: intelligenceError } = await supabase
+        .from("route_intelligence")
+        .upsert(
+          {
+            organization_id: organizationId,
+            source: "vision_event",
+            source_record_id: updatedEvent.id,
+            event_type: updatedEvent.event_type,
+            severity: updatedEvent.severity,
+            confidence: Number(updatedEvent.confidence || 0),
+            latitude: updatedEvent.latitude,
+            longitude: updatedEvent.longitude,
+            verified: true,
+            verification_count: 1,
+            metadata: {
+              vehicleId: updatedEvent.vehicle_id,
+              vehicleName: updatedEvent.vehicle_name,
+              cameraName: updatedEvent.camera_name,
+              provider: updatedEvent.provider,
+              description: updatedEvent.description,
+              recommendedAction:
+                updatedEvent.recommended_action,
+              rawResponse: updatedEvent.raw_response,
+              detectedAt: updatedEvent.detected_at,
+              locationRecordedAt:
+                updatedEvent.location_recorded_at,
+              incidentId: updatedEvent.incident_id,
+              reviewedAt: updatedEvent.reviewed_at,
+              reviewedBy: updatedEvent.reviewed_by,
+              reviewNote: updatedEvent.review_note,
+            },
+            updated_at: new Date().toISOString(),
+          },
+          {
+            onConflict:
+              "organization_id,source,source_record_id",
+          }
+        );
+
+      if (intelligenceError) {
+        throw intelligenceError;
+      }
     }
 
     return NextResponse.json({
