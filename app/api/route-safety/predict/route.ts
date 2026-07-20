@@ -346,6 +346,7 @@ export async function POST(req: NextRequest) {
         type: item.event_type,
         title: metadata.description || fallbackTitle,
         severity: item.severity,
+        source: item.source,
         confidence: item.confidence,
         verification_count: item.verification_count,
         created_at: item.created_at,
@@ -423,6 +424,10 @@ export async function POST(req: NextRequest) {
           isLikelyOnRoute,
           score,
           freshness: alert.freshness || null,
+          confidence: alert.confidence ?? null,
+          verificationCount: alert.verification_count ?? 0,
+          createdAt: alert.created_at ?? null,
+          source: alert.source ?? null,
           recommendation:
             alert.recommendation_override ||
             recommendationFor(alert.type, alert.severity),
