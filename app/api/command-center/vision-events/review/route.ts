@@ -170,7 +170,10 @@ export async function POST(req: Request) {
     }
 
     if (requestedStatus === "reviewed") {
-      const { error: intelligenceError } = await supabase
+      const {
+        data: routeIntelligence,
+        error: intelligenceError,
+      } = await supabase
         .from("route_intelligence")
         .upsert(
           {
@@ -207,10 +210,28 @@ export async function POST(req: Request) {
             onConflict:
               "organization_id,source,source_record_id",
           }
-        );
+        )
+        .select("id")
+        .single();
 
       if (intelligenceError) {
         throw intelligenceError;
+      }
+
+      const { error: aggregationError } = await supabase.rpc(
+        "aggregate_road_risk_intelligence",
+        {
+          p_organization_id: organizationId,
+          p_route_intelligence_id: routeIntelligence.id,
+          p_event_type: updatedEvent.event_type,
+          p_latitude: updatedEvent.latitude,
+          p_longitude: updatedEvent.longitude,
+          p_event_at: updatedEvent.detected_at,
+        }
+      );
+
+      if (aggregationError) {
+        throw aggregationError;
       }
     }
 
