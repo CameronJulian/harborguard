@@ -325,6 +325,7 @@ if (
         <CommandCenterDashboardColumnSection
           operationsSummary={operationsSummary}
           operationsTimeline={operationsTimeline}
+          filteredFleet={filteredFleet}
           incidents={incidents}
           mapCenter={mapCenter}
           selectedPosition={selectedPosition}
@@ -390,4 +391,6 @@ if (
     </AppShell>
   );
 }
+
+
 

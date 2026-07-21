@@ -24,6 +24,18 @@ type VisionEvent = {
   provider?: string | null;
 };
 
+type ComputerVisionVehicle = {
+  id: string;
+  nickname?: string | null;
+  registration_number?: string | null;
+};
+
+type ComputerVisionAnalyticsProps = {
+  vehicles: ComputerVisionVehicle[];
+  selectedVehicleId: string | null;
+  setSelectedVehicleId: (id: string | null) => void;
+};
+
 type VisionAnalysisResponse = {
   success?: boolean;
   provider?: string;
@@ -49,7 +61,11 @@ function formatEventType(type: string) {
   return type.replaceAll("_", " ");
 }
 
-export default function ComputerVisionAnalytics() {
+export default function ComputerVisionAnalytics({
+  vehicles,
+  selectedVehicleId,
+  setSelectedVehicleId,
+}: ComputerVisionAnalyticsProps) {
   const [events, setEvents] = useState<VisionEvent[]>([]);
   const [summary, setSummary] = useState<any>(null);
 
@@ -63,12 +79,19 @@ export default function ComputerVisionAnalytics() {
     "Command Center Camera"
   );
 
-  const [vehicleName, setVehicleName] = useState("");
 
   const [frameDataUrl, setFrameDataUrl] =
     useState<string | null>(null);
 
   const [frameName, setFrameName] = useState("");
+
+  const selectedVehicle =
+    vehicles.find((vehicle) => vehicle.id === selectedVehicleId) || null;
+
+  const selectedVehicleName =
+    selectedVehicle?.nickname ||
+    selectedVehicle?.registration_number ||
+    "Unassigned vehicle";
 
   async function loadVision() {
     try {
@@ -192,8 +215,8 @@ export default function ComputerVisionAnalytics() {
           },
           body: JSON.stringify({
             cameraName: cameraName.trim(),
-            vehicleName:
-              vehicleName.trim() || "Unassigned vehicle",
+            vehicleId: selectedVehicle?.id || null,
+            vehicleName: selectedVehicleName,
             frameBase64: frameDataUrl,
           }),
         }
@@ -377,21 +400,30 @@ export default function ComputerVisionAnalytics() {
               fontWeight: 800,
             }}
           >
-            Vehicle name
-            <input
-              value={vehicleName}
+            Vehicle
+            <select
+              value={selectedVehicleId || ""}
               onChange={(event) =>
-                setVehicleName(event.target.value)
+                setSelectedVehicleId(event.target.value || null)
               }
               disabled={analysing}
-              placeholder="Optional vehicle name"
               style={{
                 border: "1px solid #cbd5e1",
                 borderRadius: 12,
                 font: "inherit",
                 padding: "11px 12px",
+                background: "#ffffff",
               }}
-            />
+            >
+              <option value="">Unassigned vehicle</option>
+              {vehicles.map((vehicle) => (
+                <option key={vehicle.id} value={vehicle.id}>
+                  {vehicle.nickname ||
+                    vehicle.registration_number ||
+                    vehicle.id}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label
@@ -790,4 +822,5 @@ export default function ComputerVisionAnalytics() {
     </section>
   );
 }
+
 

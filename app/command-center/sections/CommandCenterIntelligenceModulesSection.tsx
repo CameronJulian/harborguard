@@ -32,12 +32,24 @@ import DeferredMount from "../components/DeferredMount";
 import IncidentCommandDashboard from "@/components/command-center/IncidentCommandDashboard";
 import IncidentInvestigationTimeline from "@/components/command-center/IncidentInvestigationTimeline";
 
+type CommandCenterVehicle = {
+  id: string;
+  nickname?: string | null;
+  registration_number?: string | null;
+};
+
 type Props = {
   operationsTimeline: any[];
+  filteredFleet: CommandCenterVehicle[];
+  selectedVehicleId: string | null;
+  setSelectedVehicleId: (id: string | null) => void;
 };
 
 export default function CommandCenterIntelligenceModulesSection({
   operationsTimeline,
+  filteredFleet,
+  selectedVehicleId,
+  setSelectedVehicleId,
 }: Props) {
   return (
     <>
@@ -53,7 +65,11 @@ export default function CommandCenterIntelligenceModulesSection({
         <DashcamMonitoring />
       </DeferredMount>
       <DeferredMount delayMs={2000}>
-        <ComputerVisionAnalytics />
+        <ComputerVisionAnalytics
+          vehicles={filteredFleet}
+          selectedVehicleId={selectedVehicleId}
+          setSelectedVehicleId={setSelectedVehicleId}
+        />
       </DeferredMount>
       <DeferredMount delayMs={2200}>
         <ANPRDashboard />
@@ -107,4 +123,7 @@ export default function CommandCenterIntelligenceModulesSection({
     </>
   );
 }
+
+
+
 

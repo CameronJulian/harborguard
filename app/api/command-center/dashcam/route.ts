@@ -100,6 +100,22 @@ async function analyseNewDashcamSnapshots(params: {
           receivedAt: new Date().toISOString(),
         },
       });
+	  
+	  const { data: latestLocation, error: locationError } =
+  camera.vehicleId
+    ? await params.supabase
+        .from("vehicle_locations")
+        .select("latitude, longitude, recorded_at")
+        .eq("organization_id", params.organizationId)
+        .eq("vehicle_id", camera.vehicleId)
+        .order("recorded_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null, error: null };
+
+if (locationError) {
+  throw locationError;
+}
 
       const rows = analysis.detections.map((detection) => ({
         organization_id: params.organizationId,
@@ -117,13 +133,17 @@ async function analyseNewDashcamSnapshots(params: {
         image_url: imageUrl,
         description: detection.description,
         recommended_action: detection.recommendedAction,
-        raw_response: {
-          ...(analysis.rawResponse || {}),
-          source: "automatic_dashcam_snapshot",
-          dashcamProvider: camera.vendor,
-          snapshotId: camera.snapshotId,
-        },
-        detected_at: analysis.analysedAt,
+       raw_response: {
+  ...(analysis.rawResponse || {}),
+  source: "automatic_dashcam_snapshot",
+  dashcamProvider: camera.vendor,
+  snapshotId: camera.snapshotId,
+},
+detected_at: analysis.analysedAt,
+latitude: latestLocation?.latitude ?? null,
+longitude: latestLocation?.longitude ?? null,
+location_recorded_at:
+  latestLocation?.recorded_at ?? null,
       }));
 
       if (rows.length > 0) {

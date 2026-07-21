@@ -9,6 +9,7 @@ import CommandCenterLiveFleetMapSection from "./CommandCenterLiveFleetMapSection
 type Props = {
   operationsSummary: any;
   operationsTimeline: any[];
+  filteredFleet: any[];
   incidents: any[];
 
 
@@ -44,6 +45,7 @@ type Props = {
 export default function CommandCenterDashboardColumnSection({
   operationsSummary,
   operationsTimeline,
+  filteredFleet,
   incidents,
   mapCenter,
   selectedPosition,
@@ -89,6 +91,9 @@ export default function CommandCenterDashboardColumnSection({
 
       <CommandCenterIntelligenceModulesSection
         operationsTimeline={operationsTimeline}
+        filteredFleet={filteredFleet}
+        selectedVehicleId={selectedVehicleId}
+        setSelectedVehicleId={setSelectedVehicleId}
       />
 
       <NotificationCenter />
@@ -123,3 +128,4 @@ export default function CommandCenterDashboardColumnSection({
     </div>
   );
 }
+
