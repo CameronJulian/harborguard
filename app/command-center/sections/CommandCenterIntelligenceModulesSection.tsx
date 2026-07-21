@@ -1,4 +1,4 @@
-﻿import CommandCenterThemeSwitcher from "@/components/command-center/CommandCenterThemeSwitcher";
+import CommandCenterThemeSwitcher from "@/components/command-center/CommandCenterThemeSwitcher";
 import CommandWall from "@/components/command-center/CommandWall";
 import AuditPlayback from "@/components/command-center/AuditPlayback";
 import DispatcherCollaboration from "@/components/command-center/DispatcherCollaboration";
@@ -10,6 +10,7 @@ import ANPRDashboard from "@/components/command-center/ANPRDashboard";
 import CCTVMonitoring from "@/components/command-center/CCTVMonitoring";
 import InsuranceResponseCenter from "@/components/command-center/InsuranceResponseCenter";
 import TrafficFlowDashboard from "@/components/command-center/TrafficFlowDashboard";
+import WeatherIntelligenceDashboard from "@/components/command-center/WeatherIntelligenceDashboard";
 import FleetOptimizationDashboard from "@/components/command-center/FleetOptimizationDashboard";
 import MissionBoard from "@/components/command-center/MissionBoard";
 import LiveMissionTrackingDashboard from "@/components/command-center/LiveMissionTrackingDashboard";
@@ -79,6 +80,7 @@ export default function CommandCenterIntelligenceModulesSection({
       </DeferredMount>
       <InsuranceResponseCenter />
       <TrafficFlowDashboard />
+      <WeatherIntelligenceDashboard />
       <DeferredMount delayMs={2600}>
         <FleetOptimizationDashboard />
       </DeferredMount>
@@ -123,7 +125,4 @@ export default function CommandCenterIntelligenceModulesSection({
     </>
   );
 }
-
-
-
 
