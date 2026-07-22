@@ -270,6 +270,33 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
+	
+	const { data: roadRiskSegments, error: roadRiskSegmentsError } =
+  await supabase
+    .from("road_risk_segments")
+    .select(`
+      id,
+      latitude,
+      longitude,
+      radius_meters,
+      risk_score,
+      collision_count,
+      crime_count,
+      roadblock_count,
+      traffic_signal_count,
+      other_event_count,
+      verification_count,
+      last_event_at,
+      metadata
+    `)
+    .eq("organization_id", organizationId);
+
+if (roadRiskSegmentsError) {
+  return NextResponse.json(
+    { error: roadRiskSegmentsError.message },
+    { status: 500 }
+  );
+}
 
     let routeEstimate: any = null;
 
@@ -362,10 +389,81 @@ export async function POST(req: NextRequest) {
           metadata.recommendedAction || null,
       };
     });
+	
+	    const roadRiskSegmentThreatInputs = (roadRiskSegments || []).map(
+      (segment: any) => {
+        const riskScore = Math.min(
+          100,
+          Math.max(0, Number(segment.risk_score) || 0)
+        );
+
+        const eventCounts = [
+          {
+            type: "smash_grab_hotspot",
+            count: Number(segment.crime_count) || 0,
+          },
+          {
+            type: "roadblock",
+            count: Number(segment.roadblock_count) || 0,
+          },
+          {
+            type: "accident",
+            count: Number(segment.collision_count) || 0,
+          },
+          {
+            type: "traffic_light_outage",
+            count: Number(segment.traffic_signal_count) || 0,
+          },
+          {
+            type: "other",
+            count: Number(segment.other_event_count) || 0,
+          },
+        ];
+
+        const dominantEvent = eventCounts.sort(
+          (a, b) => b.count - a.count
+        )[0];
+
+        const severity =
+          riskScore >= 80
+            ? "critical"
+            : riskScore >= 60
+              ? "high"
+              : riskScore >= 35
+                ? "medium"
+                : "low";
+
+        return {
+          id: segment.id,
+          type: dominantEvent?.type || "other",
+          title: "Aggregated road-risk segment",
+          severity,
+          source: "road_risk_segments",
+          confidence: null,
+          verification_count: segment.verification_count,
+          created_at: segment.last_event_at,
+          freshness: classifyIntelligenceFreshness(
+            segment.last_event_at,
+            segment.verification_count
+          ),
+          latitude: segment.latitude,
+          longitude: segment.longitude,
+          radius_meters: segment.radius_meters || 150,
+          suggested_route: null,
+          recommendation_override: null,
+          aggregated_risk_score: riskScore,
+        };
+      }
+    );
+
+       const historicalThreatInputs =
+      roadRiskSegmentThreatInputs.length > 0
+        ? roadRiskSegmentThreatInputs
+        : intelligenceThreatInputs;
 
     const threatInputs = [
       ...(alerts || []),
-      ...intelligenceThreatInputs,
+      ...historicalThreatInputs,
     ];
 
     const routeThreats = threatInputs
@@ -402,15 +500,21 @@ export async function POST(req: NextRequest) {
         const baseScore =
           severityWeight(alert.severity) + typeWeight(alert.type);
 
-        const score = Math.min(
-          100,
-          applyIntelligenceWeighting(
-            baseScore,
-            alert.confidence,
-            alert.verification_count,
-            alert.created_at
-          )
+               const aggregatedRiskScore = Number(
+          alert.aggregated_risk_score
         );
+
+        const score = Number.isFinite(aggregatedRiskScore)
+          ? Math.min(100, Math.max(0, aggregatedRiskScore))
+          : Math.min(
+              100,
+              applyIntelligenceWeighting(
+                baseScore,
+                alert.confidence,
+                alert.verification_count,
+                alert.created_at
+              )
+            );
 
         return {
           id: alert.id,
