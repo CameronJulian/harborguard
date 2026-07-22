@@ -34,7 +34,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { error: intelligenceError } = await supabase
+    const {
+      data: routeIntelligence,
+      error: intelligenceError,
+    } = await supabase
       .from("route_intelligence")
       .upsert(
         {
@@ -67,7 +70,9 @@ export async function POST(req: NextRequest) {
         {
           onConflict: "organization_id,source,source_record_id",
         }
-      );
+      )
+      .select("id")
+      .single();
 
     if (intelligenceError) {
       console.error(
@@ -84,11 +89,39 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
+    const { error: aggregationError } = await supabase.rpc(
+      "aggregate_road_risk_intelligence",
+      {
+        p_organization_id: organizationId,
+        p_route_intelligence_id: routeIntelligence.id,
+        p_event_type: data.type,
+        p_latitude: Number(data.latitude),
+        p_longitude: Number(data.longitude),
+        p_event_at: verifiedAt,
+      }
+    );
+
+    if (aggregationError) {
+      console.error(
+        "[Route Safety Verification] Failed to aggregate road risk intelligence:",
+        aggregationError.message
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "The alert was verified and stored historically, but road-risk aggregation failed.",
+          alert: data,
+        },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
       alert: data,
       historicalIntelligenceStored: true,
+      roadRiskAggregated: true,
     });
   } catch (error: any) {
     return NextResponse.json(
