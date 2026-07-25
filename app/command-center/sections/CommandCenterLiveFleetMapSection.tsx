@@ -12,6 +12,11 @@ const HERETrafficOverlay = dynamic(
   { ssr: false }
 );
 
+const RoadRiskSegmentsLayer = dynamic(
+  () => import("@/components/command-center/RoadRiskSegmentsLayer"),
+  { ssr: false }
+);
+
 const MapContainer = dynamic(
   () => import("react-leaflet").then((m) => m.MapContainer),
   { ssr: false }
@@ -134,8 +139,9 @@ export default function CommandCenterLiveFleetMapSection({
             Popup={Popup}
             Polyline={Polyline}
             FleetRiskHeatMap={FleetRiskHeatMap}
-            HERETrafficOverlay={HERETrafficOverlay}
-            cleanLatLng={cleanLatLng}
+HERETrafficOverlay={HERETrafficOverlay}
+RoadRiskSegmentsLayer={RoadRiskSegmentsLayer}
+cleanLatLng={cleanLatLng}
           />
 
 
@@ -170,6 +176,8 @@ export default function CommandCenterLiveFleetMapSection({
     </>
   );
 }
+
+
 
 
 

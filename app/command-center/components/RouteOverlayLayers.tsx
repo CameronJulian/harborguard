@@ -11,6 +11,7 @@ type Props = {
   Polyline: any;
   FleetRiskHeatMap: any;
   HERETrafficOverlay: any;
+  RoadRiskSegmentsLayer: any;
 
   cleanLatLng: (
     latitude: unknown,
@@ -28,6 +29,7 @@ export default function RouteOverlayLayers({
   Polyline,
   FleetRiskHeatMap,
   HERETrafficOverlay,
+  RoadRiskSegmentsLayer,
   cleanLatLng,
 }: Props) {
   return (
@@ -40,6 +42,11 @@ export default function RouteOverlayLayers({
       <HERETrafficOverlay
         incidents={incidents}
         enabled={showTrafficOverlay}
+      />
+
+      <RoadRiskSegmentsLayer
+        enabled={true}
+        minimumRisk={1}
       />
 
       {incidents.map((incident) => {
