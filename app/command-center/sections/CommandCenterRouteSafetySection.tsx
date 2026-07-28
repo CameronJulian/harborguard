@@ -99,6 +99,91 @@ export default function CommandCenterRouteSafetySection({
               {routePrediction.riskScore}/100 {routePrediction.riskLevel}
             </strong>
 
+            <div
+              style={{
+                marginTop: 10,
+                padding: 12,
+                borderRadius: 12,
+                border: "1px solid #cbd5e1",
+                background: "#f8fafc",
+                color: "#0f172a",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 8,
+                  marginBottom: 10,
+                }}
+              >
+                <strong>Composite Risk Breakdown</strong>
+
+                <StatusBadge
+                  label={`${String(
+                    routePrediction.riskLevel || "unknown"
+                  ).toUpperCase()} (${routePrediction.riskScore ?? 0}/100)`}
+                  tone={
+                    String(routePrediction.riskLevel).toUpperCase() ===
+                      "CRITICAL" ||
+                    String(routePrediction.riskLevel).toUpperCase() === "HIGH"
+                      ? "danger"
+                      : String(routePrediction.riskLevel).toUpperCase() ===
+                          "MEDIUM"
+                        ? "warning"
+                        : "success"
+                  }
+                />
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr auto",
+                  gap: "8px 16px",
+                  fontSize: 13,
+                }}
+              >
+                <span>Threat intelligence</span>
+                <strong>
+                  {routePrediction.threatRiskScore ?? 0}/100
+                </strong>
+
+                <span>Threat level</span>
+                <strong>
+                  {String(
+                    routePrediction.threatRiskLevel || "unknown"
+                  ).toUpperCase()}
+                </strong>
+
+                <span>Weather risk</span>
+                <strong>
+                  {routePrediction.weatherRiskScore ?? 0}/100
+                </strong>
+
+                <span>Weather contribution</span>
+                <strong>
+                  +{routePrediction.weatherContribution ?? 0}
+                </strong>
+
+                <div
+                  style={{
+                    gridColumn: "1 / -1",
+                    borderTop: "1px solid #cbd5e1",
+                    marginTop: 4,
+                  }}
+                />
+
+                <span style={{ fontWeight: 800 }}>
+                  Overall route risk
+                </span>
+                <strong>
+                  {routePrediction.riskScore ?? 0}/100
+                </strong>
+              </div>
+            </div>
+
             <div style={{ marginTop: 8, color: "#1e3a8a", fontWeight: 800 }}>
               {routePrediction.driverWarning}
             </div>
