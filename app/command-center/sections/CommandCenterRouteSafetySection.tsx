@@ -117,6 +117,78 @@ export default function CommandCenterRouteSafetySection({
               </div>
             )}
 
+            {routePrediction.weather ? (
+              <div
+                style={{
+                  marginTop: 10,
+                  padding: 10,
+                  borderRadius: 12,
+                  border: "1px solid #bae6fd",
+                  background: "#f0f9ff",
+                  color: "#0c4a6e",
+                  fontSize: 13,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    marginBottom: 6,
+                  }}
+                >
+                  <strong>Live route weather</strong>
+
+                  <StatusBadge
+                    label={`${String(
+                      routePrediction.weather.riskLevel || "unknown"
+                    ).toUpperCase()} (${routePrediction.weather.riskScore ?? 0}/100)`}
+                    tone={
+                      routePrediction.weather.riskLevel === "high" ||
+                      routePrediction.weather.riskLevel === "critical"
+                        ? "danger"
+                        : routePrediction.weather.riskLevel === "medium"
+                          ? "warning"
+                          : "success"
+                    }
+                  />
+                </div>
+
+                Provider: {routePrediction.weather.provider || "Unknown"}
+                <br />
+                Temperature: {routePrediction.weather.temperatureC ?? "N/A"}°C
+                <br />
+                Wind: {routePrediction.weather.windSpeedKph ?? "N/A"} km/h
+                {routePrediction.weather.windGustKph != null
+                  ? ` | Gusts: ${routePrediction.weather.windGustKph} km/h`
+                  : ""}
+                <br />
+                Precipitation: {routePrediction.weather.precipitationMm ?? "N/A"} mm
+                <br />
+                Visibility: {routePrediction.weather.visibilityKm ?? "N/A"} km
+
+                {routePrediction.weather.riskReasons?.length > 0 ? (
+                  <div style={{ marginTop: 6, fontWeight: 700 }}>
+                    {routePrediction.weather.riskReasons.join(" ")}
+                  </div>
+                ) : null}
+              </div>
+            ) : routePrediction.weatherError ? (
+              <div
+                style={{
+                  marginTop: 10,
+                  padding: 10,
+                  borderRadius: 12,
+                  background: "#fff7ed",
+                  color: "#9a3412",
+                  fontSize: 13,
+                }}
+              >
+                Weather unavailable: {routePrediction.weatherError}
+              </div>
+            ) : null}
+
             {routePrediction.saferRoutes?.length > 0 ? (
               <div style={{ marginTop: 10 }}>
                 <strong>Recommended safer route options</strong>
