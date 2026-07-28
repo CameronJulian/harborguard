@@ -568,10 +568,35 @@ if (roadRiskSegmentsError) {
       .filter((alert: any) => alert.isLikelyOnRoute)
       .sort((a: any, b: any) => b.score - a.score);
 
+    const threatRiskScore = Math.min(
+      100,
+      routeThreats.reduce(
+        (total: number, alert: any) => total + alert.score,
+        0
+      )
+    );
+
+    const weatherRiskScore =
+      weatherResult?.weather.riskScore ?? 0;
+
+    const weatherContribution = Math.min(
+      20,
+      Math.round(weatherRiskScore * 0.2)
+    );
+
     const riskScore = Math.min(
       100,
-      routeThreats.reduce((total: number, alert: any) => total + alert.score, 0)
+      threatRiskScore + weatherContribution
     );
+
+    const threatRiskLevel =
+      threatRiskScore >= 80
+        ? "CRITICAL"
+        : threatRiskScore >= 60
+        ? "HIGH"
+        : threatRiskScore >= 35
+        ? "MEDIUM"
+        : "LOW";
 
     const riskLevel =
       riskScore >= 80
@@ -587,7 +612,11 @@ if (roadRiskSegmentsError) {
     let autoRouteAssigned = false;
     let autoRouteAssignmentResult: any = null;
 
-    if (riskScore >= 80 && vehicleId && routeThreats.length > 0) {
+    if (
+      threatRiskScore >= 80 &&
+      vehicleId &&
+      routeThreats.length > 0
+    ) {
       try {
         const topThreat = routeThreats[0];
 
@@ -601,8 +630,8 @@ if (roadRiskSegmentsError) {
             vehicleId,
             tripId,
             alertId: topThreat.id,
-            riskScore,
-            riskLevel,
+            riskScore: threatRiskScore,
+            riskLevel: threatRiskLevel,
             message: `Automatic route safety escalation: ${topThreat.title}. ${topThreat.recommendation}`,
           }),
         });
@@ -615,8 +644,8 @@ if (roadRiskSegmentsError) {
           vehicle_id: vehicleId,
           trip_id: tripId,
           route_alert_id: topThreat.id,
-          risk_score: riskScore,
-          risk_level: riskLevel,
+          risk_score: threatRiskScore,
+          risk_level: threatRiskLevel,
           auto_escalated: autoEscalated,
           duplicate_detected:
             autoEscalationResult?.skipped === "duplicate_open_alert",
@@ -628,7 +657,11 @@ if (roadRiskSegmentsError) {
       }
     }
 
-    if (riskScore >= 80 && vehicleId && routeThreats.length > 0) {
+    if (
+      threatRiskScore >= 80 &&
+      vehicleId &&
+      routeThreats.length > 0
+    ) {
       try {
         const topThreat = routeThreats[0];
 
@@ -680,7 +713,7 @@ if (roadRiskSegmentsError) {
               body: JSON.stringify({
                 vehicleId,
                 route: recommendedRoute,
-                reason: `Automatic safer route assignment due to ${riskLevel} route risk (${riskScore}/100). Top threat: ${topThreat.title}.`,
+                reason: `Automatic safer route assignment due to ${threatRiskLevel} threat risk (${threatRiskScore}/100). Top threat: ${topThreat.title}.`,
               }),
             });
 
@@ -705,6 +738,10 @@ if (roadRiskSegmentsError) {
       routeEstimate,
       riskScore,
       riskLevel,
+      threatRiskScore,
+      threatRiskLevel,
+      weatherRiskScore,
+      weatherContribution,
       threats: routeThreats,
       weather: weatherResult
         ? {
