@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import CommandCenterDriverContactSection from "./sections/CommandCenterDriverContactSection";
 import CommandCenterRouteSafetySection from "./sections/CommandCenterRouteSafetySection";
@@ -185,6 +185,10 @@ export default function CommandCenterPage() {
     setShowStops,
     showHeatmap,
     setShowHeatmap,
+    showRoadRiskSegments,
+    setShowRoadRiskSegments,
+    minimumRoadRisk,
+    setMinimumRoadRisk,
     followSelected,
     setFollowSelected,
     search,
@@ -310,6 +314,10 @@ if (
         setShowStops={setShowStops}
         showHeatmap={showHeatmap}
         setShowHeatmap={setShowHeatmap}
+        showRoadRiskSegments={showRoadRiskSegments}
+        setShowRoadRiskSegments={setShowRoadRiskSegments}
+        minimumRoadRisk={minimumRoadRisk}
+        setMinimumRoadRisk={setMinimumRoadRisk}
         followSelected={followSelected}
         setFollowSelected={setFollowSelected}
         message={message}
@@ -331,6 +339,8 @@ if (
           selectedPosition={selectedPosition}
           followSelected={followSelected}
           showHeatmap={showHeatmap}
+          showRoadRiskSegments={showRoadRiskSegments}
+          minimumRoadRisk={minimumRoadRisk}
           showTrafficOverlay={showTrafficOverlay}
           vehiclesWithLocation={vehiclesWithLocation}
           icons={icons}

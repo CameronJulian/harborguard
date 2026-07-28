@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { Circle, Popup } from "react-leaflet";
@@ -154,8 +154,7 @@ export default function RoadRiskSegmentsLayer({
           );
 
           const color = riskColor(riskScore);
-
-          return (
+return (
             <Circle
               key={segment.id}
               center={[

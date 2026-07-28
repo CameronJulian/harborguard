@@ -26,6 +26,10 @@ type Props = {
   setShowStops: React.Dispatch<React.SetStateAction<boolean>>;
   showHeatmap: boolean;
   setShowHeatmap: React.Dispatch<React.SetStateAction<boolean>>;
+  showRoadRiskSegments: boolean;
+  setShowRoadRiskSegments: React.Dispatch<React.SetStateAction<boolean>>;
+  minimumRoadRisk: number;
+  setMinimumRoadRisk: React.Dispatch<React.SetStateAction<number>>;
   followSelected: boolean;
   setFollowSelected: React.Dispatch<React.SetStateAction<boolean>>;
 
@@ -50,6 +54,10 @@ export default function CommandCenterHeaderSection({
   setShowStops,
   showHeatmap,
   setShowHeatmap,
+  showRoadRiskSegments,
+  setShowRoadRiskSegments,
+  minimumRoadRisk,
+  setMinimumRoadRisk,
   followSelected,
   setFollowSelected,
   message,
@@ -100,6 +108,10 @@ export default function CommandCenterHeaderSection({
         setShowStops={setShowStops}
         showHeatmap={showHeatmap}
         setShowHeatmap={setShowHeatmap}
+        showRoadRiskSegments={showRoadRiskSegments}
+        setShowRoadRiskSegments={setShowRoadRiskSegments}
+        minimumRoadRisk={minimumRoadRisk}
+        setMinimumRoadRisk={setMinimumRoadRisk}
         followSelected={followSelected}
         setFollowSelected={setFollowSelected}
         message={message}

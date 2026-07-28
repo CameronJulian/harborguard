@@ -1,4 +1,4 @@
-﻿import type React from "react";
+import type React from "react";
 
 import NotificationCenter from "@/components/command-center/NotificationCenter";
 import CommandCenterFleetOperationsSnapshot from "./CommandCenterFleetOperationsSnapshot";
@@ -17,6 +17,8 @@ type Props = {
   selectedPosition: any;
   followSelected: boolean;
   showHeatmap: boolean;
+  showRoadRiskSegments: boolean;
+  minimumRoadRisk: number;
   showTrafficOverlay: boolean;
   vehiclesWithLocation: any[];
   icons: any;
@@ -51,6 +53,8 @@ export default function CommandCenterDashboardColumnSection({
   selectedPosition,
   followSelected,
   showHeatmap,
+  showRoadRiskSegments,
+  minimumRoadRisk,
   showTrafficOverlay,
   vehiclesWithLocation,
   icons,
@@ -104,6 +108,8 @@ export default function CommandCenterDashboardColumnSection({
         followSelected={followSelected}
         incidents={incidents}
         showHeatmap={showHeatmap}
+        showRoadRiskSegments={showRoadRiskSegments}
+        minimumRoadRisk={minimumRoadRisk}
         showTrafficOverlay={showTrafficOverlay}
         vehiclesWithLocation={vehiclesWithLocation}
         icons={icons}

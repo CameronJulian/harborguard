@@ -10,6 +10,10 @@ type Props = {
   setShowStops: Dispatch<SetStateAction<boolean>>;
   showHeatmap: boolean;
   setShowHeatmap: Dispatch<SetStateAction<boolean>>;
+  showRoadRiskSegments: boolean;
+  setShowRoadRiskSegments: Dispatch<SetStateAction<boolean>>;
+  minimumRoadRisk: number;
+  setMinimumRoadRisk: Dispatch<SetStateAction<number>>;
   followSelected: boolean;
   setFollowSelected: Dispatch<SetStateAction<boolean>>;
   message: string;
@@ -33,6 +37,10 @@ export default function CommandCenterToolbarSection(props: Props) {
     setShowStops,
     showHeatmap,
     setShowHeatmap,
+    showRoadRiskSegments,
+    setShowRoadRiskSegments,
+    minimumRoadRisk,
+    setMinimumRoadRisk,
     followSelected,
     setFollowSelected,
     message,
@@ -59,6 +67,43 @@ export default function CommandCenterToolbarSection(props: Props) {
           {showHeatmap ? "Hide Heatmap" : "Show Heatmap"}
         </button>
 
+        <button
+          onClick={() => setShowRoadRiskSegments((v) => !v)}
+          style={{
+            ...buttonStyle,
+            background: showRoadRiskSegments ? "#fff7ed" : "#fff",
+            color: "#c2410c",
+          }}
+        >
+          {showRoadRiskSegments
+            ? "Hide Road Risk"
+            : "Show Road Risk"}
+        </button>
+
+        <select
+          aria-label="Minimum road risk"
+          value={minimumRoadRisk}
+          disabled={!showRoadRiskSegments}
+          onChange={(event) =>
+            setMinimumRoadRisk(Number(event.target.value))
+          }
+          style={{
+            ...buttonStyle,
+            background: "#fff",
+            color: "#334155",
+            cursor: showRoadRiskSegments
+              ? "pointer"
+              : "not-allowed",
+            opacity: showRoadRiskSegments ? 1 : 0.55,
+          }}
+        >
+          <option value={1}>Risk 1+</option>
+          <option value={10}>Risk 10+</option>
+          <option value={20}>Risk 20+</option>
+          <option value={40}>Risk 40+</option>
+          <option value={60}>Risk 60+</option>
+          <option value={80}>Risk 80+</option>
+        </select>
         <button onClick={() => setFollowSelected((v) => !v)} style={{ ...buttonStyle, background: followSelected ? "#ecfdf5" : "#fff", color: "#16a34a" }}>
           {followSelected ? "Following Vehicle" : "Follow Vehicle"}
         </button>

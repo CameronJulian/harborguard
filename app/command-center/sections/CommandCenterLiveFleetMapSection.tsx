@@ -1,4 +1,4 @@
-﻿import type { Dispatch, SetStateAction } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import type { LatLngExpression } from "leaflet";
 import type { FleetVehicle, RoadIncident } from "../types";
 import FleetVehicleLayers from "../components/FleetVehicleLayers";
@@ -53,6 +53,8 @@ type Props = {
   followSelected: boolean;
   incidents: RoadIncident[];
   showHeatmap: boolean;
+  showRoadRiskSegments: boolean;
+  minimumRoadRisk: number;
   showTrafficOverlay: boolean;
   vehiclesWithLocation: FleetVehicle[];
   icons: Record<string, any>;
@@ -81,6 +83,8 @@ export default function CommandCenterLiveFleetMapSection({
   followSelected,
   incidents,
   showHeatmap,
+  showRoadRiskSegments,
+  minimumRoadRisk,
   showTrafficOverlay,
   vehiclesWithLocation,
   icons,
@@ -133,6 +137,8 @@ export default function CommandCenterLiveFleetMapSection({
           <RouteOverlayLayers
             incidents={incidents}
             showHeatmap={showHeatmap}
+            showRoadRiskSegments={showRoadRiskSegments}
+            minimumRoadRisk={minimumRoadRisk}
             showTrafficOverlay={showTrafficOverlay}
             saferRoutePolylines={saferRoutePolylines}
             CircleMarker={CircleMarker}

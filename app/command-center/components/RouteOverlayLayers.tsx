@@ -1,8 +1,10 @@
-﻿import type { RoadIncident } from "../types";
+import type { RoadIncident } from "../types";
 
 type Props = {
   incidents: RoadIncident[];
   showHeatmap: boolean;
+  showRoadRiskSegments: boolean;
+  minimumRoadRisk: number;
   showTrafficOverlay: boolean;
   saferRoutePolylines: [number, number][][];
 
@@ -22,6 +24,8 @@ type Props = {
 export default function RouteOverlayLayers({
   incidents,
   showHeatmap,
+  showRoadRiskSegments,
+  minimumRoadRisk,
   showTrafficOverlay,
   saferRoutePolylines,
   CircleMarker,
@@ -45,8 +49,8 @@ export default function RouteOverlayLayers({
       />
 
       <RoadRiskSegmentsLayer
-        enabled={true}
-        minimumRisk={1}
+        enabled={showRoadRiskSegments}
+        minimumRisk={minimumRoadRisk}
       />
 
       {incidents.map((incident) => {
