@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
+import { loadWeather } from "@/lib/weather/provider";
+import type { WeatherProviderResult } from "@/lib/weather/types";
 
 function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
   const earthRadius = 6371000;
@@ -233,6 +235,31 @@ export async function POST(req: NextRequest) {
     const originLng = Number(origin.lng);
     const destinationLat = Number(destination.lat);
     const destinationLng = Number(destination.lng);
+
+    let weatherResult: WeatherProviderResult | null = null;
+    let weatherError: string | null = null;
+
+    try {
+      const weatherLatitude =
+        (originLat + destinationLat) / 2;
+      const weatherLongitude =
+        (originLng + destinationLng) / 2;
+
+      weatherResult = await loadWeather(
+        weatherLatitude,
+        weatherLongitude
+      );
+    } catch (error: unknown) {
+      weatherError =
+        error instanceof Error
+          ? error.message
+          : "Current weather could not be loaded.";
+
+      console.error(
+        "[route-safety predict] Weather lookup failed:",
+        error
+      );
+    }
 
     const { data: alerts, error } = await supabase
       .from("route_safety_alerts")
@@ -679,6 +706,13 @@ if (roadRiskSegmentsError) {
       riskScore,
       riskLevel,
       threats: routeThreats,
+      weather: weatherResult
+        ? {
+            provider: weatherResult.provider,
+            ...weatherResult.weather,
+          }
+        : null,
+      weatherError,
       driverWarning:
         routeThreats.length > 0
           ? routeThreats[0].recommendation
@@ -691,3 +725,4 @@ if (roadRiskSegmentsError) {
     );
   }
 }
+
