@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@here/flexpolyline": "^0.1.0",
     "@sentry/nextjs": "^10.54.0",
     "@stripe/stripe-js": "^9.5.0",
     "@supabase/ssr": "^0.10.3",
