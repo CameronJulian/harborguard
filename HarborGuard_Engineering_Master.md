@@ -1265,3 +1265,45 @@ px tsc --noEmit) passed successfully.
 pm run build) passed successfully.
 - Git commit: 1772a8 - feat: add fleet weather intelligence to operations summary
 
+
+---
+
+# [2026-07-29 19:55] Fleet Health Weather Intelligence - COMPLETE
+
+## Status
+Completed
+
+## Summary
+Integrated the existing Open-Meteo weather provider into the Fleet Health API.
+
+## Changes Implemented
+- Added weather intelligence provider import.
+- Added latitude and longitude support from live vehicle locations.
+- Implemented live Open-Meteo weather lookup.
+- Added Fleet Health weather penalty calculation.
+- Integrated weather penalty into the Fleet Health score.
+- Added weather intelligence to the Fleet Health API response.
+- Added graceful fallback handling when no valid vehicle location exists.
+
+## Verification
+- TypeScript validation passed (
+px tsc --noEmit)
+- Production build passed (
+pm run build)
+- Runtime API verification passed
+- Fleet Health API returned live Open-Meteo weather data
+- Verified:
+  - weatherPenalty
+  - weatherIntelligence
+  - provider
+  - riskScore
+  - riskLevel
+  - temperature
+  - weatherWarning
+
+## Git
+Commit: c6af2ac
+
+## Result
+Fleet Health is now fully integrated with HarborGuard's weather intelligence platform and is consistent with the existing weather integrations used by Route Safety, ETA prediction, Operations Summary, and the Weather Provider framework.
+
