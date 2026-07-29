@@ -1102,3 +1102,75 @@ Every work item must follow this sequence:
 ## Next step
 
 Perform a fresh audit before selecting or implementing another HarborGuard feature. Do not assume weather-aware scoring, rerouting, map visualization, or another candidate item is the correct next task until the repository and exact insertion point have been inspected.
+---
+
+# 26. Latest verified milestone: traffic-aware composite route risk
+
+**Date:** 2026-07-29
+**Branch:** `main`
+**Commit:** `1a9cabc`
+**Commit message:** `Integrate traffic intelligence into route safety prediction`
+**Status:** Complete, verified, committed, and pushed.
+
+## Audit performed
+
+- Audited the existing traffic-intelligence engine in `lib/traffic/intelligence.ts`.
+- Verified the required function signature and organization-scoped parameters.
+- Verified the available traffic summary fields:
+  - `summary.riskScore`
+  - `summary.riskLevel`
+- Audited the existing scoring block in `app/api/route-safety/predict/route.ts`.
+- Audited the existing `/api/route-safety/predict` response structure before inserting new fields.
+
+## Precise gap identified
+
+The existing traffic-intelligence engine was available elsewhere in HarborGuard, but route-safety prediction did not load it, include it in composite route-risk scoring, or expose it in the prediction response.
+
+## Backend implementation
+
+- Imported and called `buildTrafficIntelligence`.
+- Used the midpoint between the route origin and destination as the traffic lookup location.
+- Used a 10,000 metre traffic-intelligence search radius.
+- Added non-fatal traffic lookup error handling through `trafficError`.
+- Added `trafficRiskScore` and `trafficRiskLevel`.
+- Added a traffic contribution capped at 20 points:
+  - `Math.min(20, Math.round(trafficRiskScore * 0.2))`
+- Updated the composite route-risk score to include:
+  - threat risk
+  - weather contribution
+  - traffic contribution
+- Exposed the following fields from `/api/route-safety/predict`:
+  - `trafficRiskScore`
+  - `trafficRiskLevel`
+  - `trafficContribution`
+  - `traffic`
+  - `trafficError`
+
+## Failure behaviour
+
+- A traffic-intelligence lookup failure does not fail the route prediction request.
+- Failed or unavailable traffic intelligence falls back to:
+  - traffic risk score `0`
+  - traffic risk level `LOW`
+  - traffic contribution `0`
+- The lookup failure is logged and returned through `trafficError`.
+
+## Validation evidence
+
+- `npx tsc --noEmit` passed with no errors.
+- `npm run build` passed.
+- Next.js compiled successfully.
+- TypeScript completed successfully during the production build.
+- All 119 static pages were generated.
+- `/api/route-safety/predict` was included successfully in the production route output.
+- `git diff --check` returned no whitespace errors.
+- Only `app/api/route-safety/predict/route.ts` was included in the implementation commit.
+- Commit `1a9cabc` was pushed successfully to `main`.
+
+## Files changed
+
+- `app/api/route-safety/predict/route.ts`
+
+## Next step
+
+Commit and push this engineering-document update separately. Afterward, perform a fresh audit of the frontend route-safety data flow and existing Command Center components before deciding whether traffic intelligence needs a new UI panel, additional route-level visualization, or another focused roadmap item.
