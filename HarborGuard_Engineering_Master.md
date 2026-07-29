@@ -1174,3 +1174,54 @@ The existing traffic-intelligence engine was available elsewhere in HarborGuard,
 ## Next step
 
 Commit and push this engineering-document update separately. Afterward, perform a fresh audit of the frontend route-safety data flow and existing Command Center components before deciding whether traffic intelligence needs a new UI panel, additional route-level visualization, or another focused roadmap item.
+
+# 27. Latest verified milestone:
+traffic risk displayed in Route Safety breakdown
+
+## Feature completed
+
+The Command Center Route Safety breakdown now displays the traffic risk data already returned by the route-safety prediction API.
+
+## Audit performed
+
+The existing Route Safety frontend flow was inspected before making changes.
+
+The audit confirmed:
+
+- `useCommandCenterRouteSafety.ts` already stores the full prediction response.
+- The traffic fields were already available in `routePrediction`.
+- No hook, API, database, or backend changes were required.
+- The only precise gap was the missing traffic information in the Composite Risk Breakdown UI.
+
+## Focused implementation
+
+Updated:
+
+- `app/command-center/sections/CommandCenterRouteSafetySection.tsx`
+
+Added the following rows:
+
+- Traffic risk
+- Traffic level
+- Traffic contribution
+
+The existing UI layout and styling were preserved.
+
+## Verification
+
+The change was verified with:
+
+- `git diff` reviewed
+- `git diff --check` passed
+- `npx tsc --noEmit` passed
+- `npm run build` passed
+- 119 static pages generated successfully
+
+## Implementation commit
+
+- Commit: `57ed1d7`
+- Message: `Display traffic risk in route safety breakdown`
+
+## Result
+
+Operators can now see the traffic portion of the composite route-risk score directly in the Command Center Route Safety panel.
