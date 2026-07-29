@@ -1225,3 +1225,21 @@ The change was verified with:
 ## Result
 
 Operators can now see the traffic portion of the composite route-risk score directly in the Command Center Route Safety panel.
+## 2026-07-29
+
+### Completed
+
+- Integrated live weather intelligence into Fleet ETA prediction.
+- ETA now considers:
+  - Traffic delay
+  - Incident delay
+  - Weather delay
+- Added weather intelligence to the Fleet ETA API response.
+- Added weather risk score and weather risk level to ETA prediction.
+- Production build completed successfully.
+- TypeScript validation (
+px tsc --noEmit) passed successfully.
+- Production build (
+pm run build) passed successfully.
+- Git commit: 81cf5d5 - feat: integrate weather risk into ETA prediction
+
