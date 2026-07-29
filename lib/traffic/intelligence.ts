@@ -29,10 +29,24 @@ export async function buildTrafficIntelligence(
   const now = new Date().toISOString();
 
   const { data: incidents, error: incidentsError } = await supabase
-    .from("road_incidents")
-    .select("*")
+    .from("route_safety_alerts")
+    .select(`
+      id,
+      type,
+      title,
+      description,
+      latitude,
+      longitude,
+      radius_meters,
+      severity,
+      source,
+      status,
+      expires_at,
+      created_at
+    `)
     .eq("organization_id", organizationId)
-    .eq("is_active", true)
+    .eq("status", "active")
+    .in("source", ["here_traffic", "tomtom"])
     .or(`expires_at.is.null,expires_at.gt.${now}`)
     .order("created_at", { ascending: false })
     .limit(50);
@@ -88,7 +102,7 @@ export async function buildTrafficIntelligence(
       incidents: incidents || [],
       flow,
       sources: {
-        incidents: "road_incidents",
+        incidents: "route_safety_alerts_provider_incidents",
         flow: flow.length > 0 ? "here_flow_live" : "unavailable",
       },
       warnings: flowWarning ? [flowWarning] : [],
@@ -96,3 +110,4 @@ export async function buildTrafficIntelligence(
     generatedAt: new Date().toISOString(),
   };
 }
+
