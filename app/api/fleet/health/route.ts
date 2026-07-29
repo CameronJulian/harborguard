@@ -1,7 +1,7 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 import { buildTrafficIntelligence } from "@/lib/traffic/intelligence";
-
+import { loadWeather } from "@/lib/weather/provider";
 const OFFLINE_MINUTES = 15;
 const STOP_SPEED_KMH = 3;
 
@@ -28,6 +28,18 @@ function trafficHealthPenalty(summary: any) {
       Math.min(activeIncidents, 5)
   );
 }
+function weatherHealthPenalty(
+  weatherResult: Awaited<ReturnType<typeof loadWeather>> | null
+) {
+  const riskScore = Number(
+    weatherResult?.weather.riskScore || 0
+  );
+
+  return Math.min(
+    20,
+    Math.round(riskScore * 0.2)
+  );
+}
 
 export async function GET() {
   try {
@@ -41,7 +53,7 @@ export async function GET() {
       incidentsResult,
     ] = await Promise.all([
       supabase.from("vehicles").select("id, nickname, registration_number").eq("organization_id", organizationId),
-      supabase.from("vehicle_locations").select("vehicle_id, speed_kmh, recorded_at").eq("organization_id", organizationId).order("recorded_at", { ascending: false }).limit(1000),
+      supabase.from("vehicle_locations").select("vehicle_id, latitude, longitude, speed_kmh, recorded_at").eq("organization_id", organizationId).order("recorded_at", { ascending: false }).limit(1000),
       supabase.from("vehicle_alerts").select("id, vehicle_id, alert_type, severity, created_at").eq("organization_id", organizationId).eq("is_resolved", false),
       supabase.from("vehicle_trips").select("id, vehicle_id, status").eq("organization_id", organizationId),
       supabase.from("incidents").select("id, severity, status, created_at").eq("organization_id", organizationId),
@@ -55,6 +67,12 @@ export async function GET() {
 
     let trafficSummary: any = null;
     let trafficWarning: string | null = null;
+
+    let weatherResult:
+      | Awaited<ReturnType<typeof loadWeather>>
+      | null = null;
+
+    let weatherWarning: string | null = null;
 
     try {
       const trafficResult = await buildTrafficIntelligence(
@@ -70,6 +88,44 @@ export async function GET() {
           : "Traffic intelligence unavailable.";
     }
 
+    const weatherCenter = (
+      locationsResult.data || []
+    ).find((location: any) => {
+      const latitude = Number(location.latitude);
+      const longitude = Number(location.longitude);
+
+      return (
+        Number.isFinite(latitude) &&
+        Number.isFinite(longitude) &&
+        latitude >= -90 &&
+        latitude <= 90 &&
+        longitude >= -180 &&
+        longitude <= 180 &&
+        !(latitude === 0 && longitude === 0)
+      );
+    });
+
+    if (weatherCenter) {
+      try {
+        weatherResult = await loadWeather(
+          Number(weatherCenter.latitude),
+          Number(weatherCenter.longitude)
+        );
+      } catch (weatherError: unknown) {
+        weatherWarning =
+          weatherError instanceof Error
+            ? weatherError.message
+            : "Weather intelligence unavailable.";
+
+        console.error(
+          "[fleet health] Weather lookup failed:",
+          weatherError
+        );
+      }
+    } else {
+      weatherWarning =
+        "Weather intelligence unavailable because no valid live vehicle location was found.";
+    }
     const vehicles = vehiclesResult.data || [];
     const locations = locationsResult.data || [];
     const alerts = alertsResult.data || [];
@@ -181,6 +237,7 @@ export async function GET() {
         : 100;
 
     const trafficPenalty = trafficHealthPenalty(trafficSummary);
+    const weatherPenalty = weatherHealthPenalty(weatherResult);
 
     let healthScore = averageVehicleScore;
 
@@ -190,6 +247,7 @@ export async function GET() {
     healthScore -= Math.min(offline * 4, 20);
     healthScore -= Math.min(sos * 25, 50);
     healthScore -= trafficPenalty;
+    healthScore -= weatherPenalty;
 
     healthScore = Math.max(0, Math.min(100, healthScore));
 
@@ -219,6 +277,36 @@ export async function GET() {
         geofenceBreaches,
         averageVehicleScore,
         trafficPenalty,
+        weatherPenalty,
+
+        weatherIntelligence: weatherResult
+          ? {
+              provider: weatherResult.provider,
+              riskScore: weatherResult.weather.riskScore,
+              riskLevel: weatherResult.weather.riskLevel,
+              riskReasons: weatherResult.weather.riskReasons,
+              temperatureC: weatherResult.weather.temperatureC,
+              windSpeedKph: weatherResult.weather.windSpeedKph,
+              windGustKph: weatherResult.weather.windGustKph,
+              precipitationMm: weatherResult.weather.precipitationMm,
+              visibilityKm: weatherResult.weather.visibilityKm,
+              observedAt: weatherResult.weather.observedAt,
+              warning: weatherWarning,
+            }
+          : {
+              provider: null,
+              riskScore: 0,
+              riskLevel: "unknown",
+              riskReasons: [],
+              temperatureC: null,
+              windSpeedKph: null,
+              windGustKph: null,
+              precipitationMm: null,
+              visibilityKm: null,
+              observedAt: null,
+              warning: weatherWarning,
+            },
+
         trafficIntelligence: {
           riskScore: trafficSummary?.riskScore || 0,
           riskLevel: trafficSummary?.riskLevel || "unknown",
@@ -230,6 +318,8 @@ export async function GET() {
       },
       trafficIntelligence: trafficSummary,
       trafficWarning,
+      weatherIntelligence: weatherResult,
+      weatherWarning,
       vehicles: vehicleHealth.sort((a, b) => a.score - b.score),
     });
   } catch (error: any) {
