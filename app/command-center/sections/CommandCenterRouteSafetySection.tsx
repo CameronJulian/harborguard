@@ -167,6 +167,23 @@ export default function CommandCenterRouteSafetySection({
                   +{routePrediction.weatherContribution ?? 0}
                 </strong>
 
+                <span>Traffic risk</span>
+                <strong>
+                  {routePrediction.trafficRiskScore ?? 0}/100
+                </strong>
+
+                <span>Traffic level</span>
+                <strong>
+                  {String(
+                    routePrediction.trafficRiskLevel || "unknown"
+                  ).toUpperCase()}
+                </strong>
+
+                <span>Traffic contribution</span>
+                <strong>
+                  +{routePrediction.trafficContribution ?? 0}
+                </strong>
+
                 <div
                   style={{
                     gridColumn: "1 / -1",
