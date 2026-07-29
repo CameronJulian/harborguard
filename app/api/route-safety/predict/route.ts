@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 import { loadWeather } from "@/lib/weather/provider";
+import { buildTrafficIntelligence } from "@/lib/traffic/intelligence";
 import type { WeatherProviderResult } from "@/lib/weather/types";
 
 function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
@@ -238,6 +239,10 @@ export async function POST(req: NextRequest) {
 
     let weatherResult: WeatherProviderResult | null = null;
     let weatherError: string | null = null;
+    let trafficResult:
+      | Awaited<ReturnType<typeof buildTrafficIntelligence>>
+      | null = null;
+    let trafficError: string | null = null;
 
     try {
       const weatherLatitude =
@@ -258,6 +263,33 @@ export async function POST(req: NextRequest) {
       console.error(
         "[route-safety predict] Weather lookup failed:",
         error
+      );
+    }
+
+    try {
+      const trafficLatitude =
+        (originLat + destinationLat) / 2;
+      const trafficLongitude =
+        (originLng + destinationLng) / 2;
+
+      trafficResult = await buildTrafficIntelligence(
+        supabase,
+        organizationId,
+        {
+          latitude: trafficLatitude,
+          longitude: trafficLongitude,
+          radiusMeters: 10000,
+        }
+      );
+    } catch (trafficLookupError: unknown) {
+      trafficError =
+        trafficLookupError instanceof Error
+          ? trafficLookupError.message
+          : "Current traffic intelligence could not be loaded.";
+
+      console.error(
+        "[route-safety predict] Traffic intelligence lookup failed:",
+        trafficLookupError
       );
     }
 
@@ -584,9 +616,22 @@ if (roadRiskSegmentsError) {
       Math.round(weatherRiskScore * 0.2)
     );
 
+    const trafficRiskScore =
+      trafficResult?.summary.riskScore ?? 0;
+
+    const trafficRiskLevel =
+      trafficResult?.summary.riskLevel ?? "LOW";
+
+    const trafficContribution = Math.min(
+      20,
+      Math.round(trafficRiskScore * 0.2)
+    );
+
     const riskScore = Math.min(
       100,
-      threatRiskScore + weatherContribution
+      threatRiskScore +
+        weatherContribution +
+        trafficContribution
     );
 
     const threatRiskLevel =
@@ -742,6 +787,11 @@ if (roadRiskSegmentsError) {
       threatRiskLevel,
       weatherRiskScore,
       weatherContribution,
+      trafficRiskScore,
+      trafficRiskLevel,
+      trafficContribution,
+      traffic: trafficResult,
+      trafficError,
       threats: routeThreats,
       weather: weatherResult
         ? {
