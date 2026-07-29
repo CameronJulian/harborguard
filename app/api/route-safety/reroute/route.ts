@@ -4,7 +4,7 @@ import { calculateHereRoutes } from "@/lib/routing/hereRouting";
 
 export async function POST(req: NextRequest) {
   try {
-    await requireOrganization();
+    const { supabase, organizationId } = await requireOrganization();
 
     const body = await req.json();
     const { origin, destination } = body;
@@ -16,7 +16,39 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = await calculateHereRoutes(origin, destination);
+    const {
+      data: roadRiskSegments,
+      error: roadRiskError,
+    } = await supabase
+      .from("road_risk_segments")
+      .select(`
+        id,
+        latitude,
+        longitude,
+        radius_meters,
+        risk_score,
+        collision_count,
+        crime_count,
+        roadblock_count,
+        traffic_signal_count,
+        other_event_count,
+        verification_count,
+        last_event_at
+      `)
+      .eq("organization_id", organizationId);
+
+    if (roadRiskError) {
+      return NextResponse.json(
+        { error: roadRiskError.message },
+        { status: 500 }
+      );
+    }
+
+    const result = await calculateHereRoutes(
+      origin,
+      destination,
+      roadRiskSegments ?? []
+    );
 
     return NextResponse.json({
       success: true,
@@ -29,3 +61,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

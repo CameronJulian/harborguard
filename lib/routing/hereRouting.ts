@@ -61,7 +61,12 @@ function decodeHereRouteSections(sections: any[]): RoutePoint[] {
   return points;
 }
 
-export async function calculateHereRoutes(origin: any, destination: any) {
+export async function calculateHereRoutes(
+  origin: any,
+  destination: any,
+  roadRiskSegments: any[] = []
+) {
+  void roadRiskSegments;
   if (!process.env.HERE_API_KEY) {
     throw new Error("HERE_API_KEY is not configured.");
   }
