@@ -5,19 +5,37 @@
   averageCongestion: number;
   activeIncidents: number;
   trafficRiskLevel: string;
+  weatherRiskScore?: number;
+  weatherRiskLevel?: string;
 };
 
-function recommendation(delay: number, level: string) {
-  if (level === "critical" || delay >= 25) {
-    return "High traffic risk. Consider rerouting immediately.";
+function recommendation(
+  delay: number,
+  trafficLevel: string,
+  weatherLevel: string
+) {
+  if (weatherLevel === "critical") {
+    return "Critical weather conditions may significantly affect travel. Consider delaying or rerouting the mission.";
   }
 
-  if (level === "high" || delay >= 15) {
-    return "Monitor traffic and prepare alternate route.";
+  if (trafficLevel === "critical" || delay >= 25) {
+    return "High operational delay risk. Consider rerouting immediately.";
   }
 
-  if (level === "medium" || delay >= 8) {
-    return "Moderate delay expected. Monitor ETA.";
+  if (weatherLevel === "high") {
+    return "Severe weather may affect vehicle speed and visibility. Monitor the driver and prepare an alternate route.";
+  }
+
+  if (trafficLevel === "high" || delay >= 15) {
+    return "Monitor traffic and prepare an alternate route.";
+  }
+
+  if (
+    weatherLevel === "medium" ||
+    trafficLevel === "medium" ||
+    delay >= 8
+  ) {
+    return "Moderate delay expected. Monitor ETA and road conditions.";
   }
 
   return "Route operating normally.";
@@ -38,18 +56,41 @@ export function predictETA(options: ETAOptions) {
       ? Math.min(20, options.activeIncidents * 3)
       : 0;
 
-  const predictedDelay = trafficDelay + incidentDelay;
+  const normalizedWeatherRiskScore = Math.min(
+    100,
+    Math.max(0, Number(options.weatherRiskScore) || 0)
+  );
+
+  const weatherDelay = Math.min(
+    20,
+    Math.round(normalizedWeatherRiskScore * 0.2)
+  );
+
+  const predictedDelay =
+    trafficDelay +
+    incidentDelay +
+    weatherDelay;
 
   const eta = new Date(
     Date.now() + (baseMinutes + predictedDelay) * 60000
   );
 
+  const weatherRiskLevel =
+    options.weatherRiskLevel || "low";
+
   return {
     baseMinutes: Math.round(baseMinutes),
+    trafficDelay,
+    incidentDelay,
+    weatherDelay,
     predictedDelay,
     totalMinutes: Math.round(baseMinutes + predictedDelay),
     estimatedArrival: eta,
     confidence: Math.max(55, 100 - predictedDelay),
-    recommendation: recommendation(predictedDelay, options.trafficRiskLevel),
+    recommendation: recommendation(
+      predictedDelay,
+      options.trafficRiskLevel,
+      weatherRiskLevel
+    ),
   };
 }
