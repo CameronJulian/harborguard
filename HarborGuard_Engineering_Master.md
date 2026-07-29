@@ -1243,3 +1243,25 @@ px tsc --noEmit) passed successfully.
 pm run build) passed successfully.
 - Git commit: 81cf5d5 - feat: integrate weather risk into ETA prediction
 
+
+## 2026-07-29
+
+### Completed
+
+- Added fleet-wide weather intelligence to the Fleet Operations Summary API.
+- Operations Summary now includes:
+  - Average fleet weather risk score
+  - Weather risk distribution (Low / Medium / High / Critical)
+  - Vehicles with weather intelligence available
+  - Vehicles at elevated weather risk
+  - Vehicles at severe weather risk
+  - Weather lookup warnings for failed providers
+- Reused the existing HarborGuard weather provider for fleet-wide intelligence.
+- Verified compatibility with the existing organization-based data model.
+- Confirmed ehicle_locations.organization_id is present and consistent with the existing architecture.
+- TypeScript validation (
+px tsc --noEmit) passed successfully.
+- Production build (
+pm run build) passed successfully.
+- Git commit: 1772a8 - feat: add fleet weather intelligence to operations summary
+
