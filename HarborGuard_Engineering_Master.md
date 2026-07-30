@@ -17,7 +17,7 @@
 When starting a new ChatGPT conversation:
 
 1. Upload this file.
-2. Say: **â€œUse this HarborGuard Engineering Master as the source of truth. Audit the current codebase before proposing changes. Continue from the Current Status and Next Recommended Work sections.â€**
+2. Say: **Ã¢â‚¬Å“Use this HarborGuard Engineering Master as the source of truth. Audit the current codebase before proposing changes. Continue from the Current Status and Next Recommended Work sections.Ã¢â‚¬Â**
 3. Upload any newer audit files, migration files, screenshots, or logs relevant to the next task.
 4. Do not assume this document is perfectly current if code has changed since the last update. Re-audit the repository before implementation.
 
@@ -1343,10 +1343,10 @@ Audit the existing Crowd Intelligence, Route Safety, and Road Risk architecture 
 Verified Route Safety alerts follow this architecture:
 
 route_safety_alerts
-â†’ route_intelligence
-â†’ aggregate_road_risk_intelligence()
-â†’ road_risk_segment_events
-â†’ road_risk_segments
+Ã¢â€ â€™ route_intelligence
+Ã¢â€ â€™ aggregate_road_risk_intelligence()
+Ã¢â€ â€™ road_risk_segment_events
+Ã¢â€ â€™ road_risk_segments
 
 This is the confirmed production aggregation pipeline.
 
@@ -1383,25 +1383,25 @@ Implemented automated external traffic provider ingestion with centralized cron 
 
 ## Completed Work
 
-- ✅ Created /api/route-safety/cron/providers.
-- ✅ Added CRON_SECRET authentication.
-- ✅ Integrated HERE Traffic ingestion.
-- ✅ Added duplicate detection before database inserts.
-- ✅ Restricted ingestion to a single configured organization using TRAFFIC_IMPORT_ORGANIZATION_ID.
-- ✅ Added automated Vercel cron schedule (every 30 minutes).
-- ✅ Verified production build succeeds.
-- ✅ Verified TypeScript compilation succeeds.
-- ✅ Verified HERE ingestion imports only new incidents.
-- ✅ Verified duplicate detection skips existing incidents.
-- ✅ Cleaned up accidental multi-organization HERE imports.
+- âœ… Created /api/route-safety/cron/providers.
+- âœ… Added CRON_SECRET authentication.
+- âœ… Integrated HERE Traffic ingestion.
+- âœ… Added duplicate detection before database inserts.
+- âœ… Restricted ingestion to a single configured organization using TRAFFIC_IMPORT_ORGANIZATION_ID.
+- âœ… Added automated Vercel cron schedule (every 30 minutes).
+- âœ… Verified production build succeeds.
+- âœ… Verified TypeScript compilation succeeds.
+- âœ… Verified HERE ingestion imports only new incidents.
+- âœ… Verified duplicate detection skips existing incidents.
+- âœ… Cleaned up accidental multi-organization HERE imports.
 
 ## Current Status
 
-- HERE Provider: ✅ Operational
-- Automated Cron: ✅ Operational
-- Duplicate Detection: ✅ Verified
-- Organization Isolation: ✅ Verified
-- TomTom Provider: ⏳ Awaiting TOMTOM_API_KEY
+- HERE Provider: âœ… Operational
+- Automated Cron: âœ… Operational
+- Duplicate Detection: âœ… Verified
+- Organization Isolation: âœ… Verified
+- TomTom Provider: â³ Awaiting TOMTOM_API_KEY
 
 ## Next Planned Work
 
@@ -1477,8 +1477,8 @@ HarborGuard now treats HERE and TomTom as corroborating traffic intelligence sou
   - matchedRiskSegmentIds
   - riskVerificationCount
 - Verified with:
-  - TypeScript ✔
-  - Production Build ✔
+  - TypeScript âœ”
+  - Production Build âœ”
 - Committed and pushed to GitHub.
 
 ---
@@ -1498,8 +1498,8 @@ HarborGuard now treats HERE and TomTom as corroborating traffic intelligence sou
   - recommendedRoute
 - Updated recommendation messages to describe the selected route.
 - Verified with:
-  - TypeScript ✔
-  - Production Build ✔
+  - TypeScript âœ”
+  - Production Build âœ”
 - Committed and pushed to GitHub.
 
 ---
@@ -1507,19 +1507,19 @@ HarborGuard now treats HERE and TomTom as corroborating traffic intelligence sou
 ## Current Routing Pipeline
 
 HERE Routing API
-→ Decode HERE Geometry
-→ Compare Against road_risk_segments
-→ Calculate Route Safety Metrics
-→ Rank Route Alternatives
-→ Select Recommended Route
-→ Return Ranked Routes + Recommendation
+â†’ Decode HERE Geometry
+â†’ Compare Against road_risk_segments
+â†’ Calculate Route Safety Metrics
+â†’ Rank Route Alternatives
+â†’ Select Recommended Route
+â†’ Return Ranked Routes + Recommendation
 
 ### Current Status
-✅ Road risk scoring complete
+âœ… Road risk scoring complete
 
-✅ Route ranking complete
+âœ… Route ranking complete
 
-✅ Recommendation generation complete
+âœ… Recommendation generation complete
 
 ### Next Recommended Milestone
 Implement configurable routing profiles:
@@ -1610,7 +1610,7 @@ Then make one focused migration that updates the aggregation RPC to populate the
 
 ---
 
-# Engineering Update � 30 July 2026
+# Engineering Update — 30 July 2026
 
 ## Road Risk Segments Taxonomy v2 - Aggregation Complete
 
@@ -1631,12 +1631,12 @@ Completed the implementation of the Road Risk Segments Taxonomy v2 aggregation l
 - Repository verified clean after commit.
 
 ### Git History
-- 9de7fec � Expand road risk segments schema for taxonomy v2
-- 059c768 � Document road risk segments taxonomy v2 schema
-- cf3afb7 � Update road risk aggregation for taxonomy v2
+- 9de7fec — Expand road risk segments schema for taxonomy v2
+- 059c768 — Document road risk segments taxonomy v2 schema
+- cf3afb7 — Update road risk aggregation for taxonomy v2
 
 ### Status
-? Completed
+✓ Completed
 
 ### Next Audit
 Audit all API routes and UI components that consume Road Risk Segment data to ensure the new taxonomy fields are surfaced throughout:
