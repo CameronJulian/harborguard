@@ -1607,3 +1607,43 @@ Audit `aggregate_road_risk_intelligence()` and identify:
 5. every API and UI consumer that assumes only the legacy counters
 
 Then make one focused migration that updates the aggregation RPC to populate the Road Risk Segments v2 counters without changing unrelated behavior.
+
+---
+
+# Engineering Update — 30 July 2026
+
+## Road Risk Segments Taxonomy v2 - Aggregation Complete
+
+### Summary
+Completed the implementation of the Road Risk Segments Taxonomy v2 aggregation layer by replacing the ggregate_road_risk_intelligence() PostgreSQL function with a taxonomy-aware implementation.
+
+### Changes Completed
+- Expanded aggregation logic to support the new Road Risk taxonomy.
+- Added aggregation support for all new incident categories.
+- Preserved backwards compatibility with the existing RPC signature.
+- Updated normalization and aggregation logic for taxonomy v2.
+- Successfully applied the migration to the linked Supabase project.
+
+### Validation
+- Supabase migration applied successfully.
+- TypeScript compilation completed without errors.
+- Production build completed successfully.
+- Repository verified clean after commit.
+
+### Git History
+- 9de7fec — Expand road risk segments schema for taxonomy v2
+- 059c768 — Document road risk segments taxonomy v2 schema
+- cf3afb7 — Update road risk aggregation for taxonomy v2
+
+### Status
+? Completed
+
+### Next Audit
+Audit all API routes and UI components that consume Road Risk Segment data to ensure the new taxonomy fields are surfaced throughout:
+- /api/route-safety/nearby
+- /api/route-safety/segments
+- /api/route-safety/predict
+- Risk Dashboard
+- Road Intelligence
+- Command Center map overlays
+
