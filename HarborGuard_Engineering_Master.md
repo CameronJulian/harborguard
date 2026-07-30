@@ -1456,3 +1456,78 @@ Added fields:
 ### Result
 
 HarborGuard now treats HERE and TomTom as corroborating traffic intelligence sources. Matching incidents are merged into one verified alert, and confidence increases when multiple providers confirm the same event.
+---
+
+# Engineering Progress Update
+**Date:** 2026-07-30
+
+## Completed Feature: HERE Route Risk Scoring
+**Commit:** 9c6f0f1
+
+### Summary
+- Added road risk scoring for every HERE route alternative.
+- Reused the shared calculateDistanceMeters() helper.
+- Evaluated decoded HERE route geometry against oad_risk_segments.
+- Added:
+  - safetyScore
+  - riskScore
+  - totalRiskScore
+  - highestRiskScore
+  - matchedRiskSegmentCount
+  - matchedRiskSegmentIds
+  - riskVerificationCount
+- Verified with:
+  - TypeScript ✔
+  - Production Build ✔
+- Committed and pushed to GitHub.
+
+---
+
+## Completed Feature: Route Ranking
+**Commit:** 916288d
+
+### Summary
+- Added ankRoutesBySafety().
+- Ranked routes by:
+  1. Safety Score
+  2. Duration
+  3. Original HERE order
+- Added:
+  - rank
+  - isRecommended
+  - recommendedRoute
+- Updated recommendation messages to describe the selected route.
+- Verified with:
+  - TypeScript ✔
+  - Production Build ✔
+- Committed and pushed to GitHub.
+
+---
+
+## Current Routing Pipeline
+
+HERE Routing API
+→ Decode HERE Geometry
+→ Compare Against road_risk_segments
+→ Calculate Route Safety Metrics
+→ Rank Route Alternatives
+→ Select Recommended Route
+→ Return Ranked Routes + Recommendation
+
+### Current Status
+✅ Road risk scoring complete
+
+✅ Route ranking complete
+
+✅ Recommendation generation complete
+
+### Next Recommended Milestone
+Implement configurable routing profiles:
+
+- Safest
+- Fastest
+- Balanced
+- Emergency Response
+
+This will allow HarborGuard to recommend routes differently depending on fleet type and operational requirements.
+

@@ -559,7 +559,28 @@ if (roadRiskSegmentsError) {
         const baseScore =
           severityWeight(alert.severity) + typeWeight(alert.type);
 
-               const aggregatedRiskScore = Number(
+        const normalizedConfidence =
+          alert.confidence ??
+          alert.provider_confidence ??
+          null;
+
+        const normalizedVerificationCount =
+          alert.verification_count ??
+          alert.provider_confirmation_count ??
+          0;
+
+        const normalizedCreatedAt =
+          alert.last_provider_confirmation_at ??
+          alert.created_at ??
+          null;
+
+        const normalizedFreshness =
+          alert.freshness ||
+          classifyIntelligenceFreshness(
+            normalizedCreatedAt,
+            normalizedVerificationCount
+          );
+        const aggregatedRiskScore = Number(
           alert.aggregated_risk_score
         );
 
@@ -569,9 +590,9 @@ if (roadRiskSegmentsError) {
               100,
               applyIntelligenceWeighting(
                 baseScore,
-                alert.confidence,
-                alert.verification_count,
-                alert.created_at
+                normalizedConfidence,
+                normalizedVerificationCount,
+                normalizedCreatedAt
               )
             );
 
@@ -586,10 +607,10 @@ if (roadRiskSegmentsError) {
           distanceFromRoute: Math.round(distanceFromRoute),
           isLikelyOnRoute,
           score,
-          freshness: alert.freshness || null,
-          confidence: alert.confidence ?? null,
-          verificationCount: alert.verification_count ?? 0,
-          createdAt: alert.created_at ?? null,
+          freshness: normalizedFreshness,
+          confidence: normalizedConfidence,
+          verificationCount: normalizedVerificationCount,
+          createdAt: normalizedCreatedAt,
           source: alert.source ?? null,
           recommendation:
             alert.recommendation_override ||
