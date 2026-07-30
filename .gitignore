@@ -66,3 +66,33 @@ HarborGuard-*.log
 # OS artifacts
 Thumbs.db
 supabase/.branches/
+
+# Local HarborGuard audit outputs
+Audit-*.txt
+*-Audit.txt
+*-Audit-*.txt
+Community-Search.txt
+Cross-Provider-*.txt
+Crowd-*.txt
+Live-Traffic-*.txt
+Map-Source-Audit.txt
+Road-*.txt
+RoadIncidents-*.txt
+RoadIntelligence-*.txt
+RoadRisk-*.txt
+Route-*.txt
+Vehicle-Selector-Audit.txt
+Vision-*.txt
+VisionRequestAudit.txt
+Weather-*.txt
+FleetOperations*.txt
+FleetWeather*.txt
+External-*.txt
+
+# Local audit and backup directories
+_audit-backups/
+
+# Local backup files
+*.bak
+*.bak-*
+*.backup
