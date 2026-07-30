@@ -11,6 +11,7 @@ type ProviderResult = {
   rawCount: number;
   imported: number;
   skippedDuplicates: number;
+  mergedDuplicates: number;
   error: string | null;
 };
 
@@ -192,13 +193,26 @@ async function insertNewProviderAlerts(
     return {
       imported: 0,
       skippedDuplicates: 0,
+      mergedDuplicates: 0,
     };
   }
 
   const { data: existingAlerts, error: existingError } =
     await supabase
       .from("route_safety_alerts")
-      .select("source, type, title, latitude, longitude")
+      .select(`
+        id,
+        source,
+        type,
+        title,
+        latitude,
+        longitude,
+        expires_at,
+        provider_sources,
+        provider_confirmation_count,
+        provider_confidence,
+        last_provider_confirmation_at
+      `)
       .eq("organization_id", organizationId)
       .eq("status", "active");
 
@@ -220,22 +234,45 @@ async function insertNewProviderAlerts(
       )
   );
 
-  const uniqueRows = rows.filter((row) => {
+  const uniqueRows: Array<
+    AlertRow & {
+      provider_sources: string[];
+      provider_confirmation_count: number;
+      provider_confidence: number;
+      last_provider_confirmation_at: string;
+    }
+  > = [];
+
+  let skippedDuplicates = 0;
+  let mergedDuplicates = 0;
+
+  for (const row of rows) {
     const key = buildAlertKey(row);
 
     if (existingSameProviderKeys.has(key)) {
-      return false;
+      skippedDuplicates += 1;
+      continue;
     }
 
-    const crossProviderDuplicate =
-      normalizedExistingAlerts.some((alert: any) => {
-        if (alert.source === source) {
-          return false;
-        }
-
+    const crossProviderMatch =
+      normalizedExistingAlerts.find((alert: any) => {
         const existingSource = String(alert.source || "");
 
         if (!["here_traffic", "tomtom"].includes(existingSource)) {
+          return false;
+        }
+
+        if (existingSource === source) {
+          return false;
+        }
+
+        const existingProviderSources = Array.isArray(
+          alert.provider_sources
+        )
+          ? alert.provider_sources.map(String)
+          : [existingSource];
+
+        if (existingProviderSources.includes(source)) {
           return false;
         }
 
@@ -263,29 +300,108 @@ async function insertNewProviderAlerts(
         );
       });
 
-    if (crossProviderDuplicate) {
-      return false;
+    if (crossProviderMatch) {
+      const confirmedAt = new Date().toISOString();
+
+      const providerSources = Array.from(
+        new Set([
+          ...(Array.isArray(crossProviderMatch.provider_sources)
+            ? crossProviderMatch.provider_sources.map(String)
+            : [String(crossProviderMatch.source || "")]),
+          source,
+        ])
+      ).filter(Boolean);
+
+      const providerConfirmationCount = providerSources.length;
+
+      const providerConfidence = Math.min(
+        100,
+        60 + Math.max(0, providerConfirmationCount - 1) * 20
+      );
+
+      const existingExpiryTime = crossProviderMatch.expires_at
+        ? new Date(crossProviderMatch.expires_at).getTime()
+        : Number.NaN;
+
+      const incomingExpiryTime = row.expires_at
+        ? new Date(row.expires_at).getTime()
+        : Number.NaN;
+
+      let mergedExpiresAt: string | null =
+        crossProviderMatch.expires_at || row.expires_at || null;
+
+      if (
+        Number.isFinite(existingExpiryTime) &&
+        Number.isFinite(incomingExpiryTime)
+      ) {
+        mergedExpiresAt =
+          existingExpiryTime >= incomingExpiryTime
+            ? crossProviderMatch.expires_at
+            : row.expires_at;
+      }
+
+      const { error: mergeError } = await supabase
+        .from("route_safety_alerts")
+        .update({
+          provider_sources: providerSources,
+          provider_confirmation_count: providerConfirmationCount,
+          provider_confidence: providerConfidence,
+          last_provider_confirmation_at: confirmedAt,
+          verification_status: "verified",
+          verified_at: confirmedAt,
+          expires_at: mergedExpiresAt,
+        })
+        .eq("organization_id", organizationId)
+        .eq("id", crossProviderMatch.id);
+
+      if (mergeError) {
+        throw mergeError;
+      }
+
+      crossProviderMatch.provider_sources = providerSources;
+      crossProviderMatch.provider_confirmation_count =
+        providerConfirmationCount;
+      crossProviderMatch.provider_confidence = providerConfidence;
+      crossProviderMatch.last_provider_confirmation_at = confirmedAt;
+      crossProviderMatch.expires_at = mergedExpiresAt;
+
+      mergedDuplicates += 1;
+      continue;
     }
 
     existingSameProviderKeys.add(key);
 
+    const providerAlert = {
+      ...row,
+      provider_sources: [source],
+      provider_confirmation_count: 1,
+      provider_confidence: 60,
+      last_provider_confirmation_at: new Date().toISOString(),
+    };
+
+    uniqueRows.push(providerAlert);
+
     normalizedExistingAlerts.push({
+      id: null,
       source,
       type: row.type,
       title: row.title,
       latitude: row.latitude,
       longitude: row.longitude,
+      expires_at: row.expires_at,
+      provider_sources: [source],
+      provider_confirmation_count: 1,
+      provider_confidence: 60,
+      last_provider_confirmation_at:
+        providerAlert.last_provider_confirmation_at,
     });
-
-    return true;
-  });
-
-  const skippedDuplicates = rows.length - uniqueRows.length;
+  }
 
   if (uniqueRows.length === 0) {
     return {
       imported: 0,
       skippedDuplicates,
+      mergedDuplicates,
     };
   }
 
@@ -302,6 +418,7 @@ async function insertNewProviderAlerts(
   return {
     imported: inserted?.length || 0,
     skippedDuplicates,
+    mergedDuplicates,
   };
 }
 
@@ -317,6 +434,7 @@ async function importHereIncidents(
       rawCount: 0,
       imported: 0,
       skippedDuplicates: 0,
+      mergedDuplicates: 0,
       error: "HERE_API_KEY is not configured.",
     };
   }
@@ -406,6 +524,7 @@ async function importHereIncidents(
       rawCount: incidents.length,
       imported: result.imported,
       skippedDuplicates: result.skippedDuplicates,
+      mergedDuplicates: result.mergedDuplicates,
       error: null,
     };
   } catch (error: unknown) {
@@ -416,6 +535,7 @@ async function importHereIncidents(
       rawCount: 0,
       imported: 0,
       skippedDuplicates: 0,
+      mergedDuplicates: 0,
       error:
         error instanceof Error
           ? error.message
@@ -436,6 +556,7 @@ async function importTomTomIncidents(
       rawCount: 0,
       imported: 0,
       skippedDuplicates: 0,
+      mergedDuplicates: 0,
       error: "TOMTOM_API_KEY is not configured.",
     };
   }
@@ -540,6 +661,7 @@ async function importTomTomIncidents(
       rawCount: incidents.length,
       imported: result.imported,
       skippedDuplicates: result.skippedDuplicates,
+      mergedDuplicates: result.mergedDuplicates,
       error: null,
     };
   } catch (error: unknown) {
@@ -550,6 +672,7 @@ async function importTomTomIncidents(
       rawCount: 0,
       imported: 0,
       skippedDuplicates: 0,
+      mergedDuplicates: 0,
       error:
         error instanceof Error
           ? error.message
@@ -683,6 +806,12 @@ export async function GET(request: Request) {
       0
     );
 
+    const mergedDuplicates = results.reduce(
+      (total, result) =>
+        total + result.mergedDuplicates,
+      0
+    );
+
     const failedProviders = results.filter(
       (result) => !result.success
     ).length;
@@ -694,6 +823,7 @@ export async function GET(request: Request) {
       providerRuns: results.length,
       imported,
       skippedDuplicates,
+      mergedDuplicates,
       failedProviders,
       results,
     });
