@@ -1,9 +1,72 @@
-﻿import { decode } from "@here/flexpolyline";
+import { decode } from "@here/flexpolyline";
+import { calculateDistanceMeters } from "@/lib/utils/command-center";
 
 type RoutePoint = [number, number];
 
 function secondsToDuration(seconds: number) {
   return `${Math.max(0, Math.round(seconds))}s`;
+}
+
+function scoreRouteRisk(
+  routePoints: RoutePoint[],
+  roadRiskSegments: any[]
+) {
+  const matchedSegments = roadRiskSegments.filter((segment) => {
+    const latitude = Number(segment?.latitude);
+    const longitude = Number(segment?.longitude);
+    const radiusMeters = Math.max(0, Number(segment?.radius_meters) || 0);
+
+    if (
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude) ||
+      radiusMeters <= 0
+    ) {
+      return false;
+    }
+
+    return routePoints.some(([routeLatitude, routeLongitude]) => {
+      return (
+        calculateDistanceMeters(
+          routeLatitude,
+          routeLongitude,
+          latitude,
+          longitude
+        ) <= radiusMeters
+      );
+    });
+  });
+
+  const totalRiskScore = matchedSegments.reduce(
+    (total, segment) => total + Math.max(0, Number(segment?.risk_score) || 0),
+    0
+  );
+
+  const highestRiskScore = matchedSegments.reduce(
+    (highest, segment) =>
+      Math.max(highest, Math.max(0, Number(segment?.risk_score) || 0)),
+    0
+  );
+
+  const verificationCount = matchedSegments.reduce(
+    (total, segment) =>
+      total + Math.max(0, Number(segment?.verification_count) || 0),
+    0
+  );
+
+  const normalizedRiskScore = Math.min(100, Math.round(totalRiskScore));
+  const safetyScore = Math.max(0, 100 - normalizedRiskScore);
+
+  return {
+    matchedSegmentCount: matchedSegments.length,
+    matchedSegmentIds: matchedSegments
+      .map((segment) => segment?.id)
+      .filter(Boolean),
+    totalRiskScore,
+    normalizedRiskScore,
+    highestRiskScore,
+    verificationCount,
+    safetyScore,
+  };
 }
 
 function recommendation(routes: any[]) {
@@ -66,7 +129,6 @@ export async function calculateHereRoutes(
   destination: any,
   roadRiskSegments: any[] = []
 ) {
-  void roadRiskSegments;
   if (!process.env.HERE_API_KEY) {
     throw new Error("HERE_API_KEY is not configured.");
   }
@@ -113,6 +175,7 @@ export async function calculateHereRoutes(
     );
 
     const routePoints = decodeHereRouteSections(sections);
+    const routeRisk = scoreRouteRisk(routePoints, roadRiskSegments);
 
     return {
       index,
@@ -147,6 +210,13 @@ export async function calculateHereRoutes(
         ),
       routePoints,
       routePointCount: routePoints.length,
+      safetyScore: routeRisk.safetyScore,
+      riskScore: routeRisk.normalizedRiskScore,
+      totalRiskScore: routeRisk.totalRiskScore,
+      highestRiskScore: routeRisk.highestRiskScore,
+      matchedRiskSegmentCount: routeRisk.matchedSegmentCount,
+      matchedRiskSegmentIds: routeRisk.matchedSegmentIds,
+      riskVerificationCount: routeRisk.verificationCount,
       sections: sections.length,
     };
   });
