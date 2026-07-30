@@ -1531,3 +1531,79 @@ Implement configurable routing profiles:
 
 This will allow HarborGuard to recommend routes differently depending on fleet type and operational requirements.
 
+
+---
+
+# Engineering Progress Update
+**Date:** 2026-07-30
+
+## Completed Milestone: Road Risk Segments Taxonomy v2 Schema
+
+**Feature commit:** `9de7fec`
+**Branch:** `feature/expanded-incident-taxonomy`
+
+### Summary
+
+Expanded `public.road_risk_segments` so aggregated road-risk intelligence can preserve the expanded incident taxonomy instead of collapsing new provider event types into legacy counters.
+
+### Database migration
+
+Added:
+
+```text
+supabase/migrations/20260730133331_expand_road_risk_segments_v2.sql
+```
+
+Added these non-negative integer counters with `NOT NULL DEFAULT 0`:
+
+- `road_closure_count`
+- `roadworks_count`
+- `congestion_count`
+- `lane_closure_count`
+- `weather_hazard_count`
+- `flooding_count`
+- `vehicle_breakdown_count`
+- `road_hazard_count`
+- `protest_count`
+
+Each counter has a guarded PostgreSQL CHECK constraint, a minimum value of zero, and a database column comment.
+
+Constraint creation is guarded through `pg_constraint` checks inside a PostgreSQL `DO` block.
+
+### Migration result
+
+The migration was successfully applied to the linked Supabase project.
+
+### Verification
+
+- `npx supabase db push` completed successfully
+- all nine fields appeared in generated Row, Insert, and Update definitions
+- `npx tsc --noEmit` passed
+- `npm run build` passed
+- production build generated 119 static pages
+- `git diff --cached --check` passed
+- commit and push completed
+
+### Repository state after completion
+
+`9de7fec Expand road risk segments schema for taxonomy v2`
+
+The branch was synchronized with `origin/feature/expanded-incident-taxonomy` and the working tree was clean.
+
+### Architecture status
+
+The database schema can now store separate aggregate counts for the expanded provider and community incident taxonomy.
+
+This schema migration does not yet make the aggregation process populate the new counters.
+
+### Next precise task
+
+Audit `aggregate_road_risk_intelligence()` and identify:
+
+1. the current event-type-to-counter mapping
+2. the INSERT column list
+3. the UPSERT or UPDATE assignments
+4. the risk-score calculation
+5. every API and UI consumer that assumes only the legacy counters
+
+Then make one focused migration that updates the aggregation RPC to populate the Road Risk Segments v2 counters without changing unrelated behavior.
