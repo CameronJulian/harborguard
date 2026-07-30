@@ -36,20 +36,67 @@ function scoreRouteRisk(
     });
   });
 
-  const totalRiskScore = matchedSegments.reduce(
-    (total, segment) => total + Math.max(0, Number(segment?.risk_score) || 0),
+  const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+  const now = Date.now();
+
+  const scoredSegments = matchedSegments.map((segment) => {
+    const baseRisk = Math.max(0, Number(segment?.risk_score) || 0);
+
+    const verificationCount = Math.max(
+      0,
+      Number(segment?.verification_count) || 0
+    );
+
+    let recencyWeight = 1;
+
+    const lastEvent = Date.parse(String(segment?.last_event_at ?? ""));
+
+    if (Number.isFinite(lastEvent)) {
+      const ageDays = Math.max(
+        0,
+        (now - lastEvent) / MILLISECONDS_PER_DAY
+      );
+
+      if (ageDays <= 7) {
+        recencyWeight = 1.25;
+      } else if (ageDays <= 30) {
+        recencyWeight = 1.1;
+      } else if (ageDays <= 90) {
+        recencyWeight = 1;
+      } else if (ageDays <= 180) {
+        recencyWeight = 0.85;
+      } else {
+        recencyWeight = 0.7;
+      }
+    }
+
+    const verificationWeight = Math.min(
+      1.25,
+      1 + verificationCount * 0.02
+    );
+
+    return {
+      ...segment,
+      weightedRisk:
+        baseRisk * recencyWeight * verificationWeight,
+      verificationCount,
+    };
+  });
+
+  const totalRiskScore = scoredSegments.reduce(
+    (total, segment) => total + segment.weightedRisk,
     0
   );
 
-  const highestRiskScore = matchedSegments.reduce(
+  const highestRiskScore = scoredSegments.reduce(
     (highest, segment) =>
-      Math.max(highest, Math.max(0, Number(segment?.risk_score) || 0)),
+      Math.max(highest, segment.weightedRisk),
     0
   );
 
-  const verificationCount = matchedSegments.reduce(
+  const verificationCount = scoredSegments.reduce(
     (total, segment) =>
-      total + Math.max(0, Number(segment?.verification_count) || 0),
+      total + segment.verificationCount,
     0
   );
 
@@ -267,3 +314,4 @@ export async function calculateHereRoutes(
     recommendation: recommendation(rankedRoutes),
   };
 }
+
