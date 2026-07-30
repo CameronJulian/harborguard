@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/route-safety/cron/providers",
-      "schedule": "*/30 * * * *"
+      "schedule": "0 6 * * *"
     }
   ]
 }

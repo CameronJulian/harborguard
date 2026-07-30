@@ -1,0 +1,37 @@
+# Local audit and generated analysis artifacts
+Crowd-Intelligence-Audit.txt
+Weather-System-Audit.txt
+Route-Decision-Engine-Audit.txt
+External-Ingestion-Scheduling-Audit.txt
+Route-Intelligence-Audit-Risk-Fields.txt
+Road-Segment-Risk-Aggregation-Audit.txt
+Crowd-Intelligence-V1-Insertion-Audit.txt
+Crowd-Intelligence-Audit-Clean.txt
+Audit-Traffic-Consumer-Search.txt
+Road-Risk-Review-Integration-Audit.txt
+Road-Risk-Aggregation-Design-Audit.txt
+External-Providers-Audit.txt
+Audit-Composite-Risk-UI-Insertion-Point.txt
+RoadIntelligence-Relationship-Audit.txt
+RoadIncidents-Usage.txt
+HarborGuard-Architecture-Data.json
+Map-Source-Audit.txt
+RoadIncidents-Supabase-Usage.txt
+Road-Risk-Map-Controls-Audit.txt
+Route-Intelligence-Audit-Decision-Flow.txt
+WeatherRoadmapIntegrationAudit.txt
+structure-clean.txt
+
+# Local archives and backups
+_archive/
+_audit-backups/
+*.zip
+*.bak
+*.bak-*
+*.log
+
+# Generated TypeScript cache
+tsconfig.tsbuildinfo
+
+# Temporary downloaded environment files
+.env.vercel-production
