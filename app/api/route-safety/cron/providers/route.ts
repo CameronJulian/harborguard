@@ -1,0 +1,645 @@
+import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
+type ProviderResult = {
+  provider: "here" | "tomtom";
+  organizationId: string;
+  success: boolean;
+  rawCount: number;
+  imported: number;
+  skippedDuplicates: number;
+  error: string | null;
+};
+
+type AlertRow = {
+  organization_id: string;
+  type: string;
+  title: string;
+  description: string;
+  latitude: number;
+  longitude: number;
+  radius_meters: number;
+  severity: string;
+  source: string;
+  status: string;
+  expires_at: string | null;
+  verified_at: string;
+};
+
+function mapHereSeverity(criticality?: string) {
+  const value = String(criticality || "").toLowerCase();
+
+  if (value.includes("critical") || value.includes("major")) {
+    return "critical";
+  }
+
+  if (value.includes("high")) {
+    return "high";
+  }
+
+  if (value.includes("medium")) {
+    return "medium";
+  }
+
+  return "low";
+}
+
+function mapHereType(description: string) {
+  const text = description.toLowerCase();
+
+  if (text.includes("traffic light") || text.includes("signal")) {
+    return "traffic_light_outage";
+  }
+
+  if (
+    text.includes("roadblock") ||
+    text.includes("road closed") ||
+    text.includes("closure")
+  ) {
+    return "roadblock";
+  }
+
+  if (
+    text.includes("accident") ||
+    text.includes("crash") ||
+    text.includes("collision")
+  ) {
+    return "accident";
+  }
+
+  if (text.includes("protest")) {
+    return "protest";
+  }
+
+  return "roadblock";
+}
+
+function getHereLatLng(incident: any) {
+  const shapePoint =
+    incident?.location?.shape?.links?.[0]?.points?.[0];
+
+  if (
+    Number.isFinite(Number(shapePoint?.lat)) &&
+    Number.isFinite(Number(shapePoint?.lng))
+  ) {
+    return {
+      latitude: Number(shapePoint.lat),
+      longitude: Number(shapePoint.lng),
+    };
+  }
+
+  const polylinePoint =
+    incident?.location?.polyline?.points?.[0];
+
+  if (
+    Number.isFinite(Number(polylinePoint?.lat)) &&
+    Number.isFinite(Number(polylinePoint?.lng))
+  ) {
+    return {
+      latitude: Number(polylinePoint.lat),
+      longitude: Number(polylinePoint.lng),
+    };
+  }
+
+  return null;
+}
+
+function mapTomTomType(category: number | string | null) {
+  const value = String(category || "");
+
+  if (["6", "7", "8", "9"].includes(value)) {
+    return "roadblock";
+  }
+
+  if (["1", "2", "3"].includes(value)) {
+    return "accident";
+  }
+
+  if (["4", "5"].includes(value)) {
+    return "protest";
+  }
+
+  return "roadblock";
+}
+
+function mapTomTomSeverity(magnitude: number | string | null) {
+  const value = Number(magnitude || 0);
+
+  if (value >= 4) {
+    return "critical";
+  }
+
+  if (value >= 3) {
+    return "high";
+  }
+
+  if (value >= 2) {
+    return "medium";
+  }
+
+  return "low";
+}
+
+function buildAlertKey(alert: {
+  title: string;
+  latitude: number;
+  longitude: number;
+}) {
+  return [
+    alert.title.trim().toLowerCase(),
+    Number(alert.latitude).toFixed(5),
+    Number(alert.longitude).toFixed(5),
+  ].join("|");
+}
+
+async function insertNewProviderAlerts(
+  supabase: any,
+  organizationId: string,
+  source: string,
+  rows: AlertRow[]
+) {
+  if (rows.length === 0) {
+    return {
+      imported: 0,
+      skippedDuplicates: 0,
+    };
+  }
+
+  const { data: existingAlerts, error: existingError } =
+    await supabase
+      .from("route_safety_alerts")
+      .select("title, latitude, longitude")
+      .eq("organization_id", organizationId)
+      .eq("source", source)
+      .eq("status", "active");
+
+  if (existingError) {
+    throw existingError;
+  }
+
+  const existingKeys = new Set(
+    (existingAlerts || []).map((alert: any) =>
+      buildAlertKey({
+        title: String(alert.title || ""),
+        latitude: Number(alert.latitude),
+        longitude: Number(alert.longitude),
+      })
+    )
+  );
+
+  const uniqueRows = rows.filter((row) => {
+    const key = buildAlertKey(row);
+
+    if (existingKeys.has(key)) {
+      return false;
+    }
+
+    existingKeys.add(key);
+    return true;
+  });
+
+  const skippedDuplicates = rows.length - uniqueRows.length;
+
+  if (uniqueRows.length === 0) {
+    return {
+      imported: 0,
+      skippedDuplicates,
+    };
+  }
+
+  const { data: inserted, error: insertError } =
+    await supabase
+      .from("route_safety_alerts")
+      .insert(uniqueRows)
+      .select("id");
+
+  if (insertError) {
+    throw insertError;
+  }
+
+  return {
+    imported: inserted?.length || 0,
+    skippedDuplicates,
+  };
+}
+
+async function importHereIncidents(
+  supabase: any,
+  organizationId: string
+): Promise<ProviderResult> {
+  if (!process.env.HERE_API_KEY) {
+    return {
+      provider: "here",
+      organizationId,
+      success: false,
+      rawCount: 0,
+      imported: 0,
+      skippedDuplicates: 0,
+      error: "HERE_API_KEY is not configured.",
+    };
+  }
+
+  try {
+    const latitude = Number(
+      process.env.TRAFFIC_CENTER_LATITUDE || -33.9249
+    );
+
+    const longitude = Number(
+      process.env.TRAFFIC_CENTER_LONGITUDE || 18.4241
+    );
+
+    const radiusMeters = Number(
+      process.env.TRAFFIC_IMPORT_RADIUS_METERS || 25000
+    );
+
+    const url =
+      "https://data.traffic.hereapi.com/v7/incidents" +
+      `?in=circle:${latitude},${longitude};r=${radiusMeters}` +
+      "&locationReferencing=shape" +
+      `&apikey=${process.env.HERE_API_KEY}`;
+
+    const response = await fetch(url, {
+      cache: "no-store",
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data?.title ||
+          data?.error ||
+          "HERE Traffic request failed."
+      );
+    }
+
+    const incidents = Array.isArray(data?.results)
+      ? data.results
+      : [];
+
+    const rows = incidents
+      .map((incident: any): AlertRow | null => {
+        const details = incident?.incidentDetails || {};
+
+        const description = String(
+          details?.description?.value ||
+            details?.summary?.value ||
+            details?.type ||
+            "HERE traffic incident"
+        );
+
+        const coordinates = getHereLatLng(incident);
+
+        if (!coordinates) {
+          return null;
+        }
+
+        return {
+          organization_id: organizationId,
+          type: mapHereType(description),
+          title: description.slice(0, 120),
+          description,
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
+          radius_meters: 1000,
+          severity: mapHereSeverity(details?.criticality),
+          source: "here_traffic",
+          status: "active",
+          expires_at: details?.endTime || null,
+          verified_at: new Date().toISOString(),
+        };
+      })
+      .filter((row: AlertRow | null): row is AlertRow => row !== null);
+
+    const result = await insertNewProviderAlerts(
+      supabase,
+      organizationId,
+      "here_traffic",
+      rows
+    );
+
+    return {
+      provider: "here",
+      organizationId,
+      success: true,
+      rawCount: incidents.length,
+      imported: result.imported,
+      skippedDuplicates: result.skippedDuplicates,
+      error: null,
+    };
+  } catch (error: unknown) {
+    return {
+      provider: "here",
+      organizationId,
+      success: false,
+      rawCount: 0,
+      imported: 0,
+      skippedDuplicates: 0,
+      error:
+        error instanceof Error
+          ? error.message
+          : "HERE incident ingestion failed.",
+    };
+  }
+}
+
+async function importTomTomIncidents(
+  supabase: any,
+  organizationId: string
+): Promise<ProviderResult> {
+  if (!process.env.TOMTOM_API_KEY) {
+    return {
+      provider: "tomtom",
+      organizationId,
+      success: false,
+      rawCount: 0,
+      imported: 0,
+      skippedDuplicates: 0,
+      error: "TOMTOM_API_KEY is not configured.",
+    };
+  }
+
+  try {
+    const bbox =
+      process.env.TOMTOM_TRAFFIC_BBOX ||
+      "18.20,-34.10,19.10,-33.60";
+
+    const fields =
+      "{incidents{type,geometry{type,coordinates}," +
+      "properties{iconCategory,magnitudeOfDelay," +
+      "events{description,code},from,to,length,delay}}}";
+
+    const url =
+      "https://api.tomtom.com/traffic/services/5/incidentDetails" +
+      `?bbox=${encodeURIComponent(bbox)}` +
+      `&fields=${encodeURIComponent(fields)}` +
+      "&language=en-GB" +
+      "&timeValidityFilter=present" +
+      `&key=${process.env.TOMTOM_API_KEY}`;
+
+    const response = await fetch(url, {
+      cache: "no-store",
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data?.detailedError?.message ||
+          data?.error?.description ||
+          "TomTom Traffic request failed."
+      );
+    }
+
+    const incidents = Array.isArray(data?.incidents)
+      ? data.incidents
+      : [];
+
+    const rows = incidents
+      .map((incident: any): AlertRow | null => {
+        const coordinates = incident?.geometry?.coordinates;
+
+        const firstPoint = Array.isArray(coordinates?.[0])
+          ? coordinates[0]
+          : coordinates;
+
+        const longitude = Number(firstPoint?.[0]);
+        const latitude = Number(firstPoint?.[1]);
+
+        if (
+          !Number.isFinite(latitude) ||
+          !Number.isFinite(longitude)
+        ) {
+          return null;
+        }
+
+        const properties = incident?.properties || {};
+
+        const eventDescription = String(
+          properties?.events?.[0]?.description ||
+            properties?.from ||
+            "Traffic incident reported"
+        );
+
+        return {
+          organization_id: organizationId,
+          type: mapTomTomType(properties?.iconCategory),
+          title: eventDescription.slice(0, 120),
+          description:
+            "Automatically imported from TomTom Traffic. " +
+            `Delay: ${properties?.delay || 0}s. ` +
+            `Length: ${properties?.length || 0}m.`,
+          latitude,
+          longitude,
+          radius_meters: 1200,
+          severity: mapTomTomSeverity(
+            properties?.magnitudeOfDelay
+          ),
+          source: "tomtom",
+          status: "active",
+          expires_at: new Date(
+            Date.now() + 2 * 60 * 60 * 1000
+          ).toISOString(),
+          verified_at: new Date().toISOString(),
+        };
+      })
+      .filter((row: AlertRow | null): row is AlertRow => row !== null);
+
+    const result = await insertNewProviderAlerts(
+      supabase,
+      organizationId,
+      "tomtom",
+      rows
+    );
+
+    return {
+      provider: "tomtom",
+      organizationId,
+      success: true,
+      rawCount: incidents.length,
+      imported: result.imported,
+      skippedDuplicates: result.skippedDuplicates,
+      error: null,
+    };
+  } catch (error: unknown) {
+    return {
+      provider: "tomtom",
+      organizationId,
+      success: false,
+      rawCount: 0,
+      imported: 0,
+      skippedDuplicates: 0,
+      error:
+        error instanceof Error
+          ? error.message
+          : "TomTom incident ingestion failed.",
+    };
+  }
+}
+
+export async function GET(request: Request) {
+  try {
+    const cronSecret = process.env.CRON_SECRET;
+
+    if (!cronSecret) {
+      return NextResponse.json(
+        {
+          error: "CRON_SECRET is not configured.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    const authorization =
+      request.headers.get("authorization");
+
+    if (authorization !== `Bearer ${cronSecret}`) {
+      return NextResponse.json(
+        {
+          error: "Unauthorized cron request.",
+        },
+        {
+          status: 401,
+        }
+      );
+    }
+
+    const supabaseUrl =
+      process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+    const serviceRoleKey =
+      process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      return NextResponse.json(
+        {
+          error:
+            "Supabase service-role configuration is incomplete.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    const supabase = createClient(
+      supabaseUrl,
+      serviceRoleKey,
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      }
+    );
+
+    const trafficOrganizationId =
+      process.env.TRAFFIC_IMPORT_ORGANIZATION_ID?.trim();
+
+    if (!trafficOrganizationId) {
+      return NextResponse.json(
+        {
+          error:
+            "TRAFFIC_IMPORT_ORGANIZATION_ID is not configured.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    const { data: organization, error: organizationError } =
+      await supabase
+        .from("organizations")
+        .select("id")
+        .eq("id", trafficOrganizationId)
+        .maybeSingle();
+
+    if (organizationError) {
+      throw organizationError;
+    }
+
+    if (!organization) {
+      return NextResponse.json(
+        {
+          error:
+            "TRAFFIC_IMPORT_ORGANIZATION_ID does not match an organization.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    const organizationIds = [trafficOrganizationId];
+
+    const results: ProviderResult[] = [];
+
+    for (const organizationId of organizationIds) {
+      const [hereResult, tomTomResult] =
+        await Promise.all([
+          importHereIncidents(
+            supabase,
+            organizationId
+          ),
+          importTomTomIncidents(
+            supabase,
+            organizationId
+          ),
+        ]);
+
+      results.push(hereResult, tomTomResult);
+    }
+
+    const imported = results.reduce(
+      (total, result) => total + result.imported,
+      0
+    );
+
+    const skippedDuplicates = results.reduce(
+      (total, result) =>
+        total + result.skippedDuplicates,
+      0
+    );
+
+    const failedProviders = results.filter(
+      (result) => !result.success
+    ).length;
+
+    return NextResponse.json({
+      success: failedProviders === 0,
+      generatedAt: new Date().toISOString(),
+      organizationsProcessed: organizationIds.length,
+      providerRuns: results.length,
+      imported,
+      skippedDuplicates,
+      failedProviders,
+      results,
+    });
+  } catch (error: unknown) {
+    console.error(
+      "[route-safety provider cron]",
+      error
+    );
+
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : typeof error === "object" && error !== null
+          ? JSON.stringify(error)
+          : String(error || "External provider cron failed.");
+
+    return NextResponse.json(
+      {
+        error: errorMessage,
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+}

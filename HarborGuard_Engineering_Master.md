@@ -17,7 +17,7 @@
 When starting a new ChatGPT conversation:
 
 1. Upload this file.
-2. Say: **“Use this HarborGuard Engineering Master as the source of truth. Audit the current codebase before proposing changes. Continue from the Current Status and Next Recommended Work sections.”**
+2. Say: **â€œUse this HarborGuard Engineering Master as the source of truth. Audit the current codebase before proposing changes. Continue from the Current Status and Next Recommended Work sections.â€**
 3. Upload any newer audit files, migration files, screenshots, or logs relevant to the next task.
 4. Do not assume this document is perfectly current if code has changed since the last update. Re-audit the repository before implementation.
 
@@ -1306,4 +1306,106 @@ Commit: c6af2ac
 
 ## Result
 Fleet Health is now fully integrated with HarborGuard's weather intelligence platform and is consistent with the existing weather integrations used by Route Safety, ETA prediction, Operations Summary, and the Weather Provider framework.
+
+
+---
+
+# 2026-07-30 - Crowd Intelligence Architecture Audit (Completed)
+
+## Objective
+Audit the existing Crowd Intelligence, Route Safety, and Road Risk architecture before implementing any new functionality.
+
+## Files Audited
+- app/api/road-incidents/route.ts
+- app/api/route-safety/report/route.ts
+- app/api/route-safety/verify/route.ts
+- app/api/route-safety/active/route.ts
+- app/api/route-safety/nearby/route.ts
+- app/api/route-safety/predict/route.ts
+- Route Safety aggregation migrations
+- Road Risk aggregation RPC
+- Route Intelligence schema
+
+## Findings
+
+### Road Incidents
+- Confirmed as the operational incident subsystem.
+- Supports GET, POST and PATCH operations.
+- Used by Command Center, Fleet Intelligence, AI dashboards and operational workflows.
+- Does not directly feed the Road Risk aggregation pipeline.
+
+### Route Safety
+- Manual reports are stored in route_safety_alerts.
+- Active and Nearby endpoints return active alerts.
+- Route prediction consumes active alerts together with historical intelligence.
+
+### Verification Pipeline
+Verified Route Safety alerts follow this architecture:
+
+route_safety_alerts
+â†’ route_intelligence
+â†’ aggregate_road_risk_intelligence()
+â†’ road_risk_segment_events
+â†’ road_risk_segments
+
+This is the confirmed production aggregation pipeline.
+
+### Historical Intelligence
+route_intelligence stores verified historical events.
+
+road_risk_segments stores long-term aggregated road risk used by routing and prediction.
+
+### Architectural Conclusion
+HarborGuard already contains a complete Crowd Intelligence architecture.
+
+No duplicate reporting API is required.
+
+road_incidents and route_safety_alerts are separate subsystems with different responsibilities.
+
+## Outcome
+Audit completed successfully.
+
+No code changes made.
+
+Next development work should focus on implementing roadmap features rather than rebuilding existing Crowd Intelligence functionality.
+
+
+
+---
+
+# External Provider Ingestion Automation (Completed)
+
+**Completed:** 2026-07-30 09:45
+
+## Summary
+
+Implemented automated external traffic provider ingestion with centralized cron scheduling.
+
+## Completed Work
+
+- ✅ Created /api/route-safety/cron/providers.
+- ✅ Added CRON_SECRET authentication.
+- ✅ Integrated HERE Traffic ingestion.
+- ✅ Added duplicate detection before database inserts.
+- ✅ Restricted ingestion to a single configured organization using TRAFFIC_IMPORT_ORGANIZATION_ID.
+- ✅ Added automated Vercel cron schedule (every 30 minutes).
+- ✅ Verified production build succeeds.
+- ✅ Verified TypeScript compilation succeeds.
+- ✅ Verified HERE ingestion imports only new incidents.
+- ✅ Verified duplicate detection skips existing incidents.
+- ✅ Cleaned up accidental multi-organization HERE imports.
+
+## Current Status
+
+- HERE Provider: ✅ Operational
+- Automated Cron: ✅ Operational
+- Duplicate Detection: ✅ Verified
+- Organization Isolation: ✅ Verified
+- TomTom Provider: ⏳ Awaiting TOMTOM_API_KEY
+
+## Next Planned Work
+
+1. Configure TomTom API key.
+2. Verify TomTom scheduled ingestion.
+3. Continue HarborGuard roadmap with AI Dispatch Recommendations.
 
