@@ -17,7 +17,7 @@
 When starting a new ChatGPT conversation:
 
 1. Upload this file.
-2. Say: **ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œUse this HarborGuard Engineering Master as the source of truth. Audit the current codebase before proposing changes. Continue from the Current Status and Next Recommended Work sections.ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â**
+2. Say: **â€œUse this HarborGuard Engineering Master as the source of truth. Audit the current codebase before proposing changes. Continue from the Current Status and Next Recommended Work sections.â€**
 3. Upload any newer audit files, migration files, screenshots, or logs relevant to the next task.
 4. Do not assume this document is perfectly current if code has changed since the last update. Re-audit the repository before implementation.
 
@@ -1343,10 +1343,10 @@ Audit the existing Crowd Intelligence, Route Safety, and Road Risk architecture 
 Verified Route Safety alerts follow this architecture:
 
 route_safety_alerts
-ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ route_intelligence
-ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ aggregate_road_risk_intelligence()
-ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ road_risk_segment_events
-ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ road_risk_segments
+â†’ route_intelligence
+â†’ aggregate_road_risk_intelligence()
+â†’ road_risk_segment_events
+â†’ road_risk_segments
 
 This is the confirmed production aggregation pipeline.
 
@@ -1383,25 +1383,25 @@ Implemented automated external traffic provider ingestion with centralized cron 
 
 ## Completed Work
 
-- Ã¢Å“â€¦ Created /api/route-safety/cron/providers.
-- Ã¢Å“â€¦ Added CRON_SECRET authentication.
-- Ã¢Å“â€¦ Integrated HERE Traffic ingestion.
-- Ã¢Å“â€¦ Added duplicate detection before database inserts.
-- Ã¢Å“â€¦ Restricted ingestion to a single configured organization using TRAFFIC_IMPORT_ORGANIZATION_ID.
-- Ã¢Å“â€¦ Added automated Vercel cron schedule (every 30 minutes).
-- Ã¢Å“â€¦ Verified production build succeeds.
-- Ã¢Å“â€¦ Verified TypeScript compilation succeeds.
-- Ã¢Å“â€¦ Verified HERE ingestion imports only new incidents.
-- Ã¢Å“â€¦ Verified duplicate detection skips existing incidents.
-- Ã¢Å“â€¦ Cleaned up accidental multi-organization HERE imports.
+- ✅ Created /api/route-safety/cron/providers.
+- ✅ Added CRON_SECRET authentication.
+- ✅ Integrated HERE Traffic ingestion.
+- ✅ Added duplicate detection before database inserts.
+- ✅ Restricted ingestion to a single configured organization using TRAFFIC_IMPORT_ORGANIZATION_ID.
+- ✅ Added automated Vercel cron schedule (every 30 minutes).
+- ✅ Verified production build succeeds.
+- ✅ Verified TypeScript compilation succeeds.
+- ✅ Verified HERE ingestion imports only new incidents.
+- ✅ Verified duplicate detection skips existing incidents.
+- ✅ Cleaned up accidental multi-organization HERE imports.
 
 ## Current Status
 
-- HERE Provider: Ã¢Å“â€¦ Operational
-- Automated Cron: Ã¢Å“â€¦ Operational
-- Duplicate Detection: Ã¢Å“â€¦ Verified
-- Organization Isolation: Ã¢Å“â€¦ Verified
-- TomTom Provider: Ã¢ÂÂ³ Awaiting TOMTOM_API_KEY
+- HERE Provider: ✅ Operational
+- Automated Cron: ✅ Operational
+- Duplicate Detection: ✅ Verified
+- Organization Isolation: ✅ Verified
+- TomTom Provider: ⏳ Awaiting TOMTOM_API_KEY
 
 ## Next Planned Work
 
@@ -1412,43 +1412,47 @@ Implemented automated external traffic provider ingestion with centralized cron 
 
 ---
 
-## 2026-07-30 - Cross-Provider Incident Correlation & Merging
+## 2026-07-30 - Cross-Provider Incident Correlation and Merging
 
 **Status:** Completed
 
 ### Summary
+
 Implemented cross-provider incident correlation between HERE Traffic and TomTom Traffic so that the same real-world incident is merged instead of creating duplicate alerts.
 
 ### Completed
+
 - Added cross-provider duplicate detection.
-- Merged HERE and TomTom incidents into a single alert.
+- Merged matching HERE and TomTom incidents into a single alert.
 - Added provider confirmation tracking.
 - Added provider confidence scoring.
 - Added provider confirmation timestamp tracking.
 - Updated merged incident expiry handling.
-- Prevented duplicate provider confirmations.
+- Prevented duplicate confirmations from the same provider.
 - Added merged duplicate reporting to provider import statistics.
-- Updated provider cron response with:
-  - imported
-  - skippedDuplicates
-  - mergedDuplicates
+- Added imported, skippedDuplicates, and mergedDuplicates to the provider cron response.
 
 ### Database
+
 Migration:
+
 - 20260730091256_add_cross_provider_confirmation.sql
 
 Added fields:
+
 - provider_sources
 - provider_confirmation_count
 - provider_confidence
 - last_provider_confirmation_at
 
 ### Validation
-- TypeScript compilation passed (npx tsc --noEmit)
-- Production build passed (npm run build)
-- Git commit:
-  2c372b1 - Merge correlated traffic incidents across providers
+
+- TypeScript compilation passed: npx tsc --noEmit
+- Production build passed: npm run build
+- Production build generated 119 of 119 static pages.
+- Feature commit: 2c372b1 - Merge correlated traffic incidents across providers
 - Changes pushed successfully to GitHub.
 
 ### Result
-HarborGuard now treats HERE and TomTom as corroborating traffic intelligence sources, automatically merging matching incidents into a single verified alert while increasing confidence based on multiple provider confirmations.
+
+HarborGuard now treats HERE and TomTom as corroborating traffic intelligence sources. Matching incidents are merged into one verified alert, and confidence increases when multiple providers confirm the same event.
