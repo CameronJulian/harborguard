@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 
 function mapHereSeverity(criticality?: string) {
@@ -18,8 +18,12 @@ function mapHereType(description: string) {
     return "traffic_light_outage";
   }
 
-  if (text.includes("roadblock") || text.includes("road closed") || text.includes("closure")) {
+  if (text.includes("roadblock")) {
     return "roadblock";
+  }
+
+  if (text.includes("road closed") || text.includes("closure")) {
+    return "road_closure";
   }
 
   if (text.includes("accident") || text.includes("crash") || text.includes("collision")) {
@@ -30,7 +34,7 @@ function mapHereType(description: string) {
     return "protest";
   }
 
-  return "roadblock";
+  return "road_hazard";
 }
 
 function getLatLng(incident: any) {
@@ -183,4 +187,5 @@ export async function POST(req: Request) {
     );
   }
 }
+
 

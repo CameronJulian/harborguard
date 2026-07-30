@@ -55,12 +55,12 @@ function mapHereType(description: string) {
     return "traffic_light_outage";
   }
 
-  if (
-    text.includes("roadblock") ||
-    text.includes("road closed") ||
-    text.includes("closure")
-  ) {
+  if (text.includes("roadblock")) {
     return "roadblock";
+  }
+
+  if (text.includes("road closed") || text.includes("closure")) {
+    return "road_closure";
   }
 
   if (
@@ -75,7 +75,7 @@ function mapHereType(description: string) {
     return "protest";
   }
 
-  return "roadblock";
+  return "road_hazard";
 }
 
 function getHereLatLng(incident: any) {
@@ -111,19 +111,20 @@ function getHereLatLng(incident: any) {
 function mapTomTomType(category: number | string | null) {
   const value = String(category || "");
 
-  if (["6", "7", "8", "9"].includes(value)) {
-    return "roadblock";
-  }
+  if (value === "1") return "accident";
+  if (value === "2") return "weather_hazard";
+  if (value === "3") return "road_hazard";
+  if (value === "4") return "weather_hazard";
+  if (value === "5") return "weather_hazard";
+  if (value === "6") return "congestion";
+  if (value === "7") return "lane_closure";
+  if (value === "8") return "road_closure";
+  if (value === "9") return "roadworks";
+  if (value === "10") return "weather_hazard";
+  if (value === "11") return "flooding";
+  if (value === "14") return "vehicle_breakdown";
 
-  if (["1", "2", "3"].includes(value)) {
-    return "accident";
-  }
-
-  if (["4", "5"].includes(value)) {
-    return "protest";
-  }
-
-  return "roadblock";
+  return "road_hazard";
 }
 
 function mapTomTomSeverity(magnitude: number | string | null) {
@@ -850,3 +851,5 @@ export async function GET(request: Request) {
     );
   }
 }
+
+
