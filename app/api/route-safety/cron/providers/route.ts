@@ -155,6 +155,33 @@ function buildAlertKey(alert: {
   ].join("|");
 }
 
+function distanceMeters(
+  latitude1: number,
+  longitude1: number,
+  latitude2: number,
+  longitude2: number
+) {
+  const earthRadiusMeters = 6371000;
+  const toRadians = (value: number) => (value * Math.PI) / 180;
+
+  const latitudeDifference = toRadians(latitude2 - latitude1);
+  const longitudeDifference = toRadians(longitude2 - longitude1);
+
+  const a =
+    Math.sin(latitudeDifference / 2) *
+      Math.sin(latitudeDifference / 2) +
+    Math.cos(toRadians(latitude1)) *
+      Math.cos(toRadians(latitude2)) *
+      Math.sin(longitudeDifference / 2) *
+      Math.sin(longitudeDifference / 2);
+
+  return (
+    earthRadiusMeters *
+    2 *
+    Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  );
+}
+
 async function insertNewProviderAlerts(
   supabase: any,
   organizationId: string,
@@ -171,33 +198,85 @@ async function insertNewProviderAlerts(
   const { data: existingAlerts, error: existingError } =
     await supabase
       .from("route_safety_alerts")
-      .select("title, latitude, longitude")
+      .select("source, type, title, latitude, longitude")
       .eq("organization_id", organizationId)
-      .eq("source", source)
       .eq("status", "active");
 
   if (existingError) {
     throw existingError;
   }
 
-  const existingKeys = new Set(
-    (existingAlerts || []).map((alert: any) =>
-      buildAlertKey({
-        title: String(alert.title || ""),
-        latitude: Number(alert.latitude),
-        longitude: Number(alert.longitude),
-      })
-    )
+  const normalizedExistingAlerts = existingAlerts || [];
+
+  const existingSameProviderKeys = new Set(
+    normalizedExistingAlerts
+      .filter((alert: any) => alert.source === source)
+      .map((alert: any) =>
+        buildAlertKey({
+          title: String(alert.title || ""),
+          latitude: Number(alert.latitude),
+          longitude: Number(alert.longitude),
+        })
+      )
   );
 
   const uniqueRows = rows.filter((row) => {
     const key = buildAlertKey(row);
 
-    if (existingKeys.has(key)) {
+    if (existingSameProviderKeys.has(key)) {
       return false;
     }
 
-    existingKeys.add(key);
+    const crossProviderDuplicate =
+      normalizedExistingAlerts.some((alert: any) => {
+        if (alert.source === source) {
+          return false;
+        }
+
+        const existingSource = String(alert.source || "");
+
+        if (!["here_traffic", "tomtom"].includes(existingSource)) {
+          return false;
+        }
+
+        if (String(alert.type || "") !== row.type) {
+          return false;
+        }
+
+        const existingLatitude = Number(alert.latitude);
+        const existingLongitude = Number(alert.longitude);
+
+        if (
+          !Number.isFinite(existingLatitude) ||
+          !Number.isFinite(existingLongitude)
+        ) {
+          return false;
+        }
+
+        return (
+          distanceMeters(
+            row.latitude,
+            row.longitude,
+            existingLatitude,
+            existingLongitude
+          ) <= 250
+        );
+      });
+
+    if (crossProviderDuplicate) {
+      return false;
+    }
+
+    existingSameProviderKeys.add(key);
+
+    normalizedExistingAlerts.push({
+      source,
+      type: row.type,
+      title: row.title,
+      latitude: row.latitude,
+      longitude: row.longitude,
+    });
+
     return true;
   });
 
@@ -580,17 +659,15 @@ export async function GET(request: Request) {
     const results: ProviderResult[] = [];
 
     for (const organizationId of organizationIds) {
-      const [hereResult, tomTomResult] =
-        await Promise.all([
-          importHereIncidents(
-            supabase,
-            organizationId
-          ),
-          importTomTomIncidents(
-            supabase,
-            organizationId
-          ),
-        ]);
+      const hereResult = await importHereIncidents(
+        supabase,
+        organizationId
+      );
+
+      const tomTomResult = await importTomTomIncidents(
+        supabase,
+        organizationId
+      );
 
       results.push(hereResult, tomTomResult);
     }
