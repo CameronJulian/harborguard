@@ -69,10 +69,46 @@ function scoreRouteRisk(
   };
 }
 
+function rankRoutesBySafety(routes: any[]) {
+  return [...routes]
+    .sort((firstRoute, secondRoute) => {
+      const safetyDifference =
+        Number(secondRoute?.safetyScore || 0) -
+        Number(firstRoute?.safetyScore || 0);
+
+      if (safetyDifference !== 0) {
+        return safetyDifference;
+      }
+
+      const durationDifference =
+        Number(firstRoute?.durationSeconds || 0) -
+        Number(secondRoute?.durationSeconds || 0);
+
+      if (durationDifference !== 0) {
+        return durationDifference;
+      }
+
+      return Number(firstRoute?.index || 0) - Number(secondRoute?.index || 0);
+    })
+    .map((route, position) => ({
+      ...route,
+      rank: position + 1,
+      isRecommended: position === 0,
+    }));
+}
+
 function recommendation(routes: any[]) {
-  return routes.length > 1
-    ? "HERE returned alternate route options. Compare safety exposure, travel time, traffic duration, and distance before rerouting."
-    : "No alternate HERE route returned for this trip.";
+  const recommendedRoute = routes[0];
+
+  if (!recommendedRoute) {
+    return "No HERE route was returned for this trip.";
+  }
+
+  if (routes.length === 1) {
+    return `The only available HERE route has a safety score of ${recommendedRoute.safetyScore} and matches ${recommendedRoute.matchedRiskSegmentCount} road risk segments.`;
+  }
+
+  return `Route ${recommendedRoute.index + 1} is recommended with a safety score of ${recommendedRoute.safetyScore}, ${recommendedRoute.matchedRiskSegmentCount} matched road risk segments, and an estimated duration of ${recommendedRoute.duration}.`;
 }
 
 function decodeHereSectionPolyline(encodedPolyline: unknown): RoutePoint[] {
@@ -221,9 +257,13 @@ export async function calculateHereRoutes(
     };
   });
 
+  const rankedRoutes = rankRoutesBySafety(routes);
+  const recommendedRoute = rankedRoutes[0] ?? null;
+
   return {
     provider: "here_routing_v8",
-    routes,
-    recommendation: recommendation(routes),
+    routes: rankedRoutes,
+    recommendedRoute,
+    recommendation: recommendation(rankedRoutes),
   };
 }
