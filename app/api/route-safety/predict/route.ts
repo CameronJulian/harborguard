@@ -29,12 +29,36 @@ function severityWeight(severity: string | null) {
 }
 
 function typeWeight(type: string | null) {
-  if (type === "smash_grab_hotspot") return 35;
-  if (type === "roadblock") return 30;
-  if (type === "traffic_light_outage") return 18;
-  if (type === "accident") return 20;
-  if (type === "protest") return 28;
-  return 12;
+  switch (type) {
+    case "smash_grab_hotspot":
+      return 35;
+    case "roadblock":
+      return 30;
+    case "road_closure":
+      return 32;
+    case "roadworks":
+      return 16;
+    case "congestion":
+      return 12;
+    case "lane_closure":
+      return 14;
+    case "accident":
+      return 20;
+    case "traffic_light_outage":
+      return 18;
+    case "weather_hazard":
+      return 18;
+    case "flooding":
+      return 28;
+    case "vehicle_breakdown":
+      return 10;
+    case "road_hazard":
+      return 15;
+    case "protest":
+      return 28;
+    default:
+      return 12;
+  }
 }
 
 type IntelligenceFreshness =
@@ -189,6 +213,38 @@ function recommendationFor(type: string | null, severity: string | null) {
 
   if (type === "roadblock") {
     return "Roadblock reported ahead. Prepare for delay and consider alternate route.";
+  }
+
+  if (type === "road_closure") {
+    return "Road closure reported ahead. Select an alternate route where possible.";
+  }
+
+  if (type === "roadworks") {
+    return "Roadworks ahead. Expect lane restrictions and slower traffic.";
+  }
+
+  if (type === "congestion") {
+    return "Heavy congestion ahead. Allow additional travel time or consider an alternate route.";
+  }
+
+  if (type === "lane_closure") {
+    return "Lane closure ahead. Merge safely and expect slower traffic.";
+  }
+
+  if (type === "weather_hazard") {
+    return "Weather hazard reported ahead. Reduce speed and increase following distance.";
+  }
+
+  if (type === "flooding") {
+    return "Flooding reported ahead. Avoid driving through standing water and reroute if possible.";
+  }
+
+  if (type === "vehicle_breakdown") {
+    return "Broken-down vehicle ahead. Slow down and move over safely where permitted.";
+  }
+
+  if (type === "road_hazard") {
+    return "Road hazard reported ahead. Proceed with caution and be prepared for unexpected obstacles.";
   }
 
   if (type === "traffic_light_outage") {
