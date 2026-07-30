@@ -14,11 +14,22 @@ type RoadRiskSegment = {
   longitude: number;
   radius_meters: number;
   risk_score: number;
-  collision_count: number;
+    collision_count: number;
   crime_count: number;
   roadblock_count: number;
   traffic_signal_count: number;
   other_event_count: number;
+
+  road_closure_count: number;
+  roadworks_count: number;
+  congestion_count: number;
+  lane_closure_count: number;
+  weather_hazard_count: number;
+  flooding_count: number;
+  vehicle_breakdown_count: number;
+  road_hazard_count: number;
+  protest_count: number;
+
   verification_count: number;
   last_event_at?: string | null;
   updated_at?: string | null;
@@ -227,9 +238,54 @@ return (
                     {segment.traffic_signal_count || 0}
                   </div>
 
-                  <div>
+                                    <div>
                     <strong>Other events:</strong>{" "}
                     {segment.other_event_count || 0}
+                  </div>
+
+                  <div>
+                    <strong>Road closures:</strong>{" "}
+                    {segment.road_closure_count || 0}
+                  </div>
+
+                  <div>
+                    <strong>Roadworks:</strong>{" "}
+                    {segment.roadworks_count || 0}
+                  </div>
+
+                  <div>
+                    <strong>Congestion:</strong>{" "}
+                    {segment.congestion_count || 0}
+                  </div>
+
+                  <div>
+                    <strong>Lane closures:</strong>{" "}
+                    {segment.lane_closure_count || 0}
+                  </div>
+
+                  <div>
+                    <strong>Weather hazards:</strong>{" "}
+                    {segment.weather_hazard_count || 0}
+                  </div>
+
+                  <div>
+                    <strong>Flooding:</strong>{" "}
+                    {segment.flooding_count || 0}
+                  </div>
+
+                  <div>
+                    <strong>Vehicle breakdowns:</strong>{" "}
+                    {segment.vehicle_breakdown_count || 0}
+                  </div>
+
+                  <div>
+                    <strong>Road hazards:</strong>{" "}
+                    {segment.road_hazard_count || 0}
+                  </div>
+
+                  <div>
+                    <strong>Protests:</strong>{" "}
+                    {segment.protest_count || 0}
                   </div>
 
                   <div>
