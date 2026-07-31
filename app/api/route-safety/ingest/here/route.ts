@@ -27,7 +27,7 @@ function mapHereType(description: string) {
   }
 
   if (text.includes("accident") || text.includes("crash") || text.includes("collision")) {
-    return "accident";
+    return "collision";
   }
 
   if (text.includes("protest")) {
