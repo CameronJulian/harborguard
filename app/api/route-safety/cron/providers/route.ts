@@ -461,7 +461,8 @@ provider_sources,
       last_provider_confirmation_at
     `)
     .eq("organization_id", organizationId)
-    .eq("status", "active");
+    .eq("status", "active")
+    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
 
   if (existingError) {
     throw existingError;
