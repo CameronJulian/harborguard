@@ -333,6 +333,59 @@ function normalizeRoadName(value: string | null | undefined) {
     .replace(/[.,]/g, "");
 }
 
+function getRepresentativeCoordinate(
+  geometry: unknown
+): { latitude: number; longitude: number } | null {
+  if (!geometry || typeof geometry !== "object") {
+    return null;
+  }
+
+  const value = geometry as any;
+
+  // TomTom GeoJSON LineString
+  if (
+    value.type === "LineString" &&
+    Array.isArray(value.coordinates) &&
+    value.coordinates.length > 0
+  ) {
+    const first = value.coordinates[0];
+
+    if (
+      Array.isArray(first) &&
+      first.length >= 2 &&
+      Number.isFinite(Number(first[0])) &&
+      Number.isFinite(Number(first[1]))
+    ) {
+      return {
+        latitude: Number(first[1]),
+        longitude: Number(first[0]),
+      };
+    }
+  }
+
+  // HERE shape.links.points
+  if (
+    value.shape &&
+    Array.isArray(value.shape.links) &&
+    value.shape.links.length > 0
+  ) {
+    const point = value.shape.links[0]?.points?.[0];
+
+    if (
+      point &&
+      Number.isFinite(Number(point.lat)) &&
+      Number.isFinite(Number(point.lng))
+    ) {
+      return {
+        latitude: Number(point.lat),
+        longitude: Number(point.lng),
+      };
+    }
+  }
+
+  return null;
+}
+
 async function insertNewProviderAlerts(
   supabase: any,
   organizationId: string,
