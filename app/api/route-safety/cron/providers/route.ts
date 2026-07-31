@@ -620,21 +620,11 @@ provider_sources,
           incomingRoad.length > 0 &&
           existingRoad === incomingRoad;
 
-        const existingGeometryCoordinate =
-          getRepresentativeCoordinate(alert.provider_geometry);
-
-        const incomingGeometryCoordinate =
-          getRepresentativeCoordinate(row.provider_geometry);
-
-        const geometryDistance =
-          existingGeometryCoordinate && incomingGeometryCoordinate
-            ? distanceMeters(
-                incomingGeometryCoordinate.latitude,
-                incomingGeometryCoordinate.longitude,
-                existingGeometryCoordinate.latitude,
-                existingGeometryCoordinate.longitude
-              )
-            : null;
+       const geometryDistance =
+  getMinimumGeometryDistanceMeters(
+    alert.provider_geometry,
+    row.provider_geometry
+  );
 
         const geometryMatches =
           geometryDistance !== null && geometryDistance <= 250;
