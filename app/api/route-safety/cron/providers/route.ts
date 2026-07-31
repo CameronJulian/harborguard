@@ -131,8 +131,39 @@ function getHereLatLng(incident: any) {
   return null;
 }
 
-function mapTomTomType(category: number | string | null) {
-  const value = String(category || "");
+function mapTomTomType(
+  category: number | string | null,
+  description: string
+) {
+  const text = description.toLowerCase();
+const value = String(category || "");
+
+if (
+  text.includes("road construction") ||
+  text.includes("roadworks") ||
+  text.includes("road works")
+) {
+  return "roadworks";
+}
+
+if (
+  text.includes("road closed") ||
+  text.includes("closed ahead") ||
+  text.includes("closed") ||
+  text.includes("closure")
+) {
+  return "road_closure";
+}
+
+if (
+  text.includes("backed-up traffic") ||
+  text.includes("traffic congestion") ||
+  text.includes("stationary traffic") ||
+  text.includes("queuing traffic") ||
+  text.includes("slow traffic")
+) {
+  return "congestion";
+}
 
   if (value === "1") return "collision";
   if (value === "2") return "weather_hazard";
@@ -768,7 +799,10 @@ async function importTomTomIncidents(
 
         return {
           organization_id: organizationId,
-          type: mapTomTomType(properties?.iconCategory),
+          type: mapTomTomType(
+            properties?.iconCategory,
+            eventDescription
+          ),
           title: eventDescription.slice(0, 120),
           description:
             "Automatically imported from TomTom Traffic. " +
