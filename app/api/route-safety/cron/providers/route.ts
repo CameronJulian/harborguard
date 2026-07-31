@@ -414,7 +414,8 @@ async function insertNewProviderAlerts(
       road_name,
       road_from,
       road_to,
-      provider_sources,
+provider_geometry,
+provider_sources,
       provider_confirmation_count,
       provider_confidence,
       last_provider_confirmation_at
