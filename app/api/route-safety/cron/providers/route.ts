@@ -388,6 +388,61 @@ function getRepresentativeCoordinate(
   return null;
 }
 
+function extractGeometryCoordinates(
+  geometry: unknown
+): { latitude: number; longitude: number }[] {
+  if (!geometry || typeof geometry !== "object") {
+    return [];
+  }
+
+  const value = geometry as any;
+
+  // TomTom GeoJSON LineString
+  if (
+    value.type === "LineString" &&
+    Array.isArray(value.coordinates)
+  ) {
+    return value.coordinates
+      .filter(
+        (coordinate: unknown) =>
+          Array.isArray(coordinate) &&
+          coordinate.length >= 2 &&
+          Number.isFinite(Number(coordinate[0])) &&
+          Number.isFinite(Number(coordinate[1]))
+      )
+      .map((coordinate: any) => ({
+        latitude: Number(coordinate[1]),
+        longitude: Number(coordinate[0]),
+      }));
+  }
+
+  // HERE links[].points[]
+  const hereLinks = Array.isArray(value.links)
+    ? value.links
+    : Array.isArray(value.shape?.links)
+      ? value.shape.links
+      : null;
+
+  if (!hereLinks) {
+    return [];
+  }
+
+  return hereLinks.flatMap((link: any) =>
+    Array.isArray(link.points)
+      ? link.points
+          .filter(
+            (point: any) =>
+              Number.isFinite(Number(point?.lat)) &&
+              Number.isFinite(Number(point?.lng))
+          )
+          .map((point: any) => ({
+            latitude: Number(point.lat),
+            longitude: Number(point.lng),
+          }))
+      : []
+  );
+}
+
 async function insertNewProviderAlerts(
   supabase: any,
   organizationId: string,
