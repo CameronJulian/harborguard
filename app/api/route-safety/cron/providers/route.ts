@@ -666,6 +666,15 @@ async function importTomTomIncidents(
       error: null,
     };
   } catch (error: unknown) {
+    console.error("[TomTom provider ingestion]", error);
+
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : typeof error === "object" && error !== null
+          ? JSON.stringify(error)
+          : String(error || "TomTom incident ingestion failed.");
+
     return {
       provider: "tomtom",
       organizationId,
@@ -674,10 +683,7 @@ async function importTomTomIncidents(
       imported: 0,
       skippedDuplicates: 0,
       mergedDuplicates: 0,
-      error:
-        error instanceof Error
-          ? error.message
-          : "TomTom incident ingestion failed.",
+      error: errorMessage,
     };
   }
 }
