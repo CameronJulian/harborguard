@@ -443,6 +443,42 @@ function extractGeometryCoordinates(
   );
 }
 
+function getMinimumGeometryDistanceMeters(
+  geometryA: unknown,
+  geometryB: unknown
+): number | null {
+  const coordinatesA = extractGeometryCoordinates(geometryA);
+  const coordinatesB = extractGeometryCoordinates(geometryB);
+
+  if (
+    coordinatesA.length === 0 ||
+    coordinatesB.length === 0
+  ) {
+    return null;
+  }
+
+  let minimumDistance = Number.POSITIVE_INFINITY;
+
+  for (const pointA of coordinatesA) {
+    for (const pointB of coordinatesB) {
+      const distance = distanceMeters(
+        pointA.latitude,
+        pointA.longitude,
+        pointB.latitude,
+        pointB.longitude
+      );
+
+      if (distance < minimumDistance) {
+        minimumDistance = distance;
+      }
+    }
+  }
+
+  return Number.isFinite(minimumDistance)
+    ? minimumDistance
+    : null;
+}
+
 async function insertNewProviderAlerts(
   supabase: any,
   organizationId: string,
