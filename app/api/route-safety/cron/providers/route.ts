@@ -55,14 +55,6 @@ function mapHereType(description: string) {
     return "traffic_light_outage";
   }
 
-  if (text.includes("roadblock")) {
-    return "roadblock";
-  }
-
-  if (text.includes("road closed") || text.includes("closure")) {
-    return "road_closure";
-  }
-
   if (
     text.includes("accident") ||
     text.includes("crash") ||
@@ -73,6 +65,37 @@ function mapHereType(description: string) {
 
   if (text.includes("protest")) {
     return "protest";
+  }
+
+  if (
+    text.includes("road construction") ||
+    text.includes("roadworks") ||
+    text.includes("road works")
+  ) {
+    return "roadworks";
+  }
+
+  if (
+    text.includes("backed-up traffic") ||
+    text.includes("traffic congestion") ||
+    text.includes("stationary traffic") ||
+    text.includes("queuing traffic") ||
+    text.includes("slow traffic")
+  ) {
+    return "congestion";
+  }
+
+  if (
+    text.includes("road closed") ||
+    text.includes("closed ahead") ||
+    text.includes("closed") ||
+    text.includes("closure")
+  ) {
+    return "road_closure";
+  }
+
+  if (text.includes("roadblock")) {
+    return "roadblock";
   }
 
   return "road_hazard";
@@ -125,6 +148,86 @@ function mapTomTomType(category: number | string | null) {
   if (value === "14") return "vehicle_breakdown";
 
   return "road_hazard";
+}
+
+function areCrossProviderEventsCompatible(
+  existingType: string,
+  existingTitle: string,
+  incomingType: string,
+  incomingTitle: string
+) {
+  if (existingType === incomingType) {
+    return true;
+  }
+
+  const existingText = existingTitle.trim().toLowerCase();
+  const incomingText = incomingTitle.trim().toLowerCase();
+
+  const bothMatchKeywords = (keywords: string[]) =>
+    keywords.some((keyword) => existingText.includes(keyword)) &&
+    keywords.some((keyword) => incomingText.includes(keyword));
+
+  const typesBelongToFamily = (
+    familyTypes: string[]
+  ) =>
+    familyTypes.includes(existingType) &&
+    familyTypes.includes(incomingType);
+
+  const closureTypes = [
+    "road_closure",
+    "roadblock",
+    "road_hazard",
+  ];
+
+  const closureKeywords = [
+    "closed",
+    "closure",
+  ];
+
+  if (
+    typesBelongToFamily(closureTypes) &&
+    bothMatchKeywords(closureKeywords)
+  ) {
+    return true;
+  }
+
+  const congestionTypes = [
+    "congestion",
+    "roadblock",
+    "road_hazard",
+  ];
+
+  const congestionKeywords = [
+    "backed-up traffic",
+    "traffic congestion",
+    "stationary traffic",
+    "queuing traffic",
+    "slow traffic",
+  ];
+
+  if (
+    typesBelongToFamily(congestionTypes) &&
+    bothMatchKeywords(congestionKeywords)
+  ) {
+    return true;
+  }
+
+  const roadworksTypes = [
+    "roadworks",
+    "roadblock",
+    "road_hazard",
+  ];
+
+  const roadworksKeywords = [
+    "road construction",
+    "roadworks",
+    "road works",
+  ];
+
+  return (
+    typesBelongToFamily(roadworksTypes) &&
+    bothMatchKeywords(roadworksKeywords)
+  );
 }
 
 function mapTomTomSeverity(magnitude: number | string | null) {
@@ -255,8 +358,17 @@ async function insertNewProviderAlerts(
       continue;
     }
 
-    const crossProviderMatch =
-      normalizedExistingAlerts.find((alert: any) => {
+    type CrossProviderCandidate = {
+      alert: any;
+      existingSource: string;
+      existingType: string;
+      incomingType: string;
+      distanceMeters: number;
+      typeMatches: boolean;
+    };
+
+    const crossProviderCandidates = normalizedExistingAlerts
+      .filter((alert: any) => {
         const existingSource = String(alert.source || "");
 
         if (!["here_traffic", "tomtom"].includes(existingSource)) {
@@ -273,14 +385,9 @@ async function insertNewProviderAlerts(
           ? alert.provider_sources.map(String)
           : [existingSource];
 
-        if (existingProviderSources.includes(source)) {
-          return false;
-        }
-
-        if (String(alert.type || "") !== row.type) {
-          return false;
-        }
-
+        return !existingProviderSources.includes(source);
+      })
+      .map((alert: any): CrossProviderCandidate | null => {
         const existingLatitude = Number(alert.latitude);
         const existingLongitude = Number(alert.longitude);
 
@@ -288,18 +395,53 @@ async function insertNewProviderAlerts(
           !Number.isFinite(existingLatitude) ||
           !Number.isFinite(existingLongitude)
         ) {
-          return false;
+          return null;
         }
 
-        return (
-          distanceMeters(
-            row.latitude,
-            row.longitude,
-            existingLatitude,
-            existingLongitude
-          ) <= 250
+        const distance = distanceMeters(
+          row.latitude,
+          row.longitude,
+          existingLatitude,
+          existingLongitude
         );
-      });
+
+        const existingType = String(alert.type || "");
+        const typeMatches = areCrossProviderEventsCompatible(
+          existingType,
+          String(alert.title || ""),
+          row.type,
+          row.title
+        );
+
+        return {
+          alert,
+          existingSource: String(alert.source || ""),
+          existingType,
+          incomingType: row.type,
+          distanceMeters: Math.round(distance),
+          typeMatches,
+        };
+      })
+      .filter(
+        (
+          candidate: CrossProviderCandidate | null
+        ): candidate is CrossProviderCandidate =>
+          candidate !== null
+      )
+      .sort(
+        (
+          a: CrossProviderCandidate,
+          b: CrossProviderCandidate
+        ) => a.distanceMeters - b.distanceMeters
+      );
+
+    const crossProviderCandidate = crossProviderCandidates.find(
+      (candidate: CrossProviderCandidate) =>
+        candidate.typeMatches &&
+        candidate.distanceMeters <= 250
+    );
+
+    const crossProviderMatch = crossProviderCandidate?.alert;
 
     if (crossProviderMatch) {
       const confirmedAt = new Date().toISOString();
