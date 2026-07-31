@@ -761,8 +761,11 @@ if (roadRiskSegmentsError) {
             ? null
             : Math.round(providerGeometryDistance);
 
-        // Existing route classification remains unchanged in this commit.
-        const corridorDistance = distanceFromRoute;
+        // Prefer full provider corridor geometry when available.
+        // Alerts without geometry retain point-distance behaviour.
+        const corridorDistance =
+          providerGeometryDistance ??
+          distanceFromRoute;
         const radius = Number(alert.radius_meters || 1000);
         const isLikelyOnRoute = corridorDistance <= radius + 500;
 
