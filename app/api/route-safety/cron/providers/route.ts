@@ -28,6 +28,12 @@ type AlertRow = {
   status: string;
   expires_at: string | null;
   verified_at: string;
+
+  // Provider metadata for future duplicate matching
+  road_name?: string | null;
+  road_from?: string | null;
+  road_to?: string | null;
+  provider_geometry?: unknown;
 };
 
 function mapHereSeverity(criticality?: string) {
@@ -318,6 +324,15 @@ function distanceMeters(
   );
 }
 
+
+function normalizeRoadName(value: string | null | undefined) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/[.,]/g, "");
+}
+
 async function insertNewProviderAlerts(
   supabase: any,
   organizationId: string,
@@ -333,23 +348,26 @@ async function insertNewProviderAlerts(
   }
 
   const { data: existingAlerts, error: existingError } =
-    await supabase
-      .from("route_safety_alerts")
-      .select(`
-        id,
-        source,
-        type,
-        title,
-        latitude,
-        longitude,
-        expires_at,
-        provider_sources,
-        provider_confirmation_count,
-        provider_confidence,
-        last_provider_confirmation_at
-      `)
-      .eq("organization_id", organizationId)
-      .eq("status", "active");
+  await supabase
+    .from("route_safety_alerts")
+    .select(`
+      id,
+      source,
+      type,
+      title,
+      latitude,
+      longitude,
+      expires_at,
+      road_name,
+      road_from,
+      road_to,
+      provider_sources,
+      provider_confirmation_count,
+      provider_confidence,
+      last_provider_confirmation_at
+    `)
+    .eq("organization_id", organizationId)
+    .eq("status", "active");
 
   if (existingError) {
     throw existingError;
@@ -389,14 +407,15 @@ async function insertNewProviderAlerts(
       continue;
     }
 
-    type CrossProviderCandidate = {
-      alert: any;
-      existingSource: string;
-      existingType: string;
-      incomingType: string;
-      distanceMeters: number;
-      typeMatches: boolean;
-    };
+   type CrossProviderCandidate = {
+  alert: any;
+  existingSource: string;
+  existingType: string;
+  incomingType: string;
+  distanceMeters: number;
+  typeMatches: boolean;
+  roadMatches: boolean;
+};
 
     const crossProviderCandidates = normalizedExistingAlerts
       .filter((alert: any) => {
@@ -443,6 +462,14 @@ async function insertNewProviderAlerts(
           row.type,
           row.title
         );
+		
+		const existingRoad = normalizeRoadName(alert.road_name);
+const incomingRoad = normalizeRoadName(row.road_name);
+
+const roadMatches =
+  existingRoad.length > 0 &&
+  incomingRoad.length > 0 &&
+  existingRoad === incomingRoad;
 
         return {
           alert,
@@ -451,6 +478,7 @@ async function insertNewProviderAlerts(
           incomingType: row.type,
           distanceMeters: Math.round(distance),
           typeMatches,
+		  roadMatches,
         };
       })
       .filter(
@@ -469,7 +497,10 @@ async function insertNewProviderAlerts(
     const crossProviderCandidate = crossProviderCandidates.find(
       (candidate: CrossProviderCandidate) =>
         candidate.typeMatches &&
-        candidate.distanceMeters <= 250
+(
+  candidate.roadMatches ||
+  candidate.distanceMeters <= 250
+)
     );
 
     const crossProviderMatch = crossProviderCandidate?.alert;
@@ -666,6 +697,16 @@ async function importHereIncidents(
         if (!coordinates) {
           return null;
         }
+		
+		const firstLink =
+  incident?.location?.shape?.links?.[0] ??
+  incident?.location?.polyline?.links?.[0];
+
+const roadName =
+  firstLink?.name ??
+  firstLink?.roadName ??
+  details?.roadName ??
+  null;
 
         return {
           organization_id: organizationId,
@@ -679,7 +720,15 @@ async function importHereIncidents(
           source: "here_traffic",
           status: "active",
           expires_at: details?.endTime || null,
-          verified_at: new Date().toISOString(),
+verified_at: new Date().toISOString(),
+
+road_name: roadName,
+road_from: null,
+road_to: null,
+provider_geometry:
+  incident?.location?.shape ??
+  incident?.location?.polyline ??
+  null,
         };
       })
       .filter((row: AlertRow | null): row is AlertRow => row !== null);
@@ -814,13 +863,30 @@ async function importTomTomIncidents(
           severity: mapTomTomSeverity(
             properties?.magnitudeOfDelay
           ),
-          source: "tomtom",
-          status: "active",
-          expires_at: new Date(
-            Date.now() + 2 * 60 * 60 * 1000
-          ).toISOString(),
-          verified_at: new Date().toISOString(),
-        };
+           source: "tomtom",
+  status: "active",
+  expires_at: new Date(
+    Date.now() + 2 * 60 * 60 * 1000
+  ).toISOString(),
+  verified_at: new Date().toISOString(),
+
+  road_name:
+    properties?.from ??
+    properties?.to ??
+    null,
+
+  road_from:
+    properties?.from ??
+    null,
+
+  road_to:
+    properties?.to ??
+    null,
+
+  provider_geometry:
+    incident?.geometry ??
+    null,
+};
       })
       .filter((row: AlertRow | null): row is AlertRow => row !== null);
 
