@@ -1141,8 +1141,31 @@ export async function GET(request: Request) {
     const organizationIds = [trafficOrganizationId];
 
     const results: ProviderResult[] = [];
+    let expiredAlertsTransitioned = 0;
 
     for (const organizationId of organizationIds) {
+      const expiredAt = new Date().toISOString();
+
+      const {
+        data: expiredAlerts,
+        error: expiredAlertsError,
+      } = await supabase
+        .from("route_safety_alerts")
+        .update({
+          status: "expired",
+        })
+        .eq("organization_id", organizationId)
+        .eq("status", "active")
+        .lt("expires_at", expiredAt)
+        .select("id");
+
+      if (expiredAlertsError) {
+        throw expiredAlertsError;
+      }
+
+      expiredAlertsTransitioned +=
+        expiredAlerts?.length || 0;
+
       const hereResult = await importHereIncidents(
         supabase,
         organizationId
@@ -1182,6 +1205,7 @@ export async function GET(request: Request) {
       generatedAt: new Date().toISOString(),
       organizationsProcessed: organizationIds.length,
       providerRuns: results.length,
+      expiredAlertsTransitioned,
       imported,
       skippedDuplicates,
       mergedDuplicates,
