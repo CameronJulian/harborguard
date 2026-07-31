@@ -46,7 +46,12 @@ function markerColor(incident: RoadIncident) {
 
   if (severity === "critical" || type === "smash_grab_hotspot") return "#dc2626";
   if (severity === "high" || type === "roadblock" || type === "road_closure") return "#ea580c";
-  if (severity === "medium" || type === "accident") return "#d97706";
+  if (
+    severity === "medium" ||
+    type === "collision" ||
+    type === "accident"
+  )
+    return "#d97706";
   return "#2563eb";
 }
 
