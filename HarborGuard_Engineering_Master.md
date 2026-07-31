@@ -1843,3 +1843,130 @@ Next Recommended Engineering Focus
 - Predictive analytics
 - Fleet intelligence expansion
 
+## Provider ingestion validation — 2026-07-31
+
+- Validated `/api/route-safety/cron/providers` locally.
+- HERE ingestion succeeded:
+  - Raw: 67
+  - Imported: 17
+  - Duplicates skipped: 50
+- TomTom ingestion succeeded:
+  - Raw: 303
+  - Imported: 137
+  - Duplicates skipped: 166
+- Total imported: 154
+- Failed providers: 0
+- Added improved TomTom ingestion error logging for future diagnostics.
+- Cross-provider merges during this run: 0.
+
+
+## 2026-07-31 – Cross-provider Road Event Matching
+
+Status: Completed
+
+Changes
+- Improved HERE traffic event classification for:
+  - congestion
+  - road closures
+  - roadworks
+- Added semantic cross-provider compatibility matching between HERE and TomTom.
+- Replaced strict type equality with conservative compatibility checks.
+- Retained 250 m merge radius to avoid false positives.
+
+Verification
+- TypeScript: Passed
+- Production build: Passed
+- Cross-provider cron:
+  - Before: mergedDuplicates = 0
+  - After: mergedDuplicates = 3
+- Temporary diagnostics removed after successful validation.
+
+Git
+Commit: f8e199f
+Message: Improve cross-provider road event matching
+
+## 2026-07-31 – Expanded External Provider Incident Taxonomy & Cross-Provider Matching
+
+### Objective
+Improve HarborGuard's external road incident ingestion by expanding HERE and TomTom incident classification, increasing semantic compatibility between providers, and improving duplicate correlation.
+
+### Audit
+- Audited the existing provider ingestion pipeline.
+- Reviewed HERE incident normalization.
+- Reviewed TomTom incident normalization.
+- Reviewed cross-provider duplicate detection.
+- Reviewed merge logic and compatibility rules before making changes.
+
+### Implementation
+
+#### HERE Provider
+- Expanded incident normalization to recognise additional HERE event categories.
+- Improved mapping of provider-specific event types into HarborGuard's internal taxonomy.
+- Increased classification consistency for road closures, roadworks, congestion and related incidents.
+
+#### TomTom Provider
+- Updated normalization to prioritise event descriptions before icon category fallbacks.
+- Added support for additional traffic conditions including:
+  - Stationary traffic
+  - Queuing traffic
+  - Slow traffic
+  - Roadworks
+  - Road closures
+- Improved provider-specific taxonomy mapping.
+
+#### Cross-Provider Correlation
+- Expanded semantic compatibility matching between HERE and TomTom incidents.
+- Improved duplicate merge logic using compatibility rules together with spatial proximity.
+- Reduced duplicate alert creation across providers.
+
+### Runtime Verification
+
+Cron endpoint:
+
+
+
+Result:
+
+- Success: ✅
+- Organizations processed: 1
+- Provider runs: 2
+- Failed providers: 0
+
+Provider statistics:
+
+| Provider | Raw | Imported | Skipped | Merged |
+|----------|----:|---------:|--------:|-------:|
+| HERE | 70 | 8 | 61 | 1 |
+| TomTom | 393 | 202 | 191 | 0 |
+
+Overall:
+
+- Imported incidents: 210
+- Skipped duplicates: 252
+- Cross-provider merges: 1
+- Failed providers: 0
+
+### Verification
+
+Completed successfully:
+
+- ✅ Audit completed
+- ✅ TypeScript verification (`npx tsc --noEmit`)
+- ✅ Production build (`npm run build`)
+- ✅ Runtime verification completed
+- ✅ Provider ingestion verified
+- ✅ Cross-provider merge verified
+
+### Git
+
+Commit:
+
+b781408
+
+Message:
+
+Enhance provider event normalization and matching
+
+Status:
+
+Completed and pushed to GitHub.
