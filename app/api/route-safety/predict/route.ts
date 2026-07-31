@@ -42,7 +42,7 @@ function typeWeight(type: string | null) {
       return 12;
     case "lane_closure":
       return 14;
-    case "accident":
+    case "collision":
       return 20;
     case "traffic_light_outage":
       return 18;
@@ -251,7 +251,7 @@ function recommendationFor(type: string | null, severity: string | null) {
     return "Traffic lights reported out. Approach intersection slowly and proceed with caution.";
   }
 
-  if (type === "accident") {
+  if (type === "collision") {
     return "Accident reported ahead. Expect congestion and reduce speed.";
   }
 
@@ -549,7 +549,7 @@ if (roadRiskSegmentsError) {
     count: Number(segment.lane_closure_count) || 0,
   },
   {
-    type: "accident",
+    type: "collision",
     count: Number(segment.collision_count) || 0,
   },
   {
@@ -936,4 +936,3 @@ if (roadRiskSegmentsError) {
     );
   }
 }
-
