@@ -395,11 +395,22 @@ export async function POST(req: NextRequest) {
       longitude,
       radius_meters,
       risk_score,
-      collision_count,
+            collision_count,
       crime_count,
       roadblock_count,
       traffic_signal_count,
       other_event_count,
+
+      road_closure_count,
+      roadworks_count,
+      congestion_count,
+      lane_closure_count,
+      weather_hazard_count,
+      flooding_count,
+      vehicle_breakdown_count,
+      road_hazard_count,
+      protest_count,
+
       verification_count,
       last_event_at,
       metadata
@@ -512,28 +523,64 @@ if (roadRiskSegmentsError) {
           Math.max(0, Number(segment.risk_score) || 0)
         );
 
-        const eventCounts = [
-          {
-            type: "smash_grab_hotspot",
-            count: Number(segment.crime_count) || 0,
-          },
-          {
-            type: "roadblock",
-            count: Number(segment.roadblock_count) || 0,
-          },
-          {
-            type: "accident",
-            count: Number(segment.collision_count) || 0,
-          },
-          {
-            type: "traffic_light_outage",
-            count: Number(segment.traffic_signal_count) || 0,
-          },
-          {
-            type: "other",
-            count: Number(segment.other_event_count) || 0,
-          },
-        ];
+       const eventCounts = [
+  {
+    type: "smash_grab_hotspot",
+    count: Number(segment.crime_count) || 0,
+  },
+  {
+    type: "roadblock",
+    count: Number(segment.roadblock_count) || 0,
+  },
+  {
+    type: "road_closure",
+    count: Number(segment.road_closure_count) || 0,
+  },
+  {
+    type: "roadworks",
+    count: Number(segment.roadworks_count) || 0,
+  },
+  {
+    type: "congestion",
+    count: Number(segment.congestion_count) || 0,
+  },
+  {
+    type: "lane_closure",
+    count: Number(segment.lane_closure_count) || 0,
+  },
+  {
+    type: "accident",
+    count: Number(segment.collision_count) || 0,
+  },
+  {
+    type: "traffic_light_outage",
+    count: Number(segment.traffic_signal_count) || 0,
+  },
+  {
+    type: "weather_hazard",
+    count: Number(segment.weather_hazard_count) || 0,
+  },
+  {
+    type: "flooding",
+    count: Number(segment.flooding_count) || 0,
+  },
+  {
+    type: "vehicle_breakdown",
+    count: Number(segment.vehicle_breakdown_count) || 0,
+  },
+  {
+    type: "road_hazard",
+    count: Number(segment.road_hazard_count) || 0,
+  },
+  {
+    type: "protest",
+    count: Number(segment.protest_count) || 0,
+  },
+  {
+    type: "other",
+    count: Number(segment.other_event_count) || 0,
+  },
+];
 
         const dominantEvent = eventCounts.sort(
           (a, b) => b.count - a.count
