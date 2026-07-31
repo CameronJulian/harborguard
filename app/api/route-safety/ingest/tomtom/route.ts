@@ -4,7 +4,7 @@ import { requireOrganization } from "@/lib/server-auth";
 function mapTomTomType(category: number | string | null) {
   const value = String(category || "");
 
-  if (value === "1") return "accident";
+  if (value === "1") return "collision";
   if (value === "2") return "weather_hazard";
   if (value === "3") return "road_hazard";
   if (value === "4") return "weather_hazard";
@@ -134,5 +134,3 @@ export async function POST() {
     );
   }
 }
-
-
