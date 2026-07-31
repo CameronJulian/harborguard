@@ -21,6 +21,101 @@ function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) 
   return earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+function extractProviderGeometryCoordinates(
+  geometry: unknown
+): [number, number][] {
+  if (!geometry || typeof geometry !== "object") {
+    return [];
+  }
+
+  const value = geometry as any;
+
+  // TomTom GeoJSON LineString uses [longitude, latitude].
+  if (
+    value.type === "LineString" &&
+    Array.isArray(value.coordinates)
+  ) {
+    return value.coordinates
+      .filter(
+        (coordinate: unknown) =>
+          Array.isArray(coordinate) &&
+          coordinate.length >= 2 &&
+          Number.isFinite(Number(coordinate[0])) &&
+          Number.isFinite(Number(coordinate[1]))
+      )
+      .map(
+        (coordinate: any): [number, number] => [
+          Number(coordinate[1]),
+          Number(coordinate[0]),
+        ]
+      );
+  }
+
+  // HERE geometry may be { links: [...] } or { shape: { links: [...] } }.
+  const hereLinks = Array.isArray(value.links)
+    ? value.links
+    : Array.isArray(value.shape?.links)
+      ? value.shape.links
+      : null;
+
+  if (!hereLinks) {
+    return [];
+  }
+
+  return hereLinks.flatMap((link: any) =>
+    Array.isArray(link?.points)
+      ? link.points
+          .filter(
+            (point: any) =>
+              Number.isFinite(Number(point?.lat)) &&
+              Number.isFinite(Number(point?.lng))
+          )
+          .map(
+            (point: any): [number, number] => [
+              Number(point.lat),
+              Number(point.lng),
+            ]
+          )
+      : []
+  );
+}
+
+function getMinimumProviderGeometryDistanceMeters(
+  routePoints: [number, number][],
+  geometry: unknown
+): number | null {
+  const geometryPoints =
+    extractProviderGeometryCoordinates(geometry);
+
+  if (
+    routePoints.length === 0 ||
+    geometryPoints.length === 0
+  ) {
+    return null;
+  }
+
+  let minimumDistance = Number.POSITIVE_INFINITY;
+
+  for (const [routeLatitude, routeLongitude] of routePoints) {
+    for (const [geometryLatitude, geometryLongitude] of geometryPoints) {
+      const distance = distanceMeters(
+        routeLatitude,
+        routeLongitude,
+        geometryLatitude,
+        geometryLongitude
+      );
+
+      if (distance < minimumDistance) {
+        minimumDistance = distance;
+      }
+    }
+  }
+
+  return Number.isFinite(minimumDistance)
+    ? minimumDistance
+    : null;
+}
+
 function severityWeight(severity: string | null) {
   if (severity === "critical") return 45;
   if (severity === "high") return 30;
@@ -655,6 +750,18 @@ if (roadRiskSegmentsError) {
           )
         );
 
+        const providerGeometryDistance =
+          getMinimumProviderGeometryDistanceMeters(
+            routePoints,
+            alert.provider_geometry
+          );
+
+        const distanceFromProviderGeometry =
+          providerGeometryDistance === null
+            ? null
+            : Math.round(providerGeometryDistance);
+
+        // Existing route classification remains unchanged in this commit.
         const corridorDistance = distanceFromRoute;
         const radius = Number(alert.radius_meters || 1000);
         const isLikelyOnRoute = corridorDistance <= radius + 500;
@@ -708,6 +815,7 @@ if (roadRiskSegmentsError) {
           distanceFromOrigin: Math.round(distanceFromOrigin),
           distanceFromDestination: Math.round(distanceFromDestination),
           distanceFromRoute: Math.round(distanceFromRoute),
+          distanceFromProviderGeometry,
           isLikelyOnRoute,
           score,
           freshness: normalizedFreshness,
