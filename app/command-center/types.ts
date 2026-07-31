@@ -32,6 +32,7 @@ export type RoadIncident = {
   longitude: number;
   severity: string;
   radius_meters: number;
+  provider_geometry?: unknown;
 };
 
 export type FleetVehicle = {
