@@ -27,13 +27,25 @@ export async function POST(req: NextRequest) {
         longitude,
         radius_meters,
         risk_score,
-        collision_count,
-        crime_count,
-        roadblock_count,
-        traffic_signal_count,
-        other_event_count,
-        verification_count,
-        last_event_at
+
+collision_count,
+crime_count,
+roadblock_count,
+traffic_signal_count,
+other_event_count,
+
+road_closure_count,
+roadworks_count,
+congestion_count,
+lane_closure_count,
+weather_hazard_count,
+flooding_count,
+vehicle_breakdown_count,
+road_hazard_count,
+protest_count,
+
+verification_count,
+last_event_at
       `)
       .eq("organization_id", organizationId);
 
