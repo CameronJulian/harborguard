@@ -21,6 +21,65 @@ type Props = {
   ) => [number, number] | null;
 };
 
+function getProviderGeometryPositions(
+  geometry: unknown
+): [number, number][] {
+  if (!geometry || typeof geometry !== "object") {
+    return [];
+  }
+
+  const value = geometry as any;
+
+  // TomTom GeoJSON LineString coordinates use [longitude, latitude].
+  if (
+    value.type === "LineString" &&
+    Array.isArray(value.coordinates)
+  ) {
+    return value.coordinates
+      .filter(
+        (coordinate: unknown) =>
+          Array.isArray(coordinate) &&
+          coordinate.length >= 2 &&
+          Number.isFinite(Number(coordinate[0])) &&
+          Number.isFinite(Number(coordinate[1]))
+      )
+      .map(
+        (coordinate: any): [number, number] => [
+          Number(coordinate[1]),
+          Number(coordinate[0]),
+        ]
+      );
+  }
+
+  // HERE geometry can be stored as { links: [...] } or { shape: { links: [...] } }.
+  const hereLinks = Array.isArray(value.links)
+    ? value.links
+    : Array.isArray(value.shape?.links)
+      ? value.shape.links
+      : null;
+
+  if (!hereLinks) {
+    return [];
+  }
+
+  return hereLinks.flatMap((link: any) =>
+    Array.isArray(link?.points)
+      ? link.points
+          .filter(
+            (point: any) =>
+              Number.isFinite(Number(point?.lat)) &&
+              Number.isFinite(Number(point?.lng))
+          )
+          .map(
+            (point: any): [number, number] => [
+              Number(point.lat),
+              Number(point.lng),
+            ]
+          )
+      : []
+  );
+}
+
 export default function RouteOverlayLayers({
   incidents,
   showHeatmap,
