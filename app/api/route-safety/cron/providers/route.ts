@@ -668,8 +668,7 @@ async function importHereIncidents(
     });
 
     const data = await response.json();
-
-    if (!response.ok) {
+if (!response.ok) {
       throw new Error(
         data?.title ||
           data?.error ||
@@ -807,8 +806,7 @@ async function importTomTomIncidents(
     });
 
     const data = await response.json();
-
-    if (!response.ok) {
+if (!response.ok) {
       throw new Error(
         data?.detailedError?.message ||
           data?.error?.description ||

@@ -1,4 +1,4 @@
-﻿alter table public.route_safety_alerts
+alter table public.route_safety_alerts
 add column if not exists road_name text;
 
 alter table public.route_safety_alerts
