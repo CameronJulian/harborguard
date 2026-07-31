@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import type { RoadIncident } from "../types";
 
 type Props = {
@@ -129,30 +130,57 @@ export default function RouteOverlayLayers({
               ? "#ea580c"
               : "#d97706";
 
+        const providerPositions =
+          getProviderGeometryPositions(
+            incident.provider_geometry
+          );
+
+        const hasProviderCorridor =
+          providerPositions.length >= 2;
+
         return (
-          <CircleMarker
-            key={incident.id}
-            center={coords}
-            radius={14}
-            pathOptions={{
-              color,
-              fillColor: color,
-              fillOpacity: 0.35,
-              weight: 3,
-            }}
-          >
-            <Popup>
-              <div style={{ minWidth: 220 }}>
-                <strong>{incident.title}</strong>
-                <br />
-                Type: {incident.type}
-                <br />
-                Severity: {incident.severity}
-                <br />
-                Radius: {incident.radius_meters}m
-              </div>
-            </Popup>
-          </CircleMarker>
+          <Fragment key={incident.id}>
+            {hasProviderCorridor ? (
+              <Polyline
+                positions={providerPositions}
+                pathOptions={{
+                  color,
+                  weight: 6,
+                  opacity: 0.85,
+                }}
+              />
+            ) : null}
+
+            <CircleMarker
+              center={coords}
+              radius={14}
+              pathOptions={{
+                color,
+                fillColor: color,
+                fillOpacity: 0.35,
+                weight: 3,
+              }}
+            >
+              <Popup>
+                <div style={{ minWidth: 220 }}>
+                  <strong>{incident.title}</strong>
+                  <br />
+                  Type: {incident.type}
+                  <br />
+                  Severity: {incident.severity}
+                  <br />
+                  Radius: {incident.radius_meters}m
+                  {hasProviderCorridor ? (
+                    <>
+                      <br />
+                      Provider corridor:{" "}
+                      {providerPositions.length} points
+                    </>
+                  ) : null}
+                </div>
+              </Popup>
+            </CircleMarker>
+          </Fragment>
         );
       })}
 
