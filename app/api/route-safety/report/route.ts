@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 
 export async function POST(req: NextRequest) {
@@ -18,13 +18,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const normalizedType =
+      body.type === "accident"
+        ? "collision"
+        : body.type;
+
     const expiresAt = new Date(Date.now() + expiresHours * 60 * 60 * 1000).toISOString();
 
     const { data, error } = await supabase
       .from("route_safety_alerts")
       .insert({
         organization_id: organizationId,
-        type: body.type,
+        type: normalizedType,
         title: body.title,
         description: body.description || null,
         latitude,
@@ -53,4 +58,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-
