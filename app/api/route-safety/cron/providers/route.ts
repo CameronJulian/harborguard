@@ -363,13 +363,15 @@ function getRepresentativeCoordinate(
     }
   }
 
-  // HERE shape.links.points
-  if (
-    value.shape &&
-    Array.isArray(value.shape.links) &&
-    value.shape.links.length > 0
-  ) {
-    const point = value.shape.links[0]?.points?.[0];
+    // HERE shape object stored as { links: [...] }
+  const hereLinks = Array.isArray(value.links)
+    ? value.links
+    : Array.isArray(value.shape?.links)
+      ? value.shape.links
+      : null;
+
+  if (hereLinks && hereLinks.length > 0) {
+    const point = hereLinks[0]?.points?.[0];
 
     if (
       point &&
@@ -461,15 +463,17 @@ provider_sources,
       continue;
     }
 
-   type CrossProviderCandidate = {
-  alert: any;
-  existingSource: string;
-  existingType: string;
-  incomingType: string;
-  distanceMeters: number;
-  typeMatches: boolean;
-  roadMatches: boolean;
-};
+       type CrossProviderCandidate = {
+      alert: any;
+      existingSource: string;
+      existingType: string;
+      incomingType: string;
+      distanceMeters: number;
+      geometryDistanceMeters: number | null;
+      typeMatches: boolean;
+      roadMatches: boolean;
+      geometryMatches: boolean;
+    };
 
     const crossProviderCandidates = normalizedExistingAlerts
       .filter((alert: any) => {
@@ -517,13 +521,32 @@ provider_sources,
           row.title
         );
 		
-		const existingRoad = normalizeRoadName(alert.road_name);
-const incomingRoad = normalizeRoadName(row.road_name);
+		        const existingRoad = normalizeRoadName(alert.road_name);
+        const incomingRoad = normalizeRoadName(row.road_name);
 
-const roadMatches =
-  existingRoad.length > 0 &&
-  incomingRoad.length > 0 &&
-  existingRoad === incomingRoad;
+        const roadMatches =
+          existingRoad.length > 0 &&
+          incomingRoad.length > 0 &&
+          existingRoad === incomingRoad;
+
+        const existingGeometryCoordinate =
+          getRepresentativeCoordinate(alert.provider_geometry);
+
+        const incomingGeometryCoordinate =
+          getRepresentativeCoordinate(row.provider_geometry);
+
+        const geometryDistance =
+          existingGeometryCoordinate && incomingGeometryCoordinate
+            ? distanceMeters(
+                incomingGeometryCoordinate.latitude,
+                incomingGeometryCoordinate.longitude,
+                existingGeometryCoordinate.latitude,
+                existingGeometryCoordinate.longitude
+              )
+            : null;
+
+        const geometryMatches =
+          geometryDistance !== null && geometryDistance <= 250;
 
         return {
           alert,
@@ -531,8 +554,13 @@ const roadMatches =
           existingType,
           incomingType: row.type,
           distanceMeters: Math.round(distance),
+          geometryDistanceMeters:
+            geometryDistance === null
+              ? null
+              : Math.round(geometryDistance),
           typeMatches,
-		  roadMatches,
+          roadMatches,
+          geometryMatches,
         };
       })
       .filter(
@@ -548,13 +576,14 @@ const roadMatches =
         ) => a.distanceMeters - b.distanceMeters
       );
 
-    const crossProviderCandidate = crossProviderCandidates.find(
+           const crossProviderCandidate = crossProviderCandidates.find(
       (candidate: CrossProviderCandidate) =>
         candidate.typeMatches &&
-(
-  candidate.roadMatches ||
-  candidate.distanceMeters <= 250
-)
+        (
+          candidate.roadMatches ||
+          candidate.geometryMatches ||
+          candidate.distanceMeters <= 250
+        )
     );
 
     const crossProviderMatch = crossProviderCandidate?.alert;
