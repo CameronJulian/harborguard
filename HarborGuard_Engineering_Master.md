@@ -1610,7 +1610,7 @@ Then make one focused migration that updates the aggregation RPC to populate the
 
 ---
 
-# Engineering Update — 30 July 2026
+# Engineering Update ï¿½ 30 July 2026
 
 ## Road Risk Segments Taxonomy v2 - Aggregation Complete
 
@@ -1631,9 +1631,9 @@ Completed the implementation of the Road Risk Segments Taxonomy v2 aggregation l
 - Repository verified clean after commit.
 
 ### Git History
-- 9de7fec — Expand road risk segments schema for taxonomy v2
-- 059c768 — Document road risk segments taxonomy v2 schema
-- cf3afb7 — Update road risk aggregation for taxonomy v2
+- 9de7fec ï¿½ Expand road risk segments schema for taxonomy v2
+- 059c768 ï¿½ Document road risk segments taxonomy v2 schema
+- cf3afb7 ï¿½ Update road risk aggregation for taxonomy v2
 
 ### Status
 ? Completed
@@ -1646,4 +1646,30 @@ Audit all API routes and UI components that consume Road Risk Segment data to en
 - Risk Dashboard
 - Road Intelligence
 - Command Center map overlays
+
+Taxonomy v2 road risk segment UI milestone completed.
+
+- Expanded road risk segment aggregation for Taxonomy v2.
+- Exposed the nine Taxonomy v2 counters through the segments API.
+- Added the nine Taxonomy v2 counters to the RoadRiskSegment UI type.
+- Added popup rows for:
+  - Road closures
+  - Roadworks
+  - Congestion
+  - Lane closures
+  - Weather hazards
+  - Flooding
+  - Vehicle breakdowns
+  - Road hazards
+  - Protests
+- TypeScript validation passed.
+- Next.js production build passed with 119 routes.
+- Main UI commit: 736c569.
+## HERE Provider Taxonomy v2 Normalization â€” 2026-07-31 09:08
+
+- Audited pp/api/route-safety/cron/providers/route.ts.
+- Updated HERE collision-related incidents to emit collision instead of the legacy ccident value.
+- Left oadblock unchanged because it remains a supported category.
+- TypeScript validation passed.
+- Next.js production build passed.
 
