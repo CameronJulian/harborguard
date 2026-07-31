@@ -116,6 +116,36 @@ function getMinimumProviderGeometryDistanceMeters(
     : null;
 }
 
+function providerGeometryScoreMultiplier(
+  distanceMetersValue: number | null
+) {
+  if (distanceMetersValue === null) {
+    return 1;
+  }
+
+  if (distanceMetersValue <= 50) {
+    return 1;
+  }
+
+  if (distanceMetersValue <= 150) {
+    return 0.9;
+  }
+
+  if (distanceMetersValue <= 300) {
+    return 0.75;
+  }
+
+  if (distanceMetersValue <= 500) {
+    return 0.6;
+  }
+
+  if (distanceMetersValue <= 1000) {
+    return 0.4;
+  }
+
+  return 0.25;
+}
+
 function severityWeight(severity: string | null) {
   if (severity === "critical") return 45;
   if (severity === "high") return 30;
@@ -797,7 +827,7 @@ if (roadRiskSegmentsError) {
           alert.aggregated_risk_score
         );
 
-        const score = Number.isFinite(aggregatedRiskScore)
+        const unweightedScore = Number.isFinite(aggregatedRiskScore)
           ? Math.min(100, Math.max(0, aggregatedRiskScore))
           : Math.min(
               100,
@@ -809,6 +839,22 @@ if (roadRiskSegmentsError) {
               )
             );
 
+        const geometryScoreMultiplier =
+          providerGeometryScoreMultiplier(
+            providerGeometryDistance
+          );
+
+        const score = Math.min(
+          100,
+          Math.max(
+            0,
+            Math.round(
+              unweightedScore *
+                geometryScoreMultiplier
+            )
+          )
+        );
+
         return {
           id: alert.id,
           type: alert.type,
@@ -819,7 +865,12 @@ if (roadRiskSegmentsError) {
           distanceFromDestination: Math.round(distanceFromDestination),
           distanceFromRoute: Math.round(distanceFromRoute),
           distanceFromProviderGeometry,
+          effectiveRouteDistance: Math.round(
+            corridorDistance
+          ),
           isLikelyOnRoute,
+          unweightedScore,
+          geometryScoreMultiplier,
           score,
           freshness: normalizedFreshness,
           confidence: normalizedConfidence,
