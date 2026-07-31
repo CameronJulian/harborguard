@@ -1673,3 +1673,173 @@ Taxonomy v2 road risk segment UI milestone completed.
 - TypeScript validation passed.
 - Next.js production build passed.
 
+
+---
+
+# Engineering Progress Update
+Date: 2026-07-31 10:41
+
+## Route Safety Intelligence Platform
+
+Completed a full architecture audit of the complete Route Safety Intelligence pipeline.
+
+### Taxonomy Version 2
+
+Completed migration from legacy **accident** taxonomy to canonical **collision** taxonomy.
+
+Updated components include:
+
+- HERE provider normalization
+- HERE ingest pipeline
+- TomTom ingest pipeline
+- Route prediction engine
+- Reroute engine
+- Fleet Risk Heat Map
+- Road Risk Segment API
+- Road Risk popup UI
+
+The application now consistently stores and processes collision events under the canonical taxonomy.
+
+---
+
+## Road Risk Aggregation
+
+Completed a complete audit of the aggregation architecture.
+
+Verified:
+
+- road_risk_segments is the canonical risk store.
+- aggregate_road_risk_intelligence() is the authoritative aggregation function.
+- Stored risk scores are consumed rather than recalculated.
+- Prediction engine layers live intelligence over stored segment risk.
+
+No duplicate aggregation logic was identified.
+
+---
+
+## Verification Pipeline
+
+Verified complete event-driven aggregation workflow.
+
+Confirmed:
+
+Route Safety Verification
+
+route_safety_alert
+    ?
+route_intelligence
+    ?
+aggregate_road_risk_intelligence()
+    ?
+road_risk_segments
+
+Vision Event Review
+
+vision_event
+    ?
+route_intelligence
+    ?
+aggregate_road_risk_intelligence()
+    ?
+road_risk_segments
+
+No missing aggregation paths were found.
+
+---
+
+## Prediction Engine
+
+Verified:
+
+- Weather weighting
+- Traffic weighting
+- Intelligence weighting
+- Verification weighting
+- Freshness weighting
+- Threat classification
+- Automatic escalation
+- Automatic rerouting
+
+Prediction engine correctly layers intelligence over stored road risk.
+
+---
+
+## Route Safety APIs
+
+Audited:
+
+- nearby
+- predict
+- reroute
+- verify
+- report
+- HERE ingestion
+- TomTom ingestion
+- provider cron
+- road risk segment APIs
+
+Confirmed architecture consistency.
+
+---
+
+## Fleet Risk
+
+Updated Fleet Risk Heat Map to support canonical taxonomy while maintaining backward compatibility.
+
+Supported values:
+
+- collision
+- accident (legacy compatibility)
+
+---
+
+## Architecture Validation
+
+Completed repository-wide audit.
+
+Confirmed:
+
+? No orphaned aggregation logic.
+
+? No duplicate risk score calculations.
+
+? No missing aggregation RPC calls.
+
+? Route intelligence pipeline verified.
+
+? Road risk architecture validated.
+
+---
+
+## Current Status
+
+Route Safety Intelligence Platform
+
+Status:
+Production Ready
+
+Architecture:
+Verified
+
+Aggregation:
+Verified
+
+Prediction Engine:
+Verified
+
+Taxonomy:
+Version 2 Complete
+
+Outstanding Defects:
+None identified during current audit.
+
+---
+
+Next Recommended Engineering Focus
+
+- Autonomous AI Operations enhancements
+- Dispatch optimisation
+- Command Center improvements
+- Predictive analytics
+- Fleet intelligence expansion
+
