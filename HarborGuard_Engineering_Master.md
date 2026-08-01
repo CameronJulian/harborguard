@@ -2852,3 +2852,66 @@ to 78 because only three scoped provider incidents were stale.
 - Commit: 5403abe
 - Message: Add provider freshness traffic diagnostics
 - Branch: feature/expanded-incident-taxonomy
+---
+
+# 2026-08-01 - Shared Route Incident Weights
+
+## Status
+
+Completed and pushed to GitHub.
+
+## Objective
+
+Create one reusable source of truth for route incident severity and type
+weights without changing production scoring behaviour.
+
+## Implementation
+
+Created:
+
+- lib/route-safety/incidentWeights.ts
+
+Updated:
+
+- app/api/route-safety/predict/route.ts
+
+Moved the existing severity and type weight functions into the shared helper:
+
+- routeIncidentSeverityWeight()
+- routeIncidentTypeWeight()
+
+The prediction route now imports and uses the shared helper instead of
+maintaining local duplicate functions.
+
+No weight values were changed.
+
+## Runtime Validation
+
+Observed values after the refactor:
+
+- Threat risk score: 100
+- Traffic risk score: 100
+- Overall risk score: 100
+- Overall risk level: CRITICAL
+
+Example threat scores remained populated:
+
+- smash_grab_hotspot / critical: 48
+- roadblock / low: 45
+- roadblock / high: 36
+- road_closure / critical: 23 after geometry weighting
+
+## Verification
+
+- git diff --check: Passed
+- TypeScript noEmit: Passed
+- Next.js production build: Passed
+- Static routes generated: 119 of 119
+- Local runtime API request: Passed
+- Production scoring unchanged: Confirmed
+
+## Git
+
+- Commit: e9161f1
+- Message: Extract shared route incident weights
+- Branch: feature/expanded-incident-taxonomy
