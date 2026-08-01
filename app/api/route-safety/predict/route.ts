@@ -841,6 +841,15 @@ if (roadRiskSegmentsError) {
               ? "medium"
               : "low";
 
+      const diagnosticCompositeCalibratedLevel =
+        diagnosticCompositeCandidateScore >= 80
+          ? "critical"
+          : diagnosticCompositeCandidateScore >= 70
+            ? "high"
+            : diagnosticCompositeCandidateScore >= 55
+              ? "medium"
+              : "low";
+
       diagnosticRouteTrafficSampling = {
         enabled: true,
         radiusMeters: 3000,
@@ -894,6 +903,13 @@ if (roadRiskSegmentsError) {
           diagnosticRouteCandidateTrafficRisk.criticalContribution,
         diagnosticCompositeCandidateScore,
         diagnosticCompositeCandidateLevel,
+        diagnosticCompositeCalibratedLevel,
+        diagnosticCompositeCalibratedThresholds: {
+          critical: 80,
+          high: 70,
+          medium: 55,
+          low: 0,
+        },
         diagnosticCompositeRouteScore,
         diagnosticCompositeTypeSeverityScore,
         diagnosticCompositeProviderScore,
