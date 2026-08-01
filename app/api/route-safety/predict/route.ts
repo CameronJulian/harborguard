@@ -667,6 +667,57 @@ if (roadRiskSegmentsError) {
             )
           : 0;
 
+      const percentileValue = (
+        values: number[],
+        percentile: number
+      ) => {
+        if (values.length === 0) {
+          return 0;
+        }
+
+        const sortedValues = [...values].sort(
+          (left, right) => left - right
+        );
+
+        const normalizedPercentile = Math.max(
+          0,
+          Math.min(1, percentile)
+        );
+
+        const index = Math.min(
+          sortedValues.length - 1,
+          Math.max(
+            0,
+            Math.ceil(
+              normalizedPercentile *
+                sortedValues.length
+            ) - 1
+          )
+        );
+
+        return Math.round(sortedValues[index]);
+      };
+
+      const successfulCongestionValues =
+        successfulSamples.map(
+          (sample) => sample.averageCongestion
+        );
+
+      const successfulDelayValues =
+        successfulSamples.map(
+          (sample) => sample.averageDelay
+        );
+
+      const routeP75Congestion = percentileValue(
+        successfulCongestionValues,
+        0.75
+      );
+
+      const routeP75DelayMinutes = percentileValue(
+        successfulDelayValues,
+        0.75
+      );
+
       diagnosticRouteTrafficSampling = {
         enabled: true,
         radiusMeters: 3000,
@@ -696,6 +747,8 @@ if (roadRiskSegmentsError) {
             (sample) => sample.averageCongestion
           )
         ),
+        p75Congestion: routeP75Congestion,
+        p75DelayMinutes: routeP75DelayMinutes,
         maximumDelayMinutes: Math.max(
           0,
           ...successfulSamples.map(
