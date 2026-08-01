@@ -43,6 +43,49 @@ function trafficRiskScore(incidentCount: number, avgCongestion: number, critical
   return Math.min(100, Math.round(avgCongestion + incidentCount * 6 + criticalCount * 15));
 }
 
+function diagnosticBalancedTrafficRiskScore(
+  incidentCount: number,
+  averageCongestion: number,
+  criticalCount: number
+) {
+  const congestionContribution = Math.min(
+    55,
+    averageCongestion * 0.55
+  );
+
+  const incidentContribution = Math.min(
+    18,
+    Math.sqrt(Math.max(0, incidentCount)) * 3
+  );
+
+  const criticalContribution = Math.min(
+    22,
+    Math.sqrt(Math.max(0, criticalCount)) * 4
+  );
+
+  const score = Math.min(
+    100,
+    Math.round(
+      congestionContribution +
+        incidentContribution +
+        criticalContribution
+    )
+  );
+
+  return {
+    score,
+    congestionContribution: Math.round(
+      congestionContribution
+    ),
+    incidentContribution: Math.round(
+      incidentContribution
+    ),
+    criticalContribution: Math.round(
+      criticalContribution
+    ),
+  };
+}
+
 type TrafficIntelligenceOptions = {
   latitude?: number;
   longitude?: number;
@@ -157,6 +200,17 @@ export async function buildTrafficIntelligence(
     diagnosticScopedRiskScore
   );
 
+  const diagnosticBalancedRisk =
+    diagnosticBalancedTrafficRiskScore(
+      scopedIncidents.length,
+      averageCongestion,
+      scopedCriticalCount
+    );
+
+  const diagnosticBalancedRiskLevel = riskLevel(
+    diagnosticBalancedRisk.score
+  );
+
   const level = riskLevel(score);
 
   return {
@@ -170,6 +224,15 @@ export async function buildTrafficIntelligence(
         scopedCriticalCount,
       diagnosticScopedRiskScore,
       diagnosticScopedRiskLevel,
+      diagnosticBalancedRiskScore:
+        diagnosticBalancedRisk.score,
+      diagnosticBalancedRiskLevel,
+      diagnosticCongestionContribution:
+        diagnosticBalancedRisk.congestionContribution,
+      diagnosticIncidentContribution:
+        diagnosticBalancedRisk.incidentContribution,
+      diagnosticCriticalContribution:
+        diagnosticBalancedRisk.criticalContribution,
       flowCorridors: flow.length,
       averageCongestion,
       averageDelay,
