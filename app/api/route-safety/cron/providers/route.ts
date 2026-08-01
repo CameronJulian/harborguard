@@ -460,6 +460,7 @@ provider_geometry,
 provider_sources,
       provider_confirmation_count,
       provider_confidence,
+      provider_last_seen,
       last_provider_confirmation_at
     `)
     .eq("organization_id", organizationId)
@@ -513,6 +514,11 @@ provider_sources,
     if (sameProviderMatch) {
       const confirmedAt = new Date().toISOString();
 
+      const providerLastSeen = {
+        ...(sameProviderMatch.provider_last_seen || {}),
+        [source]: confirmedAt,
+      };
+
       const existingExpiryTime = sameProviderMatch.expires_at
         ? new Date(sameProviderMatch.expires_at).getTime()
         : Number.NaN;
@@ -538,6 +544,7 @@ provider_sources,
         .from("route_safety_alerts")
         .update({
           last_provider_confirmation_at: confirmedAt,
+          provider_last_seen: providerLastSeen,
           verified_at: confirmedAt,
           verification_status: "verified",
           expires_at: refreshedExpiresAt,
@@ -551,6 +558,7 @@ provider_sources,
 
       sameProviderMatch.last_provider_confirmation_at =
         confirmedAt;
+      sameProviderMatch.provider_last_seen = providerLastSeen;
       sameProviderMatch.expires_at = refreshedExpiresAt;
 
       refreshedExisting += 1;
@@ -675,6 +683,11 @@ provider_sources,
     if (crossProviderMatch) {
       const confirmedAt = new Date().toISOString();
 
+      const providerLastSeen = {
+        ...(crossProviderMatch.provider_last_seen || {}),
+        [source]: confirmedAt,
+      };
+
       const providerSources = Array.from(
         new Set([
           ...(Array.isArray(crossProviderMatch.provider_sources)
@@ -719,6 +732,7 @@ provider_sources,
           provider_confirmation_count: providerConfirmationCount,
           provider_confidence: providerConfidence,
           last_provider_confirmation_at: confirmedAt,
+          provider_last_seen: providerLastSeen,
           verification_status: "verified",
           verified_at: confirmedAt,
           expires_at: mergedExpiresAt,
@@ -735,6 +749,7 @@ provider_sources,
         providerConfirmationCount;
       crossProviderMatch.provider_confidence = providerConfidence;
       crossProviderMatch.last_provider_confirmation_at = confirmedAt;
+      crossProviderMatch.provider_last_seen = providerLastSeen;
       crossProviderMatch.expires_at = mergedExpiresAt;
 
       mergedDuplicates += 1;
@@ -742,12 +757,14 @@ provider_sources,
     }
 
 
+    const confirmedAt = new Date().toISOString();
     const providerAlert = {
       ...row,
       provider_sources: [source],
       provider_confirmation_count: 1,
       provider_confidence: 60,
-      last_provider_confirmation_at: new Date().toISOString(),
+      last_provider_confirmation_at: confirmedAt,
+      provider_last_seen: { [source]: confirmedAt },
     };
 
     uniqueRows.push(providerAlert);
@@ -765,6 +782,7 @@ provider_sources,
       provider_confidence: 60,
       last_provider_confirmation_at:
         providerAlert.last_provider_confirmation_at,
+      provider_last_seen: providerAlert.provider_last_seen,
     });
 
     queuedSameProviderKeys.add(key);
