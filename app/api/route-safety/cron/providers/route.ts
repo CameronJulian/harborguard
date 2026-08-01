@@ -1224,6 +1224,9 @@ export async function GET(request: Request) {
 
     const results: ProviderResult[] = [];
     let expiredAlertsTransitioned = 0;
+    let staleProviderObservations = 0;
+    let alertsWithStaleProviders = 0;
+    let alertsWithAllProvidersStale = 0;
 
     for (const organizationId of organizationIds) {
       const expiredAt = new Date().toISOString();
@@ -1259,6 +1262,63 @@ export async function GET(request: Request) {
       );
 
       results.push(hereResult, tomTomResult);
+
+      const staleBefore = new Date(
+        Date.now() - 48 * 60 * 60 * 1000
+      ).toISOString();
+
+      const {
+        data: providerObservationAlerts,
+        error: providerObservationError,
+      } = await supabase
+        .from("route_safety_alerts")
+        .select(
+          "id, provider_last_seen"
+        )
+        .eq("organization_id", organizationId)
+        .eq("status", "active");
+
+      if (providerObservationError) {
+        throw providerObservationError;
+      }
+
+      for (const alert of providerObservationAlerts || []) {
+        const providerLastSeen =
+          alert.provider_last_seen &&
+          typeof alert.provider_last_seen === "object"
+            ? alert.provider_last_seen
+            : {};
+
+        const providerTimestamps = Object.values(
+          providerLastSeen
+        );
+
+        const staleCount = providerTimestamps.filter(
+          (value) => {
+            const timestamp = new Date(
+              String(value)
+            ).getTime();
+
+            return (
+              Number.isFinite(timestamp) &&
+              timestamp < new Date(staleBefore).getTime()
+            );
+          }
+        ).length;
+
+        staleProviderObservations += staleCount;
+
+        if (staleCount > 0) {
+          alertsWithStaleProviders += 1;
+        }
+
+        if (
+          providerTimestamps.length > 0 &&
+          staleCount === providerTimestamps.length
+        ) {
+          alertsWithAllProvidersStale += 1;
+        }
+      }
     }
 
     const imported = results.reduce(
@@ -1294,6 +1354,10 @@ export async function GET(request: Request) {
       organizationsProcessed: organizationIds.length,
       providerRuns: results.length,
       expiredAlertsTransitioned,
+      staleProviderThresholdHours: 48,
+      staleProviderObservations,
+      alertsWithStaleProviders,
+      alertsWithAllProvidersStale,
       imported,
       refreshedExisting,
       skippedDuplicates,
