@@ -812,6 +812,64 @@ if (roadRiskSegmentsError) {
           alert.provider_confirmation_count ??
           0;
 
+        const diagnosticProviderLastSeenEntries =
+          alert.provider_last_seen &&
+          typeof alert.provider_last_seen === "object"
+            ? Object.entries(alert.provider_last_seen)
+            : [];
+
+        const diagnosticProviderAgesHours =
+          diagnosticProviderLastSeenEntries
+            .map(([, value]) => {
+              const timestamp = new Date(
+                String(value)
+              ).getTime();
+
+              if (!Number.isFinite(timestamp)) {
+                return null;
+              }
+
+              return Math.max(
+                0,
+                (Date.now() - timestamp) /
+                  (60 * 60 * 1000)
+              );
+            })
+            .filter(
+              (value): value is number =>
+                value !== null
+            );
+
+        const diagnosticProviderAgeHours =
+          diagnosticProviderAgesHours.length > 0
+            ? Math.max(...diagnosticProviderAgesHours)
+            : null;
+
+        const diagnosticProviderDecayMultiplier =
+          diagnosticProviderAgeHours === null
+            ? 1
+            : diagnosticProviderAgeHours <= 24
+              ? 1
+              : diagnosticProviderAgeHours <= 48
+                ? 0.9
+                : diagnosticProviderAgeHours <= 72
+                  ? 0.75
+                  : diagnosticProviderAgeHours <= 120
+                    ? 0.5
+                    : 0.25;
+
+        const diagnosticProviderConfidence =
+          Math.min(
+            100,
+            Math.max(
+              0,
+              Math.round(
+                normalizedConfidence *
+                  diagnosticProviderDecayMultiplier
+              )
+            )
+          );
+
         const normalizedCreatedAt =
           alert.last_provider_confirmation_at ??
           alert.created_at ??
@@ -874,6 +932,14 @@ if (roadRiskSegmentsError) {
           score,
           freshness: normalizedFreshness,
           confidence: normalizedConfidence,
+          diagnosticProviderAgeHours:
+            diagnosticProviderAgeHours === null
+              ? null
+              : Math.round(
+                  diagnosticProviderAgeHours * 100
+                ) / 100,
+          diagnosticProviderDecayMultiplier,
+          diagnosticProviderConfidence,
           verificationCount: normalizedVerificationCount,
           createdAt: normalizedCreatedAt,
           source: alert.source ?? null,
