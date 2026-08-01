@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 import { loadWeather } from "@/lib/weather/provider";
-import { buildTrafficIntelligence } from "@/lib/traffic/intelligence";
+import {
+  buildTrafficIntelligence,
+  diagnosticBalancedTrafficRiskScore,
+} from "@/lib/traffic/intelligence";
 import type { WeatherProviderResult } from "@/lib/weather/types";
 import { routeIncidentSeverityWeight, routeIncidentTypeWeight } from "@/lib/route-safety/incidentWeights";
 
@@ -766,6 +769,39 @@ if (roadRiskSegmentsError) {
         routeAverageDelayMinutes -
         midpointAverageDelayMinutes;
 
+      const diagnosticRouteCandidateIncidentInput =
+        Number(
+          trafficResult?.summary
+            .diagnosticTypeSeverityWeightedIncidentCount ||
+            0
+        );
+
+      const diagnosticRouteCandidateCriticalInput =
+        Number(
+          trafficResult?.summary
+            .diagnosticTypeSeverityWeightedCriticalCount ||
+            0
+        );
+
+      const diagnosticRouteCandidateCongestionInput =
+        routeP75Congestion;
+
+      const diagnosticRouteCandidateTrafficRisk =
+        diagnosticBalancedTrafficRiskScore(
+          diagnosticRouteCandidateIncidentInput,
+          diagnosticRouteCandidateCongestionInput,
+          diagnosticRouteCandidateCriticalInput
+        );
+
+      const diagnosticRouteCandidateTrafficRiskLevel =
+        diagnosticRouteCandidateTrafficRisk.score >= 85
+          ? "critical"
+          : diagnosticRouteCandidateTrafficRisk.score >= 65
+            ? "high"
+            : diagnosticRouteCandidateTrafficRisk.score >= 35
+              ? "medium"
+              : "low";
+
       diagnosticRouteTrafficSampling = {
         enabled: true,
         radiusMeters: 3000,
@@ -799,6 +835,24 @@ if (roadRiskSegmentsError) {
         routeMaximumDelayMinutes,
         routeP75DelayMinutes,
         delayDifferenceMinutes,
+        diagnosticRouteCandidateTrafficRiskScore:
+          diagnosticRouteCandidateTrafficRisk.score,
+        diagnosticRouteCandidateTrafficRiskLevel,
+        diagnosticRouteCandidateCongestionInput,
+        diagnosticRouteCandidateIncidentInput:
+          Number(
+            diagnosticRouteCandidateIncidentInput.toFixed(2)
+          ),
+        diagnosticRouteCandidateCriticalInput:
+          Number(
+            diagnosticRouteCandidateCriticalInput.toFixed(2)
+          ),
+        diagnosticRouteCandidateCongestionContribution:
+          diagnosticRouteCandidateTrafficRisk.congestionContribution,
+        diagnosticRouteCandidateIncidentContribution:
+          diagnosticRouteCandidateTrafficRisk.incidentContribution,
+        diagnosticRouteCandidateCriticalContribution:
+          diagnosticRouteCandidateTrafficRisk.criticalContribution,
         maximumDelayMinutes: routeMaximumDelayMinutes,
         averageDelayMinutes: routeAverageDelayMinutes,
         samples: sampleResults,

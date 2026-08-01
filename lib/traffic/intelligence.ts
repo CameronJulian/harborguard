@@ -44,7 +44,7 @@ function trafficRiskScore(incidentCount: number, avgCongestion: number, critical
   return Math.min(100, Math.round(avgCongestion + incidentCount * 6 + criticalCount * 15));
 }
 
-function diagnosticBalancedTrafficRiskScore(
+export function diagnosticBalancedTrafficRiskScore(
   incidentCount: number,
   averageCongestion: number,
   criticalCount: number
