@@ -1498,6 +1498,41 @@ if (roadRiskSegmentsError) {
       }
     }
 
+
+    const experimentalTrafficModel =
+      diagnosticRouteTrafficSampling
+        ? {
+            model: "route-composite-v1",
+            status: "diagnostic",
+            productionApplied: false,
+            score:
+              diagnosticRouteTrafficSampling
+                .diagnosticCompositeCandidateScore,
+            level:
+              diagnosticRouteTrafficSampling
+                .diagnosticCompositeCalibratedLevel,
+            currentDiagnosticLevel:
+              diagnosticRouteTrafficSampling
+                .diagnosticCompositeCandidateLevel,
+            inputs: {
+              routeScore:
+                diagnosticRouteTrafficSampling
+                  .diagnosticCompositeRouteScore,
+              typeSeverityScore:
+                diagnosticRouteTrafficSampling
+                  .diagnosticCompositeTypeSeverityScore,
+              providerScore:
+                diagnosticRouteTrafficSampling
+                  .diagnosticCompositeProviderScore,
+            },
+            weights:
+              diagnosticRouteTrafficSampling
+                .diagnosticCompositeWeights,
+            thresholds:
+              diagnosticRouteTrafficSampling
+                .diagnosticCompositeCalibratedThresholds,
+          }
+        : null;
     return NextResponse.json({
       routeEstimate,
       riskScore,
@@ -1515,6 +1550,7 @@ if (roadRiskSegmentsError) {
       traffic: trafficResult,
       trafficError,
       diagnosticRouteTrafficSampling,
+      experimentalTrafficModel,
       threats: routeThreats,
       weather: weatherResult
         ? {
