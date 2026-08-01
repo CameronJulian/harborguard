@@ -1,10 +1,42 @@
-﻿import { getHereTrafficFlow } from "@/lib/here/traffic";
+import { getHereTrafficFlow } from "@/lib/here/traffic";
 
 function riskLevel(score: number) {
   if (score >= 85) return "critical";
   if (score >= 65) return "high";
   if (score >= 35) return "medium";
   return "low";
+}
+
+function distanceMeters(
+  latitude1: number,
+  longitude1: number,
+  latitude2: number,
+  longitude2: number
+) {
+  const earthRadius = 6371000;
+  const toRadians = (value: number) =>
+    (value * Math.PI) / 180;
+
+  const latitudeDifference = toRadians(
+    latitude2 - latitude1
+  );
+  const longitudeDifference = toRadians(
+    longitude2 - longitude1
+  );
+
+  const a =
+    Math.sin(latitudeDifference / 2) *
+      Math.sin(latitudeDifference / 2) +
+    Math.cos(toRadians(latitude1)) *
+      Math.cos(toRadians(latitude2)) *
+      Math.sin(longitudeDifference / 2) *
+      Math.sin(longitudeDifference / 2);
+
+  return (
+    earthRadius *
+    2 *
+    Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  );
 }
 
 function trafficRiskScore(incidentCount: number, avgCongestion: number, criticalCount: number) {
@@ -53,6 +85,40 @@ export async function buildTrafficIntelligence(
 
   if (incidentsError) throw incidentsError;
 
+  const scopedIncidents = (incidents || []).filter(
+    (incident: any) => {
+      const incidentLatitude = Number(incident.latitude);
+      const incidentLongitude = Number(incident.longitude);
+      const incidentRadius = Math.max(
+        0,
+        Number(incident.radius_meters || 0)
+      );
+
+      if (
+        !Number.isFinite(incidentLatitude) ||
+        !Number.isFinite(incidentLongitude)
+      ) {
+        return false;
+      }
+
+      const distance = distanceMeters(
+        latitude,
+        longitude,
+        incidentLatitude,
+        incidentLongitude
+      );
+
+      return distance <= radiusMeters + incidentRadius;
+    }
+  );
+
+  const scopedCriticalCount = scopedIncidents.filter(
+    (incident: any) =>
+      ["critical", "high"].includes(
+        String(incident.severity || "").toLowerCase()
+      )
+  ).length;
+
   let flow: any[] = [];
   let flowWarning: string | null = null;
 
@@ -81,6 +147,16 @@ export async function buildTrafficIntelligence(
     : 0;
 
   const score = trafficRiskScore((incidents || []).length, averageCongestion, criticalCount);
+  const diagnosticScopedRiskScore = trafficRiskScore(
+    scopedIncidents.length,
+    averageCongestion,
+    scopedCriticalCount
+  );
+
+  const diagnosticScopedRiskLevel = riskLevel(
+    diagnosticScopedRiskScore
+  );
+
   const level = riskLevel(score);
 
   return {
@@ -89,6 +165,11 @@ export async function buildTrafficIntelligence(
       riskLevel: level,
       activeIncidents: incidents?.length || 0,
       criticalIncidents: criticalCount,
+      diagnosticScopedIncidents: scopedIncidents.length,
+      diagnosticScopedCriticalIncidents:
+        scopedCriticalCount,
+      diagnosticScopedRiskScore,
+      diagnosticScopedRiskLevel,
       flowCorridors: flow.length,
       averageCongestion,
       averageDelay,
@@ -100,6 +181,10 @@ export async function buildTrafficIntelligence(
       score,
       level,
       incidents: incidents || [],
+      diagnosticScopedIncidentIds:
+        scopedIncidents.map(
+          (incident: any) => incident.id
+        ),
       flow,
       sources: {
         incidents: "route_safety_alerts_provider_incidents",
