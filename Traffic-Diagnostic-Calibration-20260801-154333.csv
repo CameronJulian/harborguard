@@ -1,0 +1,6 @@
+﻿"Route","Success","ProductionRiskScore","ProductionRiskLevel","ScopedIncidentCount","ScopedCriticalCount","BalancedRiskScore","ProviderWeightedScore","AverageProviderWeight","AverageFreshnessWeight","StaleProviderIncidents","AverageTypeSeverityWeight","TypeSeverityWeightedIncidents","TypeSeverityWeightedCritical","TypeSeverityWeightedScore","TypeSeverityWeightedLevel","AverageCongestion","AverageDelay","Error"
+"Ottery to Bishop Lavis","True","100","critical","42","25","83","76","0,64","0,985","3","0,721","20,91","17,56","75","high","81","20",
+"Bishop Lavis to Ottery","True","100","critical","42","25","83","76","0,64","0,985","3","0,721","20,91","17,56","75","high","81","20",
+"Cape Town CBD to Airport","True","100","critical","44","27","84","78","0,633","0,985","3","0,732","21,82","18,48","77","high","83","21",
+"Bellville to Mitchells Plain","True","100","critical","30","18","80","73","0,64","0,978","3","0,73","15,04","12,5","73","high","85","21",
+"Claremont to Century City","True","100","critical","41","24","83","76","0,621","0,984","3","0,716","19,55","16,2","75","high","83","21",

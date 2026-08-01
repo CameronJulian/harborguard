@@ -1,0 +1,35 @@
+﻿Traffic Model Evaluation Storage Decision
+Date: 2026-08-01 17:20:27
+Branch: feature/expanded-incident-taxonomy
+Latest commit: a7a7cdf Expose experimental route composite traffic model
+
+Confirmed available request context:
+- organization_id
+- vehicle_id
+- trip_id
+- origin coordinates
+- destination coordinates
+- production traffic score
+- production traffic level
+- production traffic contribution
+- experimental model name
+- experimental score
+- experimental level
+- component scores
+- weights
+- thresholds
+
+Current findings:
+- No route_predictions table was found by the initial source search.
+- No route_safety_predictions table was found by the initial source search.
+- audit_logs exists and must be inspected for suitability.
+- route_safety_escalation_logs already demonstrates an insert pattern.
+- Evaluation logging must be best-effort.
+- Evaluation logging must not affect prediction success.
+
+Decision still required:
+1. Reuse audit_logs with structured metadata.
+2. Reuse another existing analytics table.
+3. Create a dedicated traffic_model_evaluations table.
+
+No implementation or migration changes were made.

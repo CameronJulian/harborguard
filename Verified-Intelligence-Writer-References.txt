@@ -1,0 +1,117 @@
+﻿
+app\api\command-center\vision-events\review\route.ts:177:        .from("route_intelligence")
+app\api\command-center\vision-events\review\route.ts:182:            source_record_id: updatedEvent.id,
+app\api\command-center\vision-events\review\route.ts:189:            verification_count: 1,
+app\api\command-center\vision-events\review\route.ts:211:              "organization_id,source,source_record_id",
+app\api\command-center\vision-events\review\route.ts:222:        "aggregate_road_risk_intelligence",
+app\api\command-center\vision-events\review\route.ts:225:          p_route_intelligence_id: routeIntelligence.id,
+app\api\route-safety\predict\route.ts:489:      .from("route_intelligence")
+app\api\route-safety\predict\route.ts:499:        verification_count,
+app\api\route-safety\predict\route.ts:539:      verification_count,
+app\api\route-safety\predict\route.ts:629:        verification_count: item.verification_count,
+app\api\route-safety\predict\route.ts:633:          item.verification_count
+app\api\route-safety\predict\route.ts:730:          verification_count: segment.verification_count,
+app\api\route-safety\predict\route.ts:734:            segment.verification_count
+app\api\route-safety\predict\route.ts:811:          alert.verification_count ??
+app\api\route-safety\reroute\route.ts:47:verification_count,
+app\api\route-safety\segments\route.ts:73:          "verification_count",
+app\api\route-safety\verify\route.ts:41:      .from("route_intelligence")
+app\api\route-safety\verify\route.ts:46:          source_record_id: String(data.id),
+app\api\route-safety\verify\route.ts:57:          verification_count: 1,
+app\api\route-safety\verify\route.ts:71:          onConflict: "organization_id,source,source_record_id",
+app\api\route-safety\verify\route.ts:93:      "aggregate_road_risk_intelligence",
+app\api\route-safety\verify\route.ts:96:        p_route_intelligence_id: routeIntelligence.id,
+components\command-center\RoadRiskSegmentsLayer.tsx:33:  verification_count: number;
+components\command-center\RoadRiskSegmentsLayer.tsx:293:                    {segment.verification_count || 0}
+lib\routing\hereRouting.ts:47:      Number(segment?.verification_count) || 0
+supabase\migrations\20260720090000_create_route_intelligence.sql:1:create table if not exists public.route_intelligence (
+supabase\migrations\20260720090000_create_route_intelligence.sql:24:    verification_count integer not null default 0,
+supabase\migrations\20260720090000_create_route_intelligence.sql:31:    constraint route_intelligence_confidence_check
+supabase\migrations\20260720090000_create_route_intelligence.sql:37:    constraint route_intelligence_weather_risk_check
+supabase\migrations\20260720090000_create_route_intelligence.sql:43:    constraint route_intelligence_traffic_risk_check
+supabase\migrations\20260720090000_create_route_intelligence.sql:49:    constraint route_intelligence_verification_count_check
+supabase\migrations\20260720090000_create_route_intelligence.sql:50:        check (verification_count >= 0),
+supabase\migrations\20260720090000_create_route_intelligence.sql:52:    constraint route_intelligence_latitude_check
+supabase\migrations\20260720090000_create_route_intelligence.sql:58:    constraint route_intelligence_longitude_check
+supabase\migrations\20260720090000_create_route_intelligence.sql:64:create index if not exists idx_route_intelligence_org_created
+supabase\migrations\20260720090000_create_route_intelligence.sql:65:    on public.route_intelligence (
+supabase\migrations\20260720090000_create_route_intelligence.sql:69:create index if not exists idx_route_intelligence_org_event
+supabase\migrations\20260720090000_create_route_intelligence.sql:70:    on public.route_intelligence (
+supabase\migrations\20260720090000_create_route_intelligence.sql:74:create index if not exists idx_route_intelligence_coordinates
+supabase\migrations\20260720090000_create_route_intelligence.sql:75:    on public.route_intelligence (
+supabase\migrations\20260720090000_create_route_intelligence.sql:81:create index if not exists idx_route_intelligence_verified
+supabase\migrations\20260720090000_create_route_intelligence.sql:82:    on public.route_intelligence (
+supabase\migrations\20260720090000_create_route_intelligence.sql:86:alter table public.route_intelligence
+supabase\migrations\20260720090000_create_route_intelligence.sql:89:on public.route_intelligence
+supabase\migrations\20260720090000_create_route_intelligence.sql:96:on public.route_intelligence
+supabase\migrations\20260720090000_create_route_intelligence.sql:103:on public.route_intelligence
+supabase\migrations\20260720090000_create_route_intelligence.sql:113:on public.route_intelligence
+supabase\migrations\20260720090000_create_route_intelligence.sql:119:on public.route_intelligence
+supabase\migrations\20260720090000_create_route_intelligence.sql:122:on public.route_intelligence
+supabase\migrations\20260720100000_add_route_intelligence_source_record.sql:1:alter table public.route_intelligence
+supabase\migrations\20260720100000_add_route_intelligence_source_record.sql:2:    add column if not exists source_record_id text;
+supabase\migrations\20260720100000_add_route_intelligence_source_record.sql:3:create unique index if not exists idx_route_intelligence_source_record
+supabase\migrations\20260720100000_add_route_intelligence_source_record.sql:4:    on public.route_intelligence (
+supabase\migrations\20260720100000_add_route_intelligence_source_record.sql:7:        source_record_id
+supabase\migrations\20260721153000_create_road_risk_segments.sql:38:  verification_count integer not null default 0
+supabase\migrations\20260721153000_create_road_risk_segments.sql:39:    check (verification_count >= 0),
+supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:27:  route_intelligence_id uuid not null
+supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:28:    references public.route_intelligence(id)
+supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:36:    route_intelligence_id
+supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:69:create or replace function public.aggregate_road_risk_intelligence(
+supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:71:  p_route_intelligence_id uuid,
+supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:106:  if p_route_intelligence_id is null then
+supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:107:    raise exception 'route_intelligence_id is required';
+supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:127:      p_route_intelligence_id::text,
+supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:142:    and events.route_intelligence_id =
+supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:143:      p_route_intelligence_id;
+supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:215:    verification_count,
+supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:255:    route_intelligence_id,
+supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:261:    p_route_intelligence_id,
+supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:266:    route_intelligence_id
+supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:282:      and events.route_intelligence_id =
+supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:283:        p_route_intelligence_id;
+supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:312:    verification_count =
+supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:313:      verification_count + 1,
+supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:345:on function public.aggregate_road_risk_intelligence(
+supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:355:on function public.aggregate_road_risk_intelligence(
+supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:366:comment on function public.aggregate_road_risk_intelligence(
+supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:31:  route_intelligence_id uuid not null
+supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:32:    references public.route_intelligence(id)
+supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:40:    route_intelligence_id
+supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:80:create or replace function public.aggregate_road_risk_intelligence(
+supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:82:  p_route_intelligence_id uuid,
+supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:117:  if p_route_intelligence_id is null then
+supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:118:    raise exception 'route_intelligence_id is required';
+supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:138:      p_route_intelligence_id::text,
+supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:153:    and events.route_intelligence_id =
+supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:154:      p_route_intelligence_id;
+supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:230:    verification_count,
+supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:270:    route_intelligence_id,
+supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:276:    p_route_intelligence_id,
+supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:281:    route_intelligence_id
+supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:297:      and events.route_intelligence_id =
+supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:298:        p_route_intelligence_id;
+supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:327:    verification_count =
+supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:328:      verification_count + 1,
+supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:361:on function public.aggregate_road_risk_intelligence(
+supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:372:on function public.aggregate_road_risk_intelligence(
+supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:385:comment on function public.aggregate_road_risk_intelligence(
+supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:1:create or replace function public.aggregate_road_risk_intelligence(
+supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:3:  p_route_intelligence_id uuid,
+supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:50:  if p_route_intelligence_id is null then
+supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:51:    raise exception 'route_intelligence_id is required';
+supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:71:      p_route_intelligence_id::text,
+supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:86:    and events.route_intelligence_id = p_route_intelligence_id;
+supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:216:    verification_count,
+supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:264:    route_intelligence_id,
+supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:270:    p_route_intelligence_id,
+supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:275:    route_intelligence_id
+supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:291:      and events.route_intelligence_id = p_route_intelligence_id;
+supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:346:    verification_count =
+supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:347:      verification_count + 1,
+supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:386:on function public.aggregate_road_risk_intelligence(
+supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:397:on function public.aggregate_road_risk_intelligence(
+supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:407:comment on function public.aggregate_road_risk_intelligence(
+
+

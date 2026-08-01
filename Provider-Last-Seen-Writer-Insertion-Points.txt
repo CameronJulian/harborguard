@@ -1,0 +1,151 @@
+﻿
+  app\api\route-safety\cron\providers\route.ts:509:
+  app\api\route-safety\cron\providers\route.ts:510:    const sameProviderMatch =
+  app\api\route-safety\cron\providers\route.ts:511:      existingSameProviderByKey.get(key);
+  app\api\route-safety\cron\providers\route.ts:512:
+> app\api\route-safety\cron\providers\route.ts:513:    if (sameProviderMatch) {
+  app\api\route-safety\cron\providers\route.ts:514:      const confirmedAt = new Date().toISOString();
+  app\api\route-safety\cron\providers\route.ts:515:
+  app\api\route-safety\cron\providers\route.ts:516:      const existingExpiryTime = sameProviderMatch.expires_at
+  app\api\route-safety\cron\providers\route.ts:517:        ? new Date(sameProviderMatch.expires_at).getTime()
+  app\api\route-safety\cron\providers\route.ts:518:        : Number.NaN;
+  app\api\route-safety\cron\providers\route.ts:519:
+  app\api\route-safety\cron\providers\route.ts:520:      const incomingExpiryTime = row.expires_at
+  app\api\route-safety\cron\providers\route.ts:521:        ? new Date(row.expires_at).getTime()
+  app\api\route-safety\cron\providers\route.ts:522:        : Number.NaN;
+  app\api\route-safety\cron\providers\route.ts:523:
+  app\api\route-safety\cron\providers\route.ts:524:      let refreshedExpiresAt: string | null =
+  app\api\route-safety\cron\providers\route.ts:525:        sameProviderMatch.expires_at || row.expires_at || null;
+  app\api\route-safety\cron\providers\route.ts:526:
+  app\api\route-safety\cron\providers\route.ts:527:      if (
+  app\api\route-safety\cron\providers\route.ts:528:        Number.isFinite(existingExpiryTime) &&
+  app\api\route-safety\cron\providers\route.ts:529:        Number.isFinite(incomingExpiryTime)
+  app\api\route-safety\cron\providers\route.ts:530:      ) {
+  app\api\route-safety\cron\providers\route.ts:531:        refreshedExpiresAt =
+  app\api\route-safety\cron\providers\route.ts:535:      }
+  app\api\route-safety\cron\providers\route.ts:536:
+  app\api\route-safety\cron\providers\route.ts:537:      const { error: refreshError } = await supabase
+  app\api\route-safety\cron\providers\route.ts:538:        .from("route_safety_alerts")
+> app\api\route-safety\cron\providers\route.ts:539:        .update({
+  app\api\route-safety\cron\providers\route.ts:540:          last_provider_confirmation_at: confirmedAt,
+  app\api\route-safety\cron\providers\route.ts:541:          verified_at: confirmedAt,
+  app\api\route-safety\cron\providers\route.ts:542:          verification_status: "verified",
+  app\api\route-safety\cron\providers\route.ts:543:          expires_at: refreshedExpiresAt,
+  app\api\route-safety\cron\providers\route.ts:544:        })
+  app\api\route-safety\cron\providers\route.ts:545:        .eq("organization_id", organizationId)
+  app\api\route-safety\cron\providers\route.ts:546:        .eq("id", sameProviderMatch.id);
+  app\api\route-safety\cron\providers\route.ts:547:
+  app\api\route-safety\cron\providers\route.ts:548:      if (refreshError) {
+  app\api\route-safety\cron\providers\route.ts:549:        throw refreshError;
+  app\api\route-safety\cron\providers\route.ts:550:      }
+  app\api\route-safety\cron\providers\route.ts:551:
+  app\api\route-safety\cron\providers\route.ts:552:      sameProviderMatch.last_provider_confirmation_at =
+  app\api\route-safety\cron\providers\route.ts:553:        confirmedAt;
+  app\api\route-safety\cron\providers\route.ts:554:      sameProviderMatch.expires_at = refreshedExpiresAt;
+  app\api\route-safety\cron\providers\route.ts:555:
+  app\api\route-safety\cron\providers\route.ts:556:      refreshedExisting += 1;
+  app\api\route-safety\cron\providers\route.ts:557:      continue;
+  app\api\route-safety\cron\providers\route.ts:671:    );
+  app\api\route-safety\cron\providers\route.ts:672:
+  app\api\route-safety\cron\providers\route.ts:673:    const crossProviderMatch = crossProviderCandidate?.alert;
+  app\api\route-safety\cron\providers\route.ts:674:
+> app\api\route-safety\cron\providers\route.ts:675:    if (crossProviderMatch) {
+  app\api\route-safety\cron\providers\route.ts:676:      const confirmedAt = new Date().toISOString();
+  app\api\route-safety\cron\providers\route.ts:677:
+  app\api\route-safety\cron\providers\route.ts:678:      const providerSources = Array.from(
+  app\api\route-safety\cron\providers\route.ts:679:        new Set([
+  app\api\route-safety\cron\providers\route.ts:680:          ...(Array.isArray(crossProviderMatch.provider_sources)
+  app\api\route-safety\cron\providers\route.ts:681:            ? crossProviderMatch.provider_sources.map(String)
+  app\api\route-safety\cron\providers\route.ts:682:            : [String(crossProviderMatch.source || "")]),
+  app\api\route-safety\cron\providers\route.ts:683:          source,
+  app\api\route-safety\cron\providers\route.ts:684:        ])
+  app\api\route-safety\cron\providers\route.ts:685:      ).filter(Boolean);
+  app\api\route-safety\cron\providers\route.ts:686:
+  app\api\route-safety\cron\providers\route.ts:687:      const providerConfirmationCount = providerSources.length;
+  app\api\route-safety\cron\providers\route.ts:688:
+  app\api\route-safety\cron\providers\route.ts:689:      const providerConfidence = Math.min(
+  app\api\route-safety\cron\providers\route.ts:690:        100,
+  app\api\route-safety\cron\providers\route.ts:691:        60 + Math.max(0, providerConfirmationCount - 1) * 20
+  app\api\route-safety\cron\providers\route.ts:692:      );
+  app\api\route-safety\cron\providers\route.ts:693:
+  app\api\route-safety\cron\providers\route.ts:713:      }
+  app\api\route-safety\cron\providers\route.ts:714:
+  app\api\route-safety\cron\providers\route.ts:715:      const { error: mergeError } = await supabase
+  app\api\route-safety\cron\providers\route.ts:716:        .from("route_safety_alerts")
+> app\api\route-safety\cron\providers\route.ts:717:        .update({
+  app\api\route-safety\cron\providers\route.ts:718:          provider_sources: providerSources,
+  app\api\route-safety\cron\providers\route.ts:719:          provider_confirmation_count: providerConfirmationCount,
+  app\api\route-safety\cron\providers\route.ts:720:          provider_confidence: providerConfidence,
+  app\api\route-safety\cron\providers\route.ts:721:          last_provider_confirmation_at: confirmedAt,
+  app\api\route-safety\cron\providers\route.ts:722:          verification_status: "verified",
+  app\api\route-safety\cron\providers\route.ts:723:          verified_at: confirmedAt,
+  app\api\route-safety\cron\providers\route.ts:724:          expires_at: mergedExpiresAt,
+  app\api\route-safety\cron\providers\route.ts:725:        })
+  app\api\route-safety\cron\providers\route.ts:726:        .eq("organization_id", organizationId)
+  app\api\route-safety\cron\providers\route.ts:727:        .eq("id", crossProviderMatch.id);
+  app\api\route-safety\cron\providers\route.ts:728:
+  app\api\route-safety\cron\providers\route.ts:729:      if (mergeError) {
+  app\api\route-safety\cron\providers\route.ts:730:        throw mergeError;
+  app\api\route-safety\cron\providers\route.ts:731:      }
+  app\api\route-safety\cron\providers\route.ts:732:
+  app\api\route-safety\cron\providers\route.ts:733:      crossProviderMatch.provider_sources = providerSources;
+  app\api\route-safety\cron\providers\route.ts:734:      crossProviderMatch.provider_confirmation_count =
+  app\api\route-safety\cron\providers\route.ts:735:        providerConfirmationCount;
+  app\api\route-safety\cron\providers\route.ts:741:      continue;
+  app\api\route-safety\cron\providers\route.ts:742:    }
+  app\api\route-safety\cron\providers\route.ts:743:
+  app\api\route-safety\cron\providers\route.ts:744:
+> app\api\route-safety\cron\providers\route.ts:745:    const providerAlert = {
+  app\api\route-safety\cron\providers\route.ts:746:      ...row,
+  app\api\route-safety\cron\providers\route.ts:747:      provider_sources: [source],
+  app\api\route-safety\cron\providers\route.ts:748:      provider_confirmation_count: 1,
+  app\api\route-safety\cron\providers\route.ts:749:      provider_confidence: 60,
+  app\api\route-safety\cron\providers\route.ts:750:      last_provider_confirmation_at: new Date().toISOString(),
+  app\api\route-safety\cron\providers\route.ts:751:    };
+  app\api\route-safety\cron\providers\route.ts:752:
+  app\api\route-safety\cron\providers\route.ts:753:    uniqueRows.push(providerAlert);
+  app\api\route-safety\cron\providers\route.ts:754:
+> app\api\route-safety\cron\providers\route.ts:755:    normalizedExistingAlerts.push({
+  app\api\route-safety\cron\providers\route.ts:756:      id: null,
+  app\api\route-safety\cron\providers\route.ts:757:      source,
+  app\api\route-safety\cron\providers\route.ts:758:      type: row.type,
+  app\api\route-safety\cron\providers\route.ts:759:      title: row.title,
+  app\api\route-safety\cron\providers\route.ts:760:      latitude: row.latitude,
+  app\api\route-safety\cron\providers\route.ts:761:      longitude: row.longitude,
+  app\api\route-safety\cron\providers\route.ts:762:      expires_at: row.expires_at,
+  app\api\route-safety\cron\providers\route.ts:763:      provider_sources: [source],
+  app\api\route-safety\cron\providers\route.ts:764:      provider_confirmation_count: 1,
+  app\api\route-safety\cron\providers\route.ts:765:      provider_confidence: 60,
+  app\api\route-safety\cron\providers\route.ts:766:      last_provider_confirmation_at:
+  app\api\route-safety\cron\providers\route.ts:767:        providerAlert.last_provider_confirmation_at,
+  app\api\route-safety\cron\providers\route.ts:768:    });
+  app\api\route-safety\cron\providers\route.ts:769:
+  app\api\route-safety\cron\providers\route.ts:770:    queuedSameProviderKeys.add(key);
+  app\api\route-safety\cron\providers\route.ts:771:  }
+  app\api\route-safety\cron\providers\route.ts:772:
+  app\api\route-safety\cron\providers\route.ts:773:  if (uniqueRows.length === 0) {
+  app\api\route-safety\cron\providers\route.ts:1214:        data: expiredAlerts,
+  app\api\route-safety\cron\providers\route.ts:1215:        error: expiredAlertsError,
+  app\api\route-safety\cron\providers\route.ts:1216:      } = await supabase
+  app\api\route-safety\cron\providers\route.ts:1217:        .from("route_safety_alerts")
+> app\api\route-safety\cron\providers\route.ts:1218:        .update({
+  app\api\route-safety\cron\providers\route.ts:1219:          status: "expired",
+  app\api\route-safety\cron\providers\route.ts:1220:        })
+  app\api\route-safety\cron\providers\route.ts:1221:        .eq("organization_id", organizationId)
+  app\api\route-safety\cron\providers\route.ts:1222:        .eq("status", "active")
+  app\api\route-safety\cron\providers\route.ts:1223:        .lt("expires_at", expiredAt)
+  app\api\route-safety\cron\providers\route.ts:1224:        .select("id");
+  app\api\route-safety\cron\providers\route.ts:1225:
+  app\api\route-safety\cron\providers\route.ts:1226:      if (expiredAlertsError) {
+  app\api\route-safety\cron\providers\route.ts:1227:        throw expiredAlertsError;
+  app\api\route-safety\cron\providers\route.ts:1228:      }
+  app\api\route-safety\cron\providers\route.ts:1229:
+  app\api\route-safety\cron\providers\route.ts:1230:      expiredAlertsTransitioned +=
+  app\api\route-safety\cron\providers\route.ts:1231:        expiredAlerts?.length || 0;
+  app\api\route-safety\cron\providers\route.ts:1232:
+  app\api\route-safety\cron\providers\route.ts:1233:      const hereResult = await importHereIncidents(
+  app\api\route-safety\cron\providers\route.ts:1234:        supabase,
+  app\api\route-safety\cron\providers\route.ts:1235:        organizationId
+  app\api\route-safety\cron\providers\route.ts:1236:      );
+
+

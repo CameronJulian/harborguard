@@ -1,0 +1,56 @@
+﻿Traffic Model Evaluation Table Design
+Date: 2026-08-01 17:22:13
+Branch: feature/expanded-incident-taxonomy
+Latest commit: a7a7cdf Expose experimental route composite traffic model
+
+Decision:
+Create a dedicated public.traffic_model_evaluations table.
+
+Reason:
+- audit_logs is intended for immutable administrative audit history.
+- route predictions are potentially high-volume analytical telemetry.
+- no existing prediction or evaluation table was found.
+- dedicated columns will support filtering, aggregation, retention, and
+  later outcome comparison more effectively than generic JSON metadata.
+
+Proposed columns:
+- id uuid primary key default gen_random_uuid()
+- organization_id uuid not null
+- user_id uuid null, only if already available
+- vehicle_id uuid null
+- trip_id uuid null
+- origin_latitude double precision not null
+- origin_longitude double precision not null
+- destination_latitude double precision not null
+- destination_longitude double precision not null
+- production_traffic_score integer not null
+- production_traffic_level text not null
+- production_traffic_contribution integer not null
+- experimental_model text not null
+- experimental_score integer not null
+- experimental_level text not null
+- production_applied boolean not null default false
+- route_component_score integer null
+- type_severity_component_score integer null
+- provider_component_score integer null
+- weights jsonb not null
+- thresholds jsonb not null
+- metadata jsonb null
+- created_at timestamptz not null default now()
+
+Required indexes:
+- organization_id, created_at desc
+- trip_id, created_at desc
+- vehicle_id, created_at desc
+- experimental_model, created_at desc
+
+Required behavior:
+- RLS enabled.
+- Organization-scoped SELECT policy.
+- Server-side service-role insertion.
+- Evaluation insert is best-effort.
+- Logging failure never changes prediction success.
+- No production scoring changes.
+- No experimental-model changes.
+
+No migration or implementation changes were made.

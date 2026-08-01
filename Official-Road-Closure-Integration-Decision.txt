@@ -1,0 +1,40 @@
+﻿Official Road Closure Integration Decision
+
+Existing HarborGuard pipeline:
+
+Official source adapter
+        |
+        v
+Normalized provider row
+        |
+        v
+insertNewProviderAlerts()
+        |
+        +-- same-provider deduplication
+        +-- cross-provider correlation
+        +-- provider confidence
+        +-- provider_last_seen
+        +-- lifecycle handling
+        |
+        v
+route_safety_alerts
+        |
+        v
+verification / route intelligence / road risk aggregation
+
+Expected normalized type:
+- road_closure
+- lane_closure where applicable
+
+Expected source identifier:
+- official provider-specific value, not here_traffic or tomtom
+
+Expected confidence:
+- higher initial confidence than commercial provider reports, but the exact
+  value must be decided only after source reliability and semantics are known.
+
+Schema decision:
+No migration should be created unless the chosen source requires fields that
+cannot be stored in the existing provider metadata and geometry structure.
+
+No implementation changes were made.

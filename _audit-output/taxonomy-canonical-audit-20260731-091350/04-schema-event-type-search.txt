@@ -1,0 +1,1299 @@
+﻿
+  supabase\migrations\20260606000000_baseline_schema.sql:4:SET client_encoding = 'UTF8';
+  supabase\migrations\20260606000000_baseline_schema.sql:5:SET standard_conforming_strings = on;
+  supabase\migrations\20260606000000_baseline_schema.sql:6:SELECT pg_catalog.set_config('search_path', '', false);
+> supabase\migrations\20260606000000_baseline_schema.sql:7:SET check_function_bodies = false;
+  supabase\migrations\20260606000000_baseline_schema.sql:8:SET xmloption = content;
+  supabase\migrations\20260606000000_baseline_schema.sql:9:SET client_min_messages = warning;
+  supabase\migrations\20260606000000_baseline_schema.sql:10:SET row_security = off;
+  supabase\migrations\20260606000000_baseline_schema.sql:11:CREATE SCHEMA IF NOT EXISTS "public";
+  supabase\migrations\20260606000000_baseline_schema.sql:12:ALTER SCHEMA "public" OWNER TO "pg_database_owner";
+  supabase\migrations\20260606000000_baseline_schema.sql:53:CREATE TABLE IF NOT EXISTS "public"."billing_events" (
+  supabase\migrations\20260606000000_baseline_schema.sql:54:    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+  supabase\migrations\20260606000000_baseline_schema.sql:55:    "organization_id" "uuid",
+> supabase\migrations\20260606000000_baseline_schema.sql:56:    "event_type" "text" NOT NULL,
+  supabase\migrations\20260606000000_baseline_schema.sql:57:    "provider" "text" DEFAULT 'payfast'::"text",
+  supabase\migrations\20260606000000_baseline_schema.sql:58:    "payload" "jsonb",
+  supabase\migrations\20260606000000_baseline_schema.sql:59:    "created_at" timestamp with time zone DEFAULT "now"()
+  supabase\migrations\20260606000000_baseline_schema.sql:60:);
+  supabase\migrations\20260606000000_baseline_schema.sql:61:ALTER TABLE "public"."billing_events" OWNER TO "postgres";
+  supabase\migrations\20260606000000_baseline_schema.sql:72:CREATE TABLE IF NOT EXISTS "public"."emergency_response_events" (
+  supabase\migrations\20260606000000_baseline_schema.sql:73:    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+  supabase\migrations\20260606000000_baseline_schema.sql:74:    "vehicle_alert_id" "uuid",
+> supabase\migrations\20260606000000_baseline_schema.sql:75:    "event_type" "text" NOT NULL,
+  supabase\migrations\20260606000000_baseline_schema.sql:76:    "note" "text",
+  supabase\migrations\20260606000000_baseline_schema.sql:77:    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+  supabase\migrations\20260606000000_baseline_schema.sql:78:    "created_by" "uuid"
+  supabase\migrations\20260606000000_baseline_schema.sql:79:);
+  supabase\migrations\20260606000000_baseline_schema.sql:80:ALTER TABLE "public"."emergency_response_events" OWNER TO "postgres";
+  supabase\migrations\20260606000000_baseline_schema.sql:140:    "created_at" timestamp with time zone DEFAULT "now"(),
+  supabase\migrations\20260606000000_baseline_schema.sql:141:    "email" "text",
+  supabase\migrations\20260606000000_baseline_schema.sql:142:    "organization_id" "uuid",
+> supabase\migrations\20260606000000_baseline_schema.sql:143:    CONSTRAINT "profiles_role_check" CHECK (("role" = ANY (ARRAY['manager'::"text", 'dock'::"text", 'warehouse'::"text", 'processing'::"text"])))
+  supabase\migrations\20260606000000_baseline_schema.sql:144:);
+  supabase\migrations\20260606000000_baseline_schema.sql:145:ALTER TABLE "public"."profiles" OWNER TO "postgres";
+  supabase\migrations\20260606000000_baseline_schema.sql:146:CREATE TABLE IF NOT EXISTS "public"."report_delivery_logs" (
+  supabase\migrations\20260606000000_baseline_schema.sql:147:    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+  supabase\migrations\20260606000000_baseline_schema.sql:148:    "subscription_id" "uuid",
+  supabase\migrations\20260606000000_baseline_schema.sql:155:    "status" "text" NOT NULL,
+  supabase\migrations\20260606000000_baseline_schema.sql:156:    "error_message" "text",
+  supabase\migrations\20260606000000_baseline_schema.sql:157:    "created_at" timestamp with time zone DEFAULT "now"(),
+> supabase\migrations\20260606000000_baseline_schema.sql:158:    CONSTRAINT "report_delivery_logs_report_frequency_check" CHECK (("report_frequency" = ANY (ARRAY['daily'::"text", 'weekly'::"text"]))),
+> supabase\migrations\20260606000000_baseline_schema.sql:159:    CONSTRAINT "report_delivery_logs_status_check" CHECK (("status" = ANY (ARRAY['success'::"text", 'failed'::"text"])))
+  supabase\migrations\20260606000000_baseline_schema.sql:160:);
+  supabase\migrations\20260606000000_baseline_schema.sql:161:ALTER TABLE "public"."report_delivery_logs" OWNER TO "postgres";
+  supabase\migrations\20260606000000_baseline_schema.sql:162:CREATE TABLE IF NOT EXISTS "public"."report_subscriptions" (
+  supabase\migrations\20260606000000_baseline_schema.sql:163:    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+  supabase\migrations\20260606000000_baseline_schema.sql:164:    "user_id" "uuid",
+  supabase\migrations\20260606000000_baseline_schema.sql:167:    "is_enabled" boolean DEFAULT true NOT NULL,
+  supabase\migrations\20260606000000_baseline_schema.sql:168:    "report_frequency" "text" DEFAULT 'daily'::"text" NOT NULL,
+  supabase\migrations\20260606000000_baseline_schema.sql:169:    "created_at" timestamp with time zone DEFAULT "now"(),
+> supabase\migrations\20260606000000_baseline_schema.sql:170:    CONSTRAINT "report_subscriptions_report_frequency_check" CHECK (("report_frequency" = ANY (ARRAY['daily'::"text", 'weekly'::"text"])))
+  supabase\migrations\20260606000000_baseline_schema.sql:171:);
+  supabase\migrations\20260606000000_baseline_schema.sql:172:ALTER TABLE "public"."report_subscriptions" OWNER TO "postgres";
+  supabase\migrations\20260606000000_baseline_schema.sql:173:CREATE TABLE IF NOT EXISTS "public"."road_incidents" (
+  supabase\migrations\20260606000000_baseline_schema.sql:174:    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+  supabase\migrations\20260606000000_baseline_schema.sql:175:    "type" "text" NOT NULL,
+  supabase\migrations\20260606000000_baseline_schema.sql:213:    "intelligence_score" integer,
+  supabase\migrations\20260606000000_baseline_schema.sql:214:    "behavioral_risk" "text",
+  supabase\migrations\20260606000000_baseline_schema.sql:215:    "intelligence_narrative" "text",
+> supabase\migrations\20260606000000_baseline_schema.sql:216:    CONSTRAINT "vehicle_alerts_alert_type_check" CHECK (("alert_type" = ANY (ARRAY['panic'::"text", 'offline'::"text", 'route_deviation'::"text", 
+'long_stop'::"text", 'manual'::"text", 'suspicious_stop'::"text", 'signal_loss'::"text", 'geofence_breach'::"text"]))),
+> supabase\migrations\20260606000000_baseline_schema.sql:217:    CONSTRAINT "vehicle_alerts_severity_check" CHECK (("severity" = ANY (ARRAY['low'::"text", 'medium'::"text", 'high'::"text", 
+'critical'::"text"])))
+  supabase\migrations\20260606000000_baseline_schema.sql:218:);
+  supabase\migrations\20260606000000_baseline_schema.sql:219:ALTER TABLE "public"."vehicle_alerts" OWNER TO "postgres";
+  supabase\migrations\20260606000000_baseline_schema.sql:220:CREATE TABLE IF NOT EXISTS "public"."vehicle_locations" (
+  supabase\migrations\20260606000000_baseline_schema.sql:221:    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+  supabase\migrations\20260606000000_baseline_schema.sql:222:    "vehicle_id" "uuid",
+  supabase\migrations\20260606000000_baseline_schema.sql:228:    "recorded_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+  supabase\migrations\20260606000000_baseline_schema.sql:229:    "source" "text" DEFAULT 'mobile'::"text" NOT NULL,
+  supabase\migrations\20260606000000_baseline_schema.sql:230:    "organization_id" "uuid",
+> supabase\migrations\20260606000000_baseline_schema.sql:231:    CONSTRAINT "vehicle_locations_source_check" CHECK (("source" = ANY (ARRAY['mobile'::"text", 'hardware'::"text", 'manual'::"text"])))
+  supabase\migrations\20260606000000_baseline_schema.sql:232:);
+  supabase\migrations\20260606000000_baseline_schema.sql:233:ALTER TABLE "public"."vehicle_locations" OWNER TO "postgres";
+  supabase\migrations\20260606000000_baseline_schema.sql:234:CREATE TABLE IF NOT EXISTS "public"."vehicle_stops" (
+  supabase\migrations\20260606000000_baseline_schema.sql:235:    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+  supabase\migrations\20260606000000_baseline_schema.sql:236:    "vehicle_id" "uuid" NOT NULL,
+  supabase\migrations\20260606000000_baseline_schema.sql:260:    "expected_route" "jsonb",
+  supabase\migrations\20260606000000_baseline_schema.sql:261:    "deviation_threshold_km" numeric DEFAULT 3,
+  supabase\migrations\20260606000000_baseline_schema.sql:262:    "organization_id" "uuid",
+> supabase\migrations\20260606000000_baseline_schema.sql:263:    CONSTRAINT "vehicle_trips_status_check" CHECK (("status" = ANY (ARRAY['scheduled'::"text", 'en_route_to_port'::"text", 'collecting'::"text", 
+'en_route_to_fishery'::"text", 'delivered'::"text", 'cancelled'::"text", 'emergency'::"text"])))
+  supabase\migrations\20260606000000_baseline_schema.sql:264:);
+  supabase\migrations\20260606000000_baseline_schema.sql:265:ALTER TABLE "public"."vehicle_trips" OWNER TO "postgres";
+  supabase\migrations\20260606000000_baseline_schema.sql:266:CREATE TABLE IF NOT EXISTS "public"."vehicles" (
+  supabase\migrations\20260606000000_baseline_schema.sql:267:    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+  supabase\migrations\20260606000000_baseline_schema.sql:268:    "registration_number" "text" NOT NULL,
+  supabase\migrations\20260606000000_baseline_schema.sql:395:CREATE POLICY "Allow all batches" ON "public"."batches" USING (true);
+  supabase\migrations\20260606000000_baseline_schema.sql:396:CREATE POLICY "Allow all for now" ON "public"."profiles" USING (true);
+  supabase\migrations\20260606000000_baseline_schema.sql:397:CREATE POLICY "Allow all incidents" ON "public"."incidents" USING (true);
+> supabase\migrations\20260606000000_baseline_schema.sql:398:CREATE POLICY "Allow authenticated emergency response event inserts" ON "public"."emergency_response_events" FOR INSERT TO "authenticated" WITH 
+CHECK ((EXISTS ( SELECT 1
+  supabase\migrations\20260606000000_baseline_schema.sql:399:   FROM "public"."vehicle_alerts" "va"
+  supabase\migrations\20260606000000_baseline_schema.sql:400:  WHERE ("va"."id" = "emergency_response_events"."vehicle_alert_id"))));
+  supabase\migrations\20260606000000_baseline_schema.sql:401:CREATE POLICY "Allow authenticated emergency response event reads" ON "public"."emergency_response_events" FOR SELECT TO "authenticated" USING 
+((EXISTS ( SELECT 1
+  supabase\migrations\20260606000000_baseline_schema.sql:402:   FROM "public"."vehicle_alerts" "va"
+  supabase\migrations\20260606000000_baseline_schema.sql:403:  WHERE ("va"."id" = "emergency_response_events"."vehicle_alert_id"))));
+  supabase\migrations\20260606000000_baseline_schema.sql:404:CREATE POLICY "Users can access own organization alerts" ON "public"."vehicle_alerts" USING (("organization_id" IN ( SELECT 
+"profiles"."organization_id"
+  supabase\migrations\20260606000000_baseline_schema.sql:405:   FROM "public"."profiles"
+> supabase\migrations\20260606000000_baseline_schema.sql:406:  WHERE ("profiles"."id" = "auth"."uid"())))) WITH CHECK (("organization_id" IN ( SELECT "profiles"."organization_id"
+  supabase\migrations\20260606000000_baseline_schema.sql:407:   FROM "public"."profiles"
+  supabase\migrations\20260606000000_baseline_schema.sql:408:  WHERE ("profiles"."id" = "auth"."uid"()))));
+  supabase\migrations\20260606000000_baseline_schema.sql:409:CREATE POLICY "Users can access own organization batches" ON "public"."batches" USING (("organization_id" IN ( SELECT "profiles"."organization_id"
+  supabase\migrations\20260606000000_baseline_schema.sql:410:   FROM "public"."profiles"
+> supabase\migrations\20260606000000_baseline_schema.sql:411:  WHERE ("profiles"."id" = "auth"."uid"())))) WITH CHECK (("organization_id" IN ( SELECT "profiles"."organization_id"
+  supabase\migrations\20260606000000_baseline_schema.sql:412:   FROM "public"."profiles"
+  supabase\migrations\20260606000000_baseline_schema.sql:413:  WHERE ("profiles"."id" = "auth"."uid"()))));
+  supabase\migrations\20260606000000_baseline_schema.sql:414:CREATE POLICY "Users can access own organization incidents" ON "public"."incidents" USING (("organization_id" IN ( SELECT 
+"profiles"."organization_id"
+  supabase\migrations\20260606000000_baseline_schema.sql:415:   FROM "public"."profiles"
+> supabase\migrations\20260606000000_baseline_schema.sql:416:  WHERE ("profiles"."id" = "auth"."uid"())))) WITH CHECK (("organization_id" IN ( SELECT "profiles"."organization_id"
+  supabase\migrations\20260606000000_baseline_schema.sql:417:   FROM "public"."profiles"
+  supabase\migrations\20260606000000_baseline_schema.sql:418:  WHERE ("profiles"."id" = "auth"."uid"()))));
+  supabase\migrations\20260606000000_baseline_schema.sql:419:CREATE POLICY "Users can access own organization trips" ON "public"."vehicle_trips" USING (("organization_id" IN ( SELECT 
+"profiles"."organization_id"
+  supabase\migrations\20260606000000_baseline_schema.sql:420:   FROM "public"."profiles"
+> supabase\migrations\20260606000000_baseline_schema.sql:421:  WHERE ("profiles"."id" = "auth"."uid"())))) WITH CHECK (("organization_id" IN ( SELECT "profiles"."organization_id"
+  supabase\migrations\20260606000000_baseline_schema.sql:422:   FROM "public"."profiles"
+  supabase\migrations\20260606000000_baseline_schema.sql:423:  WHERE ("profiles"."id" = "auth"."uid"()))));
+  supabase\migrations\20260606000000_baseline_schema.sql:424:CREATE POLICY "Users can access own organization vehicles" ON "public"."vehicles" USING (("organization_id" IN ( SELECT "profiles"."organization_id"
+  supabase\migrations\20260606000000_baseline_schema.sql:425:   FROM "public"."profiles"
+> supabase\migrations\20260606000000_baseline_schema.sql:426:  WHERE ("profiles"."id" = "auth"."uid"())))) WITH CHECK (("organization_id" IN ( SELECT "profiles"."organization_id"
+  supabase\migrations\20260606000000_baseline_schema.sql:427:   FROM "public"."profiles"
+  supabase\migrations\20260606000000_baseline_schema.sql:428:  WHERE ("profiles"."id" = "auth"."uid"()))));
+> supabase\migrations\20260606000000_baseline_schema.sql:429:CREATE POLICY "Users can create organizations" ON "public"."organizations" FOR INSERT TO "authenticated" WITH CHECK (true);
+> supabase\migrations\20260606000000_baseline_schema.sql:430:CREATE POLICY "Users can insert vehicles in their organization" ON "public"."vehicles" FOR INSERT TO "authenticated" WITH CHECK (("organization_id" 
+IN ( SELECT "profiles"."organization_id"
+  supabase\migrations\20260606000000_baseline_schema.sql:431:   FROM "public"."profiles"
+  supabase\migrations\20260606000000_baseline_schema.sql:432:  WHERE ("profiles"."id" = "auth"."uid"()))));
+  supabase\migrations\20260606000000_baseline_schema.sql:433:CREATE POLICY "Users can read organization incidents" ON "public"."incidents" FOR SELECT TO "authenticated" USING (("organization_id" IN ( SELECT 
+"profiles"."organization_id"
+  supabase\migrations\20260606000000_baseline_schema.sql:434:   FROM "public"."profiles"
+  supabase\migrations\20260606000000_baseline_schema.sql:435:  WHERE ("profiles"."id" = "auth"."uid"()))));
+  supabase\migrations\20260606000000_baseline_schema.sql:436:CREATE POLICY "Users can update organization incidents" ON "public"."incidents" FOR UPDATE TO "authenticated" USING (("organization_id" IN ( SELECT 
+"profiles"."organization_id"
+  supabase\migrations\20260606000000_baseline_schema.sql:437:   FROM "public"."profiles"
+> supabase\migrations\20260606000000_baseline_schema.sql:438:  WHERE ("profiles"."id" = "auth"."uid"())))) WITH CHECK (("organization_id" IN ( SELECT "profiles"."organization_id"
+  supabase\migrations\20260606000000_baseline_schema.sql:439:   FROM "public"."profiles"
+  supabase\migrations\20260606000000_baseline_schema.sql:440:  WHERE ("profiles"."id" = "auth"."uid"()))));
+  supabase\migrations\20260606000000_baseline_schema.sql:441:CREATE POLICY "Users can update own organizations" ON "public"."organizations" FOR UPDATE TO "authenticated" USING (true);
+  supabase\migrations\20260606000000_baseline_schema.sql:442:CREATE POLICY "Users can update vehicles in their organization" ON "public"."vehicles" FOR UPDATE TO "authenticated" USING (("organization_id" IN ( 
+SELECT "profiles"."organization_id"
+  supabase\migrations\20260606000000_baseline_schema.sql:443:   FROM "public"."profiles"
+  supabase\migrations\20260606000000_baseline_schema.sql:449:ALTER TABLE "public"."audit_logs" ENABLE ROW LEVEL SECURITY;
+  supabase\migrations\20260606000000_baseline_schema.sql:450:CREATE POLICY "authenticated can delete geofences" ON "public"."geofences" FOR DELETE TO "authenticated" USING (true);
+  supabase\migrations\20260606000000_baseline_schema.sql:451:CREATE POLICY "authenticated can delete own report subscriptions" ON "public"."report_subscriptions" FOR DELETE TO "authenticated" USING (("user_id" 
+= "auth"."uid"()));
+> supabase\migrations\20260606000000_baseline_schema.sql:452:CREATE POLICY "authenticated can insert geofences" ON "public"."geofences" FOR INSERT TO "authenticated" WITH CHECK (true);
+> supabase\migrations\20260606000000_baseline_schema.sql:453:CREATE POLICY "authenticated can insert own report subscriptions" ON "public"."report_subscriptions" FOR INSERT TO "authenticated" WITH CHECK 
+(("user_id" = "auth"."uid"()));
+  supabase\migrations\20260606000000_baseline_schema.sql:454:CREATE POLICY "authenticated can read batches" ON "public"."batches" FOR SELECT TO "authenticated" USING (true);
+  supabase\migrations\20260606000000_baseline_schema.sql:455:CREATE POLICY "authenticated can read drivers" ON "public"."drivers" FOR SELECT TO "authenticated" USING (true);
+  supabase\migrations\20260606000000_baseline_schema.sql:456:CREATE POLICY "authenticated can read geofences" ON "public"."geofences" FOR SELECT TO "authenticated" USING (true);
+  supabase\migrations\20260606000000_baseline_schema.sql:457:CREATE POLICY "authenticated can read incidents" ON "public"."incidents" FOR SELECT TO "authenticated" USING (true);
+  supabase\migrations\20260606000000_baseline_schema.sql:458:CREATE POLICY "authenticated can read profiles" ON "public"."profiles" FOR SELECT TO "authenticated" USING (true);
+  supabase\migrations\20260606000000_baseline_schema.sql:462:CREATE POLICY "authenticated can read vehicle_locations" ON "public"."vehicle_locations" FOR SELECT TO "authenticated" USING (true);
+  supabase\migrations\20260606000000_baseline_schema.sql:463:CREATE POLICY "authenticated can read vehicle_trips" ON "public"."vehicle_trips" FOR SELECT TO "authenticated" USING (true);
+  supabase\migrations\20260606000000_baseline_schema.sql:464:CREATE POLICY "authenticated can read vehicles" ON "public"."vehicles" FOR SELECT TO "authenticated" USING (true);
+> supabase\migrations\20260606000000_baseline_schema.sql:465:CREATE POLICY "authenticated can update geofences" ON "public"."geofences" FOR UPDATE TO "authenticated" USING (true) WITH CHECK (true);
+> supabase\migrations\20260606000000_baseline_schema.sql:466:CREATE POLICY "authenticated can update own report subscriptions" ON "public"."report_subscriptions" FOR UPDATE TO "authenticated" USING (("user_id" 
+= "auth"."uid"())) WITH CHECK (("user_id" = "auth"."uid"()));
+  supabase\migrations\20260606000000_baseline_schema.sql:467:CREATE POLICY "authenticated delete report_subscriptions" ON "public"."report_subscriptions" FOR DELETE TO "authenticated" USING (true);
+> supabase\migrations\20260606000000_baseline_schema.sql:468:CREATE POLICY "authenticated insert report_subscriptions" ON "public"."report_subscriptions" FOR INSERT TO "authenticated" WITH CHECK (true);
+> supabase\migrations\20260606000000_baseline_schema.sql:469:CREATE POLICY "authenticated update report_subscriptions" ON "public"."report_subscriptions" FOR UPDATE TO "authenticated" USING (true) WITH CHECK 
+(true);
+  supabase\migrations\20260606000000_baseline_schema.sql:470:ALTER TABLE "public"."batches" ENABLE ROW LEVEL SECURITY;
+  supabase\migrations\20260606000000_baseline_schema.sql:471:ALTER TABLE "public"."billing_events" ENABLE ROW LEVEL SECURITY;
+  supabase\migrations\20260606000000_baseline_schema.sql:472:ALTER TABLE "public"."drivers" ENABLE ROW LEVEL SECURITY;
+  supabase\migrations\20260606000000_baseline_schema.sql:473:ALTER TABLE "public"."emergency_response_events" ENABLE ROW LEVEL SECURITY;
+  supabase\migrations\20260606000000_baseline_schema.sql:474:ALTER TABLE "public"."geofences" ENABLE ROW LEVEL SECURITY;
+  supabase\migrations\20260611090100_organization_admin_rls.sql:27:    and profiles.role in ('admin', 'super_admin')
+  supabase\migrations\20260611090100_organization_admin_rls.sql:28:  )
+  supabase\migrations\20260611090100_organization_admin_rls.sql:29:)
+> supabase\migrations\20260611090100_organization_admin_rls.sql:30:with check (
+  supabase\migrations\20260611090100_organization_admin_rls.sql:31:  exists (
+  supabase\migrations\20260611090100_organization_admin_rls.sql:32:    select 1
+  supabase\migrations\20260611090100_organization_admin_rls.sql:33:    from public.profiles
+  supabase\migrations\20260611090100_organization_admin_rls.sql:34:    where profiles.id = auth.uid()
+  supabase\migrations\20260611090100_organization_admin_rls.sql:35:    and profiles.role in ('admin', 'super_admin')
+  supabase\migrations\20260611090100_organization_admin_rls.sql:40:on public.organizations
+  supabase\migrations\20260611090100_organization_admin_rls.sql:41:for insert
+  supabase\migrations\20260611090100_organization_admin_rls.sql:42:to authenticated
+> supabase\migrations\20260611090100_organization_admin_rls.sql:43:with check (
+  supabase\migrations\20260611090100_organization_admin_rls.sql:44:  exists (
+  supabase\migrations\20260611090100_organization_admin_rls.sql:45:    select 1
+  supabase\migrations\20260611090100_organization_admin_rls.sql:46:    from public.profiles
+  supabase\migrations\20260611090100_organization_admin_rls.sql:47:    where profiles.id = auth.uid()
+  supabase\migrations\20260611090100_organization_admin_rls.sql:48:    and profiles.role in ('admin', 'super_admin')
+  supabase\migrations\20260621090000_push_subscriptions.sql:29:create policy "push_subscriptions_insert_own_org"
+  supabase\migrations\20260621090000_push_subscriptions.sql:30:on public.push_subscriptions
+  supabase\migrations\20260621090000_push_subscriptions.sql:31:for insert
+> supabase\migrations\20260621090000_push_subscriptions.sql:32:with check (
+  supabase\migrations\20260621090000_push_subscriptions.sql:33:  organization_id in (
+  supabase\migrations\20260621090000_push_subscriptions.sql:34:    select organization_id
+  supabase\migrations\20260621090000_push_subscriptions.sql:35:    from public.profiles
+  supabase\migrations\20260621090000_push_subscriptions.sql:36:    where id = auth.uid()
+  supabase\migrations\20260621090000_push_subscriptions.sql:37:  )
+  supabase\migrations\20260621090000_push_subscriptions.sql:48:    where id = auth.uid()
+  supabase\migrations\20260621090000_push_subscriptions.sql:49:  )
+  supabase\migrations\20260621090000_push_subscriptions.sql:50:)
+> supabase\migrations\20260621090000_push_subscriptions.sql:51:with check (
+  supabase\migrations\20260621090000_push_subscriptions.sql:52:  organization_id in (
+  supabase\migrations\20260621090000_push_subscriptions.sql:53:    select organization_id
+  supabase\migrations\20260621090000_push_subscriptions.sql:54:    from public.profiles
+  supabase\migrations\20260621090000_push_subscriptions.sql:55:    where id = auth.uid()
+  supabase\migrations\20260621090000_push_subscriptions.sql:56:  )
+  supabase\migrations\20260622090000_route_safety_escalation_logs.sql:31:create policy "route_safety_escalation_logs_insert_own_org"
+  supabase\migrations\20260622090000_route_safety_escalation_logs.sql:32:on public.route_safety_escalation_logs
+  supabase\migrations\20260622090000_route_safety_escalation_logs.sql:33:for insert
+> supabase\migrations\20260622090000_route_safety_escalation_logs.sql:34:with check (
+  supabase\migrations\20260622090000_route_safety_escalation_logs.sql:35:  organization_id in (
+  supabase\migrations\20260622090000_route_safety_escalation_logs.sql:36:    select organization_id
+  supabase\migrations\20260622090000_route_safety_escalation_logs.sql:37:    from public.profiles
+  supabase\migrations\20260622090000_route_safety_escalation_logs.sql:38:    where id = auth.uid()
+  supabase\migrations\20260622090000_route_safety_escalation_logs.sql:39:  )
+  supabase\migrations\20260626090000_command_center_notifications.sql:13:  created_at timestamptz NOT NULL DEFAULT now(),
+  supabase\migrations\20260626090000_command_center_notifications.sql:14:  read_at timestamptz,
+  supabase\migrations\20260626090000_command_center_notifications.sql:15:  resolved_at timestamptz,
+> supabase\migrations\20260626090000_command_center_notifications.sql:16:  CONSTRAINT command_center_notifications_severity_check
+> supabase\migrations\20260626090000_command_center_notifications.sql:17:    CHECK (severity IN ('low', 'medium', 'high', 'critical'))
+  supabase\migrations\20260626090000_command_center_notifications.sql:18:);
+  supabase\migrations\20260626090000_command_center_notifications.sql:19:
+  supabase\migrations\20260626090000_command_center_notifications.sql:20:CREATE INDEX IF NOT EXISTS command_center_notifications_org_created_idx
+  supabase\migrations\20260626090000_command_center_notifications.sql:21:  ON public.command_center_notifications (organization_id, created_at DESC);
+  supabase\migrations\20260626090000_command_center_notifications.sql:22:
+  supabase\migrations\20260626090000_command_center_notifications.sql:48:    WHERE profiles.id = auth.uid()
+  supabase\migrations\20260626090000_command_center_notifications.sql:49:  )
+  supabase\migrations\20260626090000_command_center_notifications.sql:50:)
+> supabase\migrations\20260626090000_command_center_notifications.sql:51:WITH CHECK (
+  supabase\migrations\20260626090000_command_center_notifications.sql:52:  organization_id IN (
+  supabase\migrations\20260626090000_command_center_notifications.sql:53:    SELECT profiles.organization_id
+  supabase\migrations\20260626090000_command_center_notifications.sql:54:    FROM public.profiles
+  supabase\migrations\20260626090000_command_center_notifications.sql:55:    WHERE profiles.id = auth.uid()
+  supabase\migrations\20260626090000_command_center_notifications.sql:56:  )
+  supabase\migrations\20260626090000_command_center_notifications.sql:61:FOR ALL
+  supabase\migrations\20260626090000_command_center_notifications.sql:62:TO service_role
+  supabase\migrations\20260626090000_command_center_notifications.sql:63:USING (true)
+> supabase\migrations\20260626090000_command_center_notifications.sql:64:WITH CHECK (true);
+  supabase\migrations\20260630150000_dispatch_missions.sql:36:create policy "Admins can insert organization dispatch missions"
+  supabase\migrations\20260630150000_dispatch_missions.sql:37:on public.dispatch_missions
+  supabase\migrations\20260630150000_dispatch_missions.sql:38:for insert
+> supabase\migrations\20260630150000_dispatch_missions.sql:39:with check (organization_id = public.current_user_org_id());
+  supabase\migrations\20260630150000_dispatch_missions.sql:40:
+  supabase\migrations\20260630150000_dispatch_missions.sql:41:create policy "Admins can update organization dispatch missions"
+  supabase\migrations\20260630150000_dispatch_missions.sql:42:on public.dispatch_missions
+  supabase\migrations\20260630150000_dispatch_missions.sql:43:for update
+  supabase\migrations\20260630150000_dispatch_missions.sql:44:using (organization_id = public.current_user_org_id())
+> supabase\migrations\20260630150000_dispatch_missions.sql:45:with check (organization_id = public.current_user_org_id());
+  supabase\migrations\20260630150000_dispatch_missions.sql:46:
+  supabase\migrations\20260630150000_dispatch_missions.sql:47:create index if not exists dispatch_missions_org_status_idx
+  supabase\migrations\20260630150000_dispatch_missions.sql:48:on public.dispatch_missions (organization_id, status);
+  supabase\migrations\20260630150000_dispatch_missions.sql:49:
+  supabase\migrations\20260630150000_dispatch_missions.sql:50:create index if not exists dispatch_missions_vehicle_idx
+  supabase\migrations\20260701183000_mission_evidence.sql:27:create policy "Users can insert organization mission evidence"
+  supabase\migrations\20260701183000_mission_evidence.sql:28:on public.mission_evidence
+  supabase\migrations\20260701183000_mission_evidence.sql:29:for insert
+> supabase\migrations\20260701183000_mission_evidence.sql:30:with check (organization_id = public.current_user_org_id());
+  supabase\migrations\20260701183000_mission_evidence.sql:31:
+  supabase\migrations\20260701183000_mission_evidence.sql:32:create policy "Users can update organization mission evidence"
+  supabase\migrations\20260701183000_mission_evidence.sql:33:on public.mission_evidence
+  supabase\migrations\20260701183000_mission_evidence.sql:34:for update
+  supabase\migrations\20260701183000_mission_evidence.sql:35:using (organization_id = public.current_user_org_id())
+> supabase\migrations\20260701183000_mission_evidence.sql:36:with check (organization_id = public.current_user_org_id());
+  supabase\migrations\20260701183000_mission_evidence.sql:37:
+  supabase\migrations\20260701183000_mission_evidence.sql:38:create index if not exists mission_evidence_org_mission_idx
+  supabase\migrations\20260701183000_mission_evidence.sql:39:on public.mission_evidence (organization_id, mission_id, created_at desc);
+  supabase\migrations\20260701183000_mission_evidence.sql:40:
+  supabase\migrations\20260701183000_mission_evidence.sql:41:create index if not exists mission_evidence_type_idx
+  supabase\migrations\20260701210000_mission_timeline_events.sql:2:  id uuid primary key default gen_random_uuid(),
+  supabase\migrations\20260701210000_mission_timeline_events.sql:3:  organization_id uuid not null references public.organizations(id) on delete cascade,
+  supabase\migrations\20260701210000_mission_timeline_events.sql:4:  mission_id uuid not null references public.dispatch_missions(id) on delete cascade,
+> supabase\migrations\20260701210000_mission_timeline_events.sql:5:  event_type text not null,
+  supabase\migrations\20260701210000_mission_timeline_events.sql:6:  title text not null,
+  supabase\migrations\20260701210000_mission_timeline_events.sql:7:  detail text null,
+  supabase\migrations\20260701210000_mission_timeline_events.sql:8:  actor_id uuid null references public.profiles(id) on delete set null,
+  supabase\migrations\20260701210000_mission_timeline_events.sql:9:  source text not null default 'system',
+  supabase\migrations\20260701210000_mission_timeline_events.sql:10:  metadata jsonb not null default '{}'::jsonb,
+  supabase\migrations\20260701210000_mission_timeline_events.sql:21:create policy "Users can insert organization mission timeline events"
+  supabase\migrations\20260701210000_mission_timeline_events.sql:22:on public.mission_timeline_events
+  supabase\migrations\20260701210000_mission_timeline_events.sql:23:for insert
+> supabase\migrations\20260701210000_mission_timeline_events.sql:24:with check (organization_id = public.current_user_org_id());
+  supabase\migrations\20260701210000_mission_timeline_events.sql:25:
+  supabase\migrations\20260701210000_mission_timeline_events.sql:26:create index if not exists mission_timeline_events_org_mission_idx
+  supabase\migrations\20260701210000_mission_timeline_events.sql:27:on public.mission_timeline_events (organization_id, mission_id, created_at desc);
+  supabase\migrations\20260701210000_mission_timeline_events.sql:28:
+  supabase\migrations\20260701210000_mission_timeline_events.sql:29:create index if not exists mission_timeline_events_type_idx
+> supabase\migrations\20260701210000_mission_timeline_events.sql:30:on public.mission_timeline_events (event_type);
+  supabase\migrations\20260703110000_mission_notes.sql:21:create policy "Users can insert organization mission notes"
+  supabase\migrations\20260703110000_mission_notes.sql:22:on public.mission_notes
+  supabase\migrations\20260703110000_mission_notes.sql:23:for insert
+> supabase\migrations\20260703110000_mission_notes.sql:24:with check (organization_id = public.current_user_org_id());
+  supabase\migrations\20260703110000_mission_notes.sql:25:
+  supabase\migrations\20260703110000_mission_notes.sql:26:create policy "Users can update organization mission notes"
+  supabase\migrations\20260703110000_mission_notes.sql:27:on public.mission_notes
+  supabase\migrations\20260703110000_mission_notes.sql:28:for update
+  supabase\migrations\20260703110000_mission_notes.sql:29:using (organization_id = public.current_user_org_id())
+> supabase\migrations\20260703110000_mission_notes.sql:30:with check (organization_id = public.current_user_org_id());
+  supabase\migrations\20260703110000_mission_notes.sql:31:
+  supabase\migrations\20260703110000_mission_notes.sql:32:create index if not exists mission_notes_org_mission_idx
+  supabase\migrations\20260703110000_mission_notes.sql:33:on public.mission_notes (organization_id, mission_id, created_at desc);
+  supabase\migrations\20260703123000_mission_messages.sql:21:create policy "Users can insert organization mission messages"
+  supabase\migrations\20260703123000_mission_messages.sql:22:on public.mission_messages
+  supabase\migrations\20260703123000_mission_messages.sql:23:for insert
+> supabase\migrations\20260703123000_mission_messages.sql:24:with check (organization_id = public.current_user_org_id());
+  supabase\migrations\20260703123000_mission_messages.sql:25:
+  supabase\migrations\20260703123000_mission_messages.sql:26:create index if not exists mission_messages_org_mission_idx
+  supabase\migrations\20260703123000_mission_messages.sql:27:on public.mission_messages (organization_id, mission_id, created_at asc);
+  supabase\migrations\20260703123000_mission_messages.sql:28:
+  supabase\migrations\20260703123000_mission_messages.sql:29:create index if not exists mission_messages_sender_role_idx
+  supabase\migrations\20260703140000_mission_tracking.sql:27:create policy "Users can insert organization mission tracking"
+  supabase\migrations\20260703140000_mission_tracking.sql:28:on public.mission_tracking
+  supabase\migrations\20260703140000_mission_tracking.sql:29:for insert
+> supabase\migrations\20260703140000_mission_tracking.sql:30:with check (organization_id = public.current_user_org_id());
+  supabase\migrations\20260703140000_mission_tracking.sql:31:
+  supabase\migrations\20260703140000_mission_tracking.sql:32:create index if not exists mission_tracking_org_mission_recorded_idx
+  supabase\migrations\20260703140000_mission_tracking.sql:33:on public.mission_tracking (organization_id, mission_id, recorded_at desc);
+  supabase\migrations\20260703140000_mission_tracking.sql:34:
+  supabase\migrations\20260703140000_mission_tracking.sql:35:create index if not exists mission_tracking_vehicle_recorded_idx
+  supabase\migrations\20260705110000_vision_events.sql:5:  vehicle_name text null,
+  supabase\migrations\20260705110000_vision_events.sql:6:  camera_name text null,
+  supabase\migrations\20260705110000_vision_events.sql:7:  provider text not null default 'mock',
+> supabase\migrations\20260705110000_vision_events.sql:8:  event_type text not null,
+  supabase\migrations\20260705110000_vision_events.sql:9:  severity text not null default 'low',
+  supabase\migrations\20260705110000_vision_events.sql:10:  confidence numeric not null default 0,
+  supabase\migrations\20260705110000_vision_events.sql:11:  status text not null default 'monitoring',
+  supabase\migrations\20260705110000_vision_events.sql:12:  image_url text null,
+  supabase\migrations\20260705110000_vision_events.sql:13:  description text null,
+  supabase\migrations\20260705110000_vision_events.sql:27:create policy "Users can insert organization vision events"
+  supabase\migrations\20260705110000_vision_events.sql:28:on public.vision_events
+  supabase\migrations\20260705110000_vision_events.sql:29:for insert
+> supabase\migrations\20260705110000_vision_events.sql:30:with check (organization_id = public.current_user_org_id());
+  supabase\migrations\20260705110000_vision_events.sql:31:
+  supabase\migrations\20260705110000_vision_events.sql:32:create index if not exists vision_events_org_detected_idx
+  supabase\migrations\20260705110000_vision_events.sql:33:on public.vision_events (organization_id, detected_at desc);
+  supabase\migrations\20260705110000_vision_events.sql:34:
+  supabase\migrations\20260705110000_vision_events.sql:35:create index if not exists vision_events_status_idx
+  supabase\migrations\20260705120000_dashcam_events.sql:28:create policy "Users can insert organization dashcam events"
+  supabase\migrations\20260705120000_dashcam_events.sql:29:on public.dashcam_events
+  supabase\migrations\20260705120000_dashcam_events.sql:30:for insert
+> supabase\migrations\20260705120000_dashcam_events.sql:31:with check (organization_id = public.current_user_org_id());
+  supabase\migrations\20260705120000_dashcam_events.sql:32:
+  supabase\migrations\20260705120000_dashcam_events.sql:33:create index if not exists dashcam_events_org_captured_idx
+  supabase\migrations\20260705120000_dashcam_events.sql:34:on public.dashcam_events (organization_id, captured_at desc);
+  supabase\migrations\20260705120000_dashcam_events.sql:35:
+  supabase\migrations\20260705120000_dashcam_events.sql:36:create index if not exists dashcam_events_status_idx
+  supabase\migrations\20260705130000_cctv_events.sql:32:create policy "Users can insert organization cctv events"
+  supabase\migrations\20260705130000_cctv_events.sql:33:on public.cctv_events
+  supabase\migrations\20260705130000_cctv_events.sql:34:for insert
+> supabase\migrations\20260705130000_cctv_events.sql:35:with check (organization_id = public.current_user_org_id());
+  supabase\migrations\20260705130000_cctv_events.sql:36:
+  supabase\migrations\20260705130000_cctv_events.sql:37:create index if not exists cctv_events_org_captured_idx
+  supabase\migrations\20260705130000_cctv_events.sql:38:on public.cctv_events (organization_id, captured_at desc);
+  supabase\migrations\20260705130000_cctv_events.sql:39:
+  supabase\migrations\20260705130000_cctv_events.sql:40:create index if not exists cctv_events_status_idx
+  supabase\migrations\20260705140000_anpr_events.sql:28:create policy "Users can insert organization anpr events"
+  supabase\migrations\20260705140000_anpr_events.sql:29:on public.anpr_events
+  supabase\migrations\20260705140000_anpr_events.sql:30:for insert
+> supabase\migrations\20260705140000_anpr_events.sql:31:with check (organization_id = public.current_user_org_id());
+  supabase\migrations\20260705140000_anpr_events.sql:32:
+  supabase\migrations\20260705140000_anpr_events.sql:33:create index if not exists anpr_events_org_detected_idx
+  supabase\migrations\20260705140000_anpr_events.sql:34:on public.anpr_events (organization_id, detected_at desc);
+  supabase\migrations\20260705140000_anpr_events.sql:35:
+  supabase\migrations\20260705140000_anpr_events.sql:36:create index if not exists anpr_events_status_idx
+  supabase\migrations\20260714210000_vision_event_review_workflow.sql:37:using (
+  supabase\migrations\20260714210000_vision_event_review_workflow.sql:38:  organization_id = public.current_user_org_id()
+  supabase\migrations\20260714210000_vision_event_review_workflow.sql:39:)
+> supabase\migrations\20260714210000_vision_event_review_workflow.sql:40:with check (
+  supabase\migrations\20260714210000_vision_event_review_workflow.sql:41:  organization_id = public.current_user_org_id()
+  supabase\migrations\20260714210000_vision_event_review_workflow.sql:42:);
+  supabase\migrations\20260719220000_add_vehicle_type.sql:1:alter table public.vehicles
+  supabase\migrations\20260719220000_add_vehicle_type.sql:2:add column if not exists vehicle_type text not null default 'general';
+  supabase\migrations\20260719220000_add_vehicle_type.sql:3:alter table public.vehicles
+> supabase\migrations\20260719220000_add_vehicle_type.sql:4:drop constraint if exists vehicles_vehicle_type_check;
+  supabase\migrations\20260719220000_add_vehicle_type.sql:5:alter table public.vehicles
+> supabase\migrations\20260719220000_add_vehicle_type.sql:6:add constraint vehicles_vehicle_type_check
+> supabase\migrations\20260719220000_add_vehicle_type.sql:7:check (
+  supabase\migrations\20260719220000_add_vehicle_type.sql:8:  vehicle_type in (
+  supabase\migrations\20260719220000_add_vehicle_type.sql:9:    'general',
+  supabase\migrations\20260719220000_add_vehicle_type.sql:10:    'security',
+  supabase\migrations\20260719220000_add_vehicle_type.sql:11:    'medical',
+  supabase\migrations\20260719220000_add_vehicle_type.sql:12:    'maintenance',
+  supabase\migrations\20260719230000_dispatch_rules.sql:10:  updated_at timestamptz not null default now(),
+  supabase\migrations\20260719230000_dispatch_rules.sql:11:
+  supabase\migrations\20260719230000_dispatch_rules.sql:12:  constraint dispatch_rules_alert_type_not_blank
+> supabase\migrations\20260719230000_dispatch_rules.sql:13:    check (length(trim(alert_type)) > 0),
+  supabase\migrations\20260719230000_dispatch_rules.sql:14:
+  supabase\migrations\20260719230000_dispatch_rules.sql:15:  constraint dispatch_rules_preferred_capabilities_not_empty
+> supabase\migrations\20260719230000_dispatch_rules.sql:16:    check (cardinality(preferred_capabilities) > 0),
+  supabase\migrations\20260719230000_dispatch_rules.sql:17:
+  supabase\migrations\20260719230000_dispatch_rules.sql:18:  constraint dispatch_rules_preferred_capabilities_valid
+> supabase\migrations\20260719230000_dispatch_rules.sql:19:    check (
+  supabase\migrations\20260719230000_dispatch_rules.sql:20:      preferred_capabilities <@ array[
+  supabase\migrations\20260719230000_dispatch_rules.sql:21:        'general',
+  supabase\migrations\20260719230000_dispatch_rules.sql:22:        'security',
+  supabase\migrations\20260719230000_dispatch_rules.sql:23:        'medical',
+  supabase\migrations\20260719230000_dispatch_rules.sql:24:        'maintenance',
+  supabase\migrations\20260719230000_dispatch_rules.sql:49:on public.dispatch_rules
+  supabase\migrations\20260719230000_dispatch_rules.sql:50:for insert
+  supabase\migrations\20260719230000_dispatch_rules.sql:51:to authenticated
+> supabase\migrations\20260719230000_dispatch_rules.sql:52:with check (
+  supabase\migrations\20260719230000_dispatch_rules.sql:53:  exists (
+  supabase\migrations\20260719230000_dispatch_rules.sql:54:    select 1
+  supabase\migrations\20260719230000_dispatch_rules.sql:55:    from public.profiles
+  supabase\migrations\20260719230000_dispatch_rules.sql:56:    where profiles.id = auth.uid()
+  supabase\migrations\20260719230000_dispatch_rules.sql:57:      and profiles.organization_id = dispatch_rules.organization_id
+  supabase\migrations\20260719230000_dispatch_rules.sql:71:      and profiles.role in ('admin', 'super_admin')
+  supabase\migrations\20260719230000_dispatch_rules.sql:72:  )
+  supabase\migrations\20260719230000_dispatch_rules.sql:73:)
+> supabase\migrations\20260719230000_dispatch_rules.sql:74:with check (
+  supabase\migrations\20260719230000_dispatch_rules.sql:75:  exists (
+  supabase\migrations\20260719230000_dispatch_rules.sql:76:    select 1
+  supabase\migrations\20260719230000_dispatch_rules.sql:77:    from public.profiles
+  supabase\migrations\20260719230000_dispatch_rules.sql:78:    where profiles.id = auth.uid()
+  supabase\migrations\20260719230000_dispatch_rules.sql:79:      and profiles.organization_id = dispatch_rules.organization_id
+> supabase\migrations\20260720090000_create_route_intelligence.sql:1:create table if not exists public.route_intelligence (
+  supabase\migrations\20260720090000_create_route_intelligence.sql:2:    id uuid primary key default gen_random_uuid(),
+  supabase\migrations\20260720090000_create_route_intelligence.sql:3:
+  supabase\migrations\20260720090000_create_route_intelligence.sql:4:    organization_id uuid not null
+  supabase\migrations\20260720090000_create_route_intelligence.sql:5:        references public.organizations(id)
+  supabase\migrations\20260720090000_create_route_intelligence.sql:6:        on delete cascade,
+  supabase\migrations\20260720090000_create_route_intelligence.sql:7:
+  supabase\migrations\20260720090000_create_route_intelligence.sql:8:    source text not null,
+> supabase\migrations\20260720090000_create_route_intelligence.sql:9:    event_type text not null,
+  supabase\migrations\20260720090000_create_route_intelligence.sql:10:
+  supabase\migrations\20260720090000_create_route_intelligence.sql:11:    severity text,
+  supabase\migrations\20260720090000_create_route_intelligence.sql:12:    confidence integer,
+  supabase\migrations\20260720090000_create_route_intelligence.sql:13:
+  supabase\migrations\20260720090000_create_route_intelligence.sql:14:    latitude double precision,
+  supabase\migrations\20260720090000_create_route_intelligence.sql:28:    created_at timestamptz not null default now(),
+  supabase\migrations\20260720090000_create_route_intelligence.sql:29:    updated_at timestamptz not null default now(),
+  supabase\migrations\20260720090000_create_route_intelligence.sql:30:
+> supabase\migrations\20260720090000_create_route_intelligence.sql:31:    constraint route_intelligence_confidence_check
+> supabase\migrations\20260720090000_create_route_intelligence.sql:32:        check (
+  supabase\migrations\20260720090000_create_route_intelligence.sql:33:            confidence is null
+  supabase\migrations\20260720090000_create_route_intelligence.sql:34:            or confidence between 0 and 100
+  supabase\migrations\20260720090000_create_route_intelligence.sql:35:        ),
+  supabase\migrations\20260720090000_create_route_intelligence.sql:36:
+> supabase\migrations\20260720090000_create_route_intelligence.sql:37:    constraint route_intelligence_weather_risk_check
+> supabase\migrations\20260720090000_create_route_intelligence.sql:38:        check (
+  supabase\migrations\20260720090000_create_route_intelligence.sql:39:            weather_risk is null
+  supabase\migrations\20260720090000_create_route_intelligence.sql:40:            or weather_risk between 0 and 100
+  supabase\migrations\20260720090000_create_route_intelligence.sql:41:        ),
+  supabase\migrations\20260720090000_create_route_intelligence.sql:42:
+> supabase\migrations\20260720090000_create_route_intelligence.sql:43:    constraint route_intelligence_traffic_risk_check
+> supabase\migrations\20260720090000_create_route_intelligence.sql:44:        check (
+  supabase\migrations\20260720090000_create_route_intelligence.sql:45:            traffic_risk is null
+  supabase\migrations\20260720090000_create_route_intelligence.sql:46:            or traffic_risk between 0 and 100
+  supabase\migrations\20260720090000_create_route_intelligence.sql:47:        ),
+  supabase\migrations\20260720090000_create_route_intelligence.sql:48:
+> supabase\migrations\20260720090000_create_route_intelligence.sql:49:    constraint route_intelligence_verification_count_check
+> supabase\migrations\20260720090000_create_route_intelligence.sql:50:        check (verification_count >= 0),
+  supabase\migrations\20260720090000_create_route_intelligence.sql:51:
+> supabase\migrations\20260720090000_create_route_intelligence.sql:52:    constraint route_intelligence_latitude_check
+> supabase\migrations\20260720090000_create_route_intelligence.sql:53:        check (
+  supabase\migrations\20260720090000_create_route_intelligence.sql:54:            latitude is null
+  supabase\migrations\20260720090000_create_route_intelligence.sql:55:            or latitude between -90 and 90
+  supabase\migrations\20260720090000_create_route_intelligence.sql:56:        ),
+  supabase\migrations\20260720090000_create_route_intelligence.sql:57:
+> supabase\migrations\20260720090000_create_route_intelligence.sql:58:    constraint route_intelligence_longitude_check
+> supabase\migrations\20260720090000_create_route_intelligence.sql:59:        check (
+  supabase\migrations\20260720090000_create_route_intelligence.sql:60:            longitude is null
+  supabase\migrations\20260720090000_create_route_intelligence.sql:61:            or longitude between -180 and 180
+  supabase\migrations\20260720090000_create_route_intelligence.sql:62:        )
+  supabase\migrations\20260720090000_create_route_intelligence.sql:63:);
+> supabase\migrations\20260720090000_create_route_intelligence.sql:64:create index if not exists idx_route_intelligence_org_created
+> supabase\migrations\20260720090000_create_route_intelligence.sql:65:    on public.route_intelligence (
+  supabase\migrations\20260720090000_create_route_intelligence.sql:66:        organization_id,
+  supabase\migrations\20260720090000_create_route_intelligence.sql:67:        created_at desc
+  supabase\migrations\20260720090000_create_route_intelligence.sql:68:    );
+> supabase\migrations\20260720090000_create_route_intelligence.sql:69:create index if not exists idx_route_intelligence_org_event
+> supabase\migrations\20260720090000_create_route_intelligence.sql:70:    on public.route_intelligence (
+  supabase\migrations\20260720090000_create_route_intelligence.sql:71:        organization_id,
+> supabase\migrations\20260720090000_create_route_intelligence.sql:72:        event_type
+  supabase\migrations\20260720090000_create_route_intelligence.sql:73:    );
+> supabase\migrations\20260720090000_create_route_intelligence.sql:74:create index if not exists idx_route_intelligence_coordinates
+> supabase\migrations\20260720090000_create_route_intelligence.sql:75:    on public.route_intelligence (
+  supabase\migrations\20260720090000_create_route_intelligence.sql:76:        latitude,
+  supabase\migrations\20260720090000_create_route_intelligence.sql:77:        longitude
+  supabase\migrations\20260720090000_create_route_intelligence.sql:78:    )
+  supabase\migrations\20260720090000_create_route_intelligence.sql:79:    where latitude is not null
+  supabase\migrations\20260720090000_create_route_intelligence.sql:80:      and longitude is not null;
+> supabase\migrations\20260720090000_create_route_intelligence.sql:81:create index if not exists idx_route_intelligence_verified
+> supabase\migrations\20260720090000_create_route_intelligence.sql:82:    on public.route_intelligence (
+  supabase\migrations\20260720090000_create_route_intelligence.sql:83:        organization_id,
+  supabase\migrations\20260720090000_create_route_intelligence.sql:84:        verified
+  supabase\migrations\20260720090000_create_route_intelligence.sql:85:    );
+> supabase\migrations\20260720090000_create_route_intelligence.sql:86:alter table public.route_intelligence
+  supabase\migrations\20260720090000_create_route_intelligence.sql:87:    enable row level security;
+  supabase\migrations\20260720090000_create_route_intelligence.sql:88:create policy "Users can read organization route intelligence"
+> supabase\migrations\20260720090000_create_route_intelligence.sql:89:on public.route_intelligence
+  supabase\migrations\20260720090000_create_route_intelligence.sql:90:for select
+  supabase\migrations\20260720090000_create_route_intelligence.sql:91:to authenticated
+  supabase\migrations\20260720090000_create_route_intelligence.sql:92:using (
+  supabase\migrations\20260720090000_create_route_intelligence.sql:93:    organization_id = public.current_user_org_id()
+  supabase\migrations\20260720090000_create_route_intelligence.sql:94:);
+  supabase\migrations\20260720090000_create_route_intelligence.sql:95:create policy "Users can insert organization route intelligence"
+> supabase\migrations\20260720090000_create_route_intelligence.sql:96:on public.route_intelligence
+  supabase\migrations\20260720090000_create_route_intelligence.sql:97:for insert
+  supabase\migrations\20260720090000_create_route_intelligence.sql:98:to authenticated
+> supabase\migrations\20260720090000_create_route_intelligence.sql:99:with check (
+  supabase\migrations\20260720090000_create_route_intelligence.sql:100:    organization_id = public.current_user_org_id()
+  supabase\migrations\20260720090000_create_route_intelligence.sql:101:);
+  supabase\migrations\20260720090000_create_route_intelligence.sql:102:create policy "Users can update organization route intelligence"
+> supabase\migrations\20260720090000_create_route_intelligence.sql:103:on public.route_intelligence
+  supabase\migrations\20260720090000_create_route_intelligence.sql:104:for update
+  supabase\migrations\20260720090000_create_route_intelligence.sql:105:to authenticated
+  supabase\migrations\20260720090000_create_route_intelligence.sql:106:using (
+  supabase\migrations\20260720090000_create_route_intelligence.sql:107:    organization_id = public.current_user_org_id()
+  supabase\migrations\20260720090000_create_route_intelligence.sql:108:)
+> supabase\migrations\20260720090000_create_route_intelligence.sql:109:with check (
+  supabase\migrations\20260720090000_create_route_intelligence.sql:110:    organization_id = public.current_user_org_id()
+  supabase\migrations\20260720090000_create_route_intelligence.sql:111:);
+  supabase\migrations\20260720090000_create_route_intelligence.sql:112:create policy "Service role can manage route intelligence"
+> supabase\migrations\20260720090000_create_route_intelligence.sql:113:on public.route_intelligence
+  supabase\migrations\20260720090000_create_route_intelligence.sql:114:for all
+  supabase\migrations\20260720090000_create_route_intelligence.sql:115:to service_role
+  supabase\migrations\20260720090000_create_route_intelligence.sql:116:using (true)
+> supabase\migrations\20260720090000_create_route_intelligence.sql:117:with check (true);
+  supabase\migrations\20260720090000_create_route_intelligence.sql:118:grant select, insert, update
+> supabase\migrations\20260720090000_create_route_intelligence.sql:119:on public.route_intelligence
+  supabase\migrations\20260720090000_create_route_intelligence.sql:120:to authenticated;
+  supabase\migrations\20260720090000_create_route_intelligence.sql:121:grant all
+> supabase\migrations\20260720090000_create_route_intelligence.sql:122:on public.route_intelligence
+  supabase\migrations\20260720090000_create_route_intelligence.sql:123:to service_role;
+> supabase\migrations\20260720100000_add_route_intelligence_source_record.sql:1:alter table public.route_intelligence
+  supabase\migrations\20260720100000_add_route_intelligence_source_record.sql:2:    add column if not exists source_record_id text;
+> supabase\migrations\20260720100000_add_route_intelligence_source_record.sql:3:create unique index if not exists idx_route_intelligence_source_record
+> supabase\migrations\20260720100000_add_route_intelligence_source_record.sql:4:    on public.route_intelligence (
+  supabase\migrations\20260720100000_add_route_intelligence_source_record.sql:5:        organization_id,
+  supabase\migrations\20260720100000_add_route_intelligence_source_record.sql:6:        source,
+  supabase\migrations\20260720100000_add_route_intelligence_source_record.sql:7:        source_record_id
+  supabase\migrations\20260720100000_add_route_intelligence_source_record.sql:8:    );
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:9:  route_segment text null,
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:10:
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:11:  latitude double precision not null
+> supabase\migrations\20260721153000_create_road_risk_segments.sql:12:    check (latitude between -90 and 90),
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:13:
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:14:  longitude double precision not null
+> supabase\migrations\20260721153000_create_road_risk_segments.sql:15:    check (longitude between -180 and 180),
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:16:
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:17:  radius_meters integer not null default 100
+> supabase\migrations\20260721153000_create_road_risk_segments.sql:18:    check (radius_meters between 25 and 5000),
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:19:
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:20:  risk_score integer not null default 0
+> supabase\migrations\20260721153000_create_road_risk_segments.sql:21:    check (risk_score between 0 and 100),
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:22:
+> supabase\migrations\20260721153000_create_road_risk_segments.sql:23:  collision_count integer not null default 0
+> supabase\migrations\20260721153000_create_road_risk_segments.sql:24:    check (collision_count >= 0),
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:25:
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:26:  crime_count integer not null default 0
+> supabase\migrations\20260721153000_create_road_risk_segments.sql:27:    check (crime_count >= 0),
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:28:
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:29:  roadblock_count integer not null default 0
+> supabase\migrations\20260721153000_create_road_risk_segments.sql:30:    check (roadblock_count >= 0),
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:31:
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:32:  traffic_signal_count integer not null default 0
+> supabase\migrations\20260721153000_create_road_risk_segments.sql:33:    check (traffic_signal_count >= 0),
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:34:
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:35:  other_event_count integer not null default 0
+> supabase\migrations\20260721153000_create_road_risk_segments.sql:36:    check (other_event_count >= 0),
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:37:
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:38:  verification_count integer not null default 0
+> supabase\migrations\20260721153000_create_road_risk_segments.sql:39:    check (verification_count >= 0),
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:40:
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:41:  last_event_at timestamptz null,
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:42:
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:43:  metadata jsonb not null default '{}'::jsonb,
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:44:
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:89:on public.road_risk_segments
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:90:for insert
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:91:to authenticated
+> supabase\migrations\20260721153000_create_road_risk_segments.sql:92:with check (
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:93:  organization_id = public.current_user_org_id()
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:94:);
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:95:
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:96:drop policy if exists
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:97:  "Users can update organization road risk segments"
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:105:using (
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:106:  organization_id = public.current_user_org_id()
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:107:)
+> supabase\migrations\20260721153000_create_road_risk_segments.sql:108:with check (
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:109:  organization_id = public.current_user_org_id()
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:110:);
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:111:
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:112:drop policy if exists
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:113:  "Users can delete organization road risk segments"
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:24:    references public.road_risk_segments(id)
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:25:    on delete cascade,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:26:
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:27:  route_intelligence_id uuid not null
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:28:    references public.route_intelligence(id)
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:29:    on delete cascade,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:30:
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:31:  event_type text null,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:32:  created_at timestamptz not null default now(),
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:33:
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:34:  unique (
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:35:    organization_id,
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:36:    route_intelligence_id
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:37:  )
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:38:);
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:39:create index if not exists
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:40:  road_risk_segment_events_segment_idx
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:41:on public.road_risk_segment_events (
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:63:on public.road_risk_segment_events
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:64:for insert
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:65:to authenticated
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:66:with check (
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:67:  organization_id = public.current_user_org_id()
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:68:);
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:69:create or replace function public.aggregate_road_risk_intelligence(
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:70:  p_organization_id uuid,
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:71:  p_route_intelligence_id uuid,
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:72:  p_event_type text,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:73:  p_latitude double precision,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:74:  p_longitude double precision,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:75:  p_event_at timestamptz default now()
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:76:)
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:77:returns table (
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:86:declare
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:87:  v_segment_id uuid;
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:88:  v_segment_key text;
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:89:  v_event_type text;
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:90:  v_collision_increment integer := 0;
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:91:  v_crime_increment integer := 0;
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:92:  v_roadblock_increment integer := 0;
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:93:  v_traffic_signal_increment integer := 0;
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:94:  v_other_increment integer := 0;
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:95:  v_inserted_event_id uuid;
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:103:    raise exception 'Permission denied';
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:104:  end if;
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:105:
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:106:  if p_route_intelligence_id is null then
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:107:    raise exception 'route_intelligence_id is required';
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:108:  end if;
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:109:
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:110:  if p_latitude is null
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:111:    or p_latitude < -90
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:112:    or p_latitude > 90
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:124:  perform pg_advisory_xact_lock(
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:125:    hashtextextended(
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:126:      p_organization_id::text || ':' ||
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:127:      p_route_intelligence_id::text,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:128:      0
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:129:    )
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:130:  );
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:131:
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:132:  select
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:139:  join public.road_risk_segments as segments
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:140:    on segments.id = events.road_risk_segment_id
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:141:  where events.organization_id = p_organization_id
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:142:    and events.route_intelligence_id =
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:143:      p_route_intelligence_id;
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:144:
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:145:  if v_segment_id is not null then
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:146:    return query
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:147:    select
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:148:      v_segment_id,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:152:    return;
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:153:  end if;
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:154:
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:155:  v_event_type :=
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:156:    lower(
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:157:      coalesce(
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:158:        nullif(trim(p_event_type), ''),
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:159:        'other'
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:160:      )
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:161:    );
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:162:
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:163:  if v_event_type in (
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:164:    'accident',
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:165:    'collision',
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:166:    'crash',
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:167:    'vehicle_collision'
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:168:  ) then
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:169:    v_collision_increment := 1;
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:170:
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:171:  elsif v_event_type in (
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:172:    'smash_grab_hotspot',
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:173:    'crime',
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:174:    'crime_hotspot',
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:175:    'robbery',
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:176:    'suspicious_activity'
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:177:  ) then
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:178:    v_crime_increment := 1;
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:179:
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:180:  elsif v_event_type in (
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:181:    'roadblock',
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:182:    'road_closure',
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:183:    'blocked_road',
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:184:    'protest'
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:185:  ) then
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:186:    v_roadblock_increment := 1;
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:187:
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:188:  elsif v_event_type in (
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:189:    'traffic_light_outage',
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:190:    'traffic_signal_outage',
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:191:    'traffic_signal_failure'
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:192:  ) then
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:193:    v_traffic_signal_increment := 1;
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:207:    longitude,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:208:    radius_meters,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:209:    risk_score,
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:210:    collision_count,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:211:    crime_count,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:212:    roadblock_count,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:213:    traffic_signal_count,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:214:    other_event_count,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:215:    verification_count,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:252:  insert into public.road_risk_segment_events (
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:253:    organization_id,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:254:    road_risk_segment_id,
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:255:    route_intelligence_id,
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:256:    event_type
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:257:  )
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:258:  values (
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:259:    p_organization_id,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:260:    v_segment_id,
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:261:    p_route_intelligence_id,
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:262:    v_event_type
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:263:  )
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:264:  on conflict (
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:265:    organization_id,
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:266:    route_intelligence_id
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:267:  )
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:268:  do nothing
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:269:  returning id into v_inserted_event_id;
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:270:
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:271:  if v_inserted_event_id is null then
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:279:    join public.road_risk_segments as segments
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:280:      on segments.id = events.road_risk_segment_id
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:281:    where events.organization_id = p_organization_id
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:282:      and events.route_intelligence_id =
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:283:        p_route_intelligence_id;
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:284:
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:285:    return query
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:286:    select
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:287:      v_segment_id,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:288:      v_risk_score,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:293:
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:294:  update public.road_risk_segments
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:295:  set
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:296:    collision_count =
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:297:      collision_count + v_collision_increment,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:298:
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:299:    crime_count =
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:300:      crime_count + v_crime_increment,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:301:
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:302:    roadblock_count =
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:322:
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:323:    risk_score = least(
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:324:      100,
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:325:      (collision_count + v_collision_increment) * 20 +
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:326:      (crime_count + v_crime_increment) * 35 +
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:327:      (roadblock_count + v_roadblock_increment) * 30 +
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:328:      (
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:329:        traffic_signal_count +
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:330:        v_traffic_signal_increment
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:28:    references public.road_risk_segments(id)
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:29:    on delete cascade,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:30:
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:31:  route_intelligence_id uuid not null
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:32:    references public.route_intelligence(id)
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:33:    on delete cascade,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:34:
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:35:  event_type text null,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:36:  created_at timestamptz not null default now(),
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:37:
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:38:  unique (
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:39:    organization_id,
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:40:    route_intelligence_id
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:41:  )
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:42:);
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:43:
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:44:create index if not exists
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:45:  road_risk_segment_events_segment_idx
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:73:on public.road_risk_segment_events
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:74:for insert
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:75:to authenticated
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:76:with check (
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:77:  organization_id = public.current_user_org_id()
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:78:);
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:79:
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:80:create or replace function public.aggregate_road_risk_intelligence(
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:81:  p_organization_id uuid,
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:82:  p_route_intelligence_id uuid,
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:83:  p_event_type text,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:84:  p_latitude double precision,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:85:  p_longitude double precision,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:86:  p_event_at timestamptz default now()
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:87:)
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:88:returns table (
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:97:declare
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:98:  v_segment_id uuid;
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:99:  v_segment_key text;
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:100:  v_event_type text;
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:101:  v_collision_increment integer := 0;
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:102:  v_crime_increment integer := 0;
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:103:  v_roadblock_increment integer := 0;
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:104:  v_traffic_signal_increment integer := 0;
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:105:  v_other_increment integer := 0;
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:106:  v_inserted_event_id uuid;
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:114:    raise exception 'Permission denied';
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:115:  end if;
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:116:
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:117:  if p_route_intelligence_id is null then
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:118:    raise exception 'route_intelligence_id is required';
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:119:  end if;
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:120:
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:121:  if p_latitude is null
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:122:    or p_latitude < -90
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:123:    or p_latitude > 90
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:135:  perform pg_advisory_xact_lock(
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:136:    hashtextextended(
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:137:      p_organization_id::text || ':' ||
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:138:      p_route_intelligence_id::text,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:139:      0
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:140:    )
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:141:  );
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:142:
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:143:  select
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:150:  join public.road_risk_segments as segments
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:151:    on segments.id = events.road_risk_segment_id
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:152:  where events.organization_id = p_organization_id
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:153:    and events.route_intelligence_id =
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:154:      p_route_intelligence_id;
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:155:
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:156:  if v_segment_id is not null then
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:157:    return query
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:158:    select
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:159:      v_segment_id,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:163:    return;
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:164:  end if;
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:165:
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:166:  v_event_type :=
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:167:    lower(
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:168:      coalesce(
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:169:        nullif(trim(p_event_type), ''),
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:170:        'other'
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:171:      )
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:172:    );
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:173:
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:174:  if v_event_type in (
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:175:    'accident',
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:176:    'accidents',
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:177:    'collision',
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:178:    'collisions',
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:179:    'crash',
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:180:    'crashes',
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:181:    'vehicle_collision',
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:182:    'vehicle_collisions'
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:183:  ) then
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:184:    v_collision_increment := 1;
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:185:
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:186:  elsif v_event_type in (
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:187:    'smash_grab_hotspot',
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:188:    'crime',
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:189:    'crime_hotspot',
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:190:    'robbery',
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:191:    'suspicious_activity'
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:192:  ) then
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:193:    v_crime_increment := 1;
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:194:
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:195:  elsif v_event_type in (
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:196:    'roadblock',
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:197:    'road_closure',
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:198:    'blocked_road',
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:199:    'protest'
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:200:  ) then
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:201:    v_roadblock_increment := 1;
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:202:
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:203:  elsif v_event_type in (
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:204:    'traffic_light_outage',
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:205:    'traffic_signal_outage',
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:206:    'traffic_signal_failure'
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:207:  ) then
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:208:    v_traffic_signal_increment := 1;
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:222:    longitude,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:223:    radius_meters,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:224:    risk_score,
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:225:    collision_count,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:226:    crime_count,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:227:    roadblock_count,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:228:    traffic_signal_count,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:229:    other_event_count,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:230:    verification_count,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:267:  insert into public.road_risk_segment_events (
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:268:    organization_id,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:269:    road_risk_segment_id,
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:270:    route_intelligence_id,
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:271:    event_type
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:272:  )
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:273:  values (
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:274:    p_organization_id,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:275:    v_segment_id,
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:276:    p_route_intelligence_id,
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:277:    v_event_type
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:278:  )
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:279:  on conflict (
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:280:    organization_id,
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:281:    route_intelligence_id
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:282:  )
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:283:  do nothing
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:284:  returning id into v_inserted_event_id;
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:285:
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:286:  if v_inserted_event_id is null then
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:294:    join public.road_risk_segments as segments
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:295:      on segments.id = events.road_risk_segment_id
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:296:    where events.organization_id = p_organization_id
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:297:      and events.route_intelligence_id =
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:298:        p_route_intelligence_id;
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:299:
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:300:    return query
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:301:    select
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:302:      v_segment_id,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:303:      v_risk_score,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:308:
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:309:  update public.road_risk_segments
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:310:  set
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:311:    collision_count =
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:312:      collision_count + v_collision_increment,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:313:
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:314:    crime_count =
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:315:      crime_count + v_crime_increment,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:316:
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:317:    roadblock_count =
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:337:
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:338:    risk_score = least(
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:339:      100,
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:340:      (collision_count + v_collision_increment) * 20 +
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:341:      (crime_count + v_crime_increment) * 35 +
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:342:      (roadblock_count + v_roadblock_increment) * 30 +
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:343:      (
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:344:        traffic_signal_count +
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:345:        v_traffic_signal_increment
+> supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:1:alter table public.route_safety_alerts
+  supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:2:add column if not exists provider_sources text[]
+  supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:3:not null default '{}'::text[];
+  supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:4:
+> supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:5:alter table public.route_safety_alerts
+  supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:6:add column if not exists provider_confirmation_count integer
+  supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:7:not null default 0;
+  supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:8:
+> supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:9:alter table public.route_safety_alerts
+  supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:10:add column if not exists provider_confidence integer
+  supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:11:not null default 0;
+  supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:12:
+> supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:13:alter table public.route_safety_alerts
+  supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:14:add column if not exists last_provider_confirmation_at timestamptz;
+  supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:15:
+> supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:16:alter table public.route_safety_alerts
+> supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:17:drop constraint if exists route_safety_alerts_provider_confirmation_count_check;
+  supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:18:
+> supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:19:alter table public.route_safety_alerts
+> supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:20:add constraint route_safety_alerts_provider_confirmation_count_check
+> supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:21:check (provider_confirmation_count >= 0);
+  supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:22:
+> supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:23:alter table public.route_safety_alerts
+> supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:24:drop constraint if exists route_safety_alerts_provider_confidence_check;
+  supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:25:
+> supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:26:alter table public.route_safety_alerts
+> supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:27:add constraint route_safety_alerts_provider_confidence_check
+> supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:28:check (provider_confidence between 0 and 100);
+  supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:29:
+> supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:30:update public.route_safety_alerts
+  supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:31:set
+  supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:32:  provider_sources = array[source],
+  supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:33:  provider_confirmation_count = 1,
+  supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:34:  provider_confidence = 60,
+  supabase\migrations\20260730091256_add_cross_provider_confirmation.sql:35:  last_provider_confirmation_at =
+> supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:1:alter table public.route_safety_alerts
+> supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:2:drop constraint if exists route_safety_alerts_type_check;
+  supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:3:
+> supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:4:alter table public.route_safety_alerts
+> supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:5:add constraint route_safety_alerts_type_check
+> supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:6:check (
+  supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:7:  type in (
+  supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:8:    'roadblock',
+  supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:9:    'road_closure',
+  supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:10:    'lane_closure',
+  supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:11:    'roadworks',
+  supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:12:    'congestion',
+> supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:13:    'accident',
+  supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:14:    'vehicle_breakdown',
+  supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:15:    'flooding',
+  supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:16:    'weather_hazard',
+  supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:17:    'road_hazard',
+  supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:18:    'debris',
+  supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:23:  )
+  supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:24:);
+  supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:25:
+> supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:26:comment on column public.route_safety_alerts.type is
+  supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:27:'Normalized HarborGuard incident taxonomy used by manual reports and external traffic providers.';
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:14:  if not exists (
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:15:    select 1
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:16:    from pg_constraint
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:17:    where conname = 'road_risk_segments_road_closure_count_check'
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:18:      and conrelid = 'public.road_risk_segments'::regclass
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:19:  ) then
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:20:    alter table public.road_risk_segments
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:21:      add constraint road_risk_segments_road_closure_count_check
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:22:      check (road_closure_count >= 0);
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:23:  end if;
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:24:
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:25:  if not exists (
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:26:    select 1
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:27:    from pg_constraint
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:28:    where conname = 'road_risk_segments_roadworks_count_check'
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:29:      and conrelid = 'public.road_risk_segments'::regclass
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:30:  ) then
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:31:    alter table public.road_risk_segments
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:32:      add constraint road_risk_segments_roadworks_count_check
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:33:      check (roadworks_count >= 0);
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:34:  end if;
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:35:
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:36:  if not exists (
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:37:    select 1
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:38:    from pg_constraint
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:39:    where conname = 'road_risk_segments_congestion_count_check'
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:40:      and conrelid = 'public.road_risk_segments'::regclass
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:41:  ) then
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:42:    alter table public.road_risk_segments
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:43:      add constraint road_risk_segments_congestion_count_check
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:44:      check (congestion_count >= 0);
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:45:  end if;
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:46:
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:47:  if not exists (
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:48:    select 1
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:49:    from pg_constraint
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:50:    where conname = 'road_risk_segments_lane_closure_count_check'
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:51:      and conrelid = 'public.road_risk_segments'::regclass
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:52:  ) then
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:53:    alter table public.road_risk_segments
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:54:      add constraint road_risk_segments_lane_closure_count_check
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:55:      check (lane_closure_count >= 0);
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:56:  end if;
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:57:
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:58:  if not exists (
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:59:    select 1
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:60:    from pg_constraint
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:61:    where conname = 'road_risk_segments_weather_hazard_count_check'
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:62:      and conrelid = 'public.road_risk_segments'::regclass
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:63:  ) then
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:64:    alter table public.road_risk_segments
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:65:      add constraint road_risk_segments_weather_hazard_count_check
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:66:      check (weather_hazard_count >= 0);
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:67:  end if;
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:68:
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:69:  if not exists (
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:70:    select 1
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:71:    from pg_constraint
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:72:    where conname = 'road_risk_segments_flooding_count_check'
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:73:      and conrelid = 'public.road_risk_segments'::regclass
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:74:  ) then
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:75:    alter table public.road_risk_segments
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:76:      add constraint road_risk_segments_flooding_count_check
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:77:      check (flooding_count >= 0);
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:78:  end if;
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:79:
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:80:  if not exists (
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:81:    select 1
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:82:    from pg_constraint
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:83:    where conname = 'road_risk_segments_vehicle_breakdown_count_check'
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:84:      and conrelid = 'public.road_risk_segments'::regclass
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:85:  ) then
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:86:    alter table public.road_risk_segments
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:87:      add constraint road_risk_segments_vehicle_breakdown_count_check
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:88:      check (vehicle_breakdown_count >= 0);
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:89:  end if;
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:90:
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:91:  if not exists (
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:92:    select 1
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:93:    from pg_constraint
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:94:    where conname = 'road_risk_segments_road_hazard_count_check'
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:95:      and conrelid = 'public.road_risk_segments'::regclass
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:96:  ) then
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:97:    alter table public.road_risk_segments
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:98:      add constraint road_risk_segments_road_hazard_count_check
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:99:      check (road_hazard_count >= 0);
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:100:  end if;
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:101:
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:102:  if not exists (
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:103:    select 1
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:104:    from pg_constraint
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:105:    where conname = 'road_risk_segments_protest_count_check'
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:106:      and conrelid = 'public.road_risk_segments'::regclass
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:107:  ) then
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:108:    alter table public.road_risk_segments
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:109:      add constraint road_risk_segments_protest_count_check
+> supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:110:      check (protest_count >= 0);
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:111:  end if;
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:112:end
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:113:$$;
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:114:
+  supabase\migrations\20260730133331_expand_road_risk_segments_v2.sql:115:comment on column public.road_risk_segments.road_closure_count is
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:1:create or replace function public.aggregate_road_risk_intelligence(
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:2:  p_organization_id uuid,
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:3:  p_route_intelligence_id uuid,
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:4:  p_event_type text,
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:5:  p_latitude double precision,
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:6:  p_longitude double precision,
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:7:  p_event_at timestamptz default now()
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:8:)
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:9:returns table (
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:18:declare
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:19:  v_segment_id uuid;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:20:  v_segment_key text;
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:21:  v_event_type text;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:22:
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:23:  v_collision_increment integer := 0;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:24:  v_crime_increment integer := 0;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:25:  v_roadblock_increment integer := 0;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:26:  v_traffic_signal_increment integer := 0;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:27:  v_other_increment integer := 0;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:28:
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:47:    raise exception 'Permission denied';
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:48:  end if;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:49:
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:50:  if p_route_intelligence_id is null then
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:51:    raise exception 'route_intelligence_id is required';
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:52:  end if;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:53:
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:54:  if p_latitude is null
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:55:    or p_latitude < -90
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:56:    or p_latitude > 90
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:68:  perform pg_advisory_xact_lock(
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:69:    hashtextextended(
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:70:      p_organization_id::text || ':' ||
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:71:      p_route_intelligence_id::text,
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:72:      0
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:73:    )
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:74:  );
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:75:
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:76:  select
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:83:  join public.road_risk_segments as segments
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:84:    on segments.id = events.road_risk_segment_id
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:85:  where events.organization_id = p_organization_id
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:86:    and events.route_intelligence_id = p_route_intelligence_id;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:87:
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:88:  if v_segment_id is not null then
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:89:    return query
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:90:    select
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:91:      v_segment_id,
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:95:    return;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:96:  end if;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:97:
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:98:  v_event_type :=
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:99:    lower(
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:100:      coalesce(
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:101:        nullif(trim(p_event_type), ''),
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:102:        'other'
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:103:      )
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:104:    );
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:105:
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:106:  if v_event_type in (
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:107:    'accident',
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:108:    'collision',
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:109:    'crash',
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:110:    'vehicle_collision'
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:111:  ) then
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:112:    v_collision_increment := 1;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:113:
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:114:  elsif v_event_type in (
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:115:    'smash_grab_hotspot',
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:116:    'crime',
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:117:    'crime_hotspot',
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:118:    'robbery',
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:119:    'suspicious_activity'
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:120:  ) then
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:121:    v_crime_increment := 1;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:122:
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:123:  elsif v_event_type = 'roadblock' then
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:124:    v_roadblock_increment := 1;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:125:
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:126:  elsif v_event_type in (
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:127:    'traffic_light_outage',
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:128:    'traffic_signal_outage',
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:129:    'traffic_signal_failure'
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:130:  ) then
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:131:    v_traffic_signal_increment := 1;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:132:
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:133:  elsif v_event_type in (
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:134:    'road_closure',
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:135:    'blocked_road'
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:136:  ) then
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:137:    v_road_closure_increment := 1;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:138:
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:139:  elsif v_event_type in (
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:140:    'roadworks',
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:141:    'road_work',
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:142:    'construction'
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:143:  ) then
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:144:    v_roadworks_increment := 1;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:145:
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:146:  elsif v_event_type in (
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:147:    'congestion',
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:148:    'traffic_congestion',
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:149:    'heavy_traffic'
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:150:  ) then
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:151:    v_congestion_increment := 1;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:152:
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:153:  elsif v_event_type in (
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:154:    'lane_closure',
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:155:    'lane_closed'
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:156:  ) then
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:157:    v_lane_closure_increment := 1;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:158:
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:159:  elsif v_event_type in (
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:160:    'weather_hazard',
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:161:    'severe_weather'
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:162:  ) then
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:163:    v_weather_hazard_increment := 1;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:164:
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:165:  elsif v_event_type in (
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:166:    'flooding',
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:167:    'flood'
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:168:  ) then
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:169:    v_flooding_increment := 1;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:170:
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:171:  elsif v_event_type in (
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:172:    'vehicle_breakdown',
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:173:    'broken_down_vehicle'
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:174:  ) then
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:175:    v_vehicle_breakdown_increment := 1;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:176:
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:177:  elsif v_event_type in (
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:178:    'road_hazard',
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:179:    'hazard_on_road',
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:180:    'debris'
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:181:  ) then
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:182:    v_road_hazard_increment := 1;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:183:
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:184:  elsif v_event_type = 'protest' then
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:185:    v_protest_increment := 1;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:186:
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:187:  else
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:188:    v_other_increment := 1;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:189:  end if;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:199:    longitude,
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:200:    radius_meters,
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:201:    risk_score,
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:202:    collision_count,
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:203:    crime_count,
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:204:    roadblock_count,
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:205:    traffic_signal_count,
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:206:    other_event_count,
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:207:    road_closure_count,
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:261:  insert into public.road_risk_segment_events (
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:262:    organization_id,
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:263:    road_risk_segment_id,
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:264:    route_intelligence_id,
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:265:    event_type
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:266:  )
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:267:  values (
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:268:    p_organization_id,
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:269:    v_segment_id,
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:270:    p_route_intelligence_id,
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:271:    v_event_type
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:272:  )
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:273:  on conflict (
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:274:    organization_id,
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:275:    route_intelligence_id
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:276:  )
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:277:  do nothing
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:278:  returning id into v_inserted_event_id;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:279:
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:280:  if v_inserted_event_id is null then
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:288:    join public.road_risk_segments as segments
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:289:      on segments.id = events.road_risk_segment_id
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:290:    where events.organization_id = p_organization_id
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:291:      and events.route_intelligence_id = p_route_intelligence_id;
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:292:
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:293:    return query
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:294:    select
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:295:      v_segment_id,
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:296:      v_risk_score,
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:301:
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:302:  update public.road_risk_segments
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:303:  set
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:304:    collision_count =
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:305:      collision_count + v_collision_increment,
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:306:
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:307:    crime_count =
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:308:      crime_count + v_crime_increment,
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:309:
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:310:    roadblock_count =
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:356:
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:357:    risk_score = least(
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:358:      100,
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:359:      (collision_count + v_collision_increment) * 20 +
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:360:      (crime_count + v_crime_increment) * 35 +
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:361:      (roadblock_count + v_roadblock_increment) * 30 +
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:362:      (traffic_signal_count + v_traffic_signal_increment) * 18 +
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:363:      (other_event_count + v_other_increment) * 12 +
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:364:      (road_closure_count + v_road_closure_increment) * 28 +
+
+

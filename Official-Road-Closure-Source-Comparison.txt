@@ -1,0 +1,58 @@
+﻿Official Road Closure Source Comparison
+Date: 2026-08-01 18:14:11
+Branch: feature/expanded-incident-taxonomy
+Latest commit: 9ffb69b Log experimental traffic model evaluations
+
+1. City of Cape Town Open Data / ArcGIS
+
+Evidence:
+- Official Open Data Portal exists.
+- ArcGIS REST services are publicly accessible.
+- Supports JSON, GeoJSON, WMS, WFS and downloads.
+- Current transport services found appear to contain static road-network and
+  infrastructure layers.
+- No confirmed live road-closure event layer identified yet.
+
+Status:
+Potential platform, but live closure dataset not confirmed.
+
+2. Western Cape Government Road Closure Updates
+
+Evidence:
+- Official current road-closure updates are published.
+- Updates include district and road closure information.
+- Content appears to be published as web articles/news updates.
+- No documented public JSON, GeoJSON, CSV or RSS feed confirmed yet.
+
+Status:
+Authoritative information, but current delivery format may not be suitable
+for reliable automated ingestion.
+
+3. Western Cape Road Network Information System
+
+Evidence:
+- Official provincial road-network system exists.
+- Provides road inventory, maps and reports.
+- ArcGIS road-network geometry services exist.
+- No confirmed live road-closure event layer identified yet.
+
+Status:
+Useful for geometry enrichment, but not yet proven as a live closure source.
+
+4. SANRAL
+
+Evidence:
+- Official national roads authority website exists.
+- No documented public live road-closure API confirmed in the current search.
+
+Status:
+Requires direct enquiry or further source discovery.
+
+Preliminary decision:
+Do not implement a scraper yet.
+
+Preferred order:
+1. Search ArcGIS services for a closure/event layer.
+2. Contact City of Cape Town and Western Cape Government for API/data access.
+3. Confirm usage and redistribution terms.
+4. Only then implement an official provider adapter.

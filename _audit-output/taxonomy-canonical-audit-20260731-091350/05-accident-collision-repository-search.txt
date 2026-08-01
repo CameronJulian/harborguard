@@ -1,0 +1,218 @@
+﻿
+  app\api\command-center\accident-detection\route.ts:28:  if (
+  app\api\command-center\accident-detection\route.ts:29:    message.includes("impact") ||
+> app\api\command-center\accident-detection\route.ts:30:    message.includes("collision") ||
+  app\api\command-center\accident-detection\route.ts:31:    message.includes("crash") ||
+> app\api\command-center\accident-detection\route.ts:32:    message.includes("accident") ||
+  app\api\command-center\accident-detection\route.ts:33:    message.includes("sudden stop") ||
+  app\api\command-center\accident-detection\route.ts:34:    message.includes("hard brake") ||
+  app\api\command-center\accident-detection\route.ts:35:    message.includes("harsh brake")
+  app\api\command-center\accident-detection\route.ts:117:      .eq("organization_id", organizationId)
+  app\api\command-center\accident-detection\route.ts:118:      .eq("is_active", true)
+> app\api\command-center\accident-detection\route.ts:119:      .in("type", ["accident", "crash", "collision"])
+  app\api\command-center\accident-detection\route.ts:120:      .limit(25);
+  app\api\command-center\accident-detection\route.ts:121:
+  app\api\command-center\accident-detection\route.ts:122:    if (roadError) {
+  app\api\route-safety\cron\providers\route.ts:65:
+  app\api\route-safety\cron\providers\route.ts:66:  if (
+> app\api\route-safety\cron\providers\route.ts:67:    text.includes("accident") ||
+  app\api\route-safety\cron\providers\route.ts:68:    text.includes("crash") ||
+> app\api\route-safety\cron\providers\route.ts:69:    text.includes("collision")
+  app\api\route-safety\cron\providers\route.ts:70:  ) {
+> app\api\route-safety\cron\providers\route.ts:71:    return "collision";
+  app\api\route-safety\cron\providers\route.ts:72:  }
+  app\api\route-safety\cron\providers\route.ts:73:
+  app\api\route-safety\cron\providers\route.ts:74:  if (text.includes("protest")) {
+  app\api\route-safety\cron\providers\route.ts:112:  const value = String(category || "");
+  app\api\route-safety\cron\providers\route.ts:113:
+> app\api\route-safety\cron\providers\route.ts:114:  if (value === "1") return "accident";
+  app\api\route-safety\cron\providers\route.ts:115:  if (value === "2") return "weather_hazard";
+  app\api\route-safety\cron\providers\route.ts:116:  if (value === "3") return "road_hazard";
+  app\api\route-safety\cron\providers\route.ts:117:  if (value === "4") return "weather_hazard";
+  app\api\route-safety\ingest\here\route.ts:27:  }
+  app\api\route-safety\ingest\here\route.ts:28:
+> app\api\route-safety\ingest\here\route.ts:29:  if (text.includes("accident") || text.includes("crash") || text.includes("collision")) {
+> app\api\route-safety\ingest\here\route.ts:30:    return "accident";
+  app\api\route-safety\ingest\here\route.ts:31:  }
+  app\api\route-safety\ingest\here\route.ts:32:
+  app\api\route-safety\ingest\here\route.ts:33:  if (text.includes("protest")) {
+  app\api\route-safety\ingest\tomtom\route.ts:5:  const value = String(category || "");
+  app\api\route-safety\ingest\tomtom\route.ts:6:
+> app\api\route-safety\ingest\tomtom\route.ts:7:  if (value === "1") return "accident";
+  app\api\route-safety\ingest\tomtom\route.ts:8:  if (value === "2") return "weather_hazard";
+  app\api\route-safety\ingest\tomtom\route.ts:9:  if (value === "3") return "road_hazard";
+  app\api\route-safety\ingest\tomtom\route.ts:10:  if (value === "4") return "weather_hazard";
+  app\api\route-safety\predict\route.ts:43:    case "lane_closure":
+  app\api\route-safety\predict\route.ts:44:      return 14;
+> app\api\route-safety\predict\route.ts:45:    case "accident":
+  app\api\route-safety\predict\route.ts:46:      return 20;
+  app\api\route-safety\predict\route.ts:47:    case "traffic_light_outage":
+  app\api\route-safety\predict\route.ts:48:      return 18;
+  app\api\route-safety\predict\route.ts:252:  }
+  app\api\route-safety\predict\route.ts:253:
+> app\api\route-safety\predict\route.ts:254:  if (type === "accident") {
+  app\api\route-safety\predict\route.ts:255:    return "Accident reported ahead. Expect congestion and reduce speed.";
+  app\api\route-safety\predict\route.ts:256:  }
+  app\api\route-safety\predict\route.ts:257:
+  app\api\route-safety\predict\route.ts:396:      radius_meters,
+  app\api\route-safety\predict\route.ts:397:      risk_score,
+> app\api\route-safety\predict\route.ts:398:            collision_count,
+  app\api\route-safety\predict\route.ts:399:      crime_count,
+  app\api\route-safety\predict\route.ts:400:      roadblock_count,
+  app\api\route-safety\predict\route.ts:401:      traffic_signal_count,
+  app\api\route-safety\predict\route.ts:550:  },
+  app\api\route-safety\predict\route.ts:551:  {
+> app\api\route-safety\predict\route.ts:552:    type: "accident",
+> app\api\route-safety\predict\route.ts:553:    count: Number(segment.collision_count) || 0,
+  app\api\route-safety\predict\route.ts:554:  },
+  app\api\route-safety\predict\route.ts:555:  {
+  app\api\route-safety\predict\route.ts:556:    type: "traffic_light_outage",
+  app\api\route-safety\reroute\route.ts:29:        risk_score,
+  app\api\route-safety\reroute\route.ts:30:
+> app\api\route-safety\reroute\route.ts:31:collision_count,
+  app\api\route-safety\reroute\route.ts:32:crime_count,
+  app\api\route-safety\reroute\route.ts:33:roadblock_count,
+  app\api\route-safety\reroute\route.ts:34:traffic_signal_count,
+  app\api\route-safety\segments\route.ts:57:          "radius_meters",
+  app\api\route-safety\segments\route.ts:58:          "risk_score",
+> app\api\route-safety\segments\route.ts:59:          "collision_count",
+  app\api\route-safety\segments\route.ts:60:          "crime_count",
+  app\api\route-safety\segments\route.ts:61:          "roadblock_count",
+  app\api\route-safety\segments\route.ts:62:          "traffic_signal_count",
+  app\mobile-tracker\page.tsx:320:          >
+  app\mobile-tracker\page.tsx:321:            <option value="roadblock">Roadblock</option>
+> app\mobile-tracker\page.tsx:322:            <option value="accident">Accident</option>
+  app\mobile-tracker\page.tsx:323:            <option value="crime">Crime activity</option>
+  app\mobile-tracker\page.tsx:324:            <option value="suspicious_activity">
+  app\mobile-tracker\page.tsx:325:              Suspicious activity
+  app\route-safety\page.tsx:381:            <option value="traffic_light_outage">Traffic Light Outage</option>
+  app\route-safety\page.tsx:382:            <option value="smash_grab_hotspot">Smash-and-Grab Hotspot</option>
+> app\route-safety\page.tsx:383:            <option value="accident">Accident</option>
+  app\route-safety\page.tsx:384:            <option value="protest">Protest</option>
+  app\route-safety\page.tsx:385:            <option value="high_risk_area">High Risk Area</option>
+  app\route-safety\page.tsx:386:          </select>
+  components\command-center\FleetRiskHeatMap.tsx:47:  if (severity === "critical" || type === "smash_grab_hotspot") return "#dc2626";
+  components\command-center\FleetRiskHeatMap.tsx:48:  if (severity === "high" || type === "roadblock" || type === "road_closure") return "#ea580c";
+> components\command-center\FleetRiskHeatMap.tsx:49:  if (severity === "medium" || type === "accident") return "#d97706";
+  components\command-center\FleetRiskHeatMap.tsx:50:  return "#2563eb";
+  components\command-center\FleetRiskHeatMap.tsx:51:}
+  components\command-center\FleetRiskHeatMap.tsx:52:
+  components\command-center\HERETrafficOverlay.tsx:34:  if (
+  components\command-center\HERETrafficOverlay.tsx:35:    severity.includes("high") ||
+> components\command-center\HERETrafficOverlay.tsx:36:    type.includes("accident") ||
+  components\command-center\HERETrafficOverlay.tsx:37:    type.includes("construction") ||
+  components\command-center\HERETrafficOverlay.tsx:38:    type.includes("crash")
+  components\command-center\HERETrafficOverlay.tsx:39:  ) {
+  components\command-center\RoadRiskSegmentsLayer.tsx:15:  radius_meters: number;
+  components\command-center\RoadRiskSegmentsLayer.tsx:16:  risk_score: number;
+> components\command-center\RoadRiskSegmentsLayer.tsx:17:    collision_count: number;
+  components\command-center\RoadRiskSegmentsLayer.tsx:18:  crime_count: number;
+  components\command-center\RoadRiskSegmentsLayer.tsx:19:  roadblock_count: number;
+  components\command-center\RoadRiskSegmentsLayer.tsx:20:  traffic_signal_count: number;
+  components\command-center\RoadRiskSegmentsLayer.tsx:226:                  <div>
+  components\command-center\RoadRiskSegmentsLayer.tsx:227:                    <strong>Collisions:</strong>{" "}
+> components\command-center\RoadRiskSegmentsLayer.tsx:228:                    {segment.collision_count || 0}
+  components\command-center\RoadRiskSegmentsLayer.tsx:229:                  </div>
+  components\command-center\RoadRiskSegmentsLayer.tsx:230:
+  components\command-center\RoadRiskSegmentsLayer.tsx:231:                  <div>
+  components\road-intelligence\RoadIntelligenceDashboard.tsx:199:          <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} style={{ padding: 12, borderRadius: 12, border: 
+"1px solid #cbd5e1" }}>
+  components\road-intelligence\RoadIntelligenceDashboard.tsx:200:            <option value="roadblock">Roadblock</option>
+> components\road-intelligence\RoadIntelligenceDashboard.tsx:201:            <option value="accident">Accident</option>
+  components\road-intelligence\RoadIntelligenceDashboard.tsx:202:            <option value="construction">Construction</option>
+  components\road-intelligence\RoadIntelligenceDashboard.tsx:203:            <option value="congestion">Congestion</option>
+  components\road-intelligence\RoadIntelligenceDashboard.tsx:204:            <option value="road_closure">Road Closure</option>
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:21:    check (risk_score between 0 and 100),
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:22:
+> supabase\migrations\20260721153000_create_road_risk_segments.sql:23:  collision_count integer not null default 0
+> supabase\migrations\20260721153000_create_road_risk_segments.sql:24:    check (collision_count >= 0),
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:25:
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:26:  crime_count integer not null default 0
+  supabase\migrations\20260721153000_create_road_risk_segments.sql:27:    check (crime_count >= 0),
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:162:
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:163:  if v_event_type in (
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:164:    'accident',
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:165:    'collision',
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:166:    'crash',
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:167:    'vehicle_collision'
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:168:  ) then
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:208:    radius_meters,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:209:    risk_score,
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:210:    collision_count,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:211:    crime_count,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:212:    roadblock_count,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:213:    traffic_signal_count,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:294:  update public.road_risk_segments
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:295:  set
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:296:    collision_count =
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:297:      collision_count + v_collision_increment,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:298:
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:299:    crime_count =
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:300:      crime_count + v_crime_increment,
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:323:    risk_score = least(
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:324:      100,
+> supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:325:      (collision_count + v_collision_increment) * 20 +
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:326:      (crime_count + v_crime_increment) * 35 +
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:327:      (roadblock_count + v_roadblock_increment) * 30 +
+  supabase\migrations\20260721161000_add_road_risk_aggregation_rpc.sql:328:      (
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:173:
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:174:  if v_event_type in (
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:175:    'accident',
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:176:    'accidents',
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:177:    'collision',
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:178:    'collisions',
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:179:    'crash',
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:180:    'crashes',
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:223:    radius_meters,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:224:    risk_score,
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:225:    collision_count,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:226:    crime_count,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:227:    roadblock_count,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:228:    traffic_signal_count,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:309:  update public.road_risk_segments
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:310:  set
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:311:    collision_count =
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:312:      collision_count + v_collision_increment,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:313:
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:314:    crime_count =
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:315:      crime_count + v_crime_increment,
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:338:    risk_score = least(
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:339:      100,
+> supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:340:      (collision_count + v_collision_increment) * 20 +
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:341:      (crime_count + v_crime_increment) * 35 +
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:342:      (roadblock_count + v_roadblock_increment) * 30 +
+  supabase\migrations\20260721164841_normalize_road_risk_event_types.sql:343:      (
+  supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:11:    'roadworks',
+  supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:12:    'congestion',
+> supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:13:    'accident',
+  supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:14:    'vehicle_breakdown',
+  supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:15:    'flooding',
+  supabase\migrations\20260730122322_expand_route_safety_incident_taxonomy.sql:16:    'weather_hazard',
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:105:
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:106:  if v_event_type in (
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:107:    'accident',
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:108:    'collision',
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:109:    'crash',
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:110:    'vehicle_collision'
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:111:  ) then
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:200:    radius_meters,
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:201:    risk_score,
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:202:    collision_count,
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:203:    crime_count,
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:204:    roadblock_count,
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:205:    traffic_signal_count,
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:302:  update public.road_risk_segments
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:303:  set
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:304:    collision_count =
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:305:      collision_count + v_collision_increment,
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:306:
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:307:    crime_count =
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:308:      crime_count + v_crime_increment,
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:357:    risk_score = least(
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:358:      100,
+> supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:359:      (collision_count + v_collision_increment) * 20 +
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:360:      (crime_count + v_crime_increment) * 35 +
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:361:      (roadblock_count + v_roadblock_increment) * 30 +
+  supabase\migrations\20260730163000_update_road_risk_aggregation_taxonomy_v2.sql:362:      (traffic_signal_count + v_traffic_signal_increment) * 18 +
+
+

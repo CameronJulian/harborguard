@@ -1,0 +1,66 @@
+﻿
+> app\api\route-safety\predict\route.ts:149:function severityWeight(severity: string | null) {
+  app\api\route-safety\predict\route.ts:150:  if (severity === "critical") return 45;
+  app\api\route-safety\predict\route.ts:151:  if (severity === "high") return 30;
+  app\api\route-safety\predict\route.ts:152:  if (severity === "medium") return 18;
+  app\api\route-safety\predict\route.ts:153:  return 10;
+  app\api\route-safety\predict\route.ts:154:}
+  app\api\route-safety\predict\route.ts:155:
+> app\api\route-safety\predict\route.ts:156:function typeWeight(type: string | null) {
+  app\api\route-safety\predict\route.ts:157:  switch (type) {
+  app\api\route-safety\predict\route.ts:158:    case "smash_grab_hotspot":
+  app\api\route-safety\predict\route.ts:159:      return 35;
+  app\api\route-safety\predict\route.ts:160:    case "roadblock":
+  app\api\route-safety\predict\route.ts:161:      return 30;
+  app\api\route-safety\predict\route.ts:162:    case "road_closure":
+  app\api\route-safety\predict\route.ts:163:      return 32;
+  app\api\route-safety\predict\route.ts:164:    case "roadworks":
+  app\api\route-safety\predict\route.ts:165:      return 16;
+  app\api\route-safety\predict\route.ts:166:    case "congestion":
+  app\api\route-safety\predict\route.ts:167:      return 12;
+  app\api\route-safety\predict\route.ts:168:    case "lane_closure":
+  app\api\route-safety\predict\route.ts:169:      return 14;
+  app\api\route-safety\predict\route.ts:170:    case "collision":
+  app\api\route-safety\predict\route.ts:171:      return 20;
+  app\api\route-safety\predict\route.ts:172:    case "traffic_light_outage":
+  app\api\route-safety\predict\route.ts:173:      return 18;
+  app\api\route-safety\predict\route.ts:174:    case "weather_hazard":
+  app\api\route-safety\predict\route.ts:175:      return 18;
+  app\api\route-safety\predict\route.ts:176:    case "flooding":
+  app\api\route-safety\predict\route.ts:177:      return 28;
+  app\api\route-safety\predict\route.ts:178:    case "vehicle_breakdown":
+  app\api\route-safety\predict\route.ts:179:      return 10;
+  app\api\route-safety\predict\route.ts:180:    case "road_hazard":
+  app\api\route-safety\predict\route.ts:181:      return 15;
+  app\api\route-safety\predict\route.ts:182:    case "protest":
+  app\api\route-safety\predict\route.ts:183:      return 28;
+  app\api\route-safety\predict\route.ts:184:    default:
+  app\api\route-safety\predict\route.ts:185:      return 12;
+  app\api\route-safety\predict\route.ts:186:  }
+  app\api\route-safety\predict\route.ts:187:}
+  app\api\route-safety\predict\route.ts:188:
+  app\api\route-safety\predict\route.ts:189:type IntelligenceFreshness =
+  app\api\route-safety\predict\route.ts:190:  | "fresh"
+  app\api\route-safety\predict\route.ts:191:  | "needs_verification"
+  app\api\route-safety\predict\route.ts:192:  | "stale";
+  app\api\route-safety\predict\route.ts:193:
+  app\api\route-safety\predict\route.ts:194:function classifyIntelligenceFreshness(
+  app\api\route-safety\predict\route.ts:195:  createdAt: unknown,
+  app\api\route-safety\predict\route.ts:196:  verificationCount: unknown
+  app\api\route-safety\predict\route.ts:197:): IntelligenceFreshness {
+  app\api\route-safety\predict\route.ts:198:  if (!createdAt) {
+  app\api\route-safety\predict\route.ts:199:    return "needs_verification";
+  app\api\route-safety\predict\route.ts:200:  }
+  app\api\route-safety\predict\route.ts:201:
+  app\api\route-safety\predict\route.ts:202:  const createdTime = new Date(String(createdAt)).getTime();
+  app\api\route-safety\predict\route.ts:203:
+  app\api\route-safety\predict\route.ts:204:  if (Number.isNaN(createdTime)) {
+  app\api\route-safety\predict\route.ts:205:    return "needs_verification";
+  app\api\route-safety\predict\route.ts:206:  }
+  app\api\route-safety\predict\route.ts:207:
+  app\api\route-safety\predict\route.ts:208:  const ageHours = Math.max(
+  app\api\route-safety\predict\route.ts:209:    0,
+  app\api\route-safety\predict\route.ts:210:    (Date.now() - createdTime) / (1000 * 60 * 60)
+  app\api\route-safety\predict\route.ts:211:  );
+
+

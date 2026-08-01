@@ -1,0 +1,247 @@
+﻿
+  app\api\route-safety\predict\route.ts:385:  return "Route safety threat ahead. Continue monitoring and advise driver to proceed with caution.";
+  app\api\route-safety\predict\route.ts:386:}
+  app\api\route-safety\predict\route.ts:387:
+  app\api\route-safety\predict\route.ts:388:export async function POST(req: NextRequest) {
+  app\api\route-safety\predict\route.ts:389:  try {
+  app\api\route-safety\predict\route.ts:390:    const { supabase, organizationId } = await requireOrganization();
+  app\api\route-safety\predict\route.ts:391:    const body = await req.json();
+  app\api\route-safety\predict\route.ts:392:
+  app\api\route-safety\predict\route.ts:393:    const origin = body.origin;
+  app\api\route-safety\predict\route.ts:394:    const destination = body.destination;
+> app\api\route-safety\predict\route.ts:395:      const vehicleId = body.vehicleId || null;
+> app\api\route-safety\predict\route.ts:396:      const tripId = body.tripId || null;
+  app\api\route-safety\predict\route.ts:397:
+  app\api\route-safety\predict\route.ts:398:    if (
+  app\api\route-safety\predict\route.ts:399:      !origin?.lat ||
+  app\api\route-safety\predict\route.ts:400:      !origin?.lng ||
+  app\api\route-safety\predict\route.ts:401:      !destination?.lat ||
+  app\api\route-safety\predict\route.ts:402:      !destination?.lng
+  app\api\route-safety\predict\route.ts:403:    ) {
+> app\api\route-safety\predict\route.ts:404:      return NextResponse.json(
+  app\api\route-safety\predict\route.ts:405:        { error: "origin.lat, origin.lng, destination.lat and destination.lng are required." },
+  app\api\route-safety\predict\route.ts:406:        { status: 400 }
+  app\api\route-safety\predict\route.ts:407:      );
+  app\api\route-safety\predict\route.ts:408:    }
+  app\api\route-safety\predict\route.ts:409:
+  app\api\route-safety\predict\route.ts:410:    const originLat = Number(origin.lat);
+  app\api\route-safety\predict\route.ts:411:    const originLng = Number(origin.lng);
+  app\api\route-safety\predict\route.ts:412:    const destinationLat = Number(destination.lat);
+  app\api\route-safety\predict\route.ts:413:    const destinationLng = Number(destination.lng);
+  app\api\route-safety\predict\route.ts:414:
+  app\api\route-safety\predict\route.ts:415:    let weatherResult: WeatherProviderResult | null = null;
+  app\api\route-safety\predict\route.ts:416:    let weatherError: string | null = null;
+  app\api\route-safety\predict\route.ts:417:    let trafficResult:
+  app\api\route-safety\predict\route.ts:418:      | Awaited<ReturnType<typeof buildTrafficIntelligence>>
+  app\api\route-safety\predict\route.ts:419:      | null = null;
+  app\api\route-safety\predict\route.ts:420:    let trafficError: string | null = null;
+  app\api\route-safety\predict\route.ts:421:
+  app\api\route-safety\predict\route.ts:422:    const routeCorridorTrafficDiagnosticsEnabled =
+  app\api\route-safety\predict\route.ts:423:      process.env.ENABLE_ROUTE_CORRIDOR_TRAFFIC_DIAGNOSTICS === "true";
+  app\api\route-safety\predict\route.ts:424:
+  app\api\route-safety\predict\route.ts:425:    let diagnosticRouteTrafficSampling: any = null;
+  app\api\route-safety\predict\route.ts:426:
+  app\api\route-safety\predict\route.ts:427:    try {
+  app\api\route-safety\predict\route.ts:428:      const weatherLatitude =
+  app\api\route-safety\predict\route.ts:429:        (originLat + destinationLat) / 2;
+  app\api\route-safety\predict\route.ts:430:      const weatherLongitude =
+  app\api\route-safety\predict\route.ts:431:        (originLng + destinationLng) / 2;
+  app\api\route-safety\predict\route.ts:432:
+  app\api\route-safety\predict\route.ts:433:      weatherResult = await loadWeather(
+  app\api\route-safety\predict\route.ts:434:        weatherLatitude,
+  app\api\route-safety\predict\route.ts:435:        weatherLongitude
+  app\api\route-safety\predict\route.ts:436:      );
+  app\api\route-safety\predict\route.ts:437:    } catch (error: unknown) {
+  app\api\route-safety\predict\route.ts:438:      weatherError =
+  app\api\route-safety\predict\route.ts:439:        error instanceof Error
+  app\api\route-safety\predict\route.ts:474:    }
+  app\api\route-safety\predict\route.ts:475:
+  app\api\route-safety\predict\route.ts:476:    const { data: alerts, error } = await supabase
+  app\api\route-safety\predict\route.ts:477:      .from("route_safety_alerts")
+  app\api\route-safety\predict\route.ts:478:      .select("*")
+  app\api\route-safety\predict\route.ts:479:      .eq("organization_id", organizationId)
+  app\api\route-safety\predict\route.ts:480:      .eq("status", "active")
+  app\api\route-safety\predict\route.ts:481:      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
+  app\api\route-safety\predict\route.ts:482:
+  app\api\route-safety\predict\route.ts:483:    if (error) {
+> app\api\route-safety\predict\route.ts:484:      return NextResponse.json({ error: error.message }, { status: 500 });
+  app\api\route-safety\predict\route.ts:485:    }
+  app\api\route-safety\predict\route.ts:486:
+  app\api\route-safety\predict\route.ts:487:    const { data: intelligence, error: intelligenceError } = await supabase
+  app\api\route-safety\predict\route.ts:488:      .from("route_intelligence")
+  app\api\route-safety\predict\route.ts:489:      .select(`
+  app\api\route-safety\predict\route.ts:490:        id,
+  app\api\route-safety\predict\route.ts:491:        source,
+  app\api\route-safety\predict\route.ts:492:        event_type,
+  app\api\route-safety\predict\route.ts:493:        severity,
+  app\api\route-safety\predict\route.ts:494:        confidence,
+  app\api\route-safety\predict\route.ts:495:        latitude,
+  app\api\route-safety\predict\route.ts:496:        longitude,
+  app\api\route-safety\predict\route.ts:497:        metadata,
+  app\api\route-safety\predict\route.ts:498:        verification_count,
+  app\api\route-safety\predict\route.ts:499:        created_at
+  app\api\route-safety\predict\route.ts:500:      `)
+  app\api\route-safety\predict\route.ts:501:      .eq("organization_id", organizationId)
+  app\api\route-safety\predict\route.ts:502:      .eq("verified", true)
+  app\api\route-safety\predict\route.ts:503:      .not("latitude", "is", null)
+  app\api\route-safety\predict\route.ts:504:      .not("longitude", "is", null);
+  app\api\route-safety\predict\route.ts:505:
+  app\api\route-safety\predict\route.ts:506:    if (intelligenceError) {
+> app\api\route-safety\predict\route.ts:507:      return NextResponse.json(
+  app\api\route-safety\predict\route.ts:508:        { error: intelligenceError.message },
+  app\api\route-safety\predict\route.ts:509:        { status: 500 }
+  app\api\route-safety\predict\route.ts:510:      );
+  app\api\route-safety\predict\route.ts:511:    }
+  app\api\route-safety\predict\route.ts:512:	
+  app\api\route-safety\predict\route.ts:513:	const { data: roadRiskSegments, error: roadRiskSegmentsError } =
+  app\api\route-safety\predict\route.ts:514:  await supabase
+  app\api\route-safety\predict\route.ts:515:    .from("road_risk_segments")
+  app\api\route-safety\predict\route.ts:516:    .select(`
+  app\api\route-safety\predict\route.ts:517:      id,
+  app\api\route-safety\predict\route.ts:518:      latitude,
+  app\api\route-safety\predict\route.ts:519:      longitude,
+  app\api\route-safety\predict\route.ts:520:      radius_meters,
+  app\api\route-safety\predict\route.ts:521:      risk_score,
+  app\api\route-safety\predict\route.ts:522:            collision_count,
+  app\api\route-safety\predict\route.ts:523:      crime_count,
+  app\api\route-safety\predict\route.ts:524:      roadblock_count,
+  app\api\route-safety\predict\route.ts:525:      traffic_signal_count,
+  app\api\route-safety\predict\route.ts:526:      other_event_count,
+  app\api\route-safety\predict\route.ts:527:
+  app\api\route-safety\predict\route.ts:528:      road_closure_count,
+  app\api\route-safety\predict\route.ts:529:      roadworks_count,
+  app\api\route-safety\predict\route.ts:530:      congestion_count,
+  app\api\route-safety\predict\route.ts:531:      lane_closure_count,
+  app\api\route-safety\predict\route.ts:532:      weather_hazard_count,
+  app\api\route-safety\predict\route.ts:533:      flooding_count,
+  app\api\route-safety\predict\route.ts:534:      vehicle_breakdown_count,
+  app\api\route-safety\predict\route.ts:535:      road_hazard_count,
+  app\api\route-safety\predict\route.ts:536:      protest_count,
+  app\api\route-safety\predict\route.ts:537:
+  app\api\route-safety\predict\route.ts:538:      verification_count,
+  app\api\route-safety\predict\route.ts:539:      last_event_at,
+  app\api\route-safety\predict\route.ts:540:      metadata
+  app\api\route-safety\predict\route.ts:541:    `)
+  app\api\route-safety\predict\route.ts:542:    .eq("organization_id", organizationId);
+  app\api\route-safety\predict\route.ts:543:
+  app\api\route-safety\predict\route.ts:544:if (roadRiskSegmentsError) {
+> app\api\route-safety\predict\route.ts:545:  return NextResponse.json(
+  app\api\route-safety\predict\route.ts:546:    { error: roadRiskSegmentsError.message },
+  app\api\route-safety\predict\route.ts:547:    { status: 500 }
+  app\api\route-safety\predict\route.ts:548:  );
+  app\api\route-safety\predict\route.ts:549:}
+  app\api\route-safety\predict\route.ts:550:
+  app\api\route-safety\predict\route.ts:551:    let routeEstimate: any = null;
+  app\api\route-safety\predict\route.ts:552:
+  app\api\route-safety\predict\route.ts:553:    if (process.env.GOOGLE_ROUTES_API_KEY) {
+  app\api\route-safety\predict\route.ts:554:      const googleResponse = await fetch(
+  app\api\route-safety\predict\route.ts:555:        "https://routes.googleapis.com/directions/v2:computeRoutes",
+  app\api\route-safety\predict\route.ts:556:        {
+  app\api\route-safety\predict\route.ts:557:          method: "POST",
+  app\api\route-safety\predict\route.ts:558:          headers: {
+  app\api\route-safety\predict\route.ts:559:            "Content-Type": "application/json",
+  app\api\route-safety\predict\route.ts:560:            "X-Goog-Api-Key": process.env.GOOGLE_ROUTES_API_KEY,
+  app\api\route-safety\predict\route.ts:561:            "X-Goog-FieldMask":
+  app\api\route-safety\predict\route.ts:562:              "routes.duration,routes.staticDuration,routes.distanceMeters,routes.polyline.encodedPolyline",
+  app\api\route-safety\predict\route.ts:563:          },
+  app\api\route-safety\predict\route.ts:564:          body: JSON.stringify({
+  app\api\route-safety\predict\route.ts:565:            origin: {
+  app\api\route-safety\predict\route.ts:566:              location: {
+  app\api\route-safety\predict\route.ts:567:                latLng: {
+  app\api\route-safety\predict\route.ts:568:                  latitude: originLat,
+  app\api\route-safety\predict\route.ts:569:                  longitude: originLng,
+  app\api\route-safety\predict\route.ts:570:                },
+  app\api\route-safety\predict\route.ts:571:              },
+  app\api\route-safety\predict\route.ts:572:            },
+  app\api\route-safety\predict\route.ts:573:            destination: {
+  app\api\route-safety\predict\route.ts:574:              location: {
+  app\api\route-safety\predict\route.ts:575:                latLng: {
+  app\api\route-safety\predict\route.ts:576:                  latitude: destinationLat,
+  app\api\route-safety\predict\route.ts:577:                  longitude: destinationLng,
+  app\api\route-safety\predict\route.ts:578:                },
+  app\api\route-safety\predict\route.ts:579:              },
+  app\api\route-safety\predict\route.ts:580:            },
+  app\api\route-safety\predict\route.ts:1492:        }
+  app\api\route-safety\predict\route.ts:1493:      } catch (autoRouteAssignmentError: any) {
+  app\api\route-safety\predict\route.ts:1494:        autoRouteAssignmentResult = {
+  app\api\route-safety\predict\route.ts:1495:          error: autoRouteAssignmentError.message || "Automatic route assignment failed.",
+  app\api\route-safety\predict\route.ts:1496:        };
+  app\api\route-safety\predict\route.ts:1497:        console.error("Automatic route assignment failed:", autoRouteAssignmentError);
+  app\api\route-safety\predict\route.ts:1498:      }
+  app\api\route-safety\predict\route.ts:1499:    }
+  app\api\route-safety\predict\route.ts:1500:
+  app\api\route-safety\predict\route.ts:1501:
+> app\api\route-safety\predict\route.ts:1502:    const experimentalTrafficModel =
+  app\api\route-safety\predict\route.ts:1503:      diagnosticRouteTrafficSampling
+  app\api\route-safety\predict\route.ts:1504:        ? {
+  app\api\route-safety\predict\route.ts:1505:            model: "route-composite-v1",
+  app\api\route-safety\predict\route.ts:1506:            status: "diagnostic",
+  app\api\route-safety\predict\route.ts:1507:            productionApplied: false,
+  app\api\route-safety\predict\route.ts:1508:            score:
+  app\api\route-safety\predict\route.ts:1509:              diagnosticRouteTrafficSampling
+  app\api\route-safety\predict\route.ts:1510:                .diagnosticCompositeCandidateScore,
+  app\api\route-safety\predict\route.ts:1511:            level:
+  app\api\route-safety\predict\route.ts:1512:              diagnosticRouteTrafficSampling
+  app\api\route-safety\predict\route.ts:1513:                .diagnosticCompositeCalibratedLevel,
+  app\api\route-safety\predict\route.ts:1514:            currentDiagnosticLevel:
+  app\api\route-safety\predict\route.ts:1515:              diagnosticRouteTrafficSampling
+  app\api\route-safety\predict\route.ts:1516:                .diagnosticCompositeCandidateLevel,
+  app\api\route-safety\predict\route.ts:1517:            inputs: {
+  app\api\route-safety\predict\route.ts:1518:              routeScore:
+  app\api\route-safety\predict\route.ts:1519:                diagnosticRouteTrafficSampling
+  app\api\route-safety\predict\route.ts:1520:                  .diagnosticCompositeRouteScore,
+  app\api\route-safety\predict\route.ts:1521:              typeSeverityScore:
+  app\api\route-safety\predict\route.ts:1522:                diagnosticRouteTrafficSampling
+  app\api\route-safety\predict\route.ts:1523:                  .diagnosticCompositeTypeSeverityScore,
+  app\api\route-safety\predict\route.ts:1524:              providerScore:
+  app\api\route-safety\predict\route.ts:1525:                diagnosticRouteTrafficSampling
+  app\api\route-safety\predict\route.ts:1526:                  .diagnosticCompositeProviderScore,
+  app\api\route-safety\predict\route.ts:1527:            },
+  app\api\route-safety\predict\route.ts:1528:            weights:
+  app\api\route-safety\predict\route.ts:1529:              diagnosticRouteTrafficSampling
+  app\api\route-safety\predict\route.ts:1530:                .diagnosticCompositeWeights,
+  app\api\route-safety\predict\route.ts:1531:            thresholds:
+  app\api\route-safety\predict\route.ts:1532:              diagnosticRouteTrafficSampling
+  app\api\route-safety\predict\route.ts:1533:                .diagnosticCompositeCalibratedThresholds,
+  app\api\route-safety\predict\route.ts:1534:          }
+  app\api\route-safety\predict\route.ts:1535:        : null;
+> app\api\route-safety\predict\route.ts:1536:    return NextResponse.json({
+  app\api\route-safety\predict\route.ts:1537:      routeEstimate,
+  app\api\route-safety\predict\route.ts:1538:      riskScore,
+  app\api\route-safety\predict\route.ts:1539:      riskLevel,
+  app\api\route-safety\predict\route.ts:1540:      threatRiskScore,
+  app\api\route-safety\predict\route.ts:1541:      threatRiskLevel,
+  app\api\route-safety\predict\route.ts:1542:      weatherRiskScore,
+  app\api\route-safety\predict\route.ts:1543:      weatherContribution,
+  app\api\route-safety\predict\route.ts:1544:      trafficRiskScore,
+  app\api\route-safety\predict\route.ts:1545:      trafficRiskLevel,
+  app\api\route-safety\predict\route.ts:1546:      normalizedTrafficRiskLevel,
+  app\api\route-safety\predict\route.ts:1547:      trafficCongestionMultiplier,
+  app\api\route-safety\predict\route.ts:1548:      diagnosticTrafficWeightedThreatRisk,
+  app\api\route-safety\predict\route.ts:1549:      trafficContribution,
+  app\api\route-safety\predict\route.ts:1550:      traffic: trafficResult,
+  app\api\route-safety\predict\route.ts:1551:      trafficError,
+  app\api\route-safety\predict\route.ts:1552:      diagnosticRouteTrafficSampling,
+  app\api\route-safety\predict\route.ts:1553:      experimentalTrafficModel,
+  app\api\route-safety\predict\route.ts:1554:      threats: routeThreats,
+  app\api\route-safety\predict\route.ts:1555:      weather: weatherResult
+  app\api\route-safety\predict\route.ts:1556:        ? {
+  app\api\route-safety\predict\route.ts:1557:            provider: weatherResult.provider,
+  app\api\route-safety\predict\route.ts:1558:            ...weatherResult.weather,
+  app\api\route-safety\predict\route.ts:1559:          }
+  app\api\route-safety\predict\route.ts:1560:        : null,
+  app\api\route-safety\predict\route.ts:1561:      weatherError,
+  app\api\route-safety\predict\route.ts:1562:      driverWarning:
+  app\api\route-safety\predict\route.ts:1563:        routeThreats.length > 0
+  app\api\route-safety\predict\route.ts:1564:          ? routeThreats[0].recommendation
+  app\api\route-safety\predict\route.ts:1565:          : "No route safety threats detected on this route.",
+  app\api\route-safety\predict\route.ts:1566:    });
+  app\api\route-safety\predict\route.ts:1567:  } catch (error: any) {
+> app\api\route-safety\predict\route.ts:1568:    return NextResponse.json(
+  app\api\route-safety\predict\route.ts:1569:      { error: error.message || "Unauthorized" },
+  app\api\route-safety\predict\route.ts:1570:      { status: 401 }
+  app\api\route-safety\predict\route.ts:1571:    );
+  app\api\route-safety\predict\route.ts:1572:  }
+  app\api\route-safety\predict\route.ts:1573:}
+
+

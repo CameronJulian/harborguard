@@ -1,0 +1,43 @@
+﻿Official Road Closure Data Access Tracker
+Created: 2026-08-01 18:15:58
+
+City of Cape Town
+- Request sent:
+- Contact method:
+- Reference number:
+- Response:
+- API/feed available:
+- Usage permission:
+- Follow-up date:
+
+Western Cape Government
+- Request sent:
+- Contact method:
+- Reference number:
+- Response:
+- API/feed available:
+- Usage permission:
+- Follow-up date:
+
+Western Cape Road Network Information System
+- Request sent:
+- Contact method:
+- Reference number:
+- Response:
+- API/feed available:
+- Usage permission:
+- Follow-up date:
+
+SANRAL
+- Request sent:
+- Contact method:
+- Reference number:
+- Response:
+- API/feed available:
+- Usage permission:
+- Follow-up date:
+
+Engineering status:
+Blocked pending official source confirmation.
+
+No HarborGuard production changes were made.

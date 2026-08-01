@@ -1,0 +1,763 @@
+﻿
+> lib\routing\hereRouting.ts:1:import { decode } from "@here/flexpolyline";
+  lib\routing\hereRouting.ts:2:import { calculateDistanceMeters } from "@/lib/utils/command-center";
+  lib\routing\hereRouting.ts:3:
+  lib\routing\hereRouting.ts:4:type RoutePoint = [number, number];
+  lib\routing\hereRouting.ts:5:
+  lib\routing\hereRouting.ts:6:function secondsToDuration(seconds: number) {
+  lib\routing\hereRouting.ts:7:  return `${Math.max(0, Math.round(seconds))}s`;
+  lib\routing\hereRouting.ts:8:}
+  lib\routing\hereRouting.ts:9:
+  lib\routing\hereRouting.ts:10:function scoreRouteRisk(
+  lib\routing\hereRouting.ts:11:  routePoints: RoutePoint[],
+  lib\routing\hereRouting.ts:12:  roadRiskSegments: any[]
+  lib\routing\hereRouting.ts:13:) {
+  lib\routing\hereRouting.ts:14:  const matchedSegments = roadRiskSegments.filter((segment) => {
+  lib\routing\hereRouting.ts:15:    const latitude = Number(segment?.latitude);
+  lib\routing\hereRouting.ts:16:    const longitude = Number(segment?.longitude);
+  lib\routing\hereRouting.ts:17:    const radiusMeters = Math.max(0, Number(segment?.radius_meters) || 0);
+  lib\routing\hereRouting.ts:18:
+  lib\routing\hereRouting.ts:19:    if (
+  lib\routing\hereRouting.ts:20:      !Number.isFinite(latitude) ||
+  lib\routing\hereRouting.ts:21:      !Number.isFinite(longitude) ||
+  lib\routing\hereRouting.ts:143:      isRecommended: position === 0,
+  lib\routing\hereRouting.ts:144:    }));
+  lib\routing\hereRouting.ts:145:}
+  lib\routing\hereRouting.ts:146:
+  lib\routing\hereRouting.ts:147:function recommendation(routes: any[]) {
+  lib\routing\hereRouting.ts:148:  const recommendedRoute = routes[0];
+  lib\routing\hereRouting.ts:149:
+  lib\routing\hereRouting.ts:150:  if (!recommendedRoute) {
+> lib\routing\hereRouting.ts:151:    return "No HERE route was returned for this trip.";
+  lib\routing\hereRouting.ts:152:  }
+  lib\routing\hereRouting.ts:153:
+  lib\routing\hereRouting.ts:154:  if (routes.length === 1) {
+> lib\routing\hereRouting.ts:155:    return `The only available HERE route has a safety score of ${recommendedRoute.safetyScore} and matches ${recommendedRoute.matchedRiskSegmentCount} road risk segments.`;
+  lib\routing\hereRouting.ts:156:  }
+  lib\routing\hereRouting.ts:157:
+  lib\routing\hereRouting.ts:158:  return `Route ${recommendedRoute.index + 1} is recommended with a safety score of ${recommendedRoute.safetyScore}, ${recommendedRoute.matchedRiskSegmentCount} matched road 
+risk segments, and an estimated duration of ${recommendedRoute.duration}.`;
+  lib\routing\hereRouting.ts:159:}
+  lib\routing\hereRouting.ts:160:
+> lib\routing\hereRouting.ts:161:function decodeHereSectionPolyline(encodedPolyline: unknown): RoutePoint[] {
+  lib\routing\hereRouting.ts:162:  if (typeof encodedPolyline !== "string" || encodedPolyline.length === 0) {
+  lib\routing\hereRouting.ts:163:    return [];
+  lib\routing\hereRouting.ts:164:  }
+  lib\routing\hereRouting.ts:165:
+  lib\routing\hereRouting.ts:166:  try {
+  lib\routing\hereRouting.ts:167:    const decoded = decode(encodedPolyline);
+  lib\routing\hereRouting.ts:168:
+  lib\routing\hereRouting.ts:169:    return decoded.polyline
+  lib\routing\hereRouting.ts:170:      .map((coordinate) => {
+  lib\routing\hereRouting.ts:171:        const latitude = Number(coordinate[0]);
+  lib\routing\hereRouting.ts:172:        const longitude = Number(coordinate[1]);
+  lib\routing\hereRouting.ts:173:
+  lib\routing\hereRouting.ts:174:        return [latitude, longitude] as RoutePoint;
+  lib\routing\hereRouting.ts:175:      })
+  lib\routing\hereRouting.ts:176:      .filter(
+  lib\routing\hereRouting.ts:177:        ([latitude, longitude]) =>
+  lib\routing\hereRouting.ts:178:          Number.isFinite(latitude) && Number.isFinite(longitude)
+  lib\routing\hereRouting.ts:179:      );
+  lib\routing\hereRouting.ts:180:  } catch (error) {
+> lib\routing\hereRouting.ts:181:    console.error("Failed to decode HERE flexible polyline:", error);
+  lib\routing\hereRouting.ts:182:    return [];
+  lib\routing\hereRouting.ts:183:  }
+  lib\routing\hereRouting.ts:184:}
+  lib\routing\hereRouting.ts:185:
+> lib\routing\hereRouting.ts:186:function decodeHereRouteSections(sections: any[]): RoutePoint[] {
+  lib\routing\hereRouting.ts:187:  const points: RoutePoint[] = [];
+  lib\routing\hereRouting.ts:188:
+  lib\routing\hereRouting.ts:189:  for (const section of sections) {
+> lib\routing\hereRouting.ts:190:    const sectionPoints = decodeHereSectionPolyline(section?.polyline);
+  lib\routing\hereRouting.ts:191:
+  lib\routing\hereRouting.ts:192:    for (const point of sectionPoints) {
+  lib\routing\hereRouting.ts:193:      const previousPoint = points[points.length - 1];
+  lib\routing\hereRouting.ts:194:
+  lib\routing\hereRouting.ts:195:      if (
+  lib\routing\hereRouting.ts:196:        previousPoint &&
+  lib\routing\hereRouting.ts:197:        previousPoint[0] === point[0] &&
+  lib\routing\hereRouting.ts:198:        previousPoint[1] === point[1]
+  lib\routing\hereRouting.ts:199:      ) {
+  lib\routing\hereRouting.ts:200:        continue;
+  lib\routing\hereRouting.ts:201:      }
+  lib\routing\hereRouting.ts:202:
+  lib\routing\hereRouting.ts:203:      points.push(point);
+  lib\routing\hereRouting.ts:204:    }
+  lib\routing\hereRouting.ts:205:  }
+  lib\routing\hereRouting.ts:206:
+  lib\routing\hereRouting.ts:207:  return points;
+  lib\routing\hereRouting.ts:208:}
+  lib\routing\hereRouting.ts:209:
+> lib\routing\hereRouting.ts:210:export async function calculateHereRoutes(
+  lib\routing\hereRouting.ts:211:  origin: any,
+  lib\routing\hereRouting.ts:212:  destination: any,
+  lib\routing\hereRouting.ts:213:  roadRiskSegments: any[] = []
+  lib\routing\hereRouting.ts:214:) {
+> lib\routing\hereRouting.ts:215:  if (!process.env.HERE_API_KEY) {
+> lib\routing\hereRouting.ts:216:    throw new Error("HERE_API_KEY is not configured.");
+  lib\routing\hereRouting.ts:217:  }
+  lib\routing\hereRouting.ts:218:
+  lib\routing\hereRouting.ts:219:  const url =
+> lib\routing\hereRouting.ts:220:    "https://router.hereapi.com/v8/routes" +
+  lib\routing\hereRouting.ts:221:    `?transportMode=car` +
+  lib\routing\hereRouting.ts:222:    `&origin=${Number(origin.lat)},${Number(origin.lng)}` +
+  lib\routing\hereRouting.ts:223:    `&destination=${Number(destination.lat)},${Number(destination.lng)}` +
+  lib\routing\hereRouting.ts:224:    `&return=summary,polyline,actions,instructions` +
+  lib\routing\hereRouting.ts:225:    `&alternatives=3` +
+  lib\routing\hereRouting.ts:226:    `&departureTime=any` +
+> lib\routing\hereRouting.ts:227:    `&apikey=${process.env.HERE_API_KEY}`;
+  lib\routing\hereRouting.ts:228:
+> lib\routing\hereRouting.ts:229:  const response = await fetch(url, { cache: "no-store" });
+  lib\routing\hereRouting.ts:230:  const data = await response.json();
+  lib\routing\hereRouting.ts:231:
+  lib\routing\hereRouting.ts:232:  if (!response.ok) {
+  lib\routing\hereRouting.ts:233:    throw new Error(
+> lib\routing\hereRouting.ts:234:      data?.title || data?.error || "HERE Routing request failed."
+  lib\routing\hereRouting.ts:235:    );
+  lib\routing\hereRouting.ts:236:  }
+  lib\routing\hereRouting.ts:237:
+  lib\routing\hereRouting.ts:238:  const routes = (data.routes || []).map((route: any, index: number) => {
+  lib\routing\hereRouting.ts:239:    const sections = route.sections || [];
+  lib\routing\hereRouting.ts:240:
+  lib\routing\hereRouting.ts:241:    const summary = sections.reduce(
+  lib\routing\hereRouting.ts:242:      (total: any, section: any) => {
+  lib\routing\hereRouting.ts:243:        total.distanceMeters += Number(section.summary?.length || 0);
+  lib\routing\hereRouting.ts:244:        total.durationSeconds += Number(section.summary?.duration || 0);
+  lib\routing\hereRouting.ts:245:        total.baseDurationSeconds += Number(
+  lib\routing\hereRouting.ts:246:          section.summary?.baseDuration ||
+  lib\routing\hereRouting.ts:247:            section.summary?.duration ||
+  lib\routing\hereRouting.ts:248:            0
+  lib\routing\hereRouting.ts:249:        );
+  lib\routing\hereRouting.ts:250:
+  lib\routing\hereRouting.ts:251:        return total;
+  lib\routing\hereRouting.ts:252:      },
+  lib\routing\hereRouting.ts:253:      {
+  lib\routing\hereRouting.ts:254:        distanceMeters: 0,
+  lib\routing\hereRouting.ts:255:        durationSeconds: 0,
+  lib\routing\hereRouting.ts:256:        baseDurationSeconds: 0,
+  lib\routing\hereRouting.ts:257:      }
+  lib\routing\hereRouting.ts:258:    );
+  lib\routing\hereRouting.ts:259:
+> lib\routing\hereRouting.ts:260:    const routePoints = decodeHereRouteSections(sections);
+  lib\routing\hereRouting.ts:261:    const routeRisk = scoreRouteRisk(routePoints, roadRiskSegments);
+  lib\routing\hereRouting.ts:262:
+  lib\routing\hereRouting.ts:263:    return {
+  lib\routing\hereRouting.ts:264:      index,
+  lib\routing\hereRouting.ts:265:      label:
+  lib\routing\hereRouting.ts:266:        index === 0
+> lib\routing\hereRouting.ts:267:          ? "Current best HERE route"
+> lib\routing\hereRouting.ts:268:          : `HERE alternative route ${index}`,
+> lib\routing\hereRouting.ts:269:      provider: "here_routing_v8",
+  lib\routing\hereRouting.ts:270:      distanceMeters: summary.distanceMeters,
+  lib\routing\hereRouting.ts:271:      duration: secondsToDuration(summary.durationSeconds),
+  lib\routing\hereRouting.ts:272:      staticDuration: secondsToDuration(summary.baseDurationSeconds),
+  lib\routing\hereRouting.ts:273:      durationSeconds: summary.durationSeconds,
+  lib\routing\hereRouting.ts:274:      baseDurationSeconds: summary.baseDurationSeconds,
+  lib\routing\hereRouting.ts:275:      trafficDelaySeconds: Math.max(
+  lib\routing\hereRouting.ts:276:        0,
+  lib\routing\hereRouting.ts:277:        summary.durationSeconds - summary.baseDurationSeconds
+  lib\routing\hereRouting.ts:278:      ),
+  lib\routing\hereRouting.ts:279:      description:
+  lib\routing\hereRouting.ts:280:        sections[0]?.arrival?.place?.location
+> lib\routing\hereRouting.ts:281:          ? "HERE Routing v8 traffic-aware route"
+  lib\routing\hereRouting.ts:282:          : null,
+  lib\routing\hereRouting.ts:283:
+  lib\routing\hereRouting.ts:284:      // Retained temporarily for backward compatibility.
+  lib\routing\hereRouting.ts:285:      encodedPolyline: sections[0]?.polyline || null,
+  lib\routing\hereRouting.ts:286:
+> lib\routing\hereRouting.ts:287:      // Complete HERE geometry across every route section.
+  lib\routing\hereRouting.ts:288:      encodedPolylines: sections
+  lib\routing\hereRouting.ts:289:        .map((section: any) => section?.polyline)
+  lib\routing\hereRouting.ts:290:        .filter(
+  lib\routing\hereRouting.ts:291:          (polyline: unknown): polyline is string =>
+  lib\routing\hereRouting.ts:292:            typeof polyline === "string" && polyline.length > 0
+  lib\routing\hereRouting.ts:293:        ),
+  lib\routing\hereRouting.ts:294:      routePoints,
+  lib\routing\hereRouting.ts:295:      routePointCount: routePoints.length,
+  lib\routing\hereRouting.ts:296:      safetyScore: routeRisk.safetyScore,
+  lib\routing\hereRouting.ts:297:      riskScore: routeRisk.normalizedRiskScore,
+  lib\routing\hereRouting.ts:298:      totalRiskScore: routeRisk.totalRiskScore,
+  lib\routing\hereRouting.ts:299:      highestRiskScore: routeRisk.highestRiskScore,
+  lib\routing\hereRouting.ts:300:      matchedRiskSegmentCount: routeRisk.matchedSegmentCount,
+  lib\routing\hereRouting.ts:301:      matchedRiskSegmentIds: routeRisk.matchedSegmentIds,
+  lib\routing\hereRouting.ts:302:      riskVerificationCount: routeRisk.verificationCount,
+  lib\routing\hereRouting.ts:303:      sections: sections.length,
+  lib\routing\hereRouting.ts:304:    };
+  lib\routing\hereRouting.ts:305:  });
+  lib\routing\hereRouting.ts:306:
+  lib\routing\hereRouting.ts:307:  const rankedRoutes = rankRoutesBySafety(routes);
+  lib\routing\hereRouting.ts:308:  const recommendedRoute = rankedRoutes[0] ?? null;
+  lib\routing\hereRouting.ts:309:
+  lib\routing\hereRouting.ts:310:  return {
+> lib\routing\hereRouting.ts:311:    provider: "here_routing_v8",
+  lib\routing\hereRouting.ts:312:    routes: rankedRoutes,
+  lib\routing\hereRouting.ts:313:    recommendedRoute,
+  lib\routing\hereRouting.ts:314:    recommendation: recommendation(rankedRoutes),
+  lib\routing\hereRouting.ts:315:  };
+  lib\routing\hereRouting.ts:316:}
+  lib\routing\hereRouting.ts:317:
+  app\api\route-safety\predict\route.ts:46:      .map(
+  app\api\route-safety\predict\route.ts:47:        (coordinate: any): [number, number] => [
+  app\api\route-safety\predict\route.ts:48:          Number(coordinate[1]),
+  app\api\route-safety\predict\route.ts:49:          Number(coordinate[0]),
+  app\api\route-safety\predict\route.ts:50:        ]
+  app\api\route-safety\predict\route.ts:51:      );
+  app\api\route-safety\predict\route.ts:52:  }
+  app\api\route-safety\predict\route.ts:53:
+> app\api\route-safety\predict\route.ts:54:  // HERE geometry may be { links: [...] } or { shape: { links: [...] } }.
+> app\api\route-safety\predict\route.ts:55:  const hereLinks = Array.isArray(value.links)
+  app\api\route-safety\predict\route.ts:56:    ? value.links
+  app\api\route-safety\predict\route.ts:57:    : Array.isArray(value.shape?.links)
+  app\api\route-safety\predict\route.ts:58:      ? value.shape.links
+  app\api\route-safety\predict\route.ts:59:      : null;
+  app\api\route-safety\predict\route.ts:60:
+> app\api\route-safety\predict\route.ts:61:  if (!hereLinks) {
+  app\api\route-safety\predict\route.ts:62:    return [];
+  app\api\route-safety\predict\route.ts:63:  }
+  app\api\route-safety\predict\route.ts:64:
+> app\api\route-safety\predict\route.ts:65:  return hereLinks.flatMap((link: any) =>
+  app\api\route-safety\predict\route.ts:66:    Array.isArray(link?.points)
+  app\api\route-safety\predict\route.ts:67:      ? link.points
+  app\api\route-safety\predict\route.ts:68:          .filter(
+  app\api\route-safety\predict\route.ts:69:            (point: any) =>
+  app\api\route-safety\predict\route.ts:70:              Number.isFinite(Number(point?.lat)) &&
+  app\api\route-safety\predict\route.ts:71:              Number.isFinite(Number(point?.lng))
+  app\api\route-safety\predict\route.ts:72:          )
+  app\api\route-safety\predict\route.ts:73:          .map(
+  app\api\route-safety\predict\route.ts:74:            (point: any): [number, number] => [
+  app\api\route-safety\predict\route.ts:75:              Number(point.lat),
+  app\api\route-safety\predict\route.ts:76:              Number(point.lng),
+  app\api\route-safety\predict\route.ts:77:            ]
+  app\api\route-safety\predict\route.ts:78:          )
+  app\api\route-safety\predict\route.ts:79:      : []
+  app\api\route-safety\predict\route.ts:80:  );
+  app\api\route-safety\predict\route.ts:81:}
+  app\api\route-safety\predict\route.ts:82:
+  app\api\route-safety\predict\route.ts:83:function getMinimumProviderGeometryDistanceMeters(
+  app\api\route-safety\predict\route.ts:84:  routePoints: [number, number][],
+  app\api\route-safety\predict\route.ts:85:  geometry: unknown
+  app\api\route-safety\predict\route.ts:158:    case "smash_grab_hotspot":
+  app\api\route-safety\predict\route.ts:159:      return 35;
+  app\api\route-safety\predict\route.ts:160:    case "roadblock":
+  app\api\route-safety\predict\route.ts:161:      return 30;
+  app\api\route-safety\predict\route.ts:162:    case "road_closure":
+  app\api\route-safety\predict\route.ts:163:      return 32;
+  app\api\route-safety\predict\route.ts:164:    case "roadworks":
+  app\api\route-safety\predict\route.ts:165:      return 16;
+> app\api\route-safety\predict\route.ts:166:    case "congestion":
+  app\api\route-safety\predict\route.ts:167:      return 12;
+  app\api\route-safety\predict\route.ts:168:    case "lane_closure":
+  app\api\route-safety\predict\route.ts:169:      return 14;
+  app\api\route-safety\predict\route.ts:170:    case "collision":
+  app\api\route-safety\predict\route.ts:171:      return 20;
+  app\api\route-safety\predict\route.ts:172:    case "traffic_light_outage":
+  app\api\route-safety\predict\route.ts:173:      return 18;
+  app\api\route-safety\predict\route.ts:174:    case "weather_hazard":
+  app\api\route-safety\predict\route.ts:175:      return 18;
+  app\api\route-safety\predict\route.ts:176:    case "flooding":
+  app\api\route-safety\predict\route.ts:177:      return 28;
+  app\api\route-safety\predict\route.ts:178:    case "vehicle_breakdown":
+  app\api\route-safety\predict\route.ts:179:      return 10;
+  app\api\route-safety\predict\route.ts:180:    case "road_hazard":
+  app\api\route-safety\predict\route.ts:181:      return 15;
+  app\api\route-safety\predict\route.ts:182:    case "protest":
+  app\api\route-safety\predict\route.ts:183:      return 28;
+  app\api\route-safety\predict\route.ts:184:    default:
+  app\api\route-safety\predict\route.ts:185:      return 12;
+  app\api\route-safety\predict\route.ts:186:  }
+  app\api\route-safety\predict\route.ts:328:    points.push([lat / 1e5, lng / 1e5]);
+  app\api\route-safety\predict\route.ts:329:  }
+  app\api\route-safety\predict\route.ts:330:
+  app\api\route-safety\predict\route.ts:331:  return points;
+  app\api\route-safety\predict\route.ts:332:}
+  app\api\route-safety\predict\route.ts:333:
+  app\api\route-safety\predict\route.ts:334:function recommendationFor(type: string | null, severity: string | null) {
+  app\api\route-safety\predict\route.ts:335:  if (type === "smash_grab_hotspot") {
+> app\api\route-safety\predict\route.ts:336:    return "Known high-risk area ahead. Keep valuables out of sight, remain alert, and avoid unnecessary stops where safe and legal.";
+  app\api\route-safety\predict\route.ts:337:  }
+  app\api\route-safety\predict\route.ts:338:
+  app\api\route-safety\predict\route.ts:339:  if (type === "roadblock") {
+  app\api\route-safety\predict\route.ts:340:    return "Roadblock reported ahead. Prepare for delay and consider alternate route.";
+  app\api\route-safety\predict\route.ts:341:  }
+  app\api\route-safety\predict\route.ts:342:
+  app\api\route-safety\predict\route.ts:343:  if (type === "road_closure") {
+> app\api\route-safety\predict\route.ts:344:    return "Road closure reported ahead. Select an alternate route where possible.";
+  app\api\route-safety\predict\route.ts:345:  }
+  app\api\route-safety\predict\route.ts:346:
+  app\api\route-safety\predict\route.ts:347:  if (type === "roadworks") {
+  app\api\route-safety\predict\route.ts:348:    return "Roadworks ahead. Expect lane restrictions and slower traffic.";
+  app\api\route-safety\predict\route.ts:349:  }
+  app\api\route-safety\predict\route.ts:350:
+> app\api\route-safety\predict\route.ts:351:  if (type === "congestion") {
+> app\api\route-safety\predict\route.ts:352:    return "Heavy congestion ahead. Allow additional travel time or consider an alternate route.";
+  app\api\route-safety\predict\route.ts:353:  }
+  app\api\route-safety\predict\route.ts:354:
+  app\api\route-safety\predict\route.ts:355:  if (type === "lane_closure") {
+  app\api\route-safety\predict\route.ts:356:    return "Lane closure ahead. Merge safely and expect slower traffic.";
+  app\api\route-safety\predict\route.ts:357:  }
+  app\api\route-safety\predict\route.ts:358:
+  app\api\route-safety\predict\route.ts:359:  if (type === "weather_hazard") {
+  app\api\route-safety\predict\route.ts:360:    return "Weather hazard reported ahead. Reduce speed and increase following distance.";
+  app\api\route-safety\predict\route.ts:361:  }
+  app\api\route-safety\predict\route.ts:362:
+  app\api\route-safety\predict\route.ts:363:  if (type === "flooding") {
+  app\api\route-safety\predict\route.ts:364:    return "Flooding reported ahead. Avoid driving through standing water and reroute if possible.";
+  app\api\route-safety\predict\route.ts:365:  }
+  app\api\route-safety\predict\route.ts:366:
+  app\api\route-safety\predict\route.ts:367:  if (type === "vehicle_breakdown") {
+> app\api\route-safety\predict\route.ts:368:    return "Broken-down vehicle ahead. Slow down and move over safely where permitted.";
+  app\api\route-safety\predict\route.ts:369:  }
+  app\api\route-safety\predict\route.ts:370:
+  app\api\route-safety\predict\route.ts:371:  if (type === "road_hazard") {
+  app\api\route-safety\predict\route.ts:372:    return "Road hazard reported ahead. Proceed with caution and be prepared for unexpected obstacles.";
+  app\api\route-safety\predict\route.ts:373:  }
+  app\api\route-safety\predict\route.ts:374:
+  app\api\route-safety\predict\route.ts:375:  if (type === "traffic_light_outage") {
+  app\api\route-safety\predict\route.ts:376:    return "Traffic lights reported out. Approach intersection slowly and proceed with caution.";
+  app\api\route-safety\predict\route.ts:377:  }
+  app\api\route-safety\predict\route.ts:378:
+  app\api\route-safety\predict\route.ts:379:  if (type === "collision") {
+> app\api\route-safety\predict\route.ts:380:    return "Accident reported ahead. Expect congestion and reduce speed.";
+  app\api\route-safety\predict\route.ts:381:  }
+  app\api\route-safety\predict\route.ts:382:
+  app\api\route-safety\predict\route.ts:383:  if (type === "protest") {
+> app\api\route-safety\predict\route.ts:384:    return "Protest activity reported ahead. Avoid area where possible and monitor route.";
+  app\api\route-safety\predict\route.ts:385:  }
+  app\api\route-safety\predict\route.ts:386:
+  app\api\route-safety\predict\route.ts:387:  if (severity === "critical") {
+  app\api\route-safety\predict\route.ts:388:    return "Critical route threat ahead. Contact driver and prepare escalation.";
+  app\api\route-safety\predict\route.ts:389:  }
+  app\api\route-safety\predict\route.ts:390:
+  app\api\route-safety\predict\route.ts:391:  return "Route safety threat ahead. Continue monitoring and advise driver to proceed with caution.";
+  app\api\route-safety\predict\route.ts:392:}
+  app\api\route-safety\predict\route.ts:393:
+  app\api\route-safety\predict\route.ts:394:export async function POST(req: NextRequest) {
+  app\api\route-safety\predict\route.ts:395:  try {
+  app\api\route-safety\predict\route.ts:396:    const { supabase, organizationId } = await requireOrganization();
+  app\api\route-safety\predict\route.ts:397:    const body = await req.json();
+  app\api\route-safety\predict\route.ts:398:
+  app\api\route-safety\predict\route.ts:399:    const origin = body.origin;
+  app\api\route-safety\predict\route.ts:400:    const destination = body.destination;
+  app\api\route-safety\predict\route.ts:401:      const vehicleId = body.vehicleId || null;
+  app\api\route-safety\predict\route.ts:402:      const tripId = body.tripId || null;
+  app\api\route-safety\predict\route.ts:403:
+  app\api\route-safety\predict\route.ts:404:    if (
+  app\api\route-safety\predict\route.ts:414:    }
+  app\api\route-safety\predict\route.ts:415:
+  app\api\route-safety\predict\route.ts:416:    const originLat = Number(origin.lat);
+  app\api\route-safety\predict\route.ts:417:    const originLng = Number(origin.lng);
+  app\api\route-safety\predict\route.ts:418:    const destinationLat = Number(destination.lat);
+  app\api\route-safety\predict\route.ts:419:    const destinationLng = Number(destination.lng);
+  app\api\route-safety\predict\route.ts:420:
+  app\api\route-safety\predict\route.ts:421:    let weatherResult: WeatherProviderResult | null = null;
+> app\api\route-safety\predict\route.ts:422:    let weatherError: string | null = null;
+  app\api\route-safety\predict\route.ts:423:    let trafficResult:
+  app\api\route-safety\predict\route.ts:424:      | Awaited<ReturnType<typeof buildTrafficIntelligence>>
+  app\api\route-safety\predict\route.ts:425:      | null = null;
+  app\api\route-safety\predict\route.ts:426:    let trafficError: string | null = null;
+  app\api\route-safety\predict\route.ts:427:
+  app\api\route-safety\predict\route.ts:428:    try {
+  app\api\route-safety\predict\route.ts:429:      const weatherLatitude =
+  app\api\route-safety\predict\route.ts:430:        (originLat + destinationLat) / 2;
+  app\api\route-safety\predict\route.ts:431:      const weatherLongitude =
+  app\api\route-safety\predict\route.ts:432:        (originLng + destinationLng) / 2;
+  app\api\route-safety\predict\route.ts:433:
+  app\api\route-safety\predict\route.ts:434:      weatherResult = await loadWeather(
+  app\api\route-safety\predict\route.ts:435:        weatherLatitude,
+  app\api\route-safety\predict\route.ts:436:        weatherLongitude
+  app\api\route-safety\predict\route.ts:437:      );
+  app\api\route-safety\predict\route.ts:438:    } catch (error: unknown) {
+> app\api\route-safety\predict\route.ts:439:      weatherError =
+  app\api\route-safety\predict\route.ts:440:        error instanceof Error
+  app\api\route-safety\predict\route.ts:441:          ? error.message
+  app\api\route-safety\predict\route.ts:442:          : "Current weather could not be loaded.";
+  app\api\route-safety\predict\route.ts:443:
+  app\api\route-safety\predict\route.ts:444:      console.error(
+  app\api\route-safety\predict\route.ts:445:        "[route-safety predict] Weather lookup failed:",
+  app\api\route-safety\predict\route.ts:446:        error
+  app\api\route-safety\predict\route.ts:447:      );
+  app\api\route-safety\predict\route.ts:448:    }
+  app\api\route-safety\predict\route.ts:449:
+  app\api\route-safety\predict\route.ts:450:    try {
+  app\api\route-safety\predict\route.ts:451:      const trafficLatitude =
+  app\api\route-safety\predict\route.ts:452:        (originLat + destinationLat) / 2;
+  app\api\route-safety\predict\route.ts:453:      const trafficLongitude =
+  app\api\route-safety\predict\route.ts:454:        (originLng + destinationLng) / 2;
+  app\api\route-safety\predict\route.ts:455:
+  app\api\route-safety\predict\route.ts:456:      trafficResult = await buildTrafficIntelligence(
+  app\api\route-safety\predict\route.ts:457:        supabase,
+  app\api\route-safety\predict\route.ts:458:        organizationId,
+  app\api\route-safety\predict\route.ts:459:        {
+  app\api\route-safety\predict\route.ts:523:            collision_count,
+  app\api\route-safety\predict\route.ts:524:      crime_count,
+  app\api\route-safety\predict\route.ts:525:      roadblock_count,
+  app\api\route-safety\predict\route.ts:526:      traffic_signal_count,
+  app\api\route-safety\predict\route.ts:527:      other_event_count,
+  app\api\route-safety\predict\route.ts:528:
+  app\api\route-safety\predict\route.ts:529:      road_closure_count,
+  app\api\route-safety\predict\route.ts:530:      roadworks_count,
+> app\api\route-safety\predict\route.ts:531:      congestion_count,
+  app\api\route-safety\predict\route.ts:532:      lane_closure_count,
+  app\api\route-safety\predict\route.ts:533:      weather_hazard_count,
+  app\api\route-safety\predict\route.ts:534:      flooding_count,
+  app\api\route-safety\predict\route.ts:535:      vehicle_breakdown_count,
+  app\api\route-safety\predict\route.ts:536:      road_hazard_count,
+  app\api\route-safety\predict\route.ts:537:      protest_count,
+  app\api\route-safety\predict\route.ts:538:
+  app\api\route-safety\predict\route.ts:539:      verification_count,
+  app\api\route-safety\predict\route.ts:540:      last_event_at,
+  app\api\route-safety\predict\route.ts:541:      metadata
+  app\api\route-safety\predict\route.ts:542:    `)
+  app\api\route-safety\predict\route.ts:543:    .eq("organization_id", organizationId);
+  app\api\route-safety\predict\route.ts:544:
+  app\api\route-safety\predict\route.ts:545:if (roadRiskSegmentsError) {
+  app\api\route-safety\predict\route.ts:546:  return NextResponse.json(
+  app\api\route-safety\predict\route.ts:547:    { error: roadRiskSegmentsError.message },
+  app\api\route-safety\predict\route.ts:548:    { status: 500 }
+  app\api\route-safety\predict\route.ts:549:  );
+  app\api\route-safety\predict\route.ts:550:}
+  app\api\route-safety\predict\route.ts:551:
+  app\api\route-safety\predict\route.ts:552:    let routeEstimate: any = null;
+  app\api\route-safety\predict\route.ts:553:
+  app\api\route-safety\predict\route.ts:554:    if (process.env.GOOGLE_ROUTES_API_KEY) {
+> app\api\route-safety\predict\route.ts:555:      const googleResponse = await fetch(
+  app\api\route-safety\predict\route.ts:556:        "https://routes.googleapis.com/directions/v2:computeRoutes",
+  app\api\route-safety\predict\route.ts:557:        {
+  app\api\route-safety\predict\route.ts:558:          method: "POST",
+  app\api\route-safety\predict\route.ts:559:          headers: {
+  app\api\route-safety\predict\route.ts:560:            "Content-Type": "application/json",
+  app\api\route-safety\predict\route.ts:561:            "X-Goog-Api-Key": process.env.GOOGLE_ROUTES_API_KEY,
+  app\api\route-safety\predict\route.ts:562:            "X-Goog-FieldMask":
+  app\api\route-safety\predict\route.ts:563:              "routes.duration,routes.staticDuration,routes.distanceMeters,routes.polyline.encodedPolyline",
+  app\api\route-safety\predict\route.ts:564:          },
+  app\api\route-safety\predict\route.ts:565:          body: JSON.stringify({
+  app\api\route-safety\predict\route.ts:566:            origin: {
+  app\api\route-safety\predict\route.ts:567:              location: {
+  app\api\route-safety\predict\route.ts:568:                latLng: {
+  app\api\route-safety\predict\route.ts:569:                  latitude: originLat,
+  app\api\route-safety\predict\route.ts:570:                  longitude: originLng,
+  app\api\route-safety\predict\route.ts:571:                },
+  app\api\route-safety\predict\route.ts:572:              },
+  app\api\route-safety\predict\route.ts:573:            },
+  app\api\route-safety\predict\route.ts:574:            destination: {
+  app\api\route-safety\predict\route.ts:575:              location: {
+  app\api\route-safety\predict\route.ts:576:                latLng: {
+  app\api\route-safety\predict\route.ts:577:                  latitude: destinationLat,
+  app\api\route-safety\predict\route.ts:578:                  longitude: destinationLng,
+  app\api\route-safety\predict\route.ts:579:                },
+  app\api\route-safety\predict\route.ts:580:              },
+  app\api\route-safety\predict\route.ts:581:            },
+  app\api\route-safety\predict\route.ts:582:            travelMode: "DRIVE",
+> app\api\route-safety\predict\route.ts:583:            routingPreference: "TRAFFIC_AWARE",
+  app\api\route-safety\predict\route.ts:584:            computeAlternativeRoutes: false,
+  app\api\route-safety\predict\route.ts:585:            units: "METRIC",
+  app\api\route-safety\predict\route.ts:586:          }),
+  app\api\route-safety\predict\route.ts:587:        }
+  app\api\route-safety\predict\route.ts:588:      );
+  app\api\route-safety\predict\route.ts:589:
+  app\api\route-safety\predict\route.ts:590:      const googleData = await googleResponse.json();
+  app\api\route-safety\predict\route.ts:591:
+  app\api\route-safety\predict\route.ts:592:      if (googleResponse.ok && googleData.routes?.[0]) {
+  app\api\route-safety\predict\route.ts:593:        routeEstimate = {
+  app\api\route-safety\predict\route.ts:594:          distanceMeters: googleData.routes[0].distanceMeters,
+  app\api\route-safety\predict\route.ts:595:          duration: googleData.routes[0].duration,
+  app\api\route-safety\predict\route.ts:596:          staticDuration: googleData.routes[0].staticDuration,
+  app\api\route-safety\predict\route.ts:597:          encodedPolyline: googleData.routes[0].polyline?.encodedPolyline || null,
+  app\api\route-safety\predict\route.ts:598:        };
+  app\api\route-safety\predict\route.ts:599:      }
+  app\api\route-safety\predict\route.ts:600:    }
+  app\api\route-safety\predict\route.ts:601:
+  app\api\route-safety\predict\route.ts:602:    const decodedRoutePoints = routeEstimate?.encodedPolyline
+  app\api\route-safety\predict\route.ts:603:      ? decodePolyline(routeEstimate.encodedPolyline)
+  app\api\route-safety\predict\route.ts:661:    type: "road_closure",
+  app\api\route-safety\predict\route.ts:662:    count: Number(segment.road_closure_count) || 0,
+  app\api\route-safety\predict\route.ts:663:  },
+  app\api\route-safety\predict\route.ts:664:  {
+  app\api\route-safety\predict\route.ts:665:    type: "roadworks",
+  app\api\route-safety\predict\route.ts:666:    count: Number(segment.roadworks_count) || 0,
+  app\api\route-safety\predict\route.ts:667:  },
+  app\api\route-safety\predict\route.ts:668:  {
+> app\api\route-safety\predict\route.ts:669:    type: "congestion",
+> app\api\route-safety\predict\route.ts:670:    count: Number(segment.congestion_count) || 0,
+  app\api\route-safety\predict\route.ts:671:  },
+  app\api\route-safety\predict\route.ts:672:  {
+  app\api\route-safety\predict\route.ts:673:    type: "lane_closure",
+  app\api\route-safety\predict\route.ts:674:    count: Number(segment.lane_closure_count) || 0,
+  app\api\route-safety\predict\route.ts:675:  },
+  app\api\route-safety\predict\route.ts:676:  {
+  app\api\route-safety\predict\route.ts:677:    type: "collision",
+  app\api\route-safety\predict\route.ts:678:    count: Number(segment.collision_count) || 0,
+  app\api\route-safety\predict\route.ts:679:  },
+  app\api\route-safety\predict\route.ts:680:  {
+  app\api\route-safety\predict\route.ts:681:    type: "traffic_light_outage",
+  app\api\route-safety\predict\route.ts:682:    count: Number(segment.traffic_signal_count) || 0,
+  app\api\route-safety\predict\route.ts:683:  },
+  app\api\route-safety\predict\route.ts:684:  {
+  app\api\route-safety\predict\route.ts:685:    type: "weather_hazard",
+  app\api\route-safety\predict\route.ts:686:    count: Number(segment.weather_hazard_count) || 0,
+  app\api\route-safety\predict\route.ts:687:  },
+  app\api\route-safety\predict\route.ts:688:  {
+  app\api\route-safety\predict\route.ts:689:    type: "flooding",
+  app\api\route-safety\predict\route.ts:690:    count: Number(segment.flooding_count) || 0,
+  app\api\route-safety\predict\route.ts:963:    const weatherRiskScore =
+  app\api\route-safety\predict\route.ts:964:      weatherResult?.weather.riskScore ?? 0;
+  app\api\route-safety\predict\route.ts:965:
+  app\api\route-safety\predict\route.ts:966:    const weatherContribution = Math.min(
+  app\api\route-safety\predict\route.ts:967:      20,
+  app\api\route-safety\predict\route.ts:968:      Math.round(weatherRiskScore * 0.2)
+  app\api\route-safety\predict\route.ts:969:    );
+  app\api\route-safety\predict\route.ts:970:
+> app\api\route-safety\predict\route.ts:971:    const trafficRiskScore =
+  app\api\route-safety\predict\route.ts:972:      trafficResult?.summary.riskScore ?? 0;
+  app\api\route-safety\predict\route.ts:973:
+  app\api\route-safety\predict\route.ts:974:    const trafficRiskLevel =
+  app\api\route-safety\predict\route.ts:975:      trafficResult?.summary.riskLevel ?? "LOW";
+  app\api\route-safety\predict\route.ts:976:
+  app\api\route-safety\predict\route.ts:977:    const normalizedTrafficRiskLevel =
+  app\api\route-safety\predict\route.ts:978:      String(trafficRiskLevel).toUpperCase();
+  app\api\route-safety\predict\route.ts:979:
+> app\api\route-safety\predict\route.ts:980:    const trafficCongestionMultiplier =
+  app\api\route-safety\predict\route.ts:981:      normalizedTrafficRiskLevel === "CRITICAL"
+  app\api\route-safety\predict\route.ts:982:        ? 1.5
+  app\api\route-safety\predict\route.ts:983:        : normalizedTrafficRiskLevel === "HIGH"
+  app\api\route-safety\predict\route.ts:984:          ? 1.25
+  app\api\route-safety\predict\route.ts:985:          : normalizedTrafficRiskLevel === "MEDIUM"
+  app\api\route-safety\predict\route.ts:986:            ? 1.1
+  app\api\route-safety\predict\route.ts:987:            : 1;
+  app\api\route-safety\predict\route.ts:988:
+  app\api\route-safety\predict\route.ts:989:    const diagnosticTrafficWeightedThreatRisk =
+  app\api\route-safety\predict\route.ts:990:      Math.min(
+  app\api\route-safety\predict\route.ts:991:        100,
+  app\api\route-safety\predict\route.ts:992:        Math.max(
+  app\api\route-safety\predict\route.ts:993:          0,
+  app\api\route-safety\predict\route.ts:994:          Math.round(
+  app\api\route-safety\predict\route.ts:995:            threatRiskScore *
+> app\api\route-safety\predict\route.ts:996:              trafficCongestionMultiplier
+  app\api\route-safety\predict\route.ts:997:          )
+  app\api\route-safety\predict\route.ts:998:        )
+  app\api\route-safety\predict\route.ts:999:      );
+  app\api\route-safety\predict\route.ts:1000:
+> app\api\route-safety\predict\route.ts:1001:    const trafficContribution = Math.min(
+  app\api\route-safety\predict\route.ts:1002:      20,
+> app\api\route-safety\predict\route.ts:1003:      Math.round(trafficRiskScore * 0.2)
+  app\api\route-safety\predict\route.ts:1004:    );
+  app\api\route-safety\predict\route.ts:1005:
+  app\api\route-safety\predict\route.ts:1006:    const riskScore = Math.min(
+  app\api\route-safety\predict\route.ts:1007:      100,
+  app\api\route-safety\predict\route.ts:1008:      threatRiskScore +
+  app\api\route-safety\predict\route.ts:1009:        weatherContribution +
+> app\api\route-safety\predict\route.ts:1010:        trafficContribution
+  app\api\route-safety\predict\route.ts:1011:    );
+  app\api\route-safety\predict\route.ts:1012:
+  app\api\route-safety\predict\route.ts:1013:    const threatRiskLevel =
+  app\api\route-safety\predict\route.ts:1014:      threatRiskScore >= 80
+  app\api\route-safety\predict\route.ts:1015:        ? "CRITICAL"
+  app\api\route-safety\predict\route.ts:1016:        : threatRiskScore >= 60
+  app\api\route-safety\predict\route.ts:1017:        ? "HIGH"
+  app\api\route-safety\predict\route.ts:1018:        : threatRiskScore >= 35
+  app\api\route-safety\predict\route.ts:1019:        ? "MEDIUM"
+  app\api\route-safety\predict\route.ts:1020:        : "LOW";
+  app\api\route-safety\predict\route.ts:1021:
+  app\api\route-safety\predict\route.ts:1022:    const riskLevel =
+  app\api\route-safety\predict\route.ts:1023:      riskScore >= 80
+  app\api\route-safety\predict\route.ts:1024:        ? "CRITICAL"
+  app\api\route-safety\predict\route.ts:1025:        : riskScore >= 60
+  app\api\route-safety\predict\route.ts:1026:        ? "HIGH"
+  app\api\route-safety\predict\route.ts:1027:        : riskScore >= 35
+  app\api\route-safety\predict\route.ts:1028:        ? "MEDIUM"
+  app\api\route-safety\predict\route.ts:1029:        : "LOW";
+  app\api\route-safety\predict\route.ts:1030:
+  app\api\route-safety\predict\route.ts:1036:    if (
+  app\api\route-safety\predict\route.ts:1037:      threatRiskScore >= 80 &&
+  app\api\route-safety\predict\route.ts:1038:      vehicleId &&
+  app\api\route-safety\predict\route.ts:1039:      routeThreats.length > 0
+  app\api\route-safety\predict\route.ts:1040:    ) {
+  app\api\route-safety\predict\route.ts:1041:      try {
+  app\api\route-safety\predict\route.ts:1042:        const topThreat = routeThreats[0];
+  app\api\route-safety\predict\route.ts:1043:
+> app\api\route-safety\predict\route.ts:1044:        const response = await fetch(`${req.nextUrl.origin}/api/route-safety/escalate`, {
+  app\api\route-safety\predict\route.ts:1045:          method: "POST",
+  app\api\route-safety\predict\route.ts:1046:          headers: {
+  app\api\route-safety\predict\route.ts:1047:            "Content-Type": "application/json",
+  app\api\route-safety\predict\route.ts:1048:            Authorization: req.headers.get("authorization") || "",
+  app\api\route-safety\predict\route.ts:1049:          },
+  app\api\route-safety\predict\route.ts:1050:          body: JSON.stringify({
+  app\api\route-safety\predict\route.ts:1051:            vehicleId,
+  app\api\route-safety\predict\route.ts:1052:            tripId,
+  app\api\route-safety\predict\route.ts:1053:            alertId: topThreat.id,
+  app\api\route-safety\predict\route.ts:1054:            riskScore: threatRiskScore,
+  app\api\route-safety\predict\route.ts:1055:            riskLevel: threatRiskLevel,
+  app\api\route-safety\predict\route.ts:1056:            message: `Automatic route safety escalation: ${topThreat.title}. ${topThreat.recommendation}`,
+  app\api\route-safety\predict\route.ts:1057:          }),
+  app\api\route-safety\predict\route.ts:1058:        });
+  app\api\route-safety\predict\route.ts:1059:
+  app\api\route-safety\predict\route.ts:1060:        autoEscalationResult = await response.json().catch(() => null);
+  app\api\route-safety\predict\route.ts:1061:        autoEscalated = response.ok;
+  app\api\route-safety\predict\route.ts:1062:
+  app\api\route-safety\predict\route.ts:1063:        await supabase.from("route_safety_escalation_logs").insert({
+  app\api\route-safety\predict\route.ts:1064:          organization_id: organizationId,
+  app\api\route-safety\predict\route.ts:1081:    if (
+  app\api\route-safety\predict\route.ts:1082:      threatRiskScore >= 80 &&
+  app\api\route-safety\predict\route.ts:1083:      vehicleId &&
+  app\api\route-safety\predict\route.ts:1084:      routeThreats.length > 0
+  app\api\route-safety\predict\route.ts:1085:    ) {
+  app\api\route-safety\predict\route.ts:1086:      try {
+  app\api\route-safety\predict\route.ts:1087:        const topThreat = routeThreats[0];
+  app\api\route-safety\predict\route.ts:1088:
+> app\api\route-safety\predict\route.ts:1089:        const rerouteResponse = await fetch(`${req.nextUrl.origin}/api/route-safety/reroute`, {
+  app\api\route-safety\predict\route.ts:1090:          method: "POST",
+  app\api\route-safety\predict\route.ts:1091:          headers: {
+  app\api\route-safety\predict\route.ts:1092:            "Content-Type": "application/json",
+  app\api\route-safety\predict\route.ts:1093:            Authorization: req.headers.get("authorization") || "",
+  app\api\route-safety\predict\route.ts:1094:          },
+  app\api\route-safety\predict\route.ts:1095:          body: JSON.stringify({
+  app\api\route-safety\predict\route.ts:1096:            origin: {
+  app\api\route-safety\predict\route.ts:1097:              lat: originLat,
+  app\api\route-safety\predict\route.ts:1098:              lng: originLng,
+  app\api\route-safety\predict\route.ts:1099:            },
+  app\api\route-safety\predict\route.ts:1100:            destination: {
+  app\api\route-safety\predict\route.ts:1101:              lat: destinationLat,
+  app\api\route-safety\predict\route.ts:1102:              lng: destinationLng,
+  app\api\route-safety\predict\route.ts:1103:            },
+  app\api\route-safety\predict\route.ts:1104:          }),
+  app\api\route-safety\predict\route.ts:1105:        });
+  app\api\route-safety\predict\route.ts:1106:
+  app\api\route-safety\predict\route.ts:1107:        const rerouteResult = await rerouteResponse.json().catch(() => null);
+  app\api\route-safety\predict\route.ts:1108:        const recommendedRoute = rerouteResult?.routes?.[0] || null;
+  app\api\route-safety\predict\route.ts:1109:
+  app\api\route-safety\predict\route.ts:1120:          if (existingPendingAssignment) {
+  app\api\route-safety\predict\route.ts:1121:            autoRouteAssigned = false;
+  app\api\route-safety\predict\route.ts:1122:            autoRouteAssignmentResult = {
+  app\api\route-safety\predict\route.ts:1123:              skipped: "existing_pending_assignment",
+  app\api\route-safety\predict\route.ts:1124:              assignmentId: existingPendingAssignment.id,
+  app\api\route-safety\predict\route.ts:1125:              createdAt: existingPendingAssignment.created_at,
+  app\api\route-safety\predict\route.ts:1126:            };
+  app\api\route-safety\predict\route.ts:1127:          } else {
+> app\api\route-safety\predict\route.ts:1128:            const assignResponse = await fetch(`${req.nextUrl.origin}/api/fleet/assign-route`, {
+  app\api\route-safety\predict\route.ts:1129:              method: "POST",
+  app\api\route-safety\predict\route.ts:1130:              headers: {
+  app\api\route-safety\predict\route.ts:1131:                "Content-Type": "application/json",
+  app\api\route-safety\predict\route.ts:1132:                Authorization: req.headers.get("authorization") || "",
+  app\api\route-safety\predict\route.ts:1133:              },
+  app\api\route-safety\predict\route.ts:1134:              body: JSON.stringify({
+  app\api\route-safety\predict\route.ts:1135:                vehicleId,
+  app\api\route-safety\predict\route.ts:1136:                route: recommendedRoute,
+  app\api\route-safety\predict\route.ts:1137:                reason: `Automatic safer route assignment due to ${threatRiskLevel} threat risk (${threatRiskScore}/100). Top threat: ${topThreat.title}.`,
+  app\api\route-safety\predict\route.ts:1138:              }),
+  app\api\route-safety\predict\route.ts:1139:            });
+  app\api\route-safety\predict\route.ts:1140:
+  app\api\route-safety\predict\route.ts:1141:            autoRouteAssignmentResult = await assignResponse.json().catch(() => null);
+  app\api\route-safety\predict\route.ts:1142:            autoRouteAssigned = assignResponse.ok;
+  app\api\route-safety\predict\route.ts:1143:          }
+  app\api\route-safety\predict\route.ts:1144:        } else {
+  app\api\route-safety\predict\route.ts:1145:          autoRouteAssignmentResult = {
+  app\api\route-safety\predict\route.ts:1146:            error: "No recommended safer route returned.",
+  app\api\route-safety\predict\route.ts:1147:            rerouteResult,
+  app\api\route-safety\predict\route.ts:1148:          };
+  app\api\route-safety\predict\route.ts:1158:    return NextResponse.json({
+  app\api\route-safety\predict\route.ts:1159:      routeEstimate,
+  app\api\route-safety\predict\route.ts:1160:      riskScore,
+  app\api\route-safety\predict\route.ts:1161:      riskLevel,
+  app\api\route-safety\predict\route.ts:1162:      threatRiskScore,
+  app\api\route-safety\predict\route.ts:1163:      threatRiskLevel,
+  app\api\route-safety\predict\route.ts:1164:      weatherRiskScore,
+  app\api\route-safety\predict\route.ts:1165:      weatherContribution,
+> app\api\route-safety\predict\route.ts:1166:      trafficRiskScore,
+  app\api\route-safety\predict\route.ts:1167:      trafficRiskLevel,
+  app\api\route-safety\predict\route.ts:1168:      normalizedTrafficRiskLevel,
+> app\api\route-safety\predict\route.ts:1169:      trafficCongestionMultiplier,
+  app\api\route-safety\predict\route.ts:1170:      diagnosticTrafficWeightedThreatRisk,
+> app\api\route-safety\predict\route.ts:1171:      trafficContribution,
+  app\api\route-safety\predict\route.ts:1172:      traffic: trafficResult,
+  app\api\route-safety\predict\route.ts:1173:      trafficError,
+  app\api\route-safety\predict\route.ts:1174:      threats: routeThreats,
+  app\api\route-safety\predict\route.ts:1175:      weather: weatherResult
+  app\api\route-safety\predict\route.ts:1176:        ? {
+  app\api\route-safety\predict\route.ts:1177:            provider: weatherResult.provider,
+  app\api\route-safety\predict\route.ts:1178:            ...weatherResult.weather,
+  app\api\route-safety\predict\route.ts:1179:          }
+  app\api\route-safety\predict\route.ts:1180:        : null,
+> app\api\route-safety\predict\route.ts:1181:      weatherError,
+  app\api\route-safety\predict\route.ts:1182:      driverWarning:
+  app\api\route-safety\predict\route.ts:1183:        routeThreats.length > 0
+  app\api\route-safety\predict\route.ts:1184:          ? routeThreats[0].recommendation
+  app\api\route-safety\predict\route.ts:1185:          : "No route safety threats detected on this route.",
+  app\api\route-safety\predict\route.ts:1186:    });
+  app\api\route-safety\predict\route.ts:1187:  } catch (error: any) {
+  app\api\route-safety\predict\route.ts:1188:    return NextResponse.json(
+  app\api\route-safety\predict\route.ts:1189:      { error: error.message || "Unauthorized" },
+  app\api\route-safety\predict\route.ts:1190:      { status: 401 }
+  app\api\route-safety\predict\route.ts:1191:    );
+  app\api\route-safety\predict\route.ts:1192:  }
+  app\api\route-safety\predict\route.ts:1193:}
+  app\api\route-safety\reroute\route.ts:1:import { NextRequest, NextResponse } from "next/server";
+  app\api\route-safety\reroute\route.ts:2:import { requireOrganization } from "@/lib/server-auth";
+> app\api\route-safety\reroute\route.ts:3:import { calculateHereRoutes } from "@/lib/routing/hereRouting";
+  app\api\route-safety\reroute\route.ts:4:
+  app\api\route-safety\reroute\route.ts:5:export async function POST(req: NextRequest) {
+  app\api\route-safety\reroute\route.ts:6:  try {
+  app\api\route-safety\reroute\route.ts:7:    const { supabase, organizationId } = await requireOrganization();
+  app\api\route-safety\reroute\route.ts:8:
+  app\api\route-safety\reroute\route.ts:9:    const body = await req.json();
+  app\api\route-safety\reroute\route.ts:10:    const { origin, destination } = body;
+  app\api\route-safety\reroute\route.ts:11:
+  app\api\route-safety\reroute\route.ts:12:    if (!origin?.lat || !origin?.lng || !destination?.lat || !destination?.lng) {
+  app\api\route-safety\reroute\route.ts:13:      return NextResponse.json(
+  app\api\route-safety\reroute\route.ts:14:        { error: "origin.lat, origin.lng, destination.lat and destination.lng are required." },
+  app\api\route-safety\reroute\route.ts:15:        { status: 400 }
+  app\api\route-safety\reroute\route.ts:16:      );
+  app\api\route-safety\reroute\route.ts:17:    }
+  app\api\route-safety\reroute\route.ts:18:
+  app\api\route-safety\reroute\route.ts:19:    const {
+  app\api\route-safety\reroute\route.ts:20:      data: roadRiskSegments,
+  app\api\route-safety\reroute\route.ts:21:      error: roadRiskError,
+  app\api\route-safety\reroute\route.ts:22:    } = await supabase
+  app\api\route-safety\reroute\route.ts:23:      .from("road_risk_segments")
+  app\api\route-safety\reroute\route.ts:31:collision_count,
+  app\api\route-safety\reroute\route.ts:32:crime_count,
+  app\api\route-safety\reroute\route.ts:33:roadblock_count,
+  app\api\route-safety\reroute\route.ts:34:traffic_signal_count,
+  app\api\route-safety\reroute\route.ts:35:other_event_count,
+  app\api\route-safety\reroute\route.ts:36:
+  app\api\route-safety\reroute\route.ts:37:road_closure_count,
+  app\api\route-safety\reroute\route.ts:38:roadworks_count,
+> app\api\route-safety\reroute\route.ts:39:congestion_count,
+  app\api\route-safety\reroute\route.ts:40:lane_closure_count,
+  app\api\route-safety\reroute\route.ts:41:weather_hazard_count,
+  app\api\route-safety\reroute\route.ts:42:flooding_count,
+  app\api\route-safety\reroute\route.ts:43:vehicle_breakdown_count,
+  app\api\route-safety\reroute\route.ts:44:road_hazard_count,
+  app\api\route-safety\reroute\route.ts:45:protest_count,
+  app\api\route-safety\reroute\route.ts:46:
+  app\api\route-safety\reroute\route.ts:47:verification_count,
+  app\api\route-safety\reroute\route.ts:48:last_event_at
+  app\api\route-safety\reroute\route.ts:49:      `)
+  app\api\route-safety\reroute\route.ts:50:      .eq("organization_id", organizationId);
+  app\api\route-safety\reroute\route.ts:51:
+  app\api\route-safety\reroute\route.ts:52:    if (roadRiskError) {
+  app\api\route-safety\reroute\route.ts:53:      return NextResponse.json(
+  app\api\route-safety\reroute\route.ts:54:        { error: roadRiskError.message },
+  app\api\route-safety\reroute\route.ts:55:        { status: 500 }
+  app\api\route-safety\reroute\route.ts:56:      );
+  app\api\route-safety\reroute\route.ts:57:    }
+  app\api\route-safety\reroute\route.ts:58:
+> app\api\route-safety\reroute\route.ts:59:    const result = await calculateHereRoutes(
+  app\api\route-safety\reroute\route.ts:60:      origin,
+  app\api\route-safety\reroute\route.ts:61:      destination,
+  app\api\route-safety\reroute\route.ts:62:      roadRiskSegments ?? []
+  app\api\route-safety\reroute\route.ts:63:    );
+  app\api\route-safety\reroute\route.ts:64:
+  app\api\route-safety\reroute\route.ts:65:    return NextResponse.json({
+  app\api\route-safety\reroute\route.ts:66:      success: true,
+  app\api\route-safety\reroute\route.ts:67:      ...result,
+  app\api\route-safety\reroute\route.ts:68:    });
+  app\api\route-safety\reroute\route.ts:69:  } catch (error: any) {
+  app\api\route-safety\reroute\route.ts:70:    return NextResponse.json(
+  app\api\route-safety\reroute\route.ts:71:      { error: error.message || "Unauthorized" },
+  app\api\route-safety\reroute\route.ts:72:      { status: error.message === "Unauthorized" ? 401 : 500 }
+  app\api\route-safety\reroute\route.ts:73:    );
+  app\api\route-safety\reroute\route.ts:74:  }
+  app\api\route-safety\reroute\route.ts:75:}
+  app\api\route-safety\reroute\route.ts:76:
+
+

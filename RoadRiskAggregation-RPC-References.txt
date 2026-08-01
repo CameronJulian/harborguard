@@ -1,0 +1,66 @@
+
+  app\api\command-center\vision-events\review\route.ts:210:            onConflict:
+  app\api\command-center\vision-events\review\route.ts:211:              "organization_id,source,source_record_id",
+  app\api\command-center\vision-events\review\route.ts:212:          }
+  app\api\command-center\vision-events\review\route.ts:213:        )
+  app\api\command-center\vision-events\review\route.ts:214:        .select("id")
+  app\api\command-center\vision-events\review\route.ts:215:        .single();
+  app\api\command-center\vision-events\review\route.ts:216:
+  app\api\command-center\vision-events\review\route.ts:217:      if (intelligenceError) {
+  app\api\command-center\vision-events\review\route.ts:218:        throw intelligenceError;
+  app\api\command-center\vision-events\review\route.ts:219:      }
+  app\api\command-center\vision-events\review\route.ts:220:
+  app\api\command-center\vision-events\review\route.ts:221:      const { error: aggregationError } = await supabase.rpc(
+> app\api\command-center\vision-events\review\route.ts:222:        "aggregate_road_risk_intelligence",
+  app\api\command-center\vision-events\review\route.ts:223:        {
+  app\api\command-center\vision-events\review\route.ts:224:          p_organization_id: organizationId,
+  app\api\command-center\vision-events\review\route.ts:225:          p_route_intelligence_id: routeIntelligence.id,
+  app\api\command-center\vision-events\review\route.ts:226:          p_event_type: updatedEvent.event_type,
+  app\api\command-center\vision-events\review\route.ts:227:          p_latitude: updatedEvent.latitude,
+  app\api\command-center\vision-events\review\route.ts:228:          p_longitude: updatedEvent.longitude,
+  app\api\command-center\vision-events\review\route.ts:229:          p_event_at: updatedEvent.detected_at,
+  app\api\command-center\vision-events\review\route.ts:230:        }
+  app\api\command-center\vision-events\review\route.ts:231:      );
+  app\api\command-center\vision-events\review\route.ts:232:
+  app\api\command-center\vision-events\review\route.ts:233:      if (aggregationError) {
+  app\api\command-center\vision-events\review\route.ts:234:        throw aggregationError;
+  app\api\command-center\vision-events\review\route.ts:235:      }
+  app\api\command-center\vision-events\review\route.ts:236:    }
+  app\api\command-center\vision-events\review\route.ts:237:
+  app\api\command-center\vision-events\review\route.ts:238:    return NextResponse.json({
+  app\api\command-center\vision-events\review\route.ts:239:      success: true,
+  app\api\command-center\vision-events\review\route.ts:240:      event: {
+  app\api\route-safety\verify\route.ts:81:      );
+  app\api\route-safety\verify\route.ts:82:
+  app\api\route-safety\verify\route.ts:83:      return NextResponse.json(
+  app\api\route-safety\verify\route.ts:84:        {
+  app\api\route-safety\verify\route.ts:85:          error:
+  app\api\route-safety\verify\route.ts:86:            "The alert was verified, but its historical intelligence record could not be stored.",
+  app\api\route-safety\verify\route.ts:87:          alert: data,
+  app\api\route-safety\verify\route.ts:88:        },
+  app\api\route-safety\verify\route.ts:89:        { status: 500 }
+  app\api\route-safety\verify\route.ts:90:      );
+  app\api\route-safety\verify\route.ts:91:    }
+  app\api\route-safety\verify\route.ts:92:    const { error: aggregationError } = await supabase.rpc(
+> app\api\route-safety\verify\route.ts:93:      "aggregate_road_risk_intelligence",
+  app\api\route-safety\verify\route.ts:94:      {
+  app\api\route-safety\verify\route.ts:95:        p_organization_id: organizationId,
+  app\api\route-safety\verify\route.ts:96:        p_route_intelligence_id: routeIntelligence.id,
+  app\api\route-safety\verify\route.ts:97:        p_event_type: data.type,
+  app\api\route-safety\verify\route.ts:98:        p_latitude: Number(data.latitude),
+  app\api\route-safety\verify\route.ts:99:        p_longitude: Number(data.longitude),
+  app\api\route-safety\verify\route.ts:100:        p_event_at: verifiedAt,
+  app\api\route-safety\verify\route.ts:101:      }
+  app\api\route-safety\verify\route.ts:102:    );
+  app\api\route-safety\verify\route.ts:103:
+  app\api\route-safety\verify\route.ts:104:    if (aggregationError) {
+  app\api\route-safety\verify\route.ts:105:      console.error(
+  app\api\route-safety\verify\route.ts:106:        "[Route Safety Verification] Failed to aggregate road risk intelligence:",
+  app\api\route-safety\verify\route.ts:107:        aggregationError.message
+  app\api\route-safety\verify\route.ts:108:      );
+  app\api\route-safety\verify\route.ts:109:
+  app\api\route-safety\verify\route.ts:110:      return NextResponse.json(
+  app\api\route-safety\verify\route.ts:111:        {
+
+
+

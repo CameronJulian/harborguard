@@ -1,0 +1,37 @@
+﻿Subject: Request for machine-readable road closure data access
+
+Good day,
+
+I am developing HarborGuard, a route-safety and fleet intelligence platform
+that combines live traffic incidents, traffic flow, weather, verified road
+events and historical risk information.
+
+I would like to ask whether your organisation provides an official
+machine-readable source for current and planned road closures, such as:
+
+- REST API
+- JSON or GeoJSON
+- ArcGIS Feature Service
+- RSS or XML feed
+- CSV export
+- authenticated data partnership
+
+The ideal data would include:
+
+- stable event identifier
+- road name
+- closure type
+- affected section
+- coordinates or geometry
+- start time
+- expected end time
+- status
+- reason
+- last-updated timestamp
+
+Please also advise whether the data may be used and displayed in a commercial
+route-safety application, subject to attribution and your terms of use.
+
+Kind regards,
+Cameron Julian Hendrick
+HarborGuard

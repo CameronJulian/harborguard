@@ -1,0 +1,263 @@
+---
+# Engineering Progress Update - 31 July 2026
+
+## Feature
+
+### Geometry-Aware Threat Score Weighting
+
+## Status
+
+Completed and pushed to GitHub.
+
+## Objective
+
+Improve route-threat prediction quality by reducing the influence of incidents that are geographically distant from the external provider's actual road geometry, while preserving the full impact of incidents directly on or close to the travelled corridor.
+
+## Problem
+
+The prediction engine previously applied intelligence weighting to nearby incidents without sufficiently reducing the contribution of incidents located away from the provider's actual road corridor.
+
+This allowed an incident several hundred metres away from the travelled road to contribute almost the same threat score as an incident directly affecting the selected route.
+
+The result could be inflated route-risk scores and unnecessary driver warnings.
+
+## Solution Implemented
+
+Added the helper:
+
+```text
+providerGeometryScoreMultiplier(distanceMetersValue)
+```
+
+The following geometry-distance weighting is now applied:
+
+| Distance from provider geometry | Multiplier |
+| --- | ---: |
+| 0-50 m | 1.00 |
+| 51-150 m | 0.90 |
+| 151-300 m | 0.75 |
+| 301-500 m | 0.60 |
+| 501-1000 m | 0.40 |
+| More than 1000 m | 0.25 |
+
+The prediction pipeline now:
+
+1. Calculates the original intelligence-weighted score.
+2. Stores that value as `unweightedScore`.
+3. Calculates the provider geometry multiplier.
+4. Produces the final threat score:
+
+```text
+finalScore =
+round(unweightedScore * geometryScoreMultiplier)
+```
+
+## Additional Diagnostics
+
+The Route Safety prediction response now exposes:
+
+- `effectiveRouteDistance`
+- `unweightedScore`
+- `geometryScoreMultiplier`
+
+These fields improve troubleshooting and make the final threat score more explainable.
+
+## Expected Behaviour
+
+Threats directly on the provider route retain their full intelligence score.
+
+Threats further from the travelled corridor are progressively discounted.
+
+Alerts without provider geometry continue using the previous point-distance behaviour for backward compatibility.
+
+## Verification
+
+Completed successfully:
+
+- Repository and insertion-point audit
+- Focused implementation
+- Git diff review
+- `git diff --check`
+- UTF-8 encoding verification
+- `npx tsc --noEmit`
+- Production build
+- Git commit
+- Git push
+
+## Result
+
+- No TypeScript errors
+- No source-file whitespace errors
+- Production build successful
+- Branch synchronized with GitHub
+
+## Commit
+
+```text
+fde8aeb - Weight route threats by provider geometry distance
+```
+
+---
+
+# Engineering Progress Update - 31 July 2026
+
+## Feature
+
+### Automatic Expired Route Safety Alert Transition
+
+## Status
+
+Completed and pushed to GitHub.
+
+## Objective
+
+Complete the first focused phase of the Road Intelligence Event Lifecycle by ensuring expired Route Safety alerts no longer remain incorrectly marked as active in the database.
+
+## Problem
+
+Route Safety queries already excluded expired alerts by requiring:
+
+```text
+status = active
+and
+expires_at is null or expires_at is in the future
+```
+
+However, when an alert passed its `expires_at` timestamp, it remained stored with:
+
+```text
+status = active
+```
+
+The alert disappeared from active queries but its persisted lifecycle state was inaccurate.
+
+This created a difference between operational behaviour and database state.
+
+## Audit Findings
+
+The lifecycle audit confirmed:
+
+- Active and nearby APIs filtered expired alerts from responses.
+- No existing job transitioned expired alerts to another status.
+- The provider cron already ran as the central scheduled Route Safety maintenance process.
+- Historical `route_intelligence` records and `road_risk_segments` should remain preserved.
+- No new table or separate cron was required for the first lifecycle improvement.
+
+## Solution Implemented
+
+Extended the existing provider cron:
+
+```text
+/api/route-safety/cron/providers
+```
+
+Before importing fresh HERE and TomTom incidents, the cron now updates alerts matching all of the following:
+
+```text
+organization_id = current organization
+status = active
+expires_at < current timestamp
+```
+
+Those records are transitioned to:
+
+```text
+status = expired
+```
+
+Alerts with `expires_at = null` remain active because no expiry time has been defined.
+
+## Diagnostics
+
+The provider cron response now includes:
+
+```text
+expiredAlertsTransitioned
+```
+
+This reports how many alerts were moved from `active` to `expired` during the cron execution.
+
+## Historical Preservation
+
+The implementation does not delete or reduce:
+
+- `route_intelligence`
+- `road_risk_segments`
+- `road_risk_segment_events`
+- verification history
+- provider correlation history
+
+Expired live alerts therefore stop participating in current operations while their verified historical value remains available for long-term risk learning.
+
+## Verification
+
+Completed successfully:
+
+- Lifecycle architecture audit
+- Exact insertion-point review
+- Backup created before modification
+- Focused source-file diff review
+- `git diff --check` passed for the source file
+- UTF-8 without BOM verified
+- `npx tsc --noEmit` passed
+- Production build passed
+- 119 of 119 static pages generated
+- Focused source commit created
+- Commit pushed to GitHub
+
+## Commit
+
+```text
+98e54cb - Transition expired route safety alerts
+```
+
+## Expected Behaviour
+
+Before:
+
+```text
+expires_at passed
+status remained active
+alert excluded only through query filtering
+```
+
+After:
+
+```text
+expires_at passed
+provider cron runs
+status changes to expired
+alert lifecycle state becomes accurate
+```
+
+## Engineering Impact
+
+This is the first implemented Road Intelligence lifecycle transition.
+
+It improves:
+
+- database-state accuracy
+- operational explainability
+- lifecycle reporting
+- future archival readiness
+- future provider confidence management
+
+It also reuses the existing scheduled provider process instead of introducing a parallel maintenance system.
+
+## Next Candidate Audit
+
+### Provider Disappearance and Confidence Decay
+
+The next lifecycle audit should determine how HarborGuard should react when an external provider stops reporting an incident before or without an explicit expiry timestamp.
+
+Potential areas:
+
+- Track whether each provider still reports the event.
+- Record a last-seen timestamp per provider.
+- Reduce provider confidence after missed ingestion cycles.
+- Resolve incidents confirmed as cleared.
+- Distinguish `expired`, `resolved`, and `archived`.
+- Preserve lifecycle history for analytics.
+- Avoid changing historical road-risk aggregation incorrectly.
+
+No confidence-decay or automatic-resolution implementation should begin until the existing provider identifiers, confirmation metadata, and ingestion-cycle behaviour have been audited.

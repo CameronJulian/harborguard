@@ -1,0 +1,5 @@
+"Scenario","Congestion","Incidents","Critical","RawScore","FinalScore"
+"Current midpoint","85","50","37","940","100"
+"Scoped midpoint","85","26","18","511","100"
+"Moderate traffic","45","4","1","84","84"
+"Light traffic","20","2","0","32","32"

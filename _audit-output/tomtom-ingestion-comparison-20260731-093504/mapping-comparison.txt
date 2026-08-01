@@ -1,0 +1,389 @@
+﻿============================================================
+FILE: .\app\api\route-safety\cron\providers\route.ts
+============================================================
+
+
+  app\api\route-safety\cron\providers\route.ts:107:
+  app\api\route-safety\cron\providers\route.ts:108:  return null;
+  app\api\route-safety\cron\providers\route.ts:109:}
+  app\api\route-safety\cron\providers\route.ts:110:
+> app\api\route-safety\cron\providers\route.ts:111:function mapTomTomType(category: number | string | null) {
+  app\api\route-safety\cron\providers\route.ts:112:  const value = String(category || "");
+  app\api\route-safety\cron\providers\route.ts:113:
+  app\api\route-safety\cron\providers\route.ts:114:  if (value === "1") return "accident";
+  app\api\route-safety\cron\providers\route.ts:115:  if (value === "2") return "weather_hazard";
+  app\api\route-safety\cron\providers\route.ts:116:  if (value === "3") return "road_hazard";
+  app\api\route-safety\cron\providers\route.ts:117:  if (value === "4") return "weather_hazard";
+  app\api\route-safety\cron\providers\route.ts:118:  if (value === "5") return "weather_hazard";
+  app\api\route-safety\cron\providers\route.ts:119:  if (value === "6") return "congestion";
+  app\api\route-safety\cron\providers\route.ts:110:
+  app\api\route-safety\cron\providers\route.ts:111:function mapTomTomType(category: number | string | null) {
+  app\api\route-safety\cron\providers\route.ts:112:  const value = String(category || "");
+  app\api\route-safety\cron\providers\route.ts:113:
+> app\api\route-safety\cron\providers\route.ts:114:  if (value === "1") return "accident";
+  app\api\route-safety\cron\providers\route.ts:115:  if (value === "2") return "weather_hazard";
+  app\api\route-safety\cron\providers\route.ts:116:  if (value === "3") return "road_hazard";
+  app\api\route-safety\cron\providers\route.ts:117:  if (value === "4") return "weather_hazard";
+  app\api\route-safety\cron\providers\route.ts:118:  if (value === "5") return "weather_hazard";
+  app\api\route-safety\cron\providers\route.ts:119:  if (value === "6") return "congestion";
+  app\api\route-safety\cron\providers\route.ts:120:  if (value === "7") return "lane_closure";
+  app\api\route-safety\cron\providers\route.ts:121:  if (value === "8") return "road_closure";
+  app\api\route-safety\cron\providers\route.ts:122:  if (value === "9") return "roadworks";
+  app\api\route-safety\cron\providers\route.ts:110:
+  app\api\route-safety\cron\providers\route.ts:111:function mapTomTomType(category: number | string | null) {
+  app\api\route-safety\cron\providers\route.ts:112:  const value = String(category || "");
+  app\api\route-safety\cron\providers\route.ts:113:
+> app\api\route-safety\cron\providers\route.ts:114:  if (value === "1") return "accident";
+  app\api\route-safety\cron\providers\route.ts:115:  if (value === "2") return "weather_hazard";
+  app\api\route-safety\cron\providers\route.ts:116:  if (value === "3") return "road_hazard";
+  app\api\route-safety\cron\providers\route.ts:117:  if (value === "4") return "weather_hazard";
+  app\api\route-safety\cron\providers\route.ts:118:  if (value === "5") return "weather_hazard";
+  app\api\route-safety\cron\providers\route.ts:119:  if (value === "6") return "congestion";
+  app\api\route-safety\cron\providers\route.ts:120:  if (value === "7") return "lane_closure";
+  app\api\route-safety\cron\providers\route.ts:121:  if (value === "8") return "road_closure";
+  app\api\route-safety\cron\providers\route.ts:122:  if (value === "9") return "roadworks";
+  app\api\route-safety\cron\providers\route.ts:67:    text.includes("accident") ||
+  app\api\route-safety\cron\providers\route.ts:68:    text.includes("crash") ||
+  app\api\route-safety\cron\providers\route.ts:69:    text.includes("collision")
+  app\api\route-safety\cron\providers\route.ts:70:  ) {
+> app\api\route-safety\cron\providers\route.ts:71:    return "collision";
+  app\api\route-safety\cron\providers\route.ts:72:  }
+  app\api\route-safety\cron\providers\route.ts:73:
+  app\api\route-safety\cron\providers\route.ts:74:  if (text.includes("protest")) {
+  app\api\route-safety\cron\providers\route.ts:75:    return "protest";
+  app\api\route-safety\cron\providers\route.ts:76:  }
+  app\api\route-safety\cron\providers\route.ts:77:
+  app\api\route-safety\cron\providers\route.ts:78:  return "road_hazard";
+  app\api\route-safety\cron\providers\route.ts:79:}
+  app\api\route-safety\cron\providers\route.ts:568:      "18.20,-34.10,19.10,-33.60";
+  app\api\route-safety\cron\providers\route.ts:569:
+  app\api\route-safety\cron\providers\route.ts:570:    const fields =
+  app\api\route-safety\cron\providers\route.ts:571:      "{incidents{type,geometry{type,coordinates}," +
+> app\api\route-safety\cron\providers\route.ts:572:      "properties{iconCategory,magnitudeOfDelay," +
+  app\api\route-safety\cron\providers\route.ts:573:      "events{description,code},from,to,length,delay}}}";
+  app\api\route-safety\cron\providers\route.ts:574:
+  app\api\route-safety\cron\providers\route.ts:575:    const url =
+  app\api\route-safety\cron\providers\route.ts:576:      "https://api.tomtom.com/traffic/services/5/incidentDetails" +
+  app\api\route-safety\cron\providers\route.ts:577:      `?bbox=${encodeURIComponent(bbox)}` +
+  app\api\route-safety\cron\providers\route.ts:578:      `&fields=${encodeURIComponent(fields)}` +
+  app\api\route-safety\cron\providers\route.ts:579:      "&language=en-GB" +
+  app\api\route-safety\cron\providers\route.ts:580:      "&timeValidityFilter=present" +
+  app\api\route-safety\cron\providers\route.ts:625:        );
+  app\api\route-safety\cron\providers\route.ts:626:
+  app\api\route-safety\cron\providers\route.ts:627:        return {
+  app\api\route-safety\cron\providers\route.ts:628:          organization_id: organizationId,
+> app\api\route-safety\cron\providers\route.ts:629:          type: mapTomTomType(properties?.iconCategory),
+  app\api\route-safety\cron\providers\route.ts:630:          title: eventDescription.slice(0, 120),
+  app\api\route-safety\cron\providers\route.ts:631:          description:
+  app\api\route-safety\cron\providers\route.ts:632:            "Automatically imported from TomTom Traffic. " +
+  app\api\route-safety\cron\providers\route.ts:633:            `Delay: ${properties?.delay || 0}s. ` +
+  app\api\route-safety\cron\providers\route.ts:634:            `Length: ${properties?.length || 0}m.`,
+  app\api\route-safety\cron\providers\route.ts:635:          latitude,
+  app\api\route-safety\cron\providers\route.ts:636:          longitude,
+  app\api\route-safety\cron\providers\route.ts:637:          radius_meters: 1200,
+  app\api\route-safety\cron\providers\route.ts:199:  }
+  app\api\route-safety\cron\providers\route.ts:200:
+  app\api\route-safety\cron\providers\route.ts:201:  const { data: existingAlerts, error: existingError } =
+  app\api\route-safety\cron\providers\route.ts:202:    await supabase
+> app\api\route-safety\cron\providers\route.ts:203:      .from("route_safety_alerts")
+  app\api\route-safety\cron\providers\route.ts:204:      .select(`
+  app\api\route-safety\cron\providers\route.ts:205:        id,
+  app\api\route-safety\cron\providers\route.ts:206:        source,
+  app\api\route-safety\cron\providers\route.ts:207:        type,
+  app\api\route-safety\cron\providers\route.ts:208:        title,
+  app\api\route-safety\cron\providers\route.ts:209:        latitude,
+  app\api\route-safety\cron\providers\route.ts:210:        longitude,
+  app\api\route-safety\cron\providers\route.ts:211:        expires_at,
+  app\api\route-safety\cron\providers\route.ts:341:            : row.expires_at;
+  app\api\route-safety\cron\providers\route.ts:342:      }
+  app\api\route-safety\cron\providers\route.ts:343:
+  app\api\route-safety\cron\providers\route.ts:344:      const { error: mergeError } = await supabase
+> app\api\route-safety\cron\providers\route.ts:345:        .from("route_safety_alerts")
+  app\api\route-safety\cron\providers\route.ts:346:        .update({
+  app\api\route-safety\cron\providers\route.ts:347:          provider_sources: providerSources,
+  app\api\route-safety\cron\providers\route.ts:348:          provider_confirmation_count: providerConfirmationCount,
+  app\api\route-safety\cron\providers\route.ts:349:          provider_confidence: providerConfidence,
+  app\api\route-safety\cron\providers\route.ts:350:          last_provider_confirmation_at: confirmedAt,
+  app\api\route-safety\cron\providers\route.ts:351:          verification_status: "verified",
+  app\api\route-safety\cron\providers\route.ts:352:          verified_at: confirmedAt,
+  app\api\route-safety\cron\providers\route.ts:353:          expires_at: mergedExpiresAt,
+  app\api\route-safety\cron\providers\route.ts:407:  }
+  app\api\route-safety\cron\providers\route.ts:408:
+  app\api\route-safety\cron\providers\route.ts:409:  const { data: inserted, error: insertError } =
+  app\api\route-safety\cron\providers\route.ts:410:    await supabase
+> app\api\route-safety\cron\providers\route.ts:411:      .from("route_safety_alerts")
+  app\api\route-safety\cron\providers\route.ts:412:      .insert(uniqueRows)
+  app\api\route-safety\cron\providers\route.ts:413:      .select("id");
+  app\api\route-safety\cron\providers\route.ts:414:
+  app\api\route-safety\cron\providers\route.ts:415:  if (insertError) {
+  app\api\route-safety\cron\providers\route.ts:416:    throw insertError;
+  app\api\route-safety\cron\providers\route.ts:417:  }
+  app\api\route-safety\cron\providers\route.ts:418:
+  app\api\route-safety\cron\providers\route.ts:419:  return {
+  app\api\route-safety\cron\providers\route.ts:408:
+  app\api\route-safety\cron\providers\route.ts:409:  const { data: inserted, error: insertError } =
+  app\api\route-safety\cron\providers\route.ts:410:    await supabase
+  app\api\route-safety\cron\providers\route.ts:411:      .from("route_safety_alerts")
+> app\api\route-safety\cron\providers\route.ts:412:      .insert(uniqueRows)
+  app\api\route-safety\cron\providers\route.ts:413:      .select("id");
+  app\api\route-safety\cron\providers\route.ts:414:
+  app\api\route-safety\cron\providers\route.ts:415:  if (insertError) {
+  app\api\route-safety\cron\providers\route.ts:416:    throw insertError;
+  app\api\route-safety\cron\providers\route.ts:417:  }
+  app\api\route-safety\cron\providers\route.ts:418:
+  app\api\route-safety\cron\providers\route.ts:419:  return {
+  app\api\route-safety\cron\providers\route.ts:420:    imported: inserted?.length || 0,
+  app\api\route-safety\cron\providers\route.ts:209:        latitude,
+  app\api\route-safety\cron\providers\route.ts:210:        longitude,
+  app\api\route-safety\cron\providers\route.ts:211:        expires_at,
+  app\api\route-safety\cron\providers\route.ts:212:        provider_sources,
+> app\api\route-safety\cron\providers\route.ts:213:        provider_confirmation_count,
+  app\api\route-safety\cron\providers\route.ts:214:        provider_confidence,
+  app\api\route-safety\cron\providers\route.ts:215:        last_provider_confirmation_at
+  app\api\route-safety\cron\providers\route.ts:216:      `)
+  app\api\route-safety\cron\providers\route.ts:217:      .eq("organization_id", organizationId)
+  app\api\route-safety\cron\providers\route.ts:218:      .eq("status", "active");
+  app\api\route-safety\cron\providers\route.ts:219:
+  app\api\route-safety\cron\providers\route.ts:220:  if (existingError) {
+  app\api\route-safety\cron\providers\route.ts:221:    throw existingError;
+  app\api\route-safety\cron\providers\route.ts:237:
+  app\api\route-safety\cron\providers\route.ts:238:  const uniqueRows: Array<
+  app\api\route-safety\cron\providers\route.ts:239:    AlertRow & {
+  app\api\route-safety\cron\providers\route.ts:240:      provider_sources: string[];
+> app\api\route-safety\cron\providers\route.ts:241:      provider_confirmation_count: number;
+  app\api\route-safety\cron\providers\route.ts:242:      provider_confidence: number;
+  app\api\route-safety\cron\providers\route.ts:243:      last_provider_confirmation_at: string;
+  app\api\route-safety\cron\providers\route.ts:244:    }
+  app\api\route-safety\cron\providers\route.ts:245:  > = [];
+  app\api\route-safety\cron\providers\route.ts:246:
+  app\api\route-safety\cron\providers\route.ts:247:  let skippedDuplicates = 0;
+  app\api\route-safety\cron\providers\route.ts:248:  let mergedDuplicates = 0;
+  app\api\route-safety\cron\providers\route.ts:249:
+  app\api\route-safety\cron\providers\route.ts:344:      const { error: mergeError } = await supabase
+  app\api\route-safety\cron\providers\route.ts:345:        .from("route_safety_alerts")
+  app\api\route-safety\cron\providers\route.ts:346:        .update({
+  app\api\route-safety\cron\providers\route.ts:347:          provider_sources: providerSources,
+> app\api\route-safety\cron\providers\route.ts:348:          provider_confirmation_count: providerConfirmationCount,
+  app\api\route-safety\cron\providers\route.ts:349:          provider_confidence: providerConfidence,
+  app\api\route-safety\cron\providers\route.ts:350:          last_provider_confirmation_at: confirmedAt,
+  app\api\route-safety\cron\providers\route.ts:351:          verification_status: "verified",
+  app\api\route-safety\cron\providers\route.ts:352:          verified_at: confirmedAt,
+  app\api\route-safety\cron\providers\route.ts:353:          expires_at: mergedExpiresAt,
+  app\api\route-safety\cron\providers\route.ts:354:        })
+  app\api\route-safety\cron\providers\route.ts:355:        .eq("organization_id", organizationId)
+  app\api\route-safety\cron\providers\route.ts:356:        .eq("id", crossProviderMatch.id);
+  app\api\route-safety\cron\providers\route.ts:359:        throw mergeError;
+  app\api\route-safety\cron\providers\route.ts:360:      }
+  app\api\route-safety\cron\providers\route.ts:361:
+  app\api\route-safety\cron\providers\route.ts:362:      crossProviderMatch.provider_sources = providerSources;
+> app\api\route-safety\cron\providers\route.ts:363:      crossProviderMatch.provider_confirmation_count =
+  app\api\route-safety\cron\providers\route.ts:364:        providerConfirmationCount;
+  app\api\route-safety\cron\providers\route.ts:365:      crossProviderMatch.provider_confidence = providerConfidence;
+  app\api\route-safety\cron\providers\route.ts:366:      crossProviderMatch.last_provider_confirmation_at = confirmedAt;
+  app\api\route-safety\cron\providers\route.ts:367:      crossProviderMatch.expires_at = mergedExpiresAt;
+  app\api\route-safety\cron\providers\route.ts:368:
+  app\api\route-safety\cron\providers\route.ts:369:      mergedDuplicates += 1;
+  app\api\route-safety\cron\providers\route.ts:370:      continue;
+  app\api\route-safety\cron\providers\route.ts:371:    }
+  app\api\route-safety\cron\providers\route.ts:374:
+  app\api\route-safety\cron\providers\route.ts:375:    const providerAlert = {
+  app\api\route-safety\cron\providers\route.ts:376:      ...row,
+  app\api\route-safety\cron\providers\route.ts:377:      provider_sources: [source],
+> app\api\route-safety\cron\providers\route.ts:378:      provider_confirmation_count: 1,
+  app\api\route-safety\cron\providers\route.ts:379:      provider_confidence: 60,
+  app\api\route-safety\cron\providers\route.ts:380:      last_provider_confirmation_at: new Date().toISOString(),
+  app\api\route-safety\cron\providers\route.ts:381:    };
+  app\api\route-safety\cron\providers\route.ts:382:
+  app\api\route-safety\cron\providers\route.ts:383:    uniqueRows.push(providerAlert);
+  app\api\route-safety\cron\providers\route.ts:384:
+  app\api\route-safety\cron\providers\route.ts:385:    normalizedExistingAlerts.push({
+  app\api\route-safety\cron\providers\route.ts:386:      id: null,
+  app\api\route-safety\cron\providers\route.ts:390:      latitude: row.latitude,
+  app\api\route-safety\cron\providers\route.ts:391:      longitude: row.longitude,
+  app\api\route-safety\cron\providers\route.ts:392:      expires_at: row.expires_at,
+  app\api\route-safety\cron\providers\route.ts:393:      provider_sources: [source],
+> app\api\route-safety\cron\providers\route.ts:394:      provider_confirmation_count: 1,
+  app\api\route-safety\cron\providers\route.ts:395:      provider_confidence: 60,
+  app\api\route-safety\cron\providers\route.ts:396:      last_provider_confirmation_at:
+  app\api\route-safety\cron\providers\route.ts:397:        providerAlert.last_provider_confirmation_at,
+  app\api\route-safety\cron\providers\route.ts:398:    });
+  app\api\route-safety\cron\providers\route.ts:399:  }
+  app\api\route-safety\cron\providers\route.ts:400:
+  app\api\route-safety\cron\providers\route.ts:401:  if (uniqueRows.length === 0) {
+  app\api\route-safety\cron\providers\route.ts:402:    return {
+  app\api\route-safety\cron\providers\route.ts:210:        longitude,
+  app\api\route-safety\cron\providers\route.ts:211:        expires_at,
+  app\api\route-safety\cron\providers\route.ts:212:        provider_sources,
+  app\api\route-safety\cron\providers\route.ts:213:        provider_confirmation_count,
+> app\api\route-safety\cron\providers\route.ts:214:        provider_confidence,
+  app\api\route-safety\cron\providers\route.ts:215:        last_provider_confirmation_at
+  app\api\route-safety\cron\providers\route.ts:216:      `)
+  app\api\route-safety\cron\providers\route.ts:217:      .eq("organization_id", organizationId)
+  app\api\route-safety\cron\providers\route.ts:218:      .eq("status", "active");
+  app\api\route-safety\cron\providers\route.ts:219:
+  app\api\route-safety\cron\providers\route.ts:220:  if (existingError) {
+  app\api\route-safety\cron\providers\route.ts:221:    throw existingError;
+  app\api\route-safety\cron\providers\route.ts:222:  }
+  app\api\route-safety\cron\providers\route.ts:238:  const uniqueRows: Array<
+  app\api\route-safety\cron\providers\route.ts:239:    AlertRow & {
+  app\api\route-safety\cron\providers\route.ts:240:      provider_sources: string[];
+  app\api\route-safety\cron\providers\route.ts:241:      provider_confirmation_count: number;
+> app\api\route-safety\cron\providers\route.ts:242:      provider_confidence: number;
+  app\api\route-safety\cron\providers\route.ts:243:      last_provider_confirmation_at: string;
+  app\api\route-safety\cron\providers\route.ts:244:    }
+  app\api\route-safety\cron\providers\route.ts:245:  > = [];
+  app\api\route-safety\cron\providers\route.ts:246:
+  app\api\route-safety\cron\providers\route.ts:247:  let skippedDuplicates = 0;
+  app\api\route-safety\cron\providers\route.ts:248:  let mergedDuplicates = 0;
+  app\api\route-safety\cron\providers\route.ts:249:
+  app\api\route-safety\cron\providers\route.ts:250:  for (const row of rows) {
+  app\api\route-safety\cron\providers\route.ts:345:        .from("route_safety_alerts")
+  app\api\route-safety\cron\providers\route.ts:346:        .update({
+  app\api\route-safety\cron\providers\route.ts:347:          provider_sources: providerSources,
+  app\api\route-safety\cron\providers\route.ts:348:          provider_confirmation_count: providerConfirmationCount,
+> app\api\route-safety\cron\providers\route.ts:349:          provider_confidence: providerConfidence,
+  app\api\route-safety\cron\providers\route.ts:350:          last_provider_confirmation_at: confirmedAt,
+  app\api\route-safety\cron\providers\route.ts:351:          verification_status: "verified",
+  app\api\route-safety\cron\providers\route.ts:352:          verified_at: confirmedAt,
+  app\api\route-safety\cron\providers\route.ts:353:          expires_at: mergedExpiresAt,
+  app\api\route-safety\cron\providers\route.ts:354:        })
+  app\api\route-safety\cron\providers\route.ts:355:        .eq("organization_id", organizationId)
+  app\api\route-safety\cron\providers\route.ts:356:        .eq("id", crossProviderMatch.id);
+  app\api\route-safety\cron\providers\route.ts:357:
+  app\api\route-safety\cron\providers\route.ts:361:
+  app\api\route-safety\cron\providers\route.ts:362:      crossProviderMatch.provider_sources = providerSources;
+  app\api\route-safety\cron\providers\route.ts:363:      crossProviderMatch.provider_confirmation_count =
+  app\api\route-safety\cron\providers\route.ts:364:        providerConfirmationCount;
+> app\api\route-safety\cron\providers\route.ts:365:      crossProviderMatch.provider_confidence = providerConfidence;
+  app\api\route-safety\cron\providers\route.ts:366:      crossProviderMatch.last_provider_confirmation_at = confirmedAt;
+  app\api\route-safety\cron\providers\route.ts:367:      crossProviderMatch.expires_at = mergedExpiresAt;
+  app\api\route-safety\cron\providers\route.ts:368:
+  app\api\route-safety\cron\providers\route.ts:369:      mergedDuplicates += 1;
+  app\api\route-safety\cron\providers\route.ts:370:      continue;
+  app\api\route-safety\cron\providers\route.ts:371:    }
+  app\api\route-safety\cron\providers\route.ts:372:
+  app\api\route-safety\cron\providers\route.ts:373:    existingSameProviderKeys.add(key);
+  app\api\route-safety\cron\providers\route.ts:375:    const providerAlert = {
+  app\api\route-safety\cron\providers\route.ts:376:      ...row,
+  app\api\route-safety\cron\providers\route.ts:377:      provider_sources: [source],
+  app\api\route-safety\cron\providers\route.ts:378:      provider_confirmation_count: 1,
+> app\api\route-safety\cron\providers\route.ts:379:      provider_confidence: 60,
+  app\api\route-safety\cron\providers\route.ts:380:      last_provider_confirmation_at: new Date().toISOString(),
+  app\api\route-safety\cron\providers\route.ts:381:    };
+  app\api\route-safety\cron\providers\route.ts:382:
+  app\api\route-safety\cron\providers\route.ts:383:    uniqueRows.push(providerAlert);
+  app\api\route-safety\cron\providers\route.ts:384:
+  app\api\route-safety\cron\providers\route.ts:385:    normalizedExistingAlerts.push({
+  app\api\route-safety\cron\providers\route.ts:386:      id: null,
+  app\api\route-safety\cron\providers\route.ts:387:      source,
+  app\api\route-safety\cron\providers\route.ts:391:      longitude: row.longitude,
+  app\api\route-safety\cron\providers\route.ts:392:      expires_at: row.expires_at,
+  app\api\route-safety\cron\providers\route.ts:393:      provider_sources: [source],
+  app\api\route-safety\cron\providers\route.ts:394:      provider_confirmation_count: 1,
+> app\api\route-safety\cron\providers\route.ts:395:      provider_confidence: 60,
+  app\api\route-safety\cron\providers\route.ts:396:      last_provider_confirmation_at:
+  app\api\route-safety\cron\providers\route.ts:397:        providerAlert.last_provider_confirmation_at,
+  app\api\route-safety\cron\providers\route.ts:398:    });
+  app\api\route-safety\cron\providers\route.ts:399:  }
+  app\api\route-safety\cron\providers\route.ts:400:
+  app\api\route-safety\cron\providers\route.ts:401:  if (uniqueRows.length === 0) {
+  app\api\route-safety\cron\providers\route.ts:402:    return {
+  app\api\route-safety\cron\providers\route.ts:403:      imported: 0,
+
+============================================================
+FILE: .\app\api\route-safety\ingest\tomtom\route.ts
+============================================================
+
+  app\api\route-safety\ingest\tomtom\route.ts:1:import { NextResponse } from "next/server";
+  app\api\route-safety\ingest\tomtom\route.ts:2:import { requireOrganization } from "@/lib/server-auth";
+  app\api\route-safety\ingest\tomtom\route.ts:3:
+> app\api\route-safety\ingest\tomtom\route.ts:4:function mapTomTomType(category: number | string | null) {
+  app\api\route-safety\ingest\tomtom\route.ts:5:  const value = String(category || "");
+  app\api\route-safety\ingest\tomtom\route.ts:6:
+  app\api\route-safety\ingest\tomtom\route.ts:7:  if (value === "1") return "accident";
+  app\api\route-safety\ingest\tomtom\route.ts:8:  if (value === "2") return "weather_hazard";
+  app\api\route-safety\ingest\tomtom\route.ts:9:  if (value === "3") return "road_hazard";
+  app\api\route-safety\ingest\tomtom\route.ts:10:  if (value === "4") return "weather_hazard";
+  app\api\route-safety\ingest\tomtom\route.ts:11:  if (value === "5") return "weather_hazard";
+  app\api\route-safety\ingest\tomtom\route.ts:12:  if (value === "6") return "congestion";
+  app\api\route-safety\ingest\tomtom\route.ts:3:
+  app\api\route-safety\ingest\tomtom\route.ts:4:function mapTomTomType(category: number | string | null) {
+  app\api\route-safety\ingest\tomtom\route.ts:5:  const value = String(category || "");
+  app\api\route-safety\ingest\tomtom\route.ts:6:
+> app\api\route-safety\ingest\tomtom\route.ts:7:  if (value === "1") return "accident";
+  app\api\route-safety\ingest\tomtom\route.ts:8:  if (value === "2") return "weather_hazard";
+  app\api\route-safety\ingest\tomtom\route.ts:9:  if (value === "3") return "road_hazard";
+  app\api\route-safety\ingest\tomtom\route.ts:10:  if (value === "4") return "weather_hazard";
+  app\api\route-safety\ingest\tomtom\route.ts:11:  if (value === "5") return "weather_hazard";
+  app\api\route-safety\ingest\tomtom\route.ts:12:  if (value === "6") return "congestion";
+  app\api\route-safety\ingest\tomtom\route.ts:13:  if (value === "7") return "lane_closure";
+  app\api\route-safety\ingest\tomtom\route.ts:14:  if (value === "8") return "road_closure";
+  app\api\route-safety\ingest\tomtom\route.ts:15:  if (value === "9") return "roadworks";
+  app\api\route-safety\ingest\tomtom\route.ts:3:
+  app\api\route-safety\ingest\tomtom\route.ts:4:function mapTomTomType(category: number | string | null) {
+  app\api\route-safety\ingest\tomtom\route.ts:5:  const value = String(category || "");
+  app\api\route-safety\ingest\tomtom\route.ts:6:
+> app\api\route-safety\ingest\tomtom\route.ts:7:  if (value === "1") return "accident";
+  app\api\route-safety\ingest\tomtom\route.ts:8:  if (value === "2") return "weather_hazard";
+  app\api\route-safety\ingest\tomtom\route.ts:9:  if (value === "3") return "road_hazard";
+  app\api\route-safety\ingest\tomtom\route.ts:10:  if (value === "4") return "weather_hazard";
+  app\api\route-safety\ingest\tomtom\route.ts:11:  if (value === "5") return "weather_hazard";
+  app\api\route-safety\ingest\tomtom\route.ts:12:  if (value === "6") return "congestion";
+  app\api\route-safety\ingest\tomtom\route.ts:13:  if (value === "7") return "lane_closure";
+  app\api\route-safety\ingest\tomtom\route.ts:14:  if (value === "8") return "road_closure";
+  app\api\route-safety\ingest\tomtom\route.ts:15:  if (value === "9") return "roadworks";
+  app\api\route-safety\ingest\tomtom\route.ts:46:
+  app\api\route-safety\ingest\tomtom\route.ts:47:    const url =
+  app\api\route-safety\ingest\tomtom\route.ts:48:      "https://api.tomtom.com/traffic/services/5/incidentDetails" +
+  app\api\route-safety\ingest\tomtom\route.ts:49:      `?bbox=${bbox}` +
+> app\api\route-safety\ingest\tomtom\route.ts:50:      "&fields={incidents{type,geometry{type,coordinates},properties{iconCategory,magnitudeOfDelay,events{description,code},from,to,length,delay}}}" +
+  app\api\route-safety\ingest\tomtom\route.ts:51:      "&language=en-GB" +
+  app\api\route-safety\ingest\tomtom\route.ts:52:      "&timeValidityFilter=present" +
+  app\api\route-safety\ingest\tomtom\route.ts:53:      `&key=${process.env.TOMTOM_API_KEY}`;
+  app\api\route-safety\ingest\tomtom\route.ts:54:
+  app\api\route-safety\ingest\tomtom\route.ts:55:    const response = await fetch(url, { cache: "no-store" });
+  app\api\route-safety\ingest\tomtom\route.ts:56:    const data = await response.json();
+  app\api\route-safety\ingest\tomtom\route.ts:57:
+  app\api\route-safety\ingest\tomtom\route.ts:58:    if (!response.ok) {
+  app\api\route-safety\ingest\tomtom\route.ts:91:          "Traffic incident reported";
+  app\api\route-safety\ingest\tomtom\route.ts:92:
+  app\api\route-safety\ingest\tomtom\route.ts:93:        return {
+  app\api\route-safety\ingest\tomtom\route.ts:94:          organization_id: organizationId,
+> app\api\route-safety\ingest\tomtom\route.ts:95:          type: mapTomTomType(props.iconCategory),
+  app\api\route-safety\ingest\tomtom\route.ts:96:          title: eventDescription,
+  app\api\route-safety\ingest\tomtom\route.ts:97:          description: `Automatically imported from TomTom Traffic. Delay: ${props.delay || 0}s. Length: ${props.length || 0}m.`,
+  app\api\route-safety\ingest\tomtom\route.ts:98:          latitude,
+  app\api\route-safety\ingest\tomtom\route.ts:99:          longitude,
+  app\api\route-safety\ingest\tomtom\route.ts:100:          radius_meters: 1200,
+  app\api\route-safety\ingest\tomtom\route.ts:101:          severity: mapSeverity(props.magnitudeOfDelay),
+  app\api\route-safety\ingest\tomtom\route.ts:102:          source: "tomtom",
+  app\api\route-safety\ingest\tomtom\route.ts:103:          status: "active",
+  app\api\route-safety\ingest\tomtom\route.ts:115:      });
+  app\api\route-safety\ingest\tomtom\route.ts:116:    }
+  app\api\route-safety\ingest\tomtom\route.ts:117:
+  app\api\route-safety\ingest\tomtom\route.ts:118:    const { error } = await supabase
+> app\api\route-safety\ingest\tomtom\route.ts:119:      .from("route_safety_alerts")
+  app\api\route-safety\ingest\tomtom\route.ts:120:      .insert(rows);
+  app\api\route-safety\ingest\tomtom\route.ts:121:
+  app\api\route-safety\ingest\tomtom\route.ts:122:    if (error) {
+  app\api\route-safety\ingest\tomtom\route.ts:123:      return NextResponse.json({ error: error.message }, { status: 500 });
+  app\api\route-safety\ingest\tomtom\route.ts:124:    }
+  app\api\route-safety\ingest\tomtom\route.ts:125:
+  app\api\route-safety\ingest\tomtom\route.ts:126:    return NextResponse.json({
+  app\api\route-safety\ingest\tomtom\route.ts:127:      success: true,
+  app\api\route-safety\ingest\tomtom\route.ts:116:    }
+  app\api\route-safety\ingest\tomtom\route.ts:117:
+  app\api\route-safety\ingest\tomtom\route.ts:118:    const { error } = await supabase
+  app\api\route-safety\ingest\tomtom\route.ts:119:      .from("route_safety_alerts")
+> app\api\route-safety\ingest\tomtom\route.ts:120:      .insert(rows);
+  app\api\route-safety\ingest\tomtom\route.ts:121:
+  app\api\route-safety\ingest\tomtom\route.ts:122:    if (error) {
+  app\api\route-safety\ingest\tomtom\route.ts:123:      return NextResponse.json({ error: error.message }, { status: 500 });
+  app\api\route-safety\ingest\tomtom\route.ts:124:    }
+  app\api\route-safety\ingest\tomtom\route.ts:125:
+  app\api\route-safety\ingest\tomtom\route.ts:126:    return NextResponse.json({
+  app\api\route-safety\ingest\tomtom\route.ts:127:      success: true,
+  app\api\route-safety\ingest\tomtom\route.ts:128:      imported: rows.length,
+
+
+
