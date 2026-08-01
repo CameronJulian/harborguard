@@ -425,6 +425,11 @@ export async function POST(req: NextRequest) {
       | null = null;
     let trafficError: string | null = null;
 
+    const routeCorridorTrafficDiagnosticsEnabled =
+      process.env.ENABLE_ROUTE_CORRIDOR_TRAFFIC_DIAGNOSTICS === "true";
+
+    let diagnosticRouteTrafficSampling: any = null;
+
     try {
       const weatherLatitude =
         (originLat + destinationLat) / 2;
@@ -608,6 +613,141 @@ if (roadRiskSegmentsError) {
       ...decodedRoutePoints,
       [destinationLat, destinationLng] as [number, number],
     ];
+
+    if (routeCorridorTrafficDiagnosticsEnabled) {
+      const sampleFractions = [0, 0.25, 0.5, 0.75, 1];
+
+      const samplePoints = sampleFractions.map((fraction) => {
+        const index = Math.min(
+          routePoints.length - 1,
+          Math.max(
+            0,
+            Math.round(
+              fraction * (routePoints.length - 1)
+            )
+          )
+        );
+
+        const [latitude, longitude] = routePoints[index];
+
+        return {
+          fraction,
+          index,
+          latitude,
+          longitude,
+        };
+      });
+
+      const sampleResults = await Promise.all(
+        samplePoints.map(async (sample) => {
+          try {
+            const result = await buildTrafficIntelligence(
+              supabase,
+              organizationId,
+              {
+                latitude: sample.latitude,
+                longitude: sample.longitude,
+                radiusMeters: 3000,
+              }
+            );
+
+            return {
+              ...sample,
+              success: true,
+              riskScore: Number(
+                result.summary.riskScore || 0
+              ),
+              riskLevel:
+                result.summary.riskLevel || "low",
+              flowCorridors: Number(
+                result.summary.flowCorridors || 0
+              ),
+              averageCongestion: Number(
+                result.summary.averageCongestion || 0
+              ),
+              averageDelay: Number(
+                result.summary.averageDelay || 0
+              ),
+              warnings:
+                result.intelligence?.warnings || [],
+              error: null,
+            };
+          } catch (error: unknown) {
+            return {
+              ...sample,
+              success: false,
+              riskScore: 0,
+              riskLevel: "unknown",
+              flowCorridors: 0,
+              averageCongestion: 0,
+              averageDelay: 0,
+              warnings: [],
+              error:
+                error instanceof Error
+                  ? error.message
+                  : "Traffic sample failed.",
+            };
+          }
+        })
+      );
+
+      const successfulSamples = sampleResults.filter(
+        (sample) => sample.success
+      );
+
+      const averageValue = (values: number[]) =>
+        values.length > 0
+          ? Math.round(
+              values.reduce(
+                (total, value) => total + value,
+                0
+              ) / values.length
+            )
+          : 0;
+
+      diagnosticRouteTrafficSampling = {
+        enabled: true,
+        radiusMeters: 3000,
+        sampleCount: sampleResults.length,
+        successfulSamples: successfulSamples.length,
+        failedSamples:
+          sampleResults.length - successfulSamples.length,
+        maximumRiskScore: Math.max(
+          0,
+          ...successfulSamples.map(
+            (sample) => sample.riskScore
+          )
+        ),
+        averageRiskScore: averageValue(
+          successfulSamples.map(
+            (sample) => sample.riskScore
+          )
+        ),
+        maximumCongestion: Math.max(
+          0,
+          ...successfulSamples.map(
+            (sample) => sample.averageCongestion
+          )
+        ),
+        averageCongestion: averageValue(
+          successfulSamples.map(
+            (sample) => sample.averageCongestion
+          )
+        ),
+        maximumDelayMinutes: Math.max(
+          0,
+          ...successfulSamples.map(
+            (sample) => sample.averageDelay
+          )
+        ),
+        averageDelayMinutes: averageValue(
+          successfulSamples.map(
+            (sample) => sample.averageDelay
+          )
+        ),
+        samples: sampleResults,
+      };
+    }
 
     const intelligenceThreatInputs = (intelligence || []).map((item: any) => {
       const metadata =
@@ -1171,6 +1311,7 @@ if (roadRiskSegmentsError) {
       trafficContribution,
       traffic: trafficResult,
       trafficError,
+      diagnosticRouteTrafficSampling,
       threats: routeThreats,
       weather: weatherResult
         ? {
