@@ -119,7 +119,8 @@ export async function buildTrafficIntelligence(
       expires_at,
       created_at,
       provider_confidence,
-      provider_confirmation_count
+      provider_confirmation_count,
+      provider_last_seen
     `)
     .eq("organization_id", organizationId)
     .eq("status", "active")
@@ -193,8 +194,55 @@ export async function buildTrafficIntelligence(
           ) * 0.2
       );
 
+      const providerLastSeenEntries =
+        incident.provider_last_seen &&
+        typeof incident.provider_last_seen === "object"
+          ? Object.values(
+              incident.provider_last_seen
+            )
+          : [];
+
+      const validProviderTimes =
+        providerLastSeenEntries
+          .map((value: unknown) =>
+            new Date(String(value)).getTime()
+          )
+          .filter((value: number) =>
+            Number.isFinite(value)
+          );
+
+      const freshestProviderTimestamp =
+        validProviderTimes.length > 0
+          ? Math.max(...validProviderTimes)
+          : Number.NaN;
+
+      const providerAgeHours = Number.isFinite(
+        freshestProviderTimestamp
+      )
+        ? Math.max(
+            0,
+            (Date.now() - freshestProviderTimestamp) /
+              (60 * 60 * 1000)
+          )
+        : null;
+
+      const freshnessWeight =
+        providerAgeHours === null
+          ? 0.6
+          : providerAgeHours <= 24
+            ? 1
+            : providerAgeHours <= 48
+              ? 0.85
+              : providerAgeHours <= 72
+                ? 0.65
+                : providerAgeHours <= 120
+                  ? 0.4
+                  : 0.2;
+
       const combinedWeight =
-        confidenceWeight * confirmationWeight;
+        confidenceWeight *
+        confirmationWeight *
+        freshnessWeight;
 
       return {
         id: incident.id,
@@ -202,6 +250,8 @@ export async function buildTrafficIntelligence(
         providerConfirmationCount,
         confidenceWeight,
         confirmationWeight,
+        providerAgeHours,
+        freshnessWeight,
         combinedWeight,
       };
     }
@@ -220,6 +270,27 @@ export async function buildTrafficIntelligence(
           0
         ) / diagnosticProviderQuality.length
       : 1;
+
+  const diagnosticAverageFreshnessWeight =
+    diagnosticProviderQuality.length > 0
+      ? diagnosticProviderQuality.reduce(
+          (
+            total: number,
+            item: {
+              freshnessWeight: number;
+            }
+          ) =>
+            total + item.freshnessWeight,
+          0
+        ) / diagnosticProviderQuality.length
+      : 1;
+
+  const diagnosticStaleProviderIncidents =
+    diagnosticProviderQuality.filter(
+      (item: {
+        freshnessWeight: number;
+      }) => item.freshnessWeight < 1
+    ).length;
 
   const diagnosticWeightedIncidentCount =
     scopedIncidents.length *
@@ -316,6 +387,11 @@ export async function buildTrafficIntelligence(
         Number(
           diagnosticAverageProviderWeight.toFixed(3)
         ),
+      diagnosticAverageFreshnessWeight:
+        Number(
+          diagnosticAverageFreshnessWeight.toFixed(3)
+        ),
+      diagnosticStaleProviderIncidents,
       diagnosticWeightedIncidentCount:
         Number(
           diagnosticWeightedIncidentCount.toFixed(2)
