@@ -2702,3 +2702,78 @@ Contribution breakdown
 Git
 Commit: 1030d94
 Message: Add balanced traffic risk diagnostics
+---
+
+# 2026-08-01 – Provider-Quality Traffic Risk Diagnostics
+
+## Status
+
+✅ Completed and pushed to GitHub.
+
+## Objective
+
+Enhance the diagnostic balanced traffic-risk calculation by incorporating
+existing provider confidence and cross-provider confirmation metadata,
+without changing HarborGuard's production traffic score.
+
+## Implementation
+
+Updated:
+
+- lib/traffic/intelligence.ts
+
+Added the following provider fields to the traffic incident query:
+
+- provider_confidence
+- provider_confirmation_count
+
+Added diagnostic provider-quality calculations:
+
+- confidence weight
+- confirmation weight
+- combined provider weight
+- average provider weight
+- weighted incident count
+- weighted critical incident count
+- provider-weighted balanced risk score
+- provider-weighted balanced risk level
+
+## Weighting Behaviour
+
+Provider confidence is normalized from 0 to 1.
+
+Provider confirmation weighting starts at 0.8 and increases for additional
+provider confirmations, capped at 1.2.
+
+The combined weight is calculated from:
+
+provider confidence weight × provider confirmation weight
+
+## Runtime Validation
+
+Observed values:
+
+- Production risk score: 100
+- Balanced diagnostic score: 85
+- Average provider weight: 0.648
+- Weighted incident count: 27.2
+- Weighted critical incident count: 17.49
+- Provider-weighted balanced risk score: 79
+- Provider-weighted balanced risk level: high
+
+The production risk score remained unchanged.
+
+## Verification
+
+- git diff --check: Passed
+- TypeScript noEmit: Passed
+- Next.js production build: Passed
+- Static routes generated: 119 of 119
+- Local runtime API request: Passed
+
+## Git
+
+- Commit: 7ebe14d
+- Message: Add provider-quality traffic risk diagnostics
+- Branch: feature/expanded-incident-taxonomy
+
