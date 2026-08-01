@@ -1,4 +1,5 @@
 import { getHereTrafficFlow } from "@/lib/here/traffic";
+import { routeIncidentSeverityWeight, routeIncidentTypeWeight } from "@/lib/route-safety/incidentWeights";
 
 function riskLevel(score: number) {
   if (score >= 85) return "critical";
@@ -244,6 +245,50 @@ export async function buildTrafficIntelligence(
         confirmationWeight *
         freshnessWeight;
 
+      const incidentSeverity = String(
+        incident.severity || "low"
+      ).toLowerCase();
+
+      const incidentType = String(
+        incident.type || "unknown"
+      ).toLowerCase();
+
+      const incidentSeverityWeight =
+        routeIncidentSeverityWeight(
+          incidentSeverity
+        );
+
+      const incidentTypeWeight =
+        routeIncidentTypeWeight(
+          incidentType
+        );
+
+      const normalizedIncidentSeverityWeight =
+        incidentSeverityWeight / 45;
+
+      const normalizedIncidentTypeWeight =
+        incidentTypeWeight / 35;
+
+      const incidentTypeSeverityWeight =
+        Math.max(
+          0,
+          Math.min(
+            1,
+            (
+              normalizedIncidentSeverityWeight +
+              normalizedIncidentTypeWeight
+            ) / 2
+          )
+        );
+
+      const typeSeverityAdjustedWeight =
+        combinedWeight *
+        incidentTypeSeverityWeight;
+
+      const isCriticalOrHigh =
+        incidentSeverity === "critical" ||
+        incidentSeverity === "high";
+
       return {
         id: incident.id,
         providerConfidence,
@@ -252,6 +297,13 @@ export async function buildTrafficIntelligence(
         confirmationWeight,
         providerAgeHours,
         freshnessWeight,
+        incidentSeverity,
+        incidentType,
+        incidentSeverityWeight,
+        incidentTypeWeight,
+        incidentTypeSeverityWeight,
+        typeSeverityAdjustedWeight,
+        isCriticalOrHigh,
         combinedWeight,
       };
     }
@@ -291,6 +343,54 @@ export async function buildTrafficIntelligence(
         freshnessWeight: number;
       }) => item.freshnessWeight < 1
     ).length;
+
+  const diagnosticAverageTypeSeverityWeight =
+    diagnosticProviderQuality.length > 0
+      ? diagnosticProviderQuality.reduce(
+          (
+            total: number,
+            item: {
+              incidentTypeSeverityWeight: number;
+            }
+          ) =>
+            total +
+            item.incidentTypeSeverityWeight,
+          0
+        ) / diagnosticProviderQuality.length
+      : 1;
+
+  const diagnosticTypeSeverityWeightedIncidentCount =
+    diagnosticProviderQuality.reduce(
+      (
+        total: number,
+        item: {
+          typeSeverityAdjustedWeight: number;
+        }
+      ) =>
+        total +
+        item.typeSeverityAdjustedWeight,
+      0
+    );
+
+  const diagnosticTypeSeverityWeightedCriticalCount =
+    diagnosticProviderQuality
+      .filter(
+        (item: {
+          isCriticalOrHigh: boolean;
+        }) =>
+          item.isCriticalOrHigh
+      )
+      .reduce(
+        (
+          total: number,
+          item: {
+            typeSeverityAdjustedWeight: number;
+          }
+        ) =>
+          total +
+          item.typeSeverityAdjustedWeight,
+        0
+      );
 
   const diagnosticWeightedIncidentCount =
     scopedIncidents.length *
@@ -361,6 +461,18 @@ export async function buildTrafficIntelligence(
       diagnosticProviderWeightedBalancedRisk.score
     );
 
+  const diagnosticTypeSeverityWeightedBalancedRisk =
+    diagnosticBalancedTrafficRiskScore(
+      diagnosticTypeSeverityWeightedIncidentCount,
+      averageCongestion,
+      diagnosticTypeSeverityWeightedCriticalCount
+    );
+
+  const diagnosticTypeSeverityWeightedBalancedRiskLevel =
+    riskLevel(
+      diagnosticTypeSeverityWeightedBalancedRisk.score
+    );
+
   const level = riskLevel(score);
 
   return {
@@ -403,6 +515,21 @@ export async function buildTrafficIntelligence(
       diagnosticProviderWeightedBalancedRiskScore:
         diagnosticProviderWeightedBalancedRisk.score,
       diagnosticProviderWeightedBalancedRiskLevel,
+      diagnosticAverageTypeSeverityWeight:
+        Number(
+          diagnosticAverageTypeSeverityWeight.toFixed(3)
+        ),
+      diagnosticTypeSeverityWeightedIncidentCount:
+        Number(
+          diagnosticTypeSeverityWeightedIncidentCount.toFixed(2)
+        ),
+      diagnosticTypeSeverityWeightedCriticalCount:
+        Number(
+          diagnosticTypeSeverityWeightedCriticalCount.toFixed(2)
+        ),
+      diagnosticTypeSeverityWeightedBalancedRiskScore:
+        diagnosticTypeSeverityWeightedBalancedRisk.score,
+      diagnosticTypeSeverityWeightedBalancedRiskLevel,
       flowCorridors: flow.length,
       averageCongestion,
       averageDelay,
