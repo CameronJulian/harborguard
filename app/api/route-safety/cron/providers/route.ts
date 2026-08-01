@@ -10,6 +10,7 @@ type ProviderResult = {
   success: boolean;
   rawCount: number;
   imported: number;
+  refreshedExisting: number;
   skippedDuplicates: number;
   mergedDuplicates: number;
   error: string | null;
@@ -435,6 +436,7 @@ async function insertNewProviderAlerts(
   if (rows.length === 0) {
     return {
       imported: 0,
+      refreshedExisting: 0,
       skippedDuplicates: 0,
       mergedDuplicates: 0,
     };
@@ -470,18 +472,20 @@ provider_sources,
 
   const normalizedExistingAlerts = existingAlerts || [];
 
-  const existingSameProviderKeys = new Set(
+  const existingSameProviderByKey = new Map<string, any>(
     normalizedExistingAlerts
       .filter((alert: any) => alert.source === source)
-      .map((alert: any) =>
+      .map((alert: any) => [
         buildAlertKey({
           title: String(alert.title || ""),
           latitude: Number(alert.latitude),
           longitude: Number(alert.longitude),
-        })
-      )
+        }),
+        alert,
+      ])
   );
 
+  const queuedSameProviderKeys = new Set<string>();
   const uniqueRows: Array<
     AlertRow & {
       provider_sources: string[];
@@ -491,14 +495,65 @@ provider_sources,
     }
   > = [];
 
+  let refreshedExisting = 0;
   let skippedDuplicates = 0;
   let mergedDuplicates = 0;
 
   for (const row of rows) {
     const key = buildAlertKey(row);
 
-    if (existingSameProviderKeys.has(key)) {
+    if (queuedSameProviderKeys.has(key)) {
       skippedDuplicates += 1;
+      continue;
+    }
+
+    const sameProviderMatch =
+      existingSameProviderByKey.get(key);
+
+    if (sameProviderMatch) {
+      const confirmedAt = new Date().toISOString();
+
+      const existingExpiryTime = sameProviderMatch.expires_at
+        ? new Date(sameProviderMatch.expires_at).getTime()
+        : Number.NaN;
+
+      const incomingExpiryTime = row.expires_at
+        ? new Date(row.expires_at).getTime()
+        : Number.NaN;
+
+      let refreshedExpiresAt: string | null =
+        sameProviderMatch.expires_at || row.expires_at || null;
+
+      if (
+        Number.isFinite(existingExpiryTime) &&
+        Number.isFinite(incomingExpiryTime)
+      ) {
+        refreshedExpiresAt =
+          incomingExpiryTime > existingExpiryTime
+            ? row.expires_at
+            : sameProviderMatch.expires_at;
+      }
+
+      const { error: refreshError } = await supabase
+        .from("route_safety_alerts")
+        .update({
+          last_provider_confirmation_at: confirmedAt,
+          verified_at: confirmedAt,
+          verification_status: "verified",
+          expires_at: refreshedExpiresAt,
+        })
+        .eq("organization_id", organizationId)
+        .eq("id", sameProviderMatch.id);
+
+      if (refreshError) {
+        throw refreshError;
+      }
+
+      sameProviderMatch.last_provider_confirmation_at =
+        confirmedAt;
+      sameProviderMatch.expires_at = refreshedExpiresAt;
+
+      refreshedExisting += 1;
       continue;
     }
 
@@ -686,7 +741,6 @@ provider_sources,
       continue;
     }
 
-    existingSameProviderKeys.add(key);
 
     const providerAlert = {
       ...row,
@@ -712,11 +766,14 @@ provider_sources,
       last_provider_confirmation_at:
         providerAlert.last_provider_confirmation_at,
     });
+
+    queuedSameProviderKeys.add(key);
   }
 
   if (uniqueRows.length === 0) {
     return {
       imported: 0,
+      refreshedExisting,
       skippedDuplicates,
       mergedDuplicates,
     };
@@ -734,6 +791,7 @@ provider_sources,
 
   return {
     imported: inserted?.length || 0,
+    refreshedExisting,
     skippedDuplicates,
     mergedDuplicates,
   };
@@ -750,6 +808,7 @@ async function importHereIncidents(
       success: false,
       rawCount: 0,
       imported: 0,
+      refreshedExisting: 0,
       skippedDuplicates: 0,
       mergedDuplicates: 0,
       error: "HERE_API_KEY is not configured.",
@@ -858,6 +917,7 @@ provider_geometry:
       success: true,
       rawCount: incidents.length,
       imported: result.imported,
+      refreshedExisting: result.refreshedExisting,
       skippedDuplicates: result.skippedDuplicates,
       mergedDuplicates: result.mergedDuplicates,
       error: null,
@@ -869,6 +929,7 @@ provider_geometry:
       success: false,
       rawCount: 0,
       imported: 0,
+      refreshedExisting: 0,
       skippedDuplicates: 0,
       mergedDuplicates: 0,
       error:
@@ -890,6 +951,7 @@ async function importTomTomIncidents(
       success: false,
       rawCount: 0,
       imported: 0,
+      refreshedExisting: 0,
       skippedDuplicates: 0,
       mergedDuplicates: 0,
       error: "TOMTOM_API_KEY is not configured.",
@@ -1015,6 +1077,7 @@ async function importTomTomIncidents(
       success: true,
       rawCount: incidents.length,
       imported: result.imported,
+      refreshedExisting: result.refreshedExisting,
       skippedDuplicates: result.skippedDuplicates,
       mergedDuplicates: result.mergedDuplicates,
       error: null,
@@ -1035,6 +1098,7 @@ async function importTomTomIncidents(
       success: false,
       rawCount: 0,
       imported: 0,
+      refreshedExisting: 0,
       skippedDuplicates: 0,
       mergedDuplicates: 0,
       error: errorMessage,
@@ -1184,6 +1248,12 @@ export async function GET(request: Request) {
       0
     );
 
+    const refreshedExisting = results.reduce(
+      (total, result) =>
+        total + result.refreshedExisting,
+      0
+    );
+
     const skippedDuplicates = results.reduce(
       (total, result) =>
         total + result.skippedDuplicates,
@@ -1207,6 +1277,7 @@ export async function GET(request: Request) {
       providerRuns: results.length,
       expiredAlertsTransitioned,
       imported,
+      refreshedExisting,
       skippedDuplicates,
       mergedDuplicates,
       failedProviders,
