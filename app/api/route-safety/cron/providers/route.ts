@@ -16,6 +16,18 @@ type ProviderResult = {
   error: string | null;
 };
 
+type IntelligenceSourceConfiguration = {
+  sourceKey: string;
+  enabled: boolean;
+  approvedForIngestion: boolean;
+  baseConfidence: number;
+};
+
+type IntelligenceSourceConfigurationResult = {
+  configuration: IntelligenceSourceConfiguration | null;
+  error: string | null;
+};
+
 type AlertRow = {
   organization_id: string;
   type: string;
@@ -427,10 +439,68 @@ function getMinimumGeometryDistanceMeters(
     : null;
 }
 
+async function getIntelligenceSourceConfiguration(
+  supabase: any,
+  sourceKey: string
+): Promise<IntelligenceSourceConfigurationResult> {
+  const { data, error } = await supabase
+    .from("intelligence_sources")
+    .select(`
+      source_key,
+      enabled,
+      approved_for_ingestion,
+      base_confidence
+    `)
+    .eq("source_key", sourceKey)
+    .maybeSingle();
+
+  if (error) {
+    return {
+      configuration: null,
+      error: error.message,
+    };
+  }
+
+  if (!data) {
+    return {
+      configuration: null,
+      error:
+        `Intelligence source configuration was not found: ${sourceKey}`,
+    };
+  }
+
+  const rawBaseConfidence = Number(
+    data.base_confidence
+  );
+
+  const baseConfidence = Math.min(
+    100,
+    Math.max(
+      0,
+      Number.isFinite(rawBaseConfidence)
+        ? rawBaseConfidence
+        : 0
+    )
+  );
+
+  return {
+    configuration: {
+      sourceKey: String(data.source_key),
+      enabled: Boolean(data.enabled),
+      approvedForIngestion: Boolean(
+        data.approved_for_ingestion
+      ),
+      baseConfidence,
+    },
+    error: null,
+  };
+}
+
 async function insertNewProviderAlerts(
   supabase: any,
   organizationId: string,
   source: string,
+  baseConfidence: number,
   rows: AlertRow[]
 ) {
   if (rows.length === 0) {
@@ -762,7 +832,7 @@ provider_sources,
       ...row,
       provider_sources: [source],
       provider_confirmation_count: 1,
-      provider_confidence: 60,
+      provider_confidence: baseConfidence,
       last_provider_confirmation_at: confirmedAt,
       provider_last_seen: { [source]: confirmedAt },
     };
@@ -779,7 +849,7 @@ provider_sources,
       expires_at: row.expires_at,
       provider_sources: [source],
       provider_confirmation_count: 1,
-      provider_confidence: 60,
+      provider_confidence: baseConfidence,
       last_provider_confirmation_at:
         providerAlert.last_provider_confirmation_at,
       provider_last_seen: providerAlert.provider_last_seen,
@@ -819,6 +889,52 @@ async function importHereIncidents(
   supabase: any,
   organizationId: string
 ): Promise<ProviderResult> {
+  const sourceLookup =
+    await getIntelligenceSourceConfiguration(
+      supabase,
+      "here_traffic"
+    );
+
+  if (!sourceLookup.configuration) {
+    return {
+      provider: "here",
+      organizationId,
+      success: false,
+      rawCount: 0,
+      imported: 0,
+      refreshedExisting: 0,
+      skippedDuplicates: 0,
+      mergedDuplicates: 0,
+      error:
+        sourceLookup.error ||
+        "HERE source configuration could not be loaded.",
+    };
+  }
+
+  const sourceConfiguration =
+    sourceLookup.configuration;
+
+  if (
+    !sourceConfiguration.enabled ||
+    !sourceConfiguration.approvedForIngestion
+  ) {
+    console.info(
+      "[HERE provider ingestion] Skipped by intelligence source registry."
+    );
+
+    return {
+      provider: "here",
+      organizationId,
+      success: true,
+      rawCount: 0,
+      imported: 0,
+      refreshedExisting: 0,
+      skippedDuplicates: 0,
+      mergedDuplicates: 0,
+      error: null,
+    };
+  }
+
   if (!process.env.HERE_API_KEY) {
     return {
       provider: "here",
@@ -926,6 +1042,7 @@ provider_geometry:
       supabase,
       organizationId,
       "here_traffic",
+      sourceConfiguration.baseConfidence,
       rows
     );
 
@@ -962,6 +1079,52 @@ async function importTomTomIncidents(
   supabase: any,
   organizationId: string
 ): Promise<ProviderResult> {
+  const sourceLookup =
+    await getIntelligenceSourceConfiguration(
+      supabase,
+      "tomtom"
+    );
+
+  if (!sourceLookup.configuration) {
+    return {
+      provider: "tomtom",
+      organizationId,
+      success: false,
+      rawCount: 0,
+      imported: 0,
+      refreshedExisting: 0,
+      skippedDuplicates: 0,
+      mergedDuplicates: 0,
+      error:
+        sourceLookup.error ||
+        "TomTom source configuration could not be loaded.",
+    };
+  }
+
+  const sourceConfiguration =
+    sourceLookup.configuration;
+
+  if (
+    !sourceConfiguration.enabled ||
+    !sourceConfiguration.approvedForIngestion
+  ) {
+    console.info(
+      "[TomTom provider ingestion] Skipped by intelligence source registry."
+    );
+
+    return {
+      provider: "tomtom",
+      organizationId,
+      success: true,
+      rawCount: 0,
+      imported: 0,
+      refreshedExisting: 0,
+      skippedDuplicates: 0,
+      mergedDuplicates: 0,
+      error: null,
+    };
+  }
+
   if (!process.env.TOMTOM_API_KEY) {
     return {
       provider: "tomtom",
@@ -1086,6 +1249,7 @@ async function importTomTomIncidents(
       supabase,
       organizationId,
       "tomtom",
+      sourceConfiguration.baseConfidence,
       rows
     );
 
