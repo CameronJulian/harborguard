@@ -387,7 +387,7 @@ function recommendationFor(type: string | null, severity: string | null) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { supabase, organizationId } = await requireOrganization();
+    const { supabase, organizationId, user } = await requireOrganization();
     const body = await req.json();
 
     const origin = body.origin;
@@ -1533,6 +1533,63 @@ if (roadRiskSegmentsError) {
                 .diagnosticCompositeCalibratedThresholds,
           }
         : null;
+
+    if (experimentalTrafficModel) {
+      try {
+        const { error: evaluationError } = await supabase
+          .from("traffic_model_evaluations")
+          .insert({
+            organization_id: organizationId,
+            user_id: user.id,
+            vehicle_id: vehicleId,
+            trip_id: tripId,
+            origin_latitude: originLat,
+            origin_longitude: originLng,
+            destination_latitude: destinationLat,
+            destination_longitude: destinationLng,
+            production_traffic_score: trafficRiskScore,
+            production_traffic_level: trafficRiskLevel,
+            production_traffic_contribution:
+              trafficContribution,
+            experimental_model:
+              experimentalTrafficModel.model,
+            experimental_score:
+              experimentalTrafficModel.score,
+            experimental_level:
+              experimentalTrafficModel.level,
+            production_applied:
+              experimentalTrafficModel.productionApplied,
+            route_component_score:
+              experimentalTrafficModel.inputs.routeScore,
+            type_severity_component_score:
+              experimentalTrafficModel.inputs.typeSeverityScore,
+            provider_component_score:
+              experimentalTrafficModel.inputs.providerScore,
+            weights:
+              experimentalTrafficModel.weights,
+            thresholds:
+              experimentalTrafficModel.thresholds,
+            metadata: {
+              overallRiskScore: riskScore,
+              overallRiskLevel: riskLevel,
+              threatRiskScore,
+              weatherRiskScore,
+            },
+          });
+
+        if (evaluationError) {
+          console.error(
+            "Traffic model evaluation logging failed:",
+            evaluationError
+          );
+        }
+      } catch (evaluationLoggingError) {
+        console.error(
+          "Traffic model evaluation logging failed:",
+          evaluationLoggingError
+        );
+      }
+    }
     return NextResponse.json({
       routeEstimate,
       riskScore,
