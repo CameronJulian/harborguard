@@ -802,6 +802,45 @@ if (roadRiskSegmentsError) {
               ? "medium"
               : "low";
 
+      const diagnosticCompositeRouteScore =
+        diagnosticRouteCandidateTrafficRisk.score;
+
+      const diagnosticCompositeTypeSeverityScore =
+        Number(
+          trafficResult?.summary
+            .diagnosticTypeSeverityWeightedBalancedRiskScore ||
+            0
+        );
+
+      const diagnosticCompositeProviderScore =
+        Number(
+          trafficResult?.summary
+            .diagnosticProviderWeightedBalancedRiskScore ||
+            0
+        );
+
+      const diagnosticCompositeCandidateScore =
+        Math.min(
+          100,
+          Math.max(
+            0,
+            Math.round(
+              diagnosticCompositeRouteScore * 0.4 +
+                diagnosticCompositeTypeSeverityScore * 0.35 +
+                diagnosticCompositeProviderScore * 0.25
+            )
+          )
+        );
+
+      const diagnosticCompositeCandidateLevel =
+        diagnosticCompositeCandidateScore >= 85
+          ? "critical"
+          : diagnosticCompositeCandidateScore >= 65
+            ? "high"
+            : diagnosticCompositeCandidateScore >= 35
+              ? "medium"
+              : "low";
+
       diagnosticRouteTrafficSampling = {
         enabled: true,
         radiusMeters: 3000,
@@ -853,6 +892,16 @@ if (roadRiskSegmentsError) {
           diagnosticRouteCandidateTrafficRisk.incidentContribution,
         diagnosticRouteCandidateCriticalContribution:
           diagnosticRouteCandidateTrafficRisk.criticalContribution,
+        diagnosticCompositeCandidateScore,
+        diagnosticCompositeCandidateLevel,
+        diagnosticCompositeRouteScore,
+        diagnosticCompositeTypeSeverityScore,
+        diagnosticCompositeProviderScore,
+        diagnosticCompositeWeights: {
+          route: 0.4,
+          typeSeverity: 0.35,
+          provider: 0.25,
+        },
         maximumDelayMinutes: routeMaximumDelayMinutes,
         averageDelayMinutes: routeAverageDelayMinutes,
         samples: sampleResults,
