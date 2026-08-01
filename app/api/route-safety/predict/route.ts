@@ -8,6 +8,35 @@ import {
 import type { WeatherProviderResult } from "@/lib/weather/types";
 import { routeIncidentSeverityWeight, routeIncidentTypeWeight } from "@/lib/route-safety/incidentWeights";
 
+const TRAFFIC_DIAGNOSTIC_COMPOSITE_CONFIG = {
+  weights: {
+    route: 0.4,
+    typeSeverity: 0.35,
+    provider: 0.25,
+  },
+  calibratedThresholds: {
+    critical: 80,
+    high: 70,
+    medium: 55,
+    low: 0,
+  },
+} as const;
+
+const TRAFFIC_DIAGNOSTIC_COMPOSITE_WEIGHT_TOTAL =
+  TRAFFIC_DIAGNOSTIC_COMPOSITE_CONFIG.weights.route +
+  TRAFFIC_DIAGNOSTIC_COMPOSITE_CONFIG.weights.typeSeverity +
+  TRAFFIC_DIAGNOSTIC_COMPOSITE_CONFIG.weights.provider;
+
+if (
+  Math.abs(
+    TRAFFIC_DIAGNOSTIC_COMPOSITE_WEIGHT_TOTAL - 1
+  ) > 0.000001
+) {
+  throw new Error(
+    "Traffic diagnostic composite weights must total 1."
+  );
+}
+
 function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
   const earthRadius = 6371000;
   const toRad = (value: number) => (value * Math.PI) / 180;
@@ -825,9 +854,12 @@ if (roadRiskSegmentsError) {
           Math.max(
             0,
             Math.round(
-              diagnosticCompositeRouteScore * 0.4 +
-                diagnosticCompositeTypeSeverityScore * 0.35 +
-                diagnosticCompositeProviderScore * 0.25
+              diagnosticCompositeRouteScore *
+                TRAFFIC_DIAGNOSTIC_COMPOSITE_CONFIG.weights.route +
+                diagnosticCompositeTypeSeverityScore *
+                  TRAFFIC_DIAGNOSTIC_COMPOSITE_CONFIG.weights.typeSeverity +
+                diagnosticCompositeProviderScore *
+                  TRAFFIC_DIAGNOSTIC_COMPOSITE_CONFIG.weights.provider
             )
           )
         );
@@ -842,11 +874,14 @@ if (roadRiskSegmentsError) {
               : "low";
 
       const diagnosticCompositeCalibratedLevel =
-        diagnosticCompositeCandidateScore >= 80
+        diagnosticCompositeCandidateScore >=
+          TRAFFIC_DIAGNOSTIC_COMPOSITE_CONFIG.calibratedThresholds.critical
           ? "critical"
-          : diagnosticCompositeCandidateScore >= 70
+          : diagnosticCompositeCandidateScore >=
+            TRAFFIC_DIAGNOSTIC_COMPOSITE_CONFIG.calibratedThresholds.high
             ? "high"
-            : diagnosticCompositeCandidateScore >= 55
+            : diagnosticCompositeCandidateScore >=
+              TRAFFIC_DIAGNOSTIC_COMPOSITE_CONFIG.calibratedThresholds.medium
               ? "medium"
               : "low";
 
@@ -904,20 +939,13 @@ if (roadRiskSegmentsError) {
         diagnosticCompositeCandidateScore,
         diagnosticCompositeCandidateLevel,
         diagnosticCompositeCalibratedLevel,
-        diagnosticCompositeCalibratedThresholds: {
-          critical: 80,
-          high: 70,
-          medium: 55,
-          low: 0,
-        },
+        diagnosticCompositeCalibratedThresholds:
+          TRAFFIC_DIAGNOSTIC_COMPOSITE_CONFIG.calibratedThresholds,
         diagnosticCompositeRouteScore,
         diagnosticCompositeTypeSeverityScore,
         diagnosticCompositeProviderScore,
-        diagnosticCompositeWeights: {
-          route: 0.4,
-          typeSeverity: 0.35,
-          provider: 0.25,
-        },
+        diagnosticCompositeWeights:
+          TRAFFIC_DIAGNOSTIC_COMPOSITE_CONFIG.weights,
         maximumDelayMinutes: routeMaximumDelayMinutes,
         averageDelayMinutes: routeAverageDelayMinutes,
         samples: sampleResults,
