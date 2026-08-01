@@ -718,6 +718,54 @@ if (roadRiskSegmentsError) {
         0.75
       );
 
+      const routeAverageCongestion = averageValue(
+        successfulCongestionValues
+      );
+
+      const routeMaximumCongestion = Math.max(
+        0,
+        ...successfulCongestionValues
+      );
+
+      const routeAverageDelayMinutes = averageValue(
+        successfulDelayValues
+      );
+
+      const routeMaximumDelayMinutes = Math.max(
+        0,
+        ...successfulDelayValues
+      );
+
+      const midpointAverageCongestion = Number(
+        trafficResult?.summary.averageCongestion || 0
+      );
+
+      const midpointAverageDelayMinutes = Number(
+        trafficResult?.summary.averageDelay || 0
+      );
+
+      const congestionDifference =
+        routeAverageCongestion -
+        midpointAverageCongestion;
+
+      const congestionReductionPercent =
+        midpointAverageCongestion > 0
+          ? Number(
+              (
+                (
+                  midpointAverageCongestion -
+                  routeAverageCongestion
+                ) /
+                midpointAverageCongestion *
+                100
+              ).toFixed(1)
+            )
+          : 0;
+
+      const delayDifferenceMinutes =
+        routeAverageDelayMinutes -
+        midpointAverageDelayMinutes;
+
       diagnosticRouteTrafficSampling = {
         enabled: true,
         radiusMeters: 3000,
@@ -736,30 +784,23 @@ if (roadRiskSegmentsError) {
             (sample) => sample.riskScore
           )
         ),
-        maximumCongestion: Math.max(
-          0,
-          ...successfulSamples.map(
-            (sample) => sample.averageCongestion
-          )
-        ),
-        averageCongestion: averageValue(
-          successfulSamples.map(
-            (sample) => sample.averageCongestion
-          )
-        ),
+        maximumCongestion: routeMaximumCongestion,
+        averageCongestion: routeAverageCongestion,
         p75Congestion: routeP75Congestion,
         p75DelayMinutes: routeP75DelayMinutes,
-        maximumDelayMinutes: Math.max(
-          0,
-          ...successfulSamples.map(
-            (sample) => sample.averageDelay
-          )
-        ),
-        averageDelayMinutes: averageValue(
-          successfulSamples.map(
-            (sample) => sample.averageDelay
-          )
-        ),
+        midpointAverageCongestion,
+        routeAverageCongestion,
+        routeMaximumCongestion,
+        routeP75Congestion,
+        congestionDifference,
+        congestionReductionPercent,
+        midpointAverageDelayMinutes,
+        routeAverageDelayMinutes,
+        routeMaximumDelayMinutes,
+        routeP75DelayMinutes,
+        delayDifferenceMinutes,
+        maximumDelayMinutes: routeMaximumDelayMinutes,
+        averageDelayMinutes: routeAverageDelayMinutes,
         samples: sampleResults,
       };
     }
