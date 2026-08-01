@@ -2776,4 +2776,79 @@ The production risk score remained unchanged.
 - Commit: 7ebe14d
 - Message: Add provider-quality traffic risk diagnostics
 - Branch: feature/expanded-incident-taxonomy
+---
 
+# 2026-08-01 - Provider Freshness Traffic Diagnostics
+
+## Status
+
+Completed and pushed to GitHub.
+
+## Objective
+
+Extend provider-quality traffic diagnostics by reducing the influence of
+older provider observations using the existing provider_last_seen metadata.
+
+Production traffic scoring remained unchanged.
+
+## Implementation
+
+Updated:
+
+- lib/traffic/intelligence.ts
+
+Added provider_last_seen to the traffic incident query.
+
+Added diagnostic freshness calculations:
+
+- freshest provider observation timestamp
+- provider age in hours
+- freshness weight
+- average freshness weight
+- stale provider incident count
+
+Freshness weighting:
+
+- 0 to 24 hours: 1.00
+- 24 to 48 hours: 0.85
+- 48 to 72 hours: 0.65
+- 72 to 120 hours: 0.40
+- Older than 120 hours: 0.20
+- Missing provider timestamp: 0.60
+
+The combined diagnostic provider weight now includes:
+
+provider confidence weight
+x provider confirmation weight
+x provider freshness weight
+
+## Runtime Validation
+
+Observed values:
+
+- Production risk score: 100
+- Average provider weight: 0.64
+- Average freshness weight: 0.985
+- Stale provider incidents: 3
+- Weighted incident count: 26.89
+- Weighted critical incident count: 16.64
+- Provider-weighted balanced score: 78
+- Provider-weighted balanced level: high
+
+The previous provider-weighted score was 79. Freshness weighting reduced it
+to 78 because only three scoped provider incidents were stale.
+
+## Verification
+
+- git diff --check: Passed
+- TypeScript noEmit: Passed
+- Next.js production build: Passed
+- Static routes generated: 119 of 119
+- Local runtime API request: Passed
+- Production score unchanged: Confirmed
+
+## Git
+
+- Commit: 5403abe
+- Message: Add provider freshness traffic diagnostics
+- Branch: feature/expanded-incident-taxonomy
