@@ -400,19 +400,53 @@ export async function buildTrafficIntelligence(
     scopedCriticalCount *
     diagnosticAverageProviderWeight;
 
+  const {
+    data: hereTrafficSource,
+    error: hereTrafficSourceError,
+  } = await supabase
+    .from("intelligence_sources")
+    .select(`
+      source_key,
+      enabled,
+      approved_for_ingestion
+    `)
+    .eq("source_key", "here_traffic")
+    .maybeSingle();
+
+  const hereTrafficFlowAllowed =
+    !hereTrafficSourceError &&
+    Boolean(hereTrafficSource?.enabled) &&
+    Boolean(
+      hereTrafficSource?.approved_for_ingestion
+    );
+
   let flow: any[] = [];
   let flowWarning: string | null = null;
 
-  try {
-    const traffic = await getHereTrafficFlow({
-      latitude,
-      longitude,
-      radiusMeters,
-    });
+  if (hereTrafficSourceError) {
+    flowWarning =
+      hereTrafficSourceError.message ||
+      "HERE Traffic source configuration could not be loaded.";
+  } else if (!hereTrafficSource) {
+    flowWarning =
+      "HERE Traffic source configuration was not found.";
+  } else if (!hereTrafficFlowAllowed) {
+    flowWarning =
+      "HERE Traffic Flow is disabled by the intelligence source registry.";
+  } else {
+    try {
+      const traffic = await getHereTrafficFlow({
+        latitude,
+        longitude,
+        radiusMeters,
+      });
 
-    flow = traffic.flow;
-  } catch (error: any) {
-    flowWarning = error.message || "HERE Traffic Flow unavailable.";
+      flow = traffic.flow;
+    } catch (error: any) {
+      flowWarning =
+        error.message ||
+        "HERE Traffic Flow unavailable.";
+    }
   }
 
   const criticalCount = (incidents || []).filter((item: any) =>
