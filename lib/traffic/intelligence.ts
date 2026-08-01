@@ -117,7 +117,9 @@ export async function buildTrafficIntelligence(
       source,
       status,
       expires_at,
-      created_at
+      created_at,
+      provider_confidence,
+      provider_confirmation_count
     `)
     .eq("organization_id", organizationId)
     .eq("status", "active")
@@ -161,6 +163,71 @@ export async function buildTrafficIntelligence(
         String(incident.severity || "").toLowerCase()
       )
   ).length;
+
+  const diagnosticProviderQuality = scopedIncidents.map(
+    (incident: any) => {
+      const providerConfidence = Math.max(
+        0,
+        Math.min(
+          100,
+          Number(incident.provider_confidence ?? 60)
+        )
+      );
+
+      const providerConfirmationCount = Math.max(
+        1,
+        Number(
+          incident.provider_confirmation_count ?? 1
+        )
+      );
+
+      const confidenceWeight =
+        providerConfidence / 100;
+
+      const confirmationWeight = Math.min(
+        1.2,
+        0.8 +
+          Math.max(
+            0,
+            providerConfirmationCount - 1
+          ) * 0.2
+      );
+
+      const combinedWeight =
+        confidenceWeight * confirmationWeight;
+
+      return {
+        id: incident.id,
+        providerConfidence,
+        providerConfirmationCount,
+        confidenceWeight,
+        confirmationWeight,
+        combinedWeight,
+      };
+    }
+  );
+
+  const diagnosticAverageProviderWeight =
+    diagnosticProviderQuality.length > 0
+      ? diagnosticProviderQuality.reduce(
+          (
+            total: number,
+            item: {
+              combinedWeight: number;
+            }
+          ) =>
+            total + item.combinedWeight,
+          0
+        ) / diagnosticProviderQuality.length
+      : 1;
+
+  const diagnosticWeightedIncidentCount =
+    scopedIncidents.length *
+    diagnosticAverageProviderWeight;
+
+  const diagnosticWeightedCriticalCount =
+    scopedCriticalCount *
+    diagnosticAverageProviderWeight;
 
   let flow: any[] = [];
   let flowWarning: string | null = null;
@@ -211,6 +278,18 @@ export async function buildTrafficIntelligence(
     diagnosticBalancedRisk.score
   );
 
+  const diagnosticProviderWeightedBalancedRisk =
+    diagnosticBalancedTrafficRiskScore(
+      diagnosticWeightedIncidentCount,
+      averageCongestion,
+      diagnosticWeightedCriticalCount
+    );
+
+  const diagnosticProviderWeightedBalancedRiskLevel =
+    riskLevel(
+      diagnosticProviderWeightedBalancedRisk.score
+    );
+
   const level = riskLevel(score);
 
   return {
@@ -233,6 +312,21 @@ export async function buildTrafficIntelligence(
         diagnosticBalancedRisk.incidentContribution,
       diagnosticCriticalContribution:
         diagnosticBalancedRisk.criticalContribution,
+      diagnosticAverageProviderWeight:
+        Number(
+          diagnosticAverageProviderWeight.toFixed(3)
+        ),
+      diagnosticWeightedIncidentCount:
+        Number(
+          diagnosticWeightedIncidentCount.toFixed(2)
+        ),
+      diagnosticWeightedCriticalCount:
+        Number(
+          diagnosticWeightedCriticalCount.toFixed(2)
+        ),
+      diagnosticProviderWeightedBalancedRiskScore:
+        diagnosticProviderWeightedBalancedRisk.score,
+      diagnosticProviderWeightedBalancedRiskLevel,
       flowCorridors: flow.length,
       averageCongestion,
       averageDelay,
