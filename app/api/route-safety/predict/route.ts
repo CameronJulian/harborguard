@@ -908,12 +908,15 @@ if (roadRiskSegmentsError) {
     const trafficRiskLevel =
       trafficResult?.summary.riskLevel ?? "LOW";
 
+    const normalizedTrafficRiskLevel =
+      String(trafficRiskLevel).toUpperCase();
+
     const trafficCongestionMultiplier =
-      trafficRiskLevel === "CRITICAL"
+      normalizedTrafficRiskLevel === "CRITICAL"
         ? 1.5
-        : trafficRiskLevel === "HIGH"
+        : normalizedTrafficRiskLevel === "HIGH"
           ? 1.25
-          : trafficRiskLevel === "MEDIUM"
+          : normalizedTrafficRiskLevel === "MEDIUM"
             ? 1.1
             : 1;
 
@@ -1096,6 +1099,7 @@ if (roadRiskSegmentsError) {
       weatherContribution,
       trafficRiskScore,
       trafficRiskLevel,
+      normalizedTrafficRiskLevel,
       trafficCongestionMultiplier,
       diagnosticTrafficWeightedThreatRisk,
       trafficContribution,
