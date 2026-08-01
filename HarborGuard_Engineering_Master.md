@@ -1970,3 +1970,735 @@ Enhance provider event normalization and matching
 Status:
 
 Completed and pushed to GitHub.
+
+---
+
+# 2026-07-31 – Provider Correlation & Route Safety Performance Improvements
+
+## Status
+✅ Completed
+
+## Objective
+
+Improve cross-provider incident correlation between HERE and TomTom while reducing unnecessary duplicate processing and improving provider cron performance.
+
+---
+
+## Completed Work
+
+### 1. Provider Road Metadata
+
+Added provider road metadata support.
+
+New metadata stored per provider alert:
+
+- road_name
+- road_from
+- road_to
+- provider_geometry
+
+Database migration completed successfully.
+
+---
+
+### 2. Geometry-Aware Correlation
+
+Replaced simple representative-point matching with full geometry comparison.
+
+Implemented:
+
+- extractGeometryCoordinates()
+- getMinimumGeometryDistanceMeters()
+
+The correlation engine now:
+
+- extracts every coordinate from HERE geometries
+- extracts every coordinate from TomTom geometries
+- calculates the minimum distance between both geometries
+- uses that minimum distance during duplicate detection
+
+This significantly improves matching accuracy on long road segments.
+
+---
+
+### 3. Improved Duplicate Detection
+
+Cross-provider duplicate matching now evaluates:
+
+- compatible incident taxonomy
+- identical normalized road name
+- full geometry distance
+- fallback coordinate distance
+
+Duplicate merge logic now prefers:
+
+1. Road name match
+2. Geometry overlap
+3. Coordinate proximity
+
+instead of only representative-point distance.
+
+---
+
+### 4. Removed Legacy Geometry Helper
+
+Removed:
+
+getRepresentativeCoordinate()
+
+The helper became obsolete after introducing full geometry distance calculations.
+
+---
+
+### 5. Database Index
+
+Added migration:
+
+supabase/migrations/20260731154159_add_route_safety_alert_indexes.sql
+
+New index:
+
+route_safety_alerts_org_status_idx
+
+Columns:
+
+- organization_id
+- status
+
+This improves provider ingestion queries.
+
+---
+
+### 6. Ignore Expired Alerts During Correlation
+
+Updated provider correlation query:
+
+Before
+
+.eq("organization_id", organizationId)
+.eq("status", "active")
+
+After
+
+.eq("organization_id", organizationId)
+.eq("status", "active")
+.or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+
+Expired incidents are no longer loaded into the duplicate-correlation engine.
+
+This reduces unnecessary geometry comparisons and improves cron performance.
+
+---
+
+## Verification
+
+Completed successfully:
+
+- git diff --check
+- TypeScript compilation
+- Production build
+- Git commits
+- GitHub push
+
+Production build completed successfully with all 119 routes generated.
+
+---
+
+## Provider Cron Validation
+
+Result after optimisation:
+
+Organizations processed:
+- 1
+
+Providers:
+- HERE
+- TomTom
+
+Results
+
+HERE
+
+- Raw incidents: 67
+- Imported: 40
+- Skipped duplicates: 27
+- Merged duplicates: 0
+
+TomTom
+
+- Raw incidents: 379
+- Imported: 346
+- Skipped duplicates: 7
+- Merged duplicates: 26
+
+Overall
+
+- Imported: 386
+- Skipped duplicates: 34
+- Cross-provider merges: 26
+- Failed providers: 0
+
+Cron execution completed successfully.
+
+---
+
+## Commits
+
+Load provider geometry for duplicate correlation
+
+Add geometry-aware provider incident correlation
+
+Add provider geometry coordinate extraction
+
+Add provider geometry distance helper
+
+Use full geometry distance for provider correlation
+
+Remove unused representative geometry helper
+
+Add route safety alert organization status index
+
+Exclude expired alerts from provider correlation
+
+---
+
+## Next Planned Audit
+
+Investigate remaining duplicate TomTom congestion incidents.
+
+Focus areas:
+
+- repeated provider IDs
+- provider geometry similarity
+- congestion corridor aggregation
+- lane-level duplication
+- configurable merge thresholds
+- database indexes for spatial performance
+- optional PostGIS optimisation
+
+Goal:
+
+Reduce remaining duplicate congestion alerts while preserving legitimate independent traffic events.
+
+
+### Milestone: Provider Corridor Rendering (Completed)
+
+Status: ✅ Completed
+
+Objective
+- Render HERE and TomTom provider geometry as road corridors instead of only point markers.
+
+Implementation
+- Added support for decoding provider_geometry.
+- Added rendering of GeoJSON LineString geometry.
+- Added rendering of HERE link geometry.
+- Display provider corridors as Leaflet polylines.
+- Preserved existing incident markers as fallback.
+- Popup now displays corridor point count when geometry is available.
+
+Verification
+- TypeScript validation passed.
+- Production build successful.
+- Corridor rendering committed and pushed.
+
+Commit
+4bfc00f - Render provider incident corridors on command center map
+
+---
+# Engineering Progress Update - 31 July 2026
+
+## Feature
+
+### Geometry-Aware Threat Score Weighting
+
+## Status
+
+Completed and pushed to GitHub.
+
+## Objective
+
+Improve route-threat prediction quality by reducing the influence of incidents that are geographically distant from the external provider's actual road geometry, while preserving the full impact of incidents directly on or close to the travelled corridor.
+
+## Problem
+
+The prediction engine previously applied intelligence weighting to nearby incidents without sufficiently reducing the contribution of incidents located away from the provider's actual road corridor.
+
+This allowed an incident several hundred metres away from the travelled road to contribute almost the same threat score as an incident directly affecting the selected route.
+
+The result could be inflated route-risk scores and unnecessary driver warnings.
+
+## Solution Implemented
+
+Added the helper:
+
+```text
+providerGeometryScoreMultiplier(distanceMetersValue)
+```
+
+The following geometry-distance weighting is now applied:
+
+| Distance from provider geometry | Multiplier |
+| --- | ---: |
+| 0-50 m | 1.00 |
+| 51-150 m | 0.90 |
+| 151-300 m | 0.75 |
+| 301-500 m | 0.60 |
+| 501-1000 m | 0.40 |
+| More than 1000 m | 0.25 |
+
+The prediction pipeline now:
+
+1. Calculates the original intelligence-weighted score.
+2. Stores that value as `unweightedScore`.
+3. Calculates the provider geometry multiplier.
+4. Produces the final threat score:
+
+```text
+finalScore =
+round(unweightedScore * geometryScoreMultiplier)
+```
+
+## Additional Diagnostics
+
+The Route Safety prediction response now exposes:
+
+- `effectiveRouteDistance`
+- `unweightedScore`
+- `geometryScoreMultiplier`
+
+These fields improve troubleshooting and make the final threat score more explainable.
+
+## Expected Behaviour
+
+Threats directly on the provider route retain their full intelligence score.
+
+Threats further from the travelled corridor are progressively discounted.
+
+Alerts without provider geometry continue using the previous point-distance behaviour for backward compatibility.
+
+## Verification
+
+Completed successfully:
+
+- Repository and insertion-point audit
+- Focused implementation
+- Git diff review
+- `git diff --check`
+- UTF-8 encoding verification
+- `npx tsc --noEmit`
+- Production build
+- Git commit
+- Git push
+
+## Result
+
+- No TypeScript errors
+- No source-file whitespace errors
+- Production build successful
+- Branch synchronized with GitHub
+
+## Commit
+
+```text
+fde8aeb - Weight route threats by provider geometry distance
+```
+
+---
+
+# Engineering Progress Update - 31 July 2026
+
+## Feature
+
+### Automatic Expired Route Safety Alert Transition
+
+## Status
+
+Completed and pushed to GitHub.
+
+## Objective
+
+Complete the first focused phase of the Road Intelligence Event Lifecycle by ensuring expired Route Safety alerts no longer remain incorrectly marked as active in the database.
+
+## Problem
+
+Route Safety queries already excluded expired alerts by requiring:
+
+```text
+status = active
+and
+expires_at is null or expires_at is in the future
+```
+
+However, when an alert passed its `expires_at` timestamp, it remained stored with:
+
+```text
+status = active
+```
+
+The alert disappeared from active queries but its persisted lifecycle state was inaccurate.
+
+This created a difference between operational behaviour and database state.
+
+## Audit Findings
+
+The lifecycle audit confirmed:
+
+- Active and nearby APIs filtered expired alerts from responses.
+- No existing job transitioned expired alerts to another status.
+- The provider cron already ran as the central scheduled Route Safety maintenance process.
+- Historical `route_intelligence` records and `road_risk_segments` should remain preserved.
+- No new table or separate cron was required for the first lifecycle improvement.
+
+## Solution Implemented
+
+Extended the existing provider cron:
+
+```text
+/api/route-safety/cron/providers
+```
+
+Before importing fresh HERE and TomTom incidents, the cron now updates alerts matching all of the following:
+
+```text
+organization_id = current organization
+status = active
+expires_at < current timestamp
+```
+
+Those records are transitioned to:
+
+```text
+status = expired
+```
+
+Alerts with `expires_at = null` remain active because no expiry time has been defined.
+
+## Diagnostics
+
+The provider cron response now includes:
+
+```text
+expiredAlertsTransitioned
+```
+
+This reports how many alerts were moved from `active` to `expired` during the cron execution.
+
+## Historical Preservation
+
+The implementation does not delete or reduce:
+
+- `route_intelligence`
+- `road_risk_segments`
+- `road_risk_segment_events`
+- verification history
+- provider correlation history
+
+Expired live alerts therefore stop participating in current operations while their verified historical value remains available for long-term risk learning.
+
+## Verification
+
+Completed successfully:
+
+- Lifecycle architecture audit
+- Exact insertion-point review
+- Backup created before modification
+- Focused source-file diff review
+- `git diff --check` passed for the source file
+- UTF-8 without BOM verified
+- `npx tsc --noEmit` passed
+- Production build passed
+- 119 of 119 static pages generated
+- Focused source commit created
+- Commit pushed to GitHub
+
+## Commit
+
+```text
+98e54cb - Transition expired route safety alerts
+```
+
+## Expected Behaviour
+
+Before:
+
+```text
+expires_at passed
+status remained active
+alert excluded only through query filtering
+```
+
+After:
+
+```text
+expires_at passed
+provider cron runs
+status changes to expired
+alert lifecycle state becomes accurate
+```
+
+## Engineering Impact
+
+This is the first implemented Road Intelligence lifecycle transition.
+
+It improves:
+
+- database-state accuracy
+- operational explainability
+- lifecycle reporting
+- future archival readiness
+- future provider confidence management
+
+It also reuses the existing scheduled provider process instead of introducing a parallel maintenance system.
+
+## Next Candidate Audit
+
+### Provider Disappearance and Confidence Decay
+
+The next lifecycle audit should determine how HarborGuard should react when an external provider stops reporting an incident before or without an explicit expiry timestamp.
+
+Potential areas:
+
+- Track whether each provider still reports the event.
+- Record a last-seen timestamp per provider.
+- Reduce provider confidence after missed ingestion cycles.
+- Resolve incidents confirmed as cleared.
+- Distinguish `expired`, `resolved`, and `archived`.
+- Preserve lifecycle history for analytics.
+- Avoid changing historical road-risk aggregation incorrectly.
+
+No confidence-decay or automatic-resolution implementation should begin until the existing provider identifiers, confirmation metadata, and ingestion-cycle behaviour have been audited.
+
+
+Open HarborGuard_Engineering_Master.md, go to the very bottom, and add this exact section:
+
+---
+
+# Engineering Progress Update - 1 August 2026
+
+## Feature Audit
+
+### Live Traffic-Aware Route Safety Scoring
+
+## Status
+
+Audit completed.
+
+No production code changes were made during this audit.
+
+## Objective
+
+Determine whether HarborGuard already consumes live HERE Traffic Flow data and identify the safest insertion point for allowing congestion conditions to influence Route Safety predictions.
+
+## Audit Findings
+
+The audit confirmed that HarborGuard already has a live HERE Traffic Flow integration.
+
+The HERE traffic provider calls:
+
+```text
+https://data.traffic.hereapi.com/v7/flow
+
+using the configured HERE_API_KEY.
+
+The provider returns live traffic information including:
+
+current speed
+free-flow speed
+HERE confidence
+jam factor
+road segment information
+
+HarborGuard currently derives:
+
+congestion percentage from current speed versus free-flow speed
+estimated delay minutes from congestion
+traffic risk level
+traffic recommendations
+Existing Traffic Intelligence Usage
+
+The Route Safety prediction endpoint already calls:
+
+buildTrafficIntelligence(...)
+
+for the midpoint between the route origin and destination.
+
+The returned traffic intelligence currently contributes to the final route risk through:
+
+trafficRiskScore
+trafficRiskLevel
+trafficContribution
+
+The existing traffic contribution is calculated as:
+
+trafficContribution =
+min(20, round(trafficRiskScore * 0.2))
+
+The overall route risk is calculated as:
+
+riskScore =
+threatRiskScore +
+weatherContribution +
+trafficContribution
+
+This confirms that live traffic already affects the final route risk score.
+
+Per-Threat Scoring Audit
+
+Each route threat currently passes through the following scoring pipeline:
+
+Base severity and incident-type weighting
+Confidence weighting
+Verification weighting
+Recency weighting
+Provider geometry-distance weighting
+Final per-threat score
+
+The current per-threat score is calculated as:
+
+score =
+round(
+  unweightedScore *
+  geometryScoreMultiplier
+)
+
+The resulting threat scores are then combined into:
+
+threatRiskScore
+Precise Insertion Point Identified
+
+The audit identified the exact future insertion point inside:
+
+app/api/route-safety/predict/route.ts
+
+The relevant scoring block is located immediately after:
+
+geometryScoreMultiplier
+
+and before:
+
+const score = Math.min(...)
+
+A future traffic multiplier could therefore be applied using a structure such as:
+
+score =
+round(
+  unweightedScore *
+  geometryScoreMultiplier *
+  trafficCongestionMultiplier
+)
+
+No multiplier was implemented during this audit.
+
+Important Engineering Finding
+
+The initial roadmap assumed that HERE Traffic Flow still needed to be integrated.
+
+The audit disproved that assumption.
+
+HarborGuard already has:
+
+live HERE Traffic Flow
+current and free-flow speeds
+congestion calculation
+jam factor
+traffic risk scoring
+Command Center traffic flow display
+traffic-aware fleet health
+traffic-aware ETA prediction
+traffic contribution to Route Safety risk
+
+The actual remaining opportunity is improving how traffic conditions influence individual route threats.
+
+Recommended Next Focused Implementation
+Congestion-Aware Threat Score Diagnostics
+
+Before allowing traffic to modify threat scores, the safest next implementation should expose read-only diagnostics.
+
+Potential fields:
+
+averageCongestion
+trafficCongestionMultiplier
+scoreBeforeTrafficWeighting
+scoreAfterTrafficWeighting
+
+The first version should preferably calculate and expose the proposed multiplier without changing the production score.
+
+This would allow real route tests to confirm whether the weighting is reasonable before it affects warnings, escalations, or automatic rerouting.
+
+Validation Completed
+
+Completed during the audit:
+
+HERE Traffic Flow reference audit
+Traffic Intelligence service audit
+HERE provider implementation review
+Route Safety prediction scoring audit
+Exact insertion-point identification
+Confirmation that no database migration is required
+Confirmation that no new traffic provider integration is required
+Confirmation that no production source code was changed
+Result
+
+The Traffic Flow integration roadmap item is already substantially complete.
+
+The next genuine gap is not provider integration, but safe and explainable use of congestion within individual threat scoring.
+
+Next Candidate Milestone
+Diagnostic-Only Congestion Multiplier
+
+Proposed first step:
+
+derive a small multiplier from live average congestion
+expose the multiplier in the prediction response
+expose the proposed traffic-weighted threat score
+leave the current production threat score unchanged
+validate against real routes before enabling the weighting
+
+This preserves the audit-first approach and prevents traffic conditions from unintentionally inflating automated escalations or rerouting decisions.
+
+
+This entry accurately reflects the audit: traffic is already loaded and added to overall route risk, while the individual threat score is currently based on intelligence weighting and provider geometry only. :contentReference[oaicite:0]{index=0}
+
+After saving the file, verify only the document changed:
+
+```powershell
+git diff --stat -- .\HarborGuard_Engineering_Master.md
+git diff --check -- .\HarborGuard_Engineering_Master.md
+Get-Content .\HarborGuard_Engineering_Master.md -Tail 220
+
+Do not commit it until you have reviewed the tail and confirmed the entry appears only once.
+
+
+### Balanced Traffic Risk Diagnostics (Completed)
+
+Status: ✅ Complete
+
+Summary
+- Added a diagnostic balanced traffic risk scoring algorithm.
+- Preserved the production traffic risk score.
+- Added diagnostic outputs for comparison.
+
+New diagnostics
+- diagnosticBalancedRiskScore
+- diagnosticBalancedRiskLevel
+- diagnosticCongestionContribution
+- diagnosticIncidentContribution
+- diagnosticCriticalContribution
+
+Validation
+- TypeScript: Passed
+- Production build: Passed
+- Runtime API validation: Passed
+
+Example runtime
+Production score: 100
+Balanced diagnostic score: 72
+
+Contribution breakdown
+- Congestion: 47
+- Incidents: 12
+- Critical incidents: 13
+
+Git
+Commit: 1030d94
+Message: Add balanced traffic risk diagnostics
