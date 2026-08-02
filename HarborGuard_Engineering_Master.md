@@ -2945,3 +2945,25 @@ Verification:
 - Production build: Passed
 - End-to-end API testing: Passed
 - Alert successfully written to vehicle_alerts.
+
+## 2026-08-02 — GPS Anomaly Telemetry Intelligence
+
+Status: ✅ Completed
+
+Completed:
+- Added gps_anomaly vehicle alert type.
+- Added Supabase migration updating vehicle_alerts constraint.
+- Detects impossible GPS jumps using calculated speed validation.
+- Rejects invalid telemetry before location persistence.
+- Creates high-severity GPS anomaly intelligence alerts.
+- Adds intelligence score of 60.
+- Records previous/rejected coordinates in narrative.
+- Ten-minute duplicate suppression implemented.
+- Manual location updates excluded.
+- TypeScript verification passed.
+- Production build passed.
+- Runtime validation passed.
+- Changes committed and pushed.
+
+Commit:
+463dab2 — Alert on rejected GPS anomalies
