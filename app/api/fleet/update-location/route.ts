@@ -17,6 +17,13 @@ const HARSH_BRAKING_MIN_DECELERATION_MPS2 = 3;
 const HARSH_BRAKING_COOLDOWN_MINUTES = 10;
 const HARSH_BRAKING_INTELLIGENCE_SCORE = 35;
 
+const RAPID_ACCELERATION_MIN_SPEED_INCREASE_KMH = 20;
+const RAPID_ACCELERATION_MIN_INTERVAL_SECONDS = 2;
+const RAPID_ACCELERATION_MAX_INTERVAL_SECONDS = 15;
+const RAPID_ACCELERATION_MIN_ACCELERATION_MPS2 = 3;
+const RAPID_ACCELERATION_COOLDOWN_MINUTES = 10;
+const RAPID_ACCELERATION_INTELLIGENCE_SCORE = 35;
+
 type UpdateLocationBody = {
   vehicleId?: string;
   tripId?: string | null;
@@ -140,6 +147,14 @@ export async function POST(req: Request) {
       decelerationMps2: number;
     } | null = null;
 
+    let rapidAccelerationCandidate: {
+      previousSpeedKmh: number;
+      currentSpeedKmh: number;
+      speedIncreaseKmh: number;
+      intervalSeconds: number;
+      accelerationMps2: number;
+    } | null = null;
+
     const { data: lastPoint } = await supabase
       .from("vehicle_locations")
       .select("latitude, longitude, speed_kmh, recorded_at")
@@ -227,6 +242,47 @@ export async function POST(req: Request) {
               Math.round(timeDiffSeconds * 10) / 10,
             decelerationMps2:
               Math.round(decelerationMps2 * 100) / 100,
+          };
+        }
+
+        const speedIncreaseKmh =
+          speedKmh - previousSpeedKmh;
+
+        const accelerationMps2 =
+          timeDiffSeconds > 0
+            ? (speedIncreaseKmh / 3.6) /
+              timeDiffSeconds
+            : 0;
+
+        const validAccelerationSample =
+          source !== "manual" &&
+          Number.isFinite(previousSpeedKmh) &&
+          Number.isFinite(speedKmh) &&
+          previousSpeedKmh >= 0 &&
+          speedKmh >= 0 &&
+          timeDiffSeconds >=
+            RAPID_ACCELERATION_MIN_INTERVAL_SECONDS &&
+          timeDiffSeconds <=
+            RAPID_ACCELERATION_MAX_INTERVAL_SECONDS;
+
+        if (
+          validAccelerationSample &&
+          speedIncreaseKmh >=
+            RAPID_ACCELERATION_MIN_SPEED_INCREASE_KMH &&
+          accelerationMps2 >=
+            RAPID_ACCELERATION_MIN_ACCELERATION_MPS2
+        ) {
+          rapidAccelerationCandidate = {
+            previousSpeedKmh:
+              Math.round(previousSpeedKmh * 10) / 10,
+            currentSpeedKmh:
+              Math.round(speedKmh * 10) / 10,
+            speedIncreaseKmh:
+              Math.round(speedIncreaseKmh * 10) / 10,
+            intervalSeconds:
+              Math.round(timeDiffSeconds * 10) / 10,
+            accelerationMps2:
+              Math.round(accelerationMps2 * 100) / 100,
           };
         }
       }
@@ -348,6 +404,84 @@ export async function POST(req: Request) {
         console.error(
           "Harsh braking detection failed:",
           harshBrakingError
+        );
+      }
+    }
+
+    if (rapidAccelerationCandidate) {
+      try {
+        const rapidAccelerationCooldownSince = new Date(
+          Date.now() -
+            RAPID_ACCELERATION_COOLDOWN_MINUTES *
+              60 *
+              1000
+        ).toISOString();
+
+        const {
+          data: recentRapidAccelerationAlert,
+          error: recentRapidAccelerationAlertError,
+        } = await supabase
+          .from("vehicle_alerts")
+          .select("id")
+          .eq("organization_id", organizationId)
+          .eq("vehicle_id", vehicleId)
+          .eq("alert_type", "rapid_acceleration")
+          .eq("is_resolved", false)
+          .gte("created_at", rapidAccelerationCooldownSince)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (recentRapidAccelerationAlertError) {
+          console.error(
+            "Rapid acceleration cooldown lookup failed:",
+            recentRapidAccelerationAlertError
+          );
+        } else if (!recentRapidAccelerationAlert) {
+          const rapidAccelerationMessage =
+            "Rapid acceleration candidate detected: " +
+            `${rapidAccelerationCandidate.previousSpeedKmh} km/h to ` +
+            `${rapidAccelerationCandidate.currentSpeedKmh} km/h over ` +
+            `${rapidAccelerationCandidate.intervalSeconds} seconds ` +
+            `(${rapidAccelerationCandidate.accelerationMps2} m/s2).`;
+
+          const rapidAccelerationNarrative =
+            "Low-confidence fleet telemetry candidate. " +
+            "Speed increase: " +
+            `${rapidAccelerationCandidate.speedIncreaseKmh} km/h. ` +
+            `Coordinates: ${latitude}, ${longitude}. ` +
+            "This event requires corroboration and has not " +
+            "been classified as a verified road incident.";
+
+          const { error: rapidAccelerationAlertError } =
+            await supabase
+              .from("vehicle_alerts")
+              .insert({
+                organization_id: organizationId,
+                vehicle_id: vehicleId,
+                trip_id: activeTripId,
+                alert_type: "rapid_acceleration",
+                severity: "medium",
+                message: rapidAccelerationMessage,
+                is_resolved: false,
+                intelligence_score:
+                  RAPID_ACCELERATION_INTELLIGENCE_SCORE,
+                behavioral_risk: "medium",
+                intelligence_narrative:
+                  rapidAccelerationNarrative,
+              });
+
+          if (rapidAccelerationAlertError) {
+            console.error(
+              "Rapid acceleration alert insert failed:",
+              rapidAccelerationAlertError
+            );
+          }
+        }
+      } catch (rapidAccelerationError) {
+        console.error(
+          "Rapid acceleration detection failed:",
+          rapidAccelerationError
         );
       }
     }
