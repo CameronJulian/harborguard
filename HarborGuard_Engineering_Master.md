@@ -2967,3 +2967,33 @@ Completed:
 
 Commit:
 463dab2 — Alert on rejected GPS anomalies
+
+## 2026-08-02 – Sustained Speeding Telemetry
+
+Status: Completed
+
+Summary
+- Replaced single-sample speeding detection with sustained speeding detection.
+- Requires three consecutive speeding telemetry samples.
+- Requires at least 30 seconds of sustained speeding.
+- Uses a 90 second telemetry lookback.
+- Continues to use the existing 10 minute duplicate-alert cooldown.
+
+Implementation
+- Added:
+  - SPEEDING_MIN_DURATION_SECONDS
+  - SPEEDING_MIN_CONSECUTIVE_SAMPLES
+  - SPEEDING_LOOKBACK_SECONDS
+- Queries recent vehicle_locations.
+- Stops evaluation when a non-speeding sample is encountered.
+- Creates a speeding alert only when duration and consecutive sample thresholds are met.
+
+Validation
+- TypeScript: PASS
+- Production build: PASS
+- Single speeding sample: PASS (no alert)
+- Sustained speeding: PASS (one alert created)
+- Reset by slower speed: PASS (no false alert)
+
+Commit
+300a8b9 Require sustained speeding telemetry
