@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 import { createCommandCenterNotification } from "@/lib/command-center/notifications";
 import { correlateVehicleAlertToIncident } from "@/lib/incidents/correlation";
@@ -184,6 +184,9 @@ if (data.severity === "critical" || data.severity === "high") {
 
   return data;
 }
+const DRIVER_FATIGUE_MAX_CONTINUOUS_DRIVING_HOURS = 4;
+const DRIVER_FATIGUE_MIN_REST_MINUTES = 15;
+
 export async function detectFleetRisks(params: {
   supabase: any;
   organizationId: string;
@@ -234,6 +237,119 @@ export async function detectFleetRisks(params: {
     if (openAlertsError) continue;
 
     const openTypes = new Set((openAlerts || []).map((a: any) => a.alert_type));
+
+    try {
+      const activeTripStatuses = [
+        "en_route_to_port",
+        "collecting",
+        "en_route_to_fishery",
+        "emergency",
+      ];
+
+      const { data: activeTrip, error: activeTripError } =
+        await supabase
+          .from("vehicle_trips")
+          .select("id, actual_departure, status")
+          .eq("organization_id", organizationId)
+          .eq("vehicle_id", vehicle.id)
+          .in("status", activeTripStatuses)
+          .not("actual_departure", "is", null)
+          .order("actual_departure", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+      if (activeTripError) {
+        console.error(
+          "Driver fatigue active-trip lookup failed:",
+          activeTripError
+        );
+      } else if (
+        activeTrip?.actual_departure &&
+        !openTypes.has("driver_fatigue")
+      ) {
+        const departureTime =
+          new Date(activeTrip.actual_departure).getTime();
+
+        const continuousDrivingHours =
+          (Date.now() - departureTime) /
+          (1000 * 60 * 60);
+
+        if (
+          Number.isFinite(continuousDrivingHours) &&
+          continuousDrivingHours >=
+            DRIVER_FATIGUE_MAX_CONTINUOUS_DRIVING_HOURS
+        ) {
+          const minimumRestSeconds =
+            DRIVER_FATIGUE_MIN_REST_MINUTES * 60;
+
+          const {
+            data: qualifyingRestStop,
+            error: qualifyingRestStopError,
+          } = await supabase
+            .from("vehicle_stops")
+            .select("id")
+            .eq("vehicle_id", vehicle.id)
+            .eq("trip_id", activeTrip.id)
+            .not("ended_at", "is", null)
+            .gte(
+              "duration_seconds",
+              minimumRestSeconds
+            )
+            .gte(
+              "started_at",
+              activeTrip.actual_departure
+            )
+            .order("started_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (qualifyingRestStopError) {
+            console.error(
+              "Driver fatigue rest-stop lookup failed:",
+              qualifyingRestStopError
+            );
+          } else if (!qualifyingRestStop) {
+            const roundedDrivingHours =
+              Math.round(
+                continuousDrivingHours * 10
+              ) / 10;
+
+            const registrationNumber =
+              String(
+                vehicle.registration_number ||
+                  "Unknown vehicle"
+              );
+
+            const message =
+              `${registrationNumber} has been active for ` +
+              `${roundedDrivingHours} hours without a ` +
+              `${DRIVER_FATIGUE_MIN_REST_MINUTES}-minute ` +
+              "qualifying rest stop.";
+
+            const alert = await createAlert(
+              supabase,
+              organizationId,
+              {
+                vehicleId: vehicle.id,
+                alertType: "driver_fatigue",
+                severity: "high",
+                message,
+              }
+            );
+
+            if (alert) {
+              createdAlerts.push(alert);
+              openTypes.add("driver_fatigue");
+            }
+          }
+        }
+      }
+    } catch (driverFatigueError) {
+      console.error(
+        "Driver fatigue detection failed:",
+        driverFatigueError
+      );
+    }
 
     if (
       (latest.speed_kmh ?? 0) < 3 &&
