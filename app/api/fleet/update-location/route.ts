@@ -8,6 +8,8 @@ const MIN_SLOW_POINTS = 3;
 
 const MIN_DISTANCE_METERS = 5;
 const MAX_ALLOWED_SPEED_KMH = 180;
+const GPS_ANOMALY_COOLDOWN_MINUTES = 10;
+const GPS_ANOMALY_INTELLIGENCE_SCORE = 60;
 
 const HARSH_BRAKING_MIN_PREVIOUS_SPEED_KMH = 30;
 const HARSH_BRAKING_MIN_SPEED_DROP_KMH = 20;
@@ -242,6 +244,100 @@ export async function POST(req: Request) {
         }
 
         if (calculatedSpeedKmh > MAX_ALLOWED_SPEED_KMH) {
+          if (source !== "manual") {
+            try {
+              const gpsAnomalyCooldownSince = new Date(
+                Date.now() -
+                  GPS_ANOMALY_COOLDOWN_MINUTES *
+                    60 *
+                    1000
+              ).toISOString();
+
+              const {
+                data: recentGpsAnomalyAlert,
+                error: recentGpsAnomalyAlertError,
+              } = await supabase
+                .from("vehicle_alerts")
+                .select("id")
+                .eq("organization_id", organizationId)
+                .eq("vehicle_id", vehicleId)
+                .eq("alert_type", "gps_anomaly")
+                .eq("is_resolved", false)
+                .gte(
+                  "created_at",
+                  gpsAnomalyCooldownSince
+                )
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              if (recentGpsAnomalyAlertError) {
+                console.error(
+                  "GPS anomaly cooldown lookup failed:",
+                  recentGpsAnomalyAlertError
+                );
+              } else if (!recentGpsAnomalyAlert) {
+                const roundedCalculatedSpeedKmh =
+                  Math.round(calculatedSpeedKmh * 10) /
+                  10;
+
+                const roundedDistanceMeters =
+                  Math.round(distance * 10) / 10;
+
+                const roundedIntervalSeconds =
+                  Math.round(timeDiffSeconds * 10) /
+                  10;
+
+                const gpsAnomalyMessage =
+                  "GPS anomaly candidate detected: " +
+                  `${roundedDistanceMeters} meters over ` +
+                  `${roundedIntervalSeconds} seconds, ` +
+                  `implying ${roundedCalculatedSpeedKmh} km/h.`;
+
+                const gpsAnomalyNarrative =
+                  "High-confidence telemetry integrity anomaly. " +
+                  `Previous coordinates: ${previousLat}, ${previousLng}. ` +
+                  `Rejected coordinates: ${latitude}, ${longitude}. ` +
+                  `Calculated speed exceeded the ` +
+                  `${MAX_ALLOWED_SPEED_KMH} km/h validation threshold. ` +
+                  "The rejected point was not stored as a valid " +
+                  "vehicle location and has not been classified " +
+                  "as a verified road incident.";
+
+                const { error: gpsAnomalyAlertError } =
+                  await supabase
+                    .from("vehicle_alerts")
+                    .insert({
+                      organization_id:
+                        organizationId,
+                      vehicle_id: vehicleId,
+                      trip_id: tripId,
+                      alert_type: "gps_anomaly",
+                      severity: "high",
+                      message: gpsAnomalyMessage,
+                      is_resolved: false,
+                      intelligence_score:
+                        GPS_ANOMALY_INTELLIGENCE_SCORE,
+                      behavioral_risk: "high",
+                      intelligence_narrative:
+                        gpsAnomalyNarrative,
+                    });
+
+                if (gpsAnomalyAlertError) {
+                  console.error(
+                    "GPS anomaly alert insert failed:",
+                    gpsAnomalyAlertError
+                  );
+                }
+              }
+            } catch (gpsAnomalyError) {
+              console.error(
+                "GPS anomaly alerting failed:",
+                gpsAnomalyError
+              );
+            }
+          }
+
           return NextResponse.json({
             success: true,
             skipped: "gps_spike",
