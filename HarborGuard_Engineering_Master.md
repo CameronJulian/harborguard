@@ -2915,3 +2915,33 @@ Example threat scores remained populated:
 - Commit: e9161f1
 - Message: Extract shared route incident weights
 - Branch: feature/expanded-incident-taxonomy
+
+
+### 2026-08-02 – Harsh Braking Telemetry Detection
+
+Status: Completed
+
+Implemented:
+- Added harsh braking telemetry detection to fleet update-location endpoint.
+- Uses previous telemetry sample to calculate:
+  - speed reduction
+  - elapsed time
+  - deceleration (m/s²)
+- Added configurable thresholds:
+  - Minimum previous speed
+  - Minimum speed drop
+  - Minimum/maximum sample interval
+  - Minimum deceleration
+- Added 10-minute cooldown to prevent duplicate alerts.
+- Creates medium severity `harsh_braking` vehicle alerts.
+- Stores:
+  - intelligence_score
+  - behavioral_risk
+  - intelligence_narrative
+- Detection is telemetry-based only and is not treated as a verified road incident.
+
+Verification:
+- TypeScript: Passed
+- Production build: Passed
+- End-to-end API testing: Passed
+- Alert successfully written to vehicle_alerts.
