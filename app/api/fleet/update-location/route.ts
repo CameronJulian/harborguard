@@ -181,6 +181,29 @@ export async function POST(req: Request) {
             new Date(lastPoint.recorded_at).getTime()) /
           1000;
 
+        let normalizedHeadingDeltaDegrees: number | null = null;
+
+        if (
+          Number.isFinite(previousHeading) &&
+          Number.isFinite(heading)
+        ) {
+          const normalizedPreviousHeading =
+            ((previousHeading % 360) + 360) % 360;
+
+          const normalizedCurrentHeading =
+            ((heading % 360) + 360) % 360;
+
+          const rawHeadingDeltaDegrees = Math.abs(
+            normalizedCurrentHeading -
+              normalizedPreviousHeading
+          );
+
+          normalizedHeadingDeltaDegrees = Math.min(
+            rawHeadingDeltaDegrees,
+            360 - rawHeadingDeltaDegrees
+          );
+        }
+
         const calculatedSpeedKmh =
           timeDiffSeconds > 0
             ? (distance / timeDiffSeconds) * 3.6
