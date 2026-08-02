@@ -3030,3 +3030,49 @@ Conclusion
 - Live HERE traffic is successfully consumed by route prediction.
 - Route-wide sampling produced a materially different result from midpoint-only scoring.
 - More route evaluations are required before production promotion.
+
+
+## 2026-08-02 – Route Traffic Model Validation Harness
+
+Status: Completed
+
+Summary
+- Added a reusable PowerShell validation harness for comparing the current production traffic model with route-composite-v1.
+- Added six fixed Cape Town validation routes.
+- Calls the existing /api/route-safety/predict endpoint without vehicle or trip assignment.
+- Produces timestamped CSV and JSON validation reports.
+- Keeps the experimental traffic model in diagnostic mode.
+
+Validation routes
+- Ottery to Bishop Lavis
+- Bellville to Cape Town CBD
+- Cape Town Airport to Somerset West
+- Parow to Mitchells Plain
+- Durbanville to Century City
+- Goodwood to Khayelitsha
+
+Runtime validation
+- Successful routes: 6
+- Failed routes: 0
+- Failed traffic samples: 0 across all routes
+- Production traffic score: 100 / critical for all six routes
+- Experimental scores ranged from 42 to 61
+- Experimental levels ranged from low to medium
+- Experimental model produced route-specific differentiation
+- productionApplied remained false
+
+Implementation
+- Script: scripts/traffic-model-validation.ps1
+- Supports configurable API base URL
+- Supports configurable delay between route tests
+- Safely validates bearer-token format
+- Anchors output paths to the repository
+- Records production and experimental traffic metrics
+- Exports complete run evidence as JSON and CSV
+
+Commit
+06cd24c Add traffic model validation harness
+
+Conclusion
+- The validation harness is operational and repeatable.
+- More runs at different times and traffic conditions are required before promoting route-composite-v1 to production.
