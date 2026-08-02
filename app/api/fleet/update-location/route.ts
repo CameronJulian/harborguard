@@ -28,6 +28,8 @@ const HARSH_CORNERING_MIN_SPEED_KMH = 30;
 const HARSH_CORNERING_MIN_HEADING_CHANGE_DEGREES = 45;
 const HARSH_CORNERING_MIN_INTERVAL_SECONDS = 2;
 const HARSH_CORNERING_MAX_INTERVAL_SECONDS = 15;
+const HARSH_CORNERING_COOLDOWN_MINUTES = 10;
+const HARSH_CORNERING_INTELLIGENCE_SCORE = 35;
 
 type UpdateLocationBody = {
   vehicleId?: string;
@@ -559,6 +561,83 @@ export async function POST(req: Request) {
         console.error(
           "Rapid acceleration detection failed:",
           rapidAccelerationError
+        );
+      }
+    }
+
+    if (harshCorneringCandidate) {
+      try {
+        const harshCorneringCooldownSince = new Date(
+          Date.now() -
+            HARSH_CORNERING_COOLDOWN_MINUTES *
+              60 *
+              1000
+        ).toISOString();
+
+        const {
+          data: recentHarshCorneringAlert,
+          error: recentHarshCorneringAlertError,
+        } = await supabase
+          .from("vehicle_alerts")
+          .select("id")
+          .eq("organization_id", organizationId)
+          .eq("vehicle_id", vehicleId)
+          .eq("alert_type", "harsh_cornering")
+          .eq("is_resolved", false)
+          .gte("created_at", harshCorneringCooldownSince)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (recentHarshCorneringAlertError) {
+          console.error(
+            "Harsh cornering cooldown lookup failed:",
+            recentHarshCorneringAlertError
+          );
+        } else if (!recentHarshCorneringAlert) {
+          const harshCorneringMessage =
+            "Harsh cornering candidate detected: " +
+            `${harshCorneringCandidate.headingChangeDegrees} degree heading change ` +
+            `at ${harshCorneringCandidate.speedKmh} km/h over ` +
+            `${harshCorneringCandidate.intervalSeconds} seconds.`;
+
+          const harshCorneringNarrative =
+            "Low-confidence fleet telemetry candidate. " +
+            `Heading changed from ${harshCorneringCandidate.previousHeading} degrees ` +
+            `to ${harshCorneringCandidate.currentHeading} degrees. ` +
+            `Coordinates: ${latitude}, ${longitude}. ` +
+            "This event requires corroboration and has not " +
+            "been classified as a verified road incident.";
+
+          const { error: harshCorneringAlertError } =
+            await supabase
+              .from("vehicle_alerts")
+              .insert({
+                organization_id: organizationId,
+                vehicle_id: vehicleId,
+                trip_id: activeTripId,
+                alert_type: "harsh_cornering",
+                severity: "medium",
+                message: harshCorneringMessage,
+                is_resolved: false,
+                intelligence_score:
+                  HARSH_CORNERING_INTELLIGENCE_SCORE,
+                behavioral_risk: "medium",
+                intelligence_narrative:
+                  harshCorneringNarrative,
+              });
+
+          if (harshCorneringAlertError) {
+            console.error(
+              "Harsh cornering alert insert failed:",
+              harshCorneringAlertError
+            );
+          }
+        }
+      } catch (harshCorneringError) {
+        console.error(
+          "Harsh cornering detection failed:",
+          harshCorneringError
         );
       }
     }
