@@ -1391,6 +1391,7 @@ export async function GET(request: Request) {
     let staleProviderObservations = 0;
     let alertsWithStaleProviders = 0;
     let alertsWithAllProvidersStale = 0;
+    let allProvidersStaleAlertsTransitioned = 0;
 
     for (const organizationId of organizationIds) {
       const expiredAt = new Date().toISOString();
@@ -1446,6 +1447,8 @@ export async function GET(request: Request) {
         throw providerObservationError;
       }
 
+      const allProvidersStaleAlertIds: string[] = [];
+
       for (const alert of providerObservationAlerts || []) {
         const providerLastSeen =
           alert.provider_last_seen &&
@@ -1481,7 +1484,32 @@ export async function GET(request: Request) {
           staleCount === providerTimestamps.length
         ) {
           alertsWithAllProvidersStale += 1;
+          allProvidersStaleAlertIds.push(
+            String(alert.id)
+          );
         }
+      }
+
+      if (allProvidersStaleAlertIds.length > 0) {
+        const {
+          data: allProvidersStaleAlerts,
+          error: allProvidersStaleAlertsError,
+        } = await supabase
+          .from("route_safety_alerts")
+          .update({
+            status: "expired",
+          })
+          .eq("organization_id", organizationId)
+          .eq("status", "active")
+          .in("id", allProvidersStaleAlertIds)
+          .select("id");
+
+        if (allProvidersStaleAlertsError) {
+          throw allProvidersStaleAlertsError;
+        }
+
+        allProvidersStaleAlertsTransitioned +=
+          allProvidersStaleAlerts?.length || 0;
       }
     }
 
@@ -1522,6 +1550,7 @@ export async function GET(request: Request) {
       staleProviderObservations,
       alertsWithStaleProviders,
       alertsWithAllProvidersStale,
+      allProvidersStaleAlertsTransitioned,
       imported,
       refreshedExisting,
       skippedDuplicates,
