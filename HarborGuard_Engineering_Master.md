@@ -2997,3 +2997,36 @@ Validation
 
 Commit
 300a8b9 Require sustained speeding telemetry
+
+## 2026-08-02 – Live HERE Traffic Flow Route-Prediction Verification
+
+Status: Completed
+
+Summary
+- Verified live HERE Traffic Flow end to end through the route-safety prediction API.
+- Confirmed HERE flow corridors are consumed by the current production traffic score.
+- Confirmed five-point route-corridor traffic sampling is enabled and operational.
+- Confirmed the route-composite-v1 model remains diagnostic and is not yet production-applied.
+
+Runtime evidence
+- Route: Ottery area to Bishop Lavis area.
+- Distance: 14,981 metres.
+- Live HERE flow corridors: 20.
+- Midpoint average congestion: 77.
+- Midpoint average delay: 19 minutes.
+- Route sample count: 5.
+- Successful route samples: 5.
+- Failed route samples: 0.
+- Route average congestion: 49.
+- Route maximum congestion: 53.
+- Route P75 congestion: 52.
+- Route average delay: 12 minutes.
+- Production traffic score: 100 / critical.
+- Experimental composite score: 60 / medium.
+- Experimental productionApplied: false.
+- Congestion reduction versus midpoint: 36.4%.
+
+Conclusion
+- Live HERE traffic is successfully consumed by route prediction.
+- Route-wide sampling produced a materially different result from midpoint-only scoring.
+- More route evaluations are required before production promotion.
