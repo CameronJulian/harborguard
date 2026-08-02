@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { requireOrganization, requireRole } from "@/lib/server-auth";
 import { detectFleetRisks } from "@/lib/fleet/risk-detection";
 
@@ -8,6 +8,14 @@ const MIN_SLOW_POINTS = 3;
 
 const MIN_DISTANCE_METERS = 5;
 const MAX_ALLOWED_SPEED_KMH = 180;
+
+const HARSH_BRAKING_MIN_PREVIOUS_SPEED_KMH = 30;
+const HARSH_BRAKING_MIN_SPEED_DROP_KMH = 20;
+const HARSH_BRAKING_MIN_INTERVAL_SECONDS = 2;
+const HARSH_BRAKING_MAX_INTERVAL_SECONDS = 15;
+const HARSH_BRAKING_MIN_DECELERATION_MPS2 = 3;
+const HARSH_BRAKING_COOLDOWN_MINUTES = 10;
+const HARSH_BRAKING_INTELLIGENCE_SCORE = 35;
 
 type UpdateLocationBody = {
   vehicleId?: string;
@@ -124,9 +132,17 @@ export async function POST(req: Request) {
 
     const now = new Date().toISOString();
 
+    let harshBrakingCandidate: {
+      previousSpeedKmh: number;
+      currentSpeedKmh: number;
+      speedDropKmh: number;
+      intervalSeconds: number;
+      decelerationMps2: number;
+    } | null = null;
+
     const { data: lastPoint } = await supabase
       .from("vehicle_locations")
-      .select("latitude, longitude, recorded_at")
+      .select("latitude, longitude, speed_kmh, recorded_at")
       .eq("vehicle_id", vehicleId)
       .eq("organization_id", organizationId)
       .order("recorded_at", { ascending: false })
@@ -167,6 +183,51 @@ export async function POST(req: Request) {
             skipped: "gps_spike",
             message: "Location ignored because it looked like a GPS spike.",
           });
+        }
+
+        const previousSpeedKmh =
+          parseNumber(lastPoint.speed_kmh);
+
+        const speedDropKmh =
+          previousSpeedKmh - speedKmh;
+
+        const decelerationMps2 =
+          timeDiffSeconds > 0
+            ? (speedDropKmh / 3.6) /
+              timeDiffSeconds
+            : 0;
+
+        const validTelemetrySample =
+          source !== "manual" &&
+          Number.isFinite(previousSpeedKmh) &&
+          Number.isFinite(speedKmh) &&
+          speedKmh >= 0 &&
+          timeDiffSeconds >=
+            HARSH_BRAKING_MIN_INTERVAL_SECONDS &&
+          timeDiffSeconds <=
+            HARSH_BRAKING_MAX_INTERVAL_SECONDS;
+
+        if (
+          validTelemetrySample &&
+          previousSpeedKmh >=
+            HARSH_BRAKING_MIN_PREVIOUS_SPEED_KMH &&
+          speedDropKmh >=
+            HARSH_BRAKING_MIN_SPEED_DROP_KMH &&
+          decelerationMps2 >=
+            HARSH_BRAKING_MIN_DECELERATION_MPS2
+        ) {
+          harshBrakingCandidate = {
+            previousSpeedKmh:
+              Math.round(previousSpeedKmh * 10) / 10,
+            currentSpeedKmh:
+              Math.round(speedKmh * 10) / 10,
+            speedDropKmh:
+              Math.round(speedDropKmh * 10) / 10,
+            intervalSeconds:
+              Math.round(timeDiffSeconds * 10) / 10,
+            decelerationMps2:
+              Math.round(decelerationMps2 * 100) / 100,
+          };
         }
       }
     }
@@ -209,6 +270,87 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     const activeTripId = activeTrip?.id || tripId || null;
+
+    if (harshBrakingCandidate) {
+      try {
+        const cooldownSince = new Date(
+          Date.now() -
+            HARSH_BRAKING_COOLDOWN_MINUTES *
+              60 *
+              1000
+        ).toISOString();
+
+        const {
+          data: recentHarshBrakingAlert,
+          error: recentHarshBrakingAlertError,
+        } = await supabase
+          .from("vehicle_alerts")
+          .select("id")
+          .eq("organization_id", organizationId)
+          .eq("vehicle_id", vehicleId)
+          .eq("alert_type", "harsh_braking")
+          .eq("is_resolved", false)
+          .gte("created_at", cooldownSince)
+          .order(
+            "created_at",
+            { ascending: false }
+          )
+          .limit(1)
+          .maybeSingle();
+
+        if (recentHarshBrakingAlertError) {
+          console.error(
+            "Harsh braking cooldown lookup failed:",
+            recentHarshBrakingAlertError
+          );
+        } else if (!recentHarshBrakingAlert) {
+          const telemetryMessage =
+            "Harsh braking candidate detected: " +
+            `${harshBrakingCandidate.previousSpeedKmh} km/h to ` +
+            `${harshBrakingCandidate.currentSpeedKmh} km/h over ` +
+            `${harshBrakingCandidate.intervalSeconds} seconds ` +
+            `(${harshBrakingCandidate.decelerationMps2} m/s2).`;
+
+          const telemetryNarrative =
+            "Low-confidence fleet telemetry candidate. " +
+            "Speed reduction: " +
+            `${harshBrakingCandidate.speedDropKmh} km/h. ` +
+            `Coordinates: ${latitude}, ${longitude}. ` +
+            "This event requires corroboration and has not " +
+            "been classified as a verified road incident.";
+
+          const { error: harshBrakingAlertError } =
+            await supabase
+              .from("vehicle_alerts")
+              .insert({
+                organization_id: organizationId,
+                vehicle_id: vehicleId,
+                trip_id: activeTripId,
+                alert_type: "harsh_braking",
+                severity: "medium",
+                message: telemetryMessage,
+                is_resolved: false,
+                intelligence_score:
+                  HARSH_BRAKING_INTELLIGENCE_SCORE,
+                behavioral_risk: "medium",
+                intelligence_narrative:
+                  telemetryNarrative,
+              });
+
+          if (harshBrakingAlertError) {
+            console.error(
+              "Harsh braking alert insert failed:",
+              harshBrakingAlertError
+            );
+          }
+        }
+      } catch (harshBrakingError) {
+        console.error(
+          "Harsh braking detection failed:",
+          harshBrakingError
+        );
+      }
+    }
 
     if (activeTrip) {
       if (activeTrip.status === "scheduled") {
