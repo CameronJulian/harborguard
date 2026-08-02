@@ -31,6 +31,10 @@ const HARSH_CORNERING_MAX_INTERVAL_SECONDS = 15;
 const HARSH_CORNERING_COOLDOWN_MINUTES = 10;
 const HARSH_CORNERING_INTELLIGENCE_SCORE = 35;
 
+const SPEEDING_MIN_SPEED_KMH = 120;
+const SPEEDING_COOLDOWN_MINUTES = 10;
+const SPEEDING_INTELLIGENCE_SCORE = 30;
+
 type UpdateLocationBody = {
   vehicleId?: string;
   tripId?: string | null;
@@ -170,6 +174,11 @@ export async function POST(req: Request) {
       intervalSeconds: number;
     } | null = null;
 
+    let speedingCandidate: {
+      speedKmh: number;
+      thresholdKmh: number;
+    } | null = null;
+
     const { data: lastPoint } = await supabase
       .from("vehicle_locations")
       .select("latitude, longitude, speed_kmh, heading, recorded_at")
@@ -238,6 +247,19 @@ export async function POST(req: Request) {
             skipped: "gps_spike",
             message: "Location ignored because it looked like a GPS spike.",
           });
+        }
+
+        if (
+          source !== "manual" &&
+          Number.isFinite(speedKmh) &&
+          speedKmh >= SPEEDING_MIN_SPEED_KMH
+        ) {
+          speedingCandidate = {
+            speedKmh:
+              Math.round(speedKmh * 10) / 10,
+            thresholdKmh:
+              SPEEDING_MIN_SPEED_KMH,
+          };
         }
 
         const previousSpeedKmh =
@@ -638,6 +660,81 @@ export async function POST(req: Request) {
         console.error(
           "Harsh cornering detection failed:",
           harshCorneringError
+        );
+      }
+    }
+
+    if (speedingCandidate) {
+      try {
+        const speedingCooldownSince = new Date(
+          Date.now() -
+            SPEEDING_COOLDOWN_MINUTES *
+              60 *
+              1000
+        ).toISOString();
+
+        const {
+          data: recentSpeedingAlert,
+          error: recentSpeedingAlertError,
+        } = await supabase
+          .from("vehicle_alerts")
+          .select("id")
+          .eq("organization_id", organizationId)
+          .eq("vehicle_id", vehicleId)
+          .eq("alert_type", "speeding")
+          .eq("is_resolved", false)
+          .gte("created_at", speedingCooldownSince)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (recentSpeedingAlertError) {
+          console.error(
+            "Speeding cooldown lookup failed:",
+            recentSpeedingAlertError
+          );
+        } else if (!recentSpeedingAlert) {
+          const speedingMessage =
+            "Speeding candidate detected: " +
+            `${speedingCandidate.speedKmh} km/h, ` +
+            `above the fixed ${speedingCandidate.thresholdKmh} km/h threshold.`;
+
+          const speedingNarrative =
+            "Low-confidence fleet telemetry candidate. " +
+            "This fixed threshold is not yet based on the road-specific speed limit. " +
+            `Coordinates: ${latitude}, ${longitude}. ` +
+            "This event requires corroboration and has not " +
+            "been classified as a verified road incident.";
+
+          const { error: speedingAlertError } =
+            await supabase
+              .from("vehicle_alerts")
+              .insert({
+                organization_id: organizationId,
+                vehicle_id: vehicleId,
+                trip_id: activeTripId,
+                alert_type: "speeding",
+                severity: "medium",
+                message: speedingMessage,
+                is_resolved: false,
+                intelligence_score:
+                  SPEEDING_INTELLIGENCE_SCORE,
+                behavioral_risk: "medium",
+                intelligence_narrative:
+                  speedingNarrative,
+              });
+
+          if (speedingAlertError) {
+            console.error(
+              "Speeding alert insert failed:",
+              speedingAlertError
+            );
+          }
+        }
+      } catch (speedingError) {
+        console.error(
+          "Speeding detection failed:",
+          speedingError
         );
       }
     }
