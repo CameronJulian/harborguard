@@ -34,6 +34,9 @@ const HARSH_CORNERING_COOLDOWN_MINUTES = 10;
 const HARSH_CORNERING_INTELLIGENCE_SCORE = 35;
 
 const SPEEDING_MIN_SPEED_KMH = 120;
+const SPEEDING_MIN_DURATION_SECONDS = 30;
+const SPEEDING_MIN_CONSECUTIVE_SAMPLES = 3;
+const SPEEDING_LOOKBACK_SECONDS = 90;
 const SPEEDING_COOLDOWN_MINUTES = 10;
 const SPEEDING_INTELLIGENCE_SCORE = 30;
 
@@ -179,6 +182,8 @@ export async function POST(req: Request) {
     let speedingCandidate: {
       speedKmh: number;
       thresholdKmh: number;
+      durationSeconds: number;
+      consecutiveSamples: number;
     } | null = null;
 
     const { data: lastPoint } = await supabase
@@ -350,12 +355,92 @@ export async function POST(req: Request) {
           Number.isFinite(speedKmh) &&
           speedKmh >= SPEEDING_MIN_SPEED_KMH
         ) {
-          speedingCandidate = {
-            speedKmh:
-              Math.round(speedKmh * 10) / 10,
-            thresholdKmh:
-              SPEEDING_MIN_SPEED_KMH,
-          };
+          const speedingLookbackSince = new Date(
+            Date.now() -
+              SPEEDING_LOOKBACK_SECONDS *
+                1000
+          ).toISOString();
+
+          const {
+            data: recentSpeedingPoints,
+            error: recentSpeedingPointsError,
+          } = await supabase
+            .from("vehicle_locations")
+            .select("speed_kmh, recorded_at")
+            .eq("organization_id", organizationId)
+            .eq("vehicle_id", vehicleId)
+            .gte("recorded_at", speedingLookbackSince)
+            .order("recorded_at", { ascending: false })
+            .limit(20);
+
+          if (recentSpeedingPointsError) {
+            console.error(
+              "Sustained speeding history lookup failed:",
+              recentSpeedingPointsError
+            );
+          } else {
+            const consecutiveSpeedingSamples = [
+              {
+                speedKmh,
+                recordedAt: now,
+              },
+            ];
+
+            for (
+              const point of recentSpeedingPoints || []
+            ) {
+              const historicalSpeedKmh =
+                parseNumber(point.speed_kmh);
+
+              if (
+                !Number.isFinite(historicalSpeedKmh) ||
+                historicalSpeedKmh <
+                  SPEEDING_MIN_SPEED_KMH
+              ) {
+                break;
+              }
+
+              consecutiveSpeedingSamples.push({
+                speedKmh: historicalSpeedKmh,
+                recordedAt: point.recorded_at,
+              });
+            }
+
+            const oldestSpeedingSample =
+              consecutiveSpeedingSamples[
+                consecutiveSpeedingSamples.length - 1
+              ];
+
+            const sustainedDurationSeconds =
+              oldestSpeedingSample
+                ? (
+                    new Date(now).getTime() -
+                    new Date(
+                      oldestSpeedingSample.recordedAt
+                    ).getTime()
+                  ) / 1000
+                : 0;
+
+            if (
+              consecutiveSpeedingSamples.length >=
+                SPEEDING_MIN_CONSECUTIVE_SAMPLES &&
+              sustainedDurationSeconds >=
+                SPEEDING_MIN_DURATION_SECONDS
+            ) {
+              speedingCandidate = {
+                speedKmh:
+                  Math.round(speedKmh * 10) / 10,
+                thresholdKmh:
+                  SPEEDING_MIN_SPEED_KMH,
+                durationSeconds:
+                  Math.round(
+                    sustainedDurationSeconds * 10
+                  ) / 10,
+                consecutiveSamples:
+                  consecutiveSpeedingSamples.length,
+              };
+            }
+          }
         }
 
         const previousSpeedKmh =
@@ -791,15 +876,17 @@ export async function POST(req: Request) {
           );
         } else if (!recentSpeedingAlert) {
           const speedingMessage =
-            "Speeding candidate detected: " +
+            "Sustained speeding detected: " +
             `${speedingCandidate.speedKmh} km/h, ` +
-            `above the fixed ${speedingCandidate.thresholdKmh} km/h threshold.`;
+            `above the fixed ${speedingCandidate.thresholdKmh} km/h threshold ` +
+            `for ${speedingCandidate.durationSeconds} seconds across ` +
+            `${speedingCandidate.consecutiveSamples} consecutive samples.`;
 
           const speedingNarrative =
-            "Low-confidence fleet telemetry candidate. " +
+            "Corroborated fleet telemetry candidate based on consecutive samples. " +
             "This fixed threshold is not yet based on the road-specific speed limit. " +
             `Coordinates: ${latitude}, ${longitude}. ` +
-            "This event requires corroboration and has not " +
+            "The sequence requires contextual review and has not " +
             "been classified as a verified road incident.";
 
           const { error: speedingAlertError } =
