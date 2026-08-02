@@ -24,6 +24,11 @@ const RAPID_ACCELERATION_MIN_ACCELERATION_MPS2 = 3;
 const RAPID_ACCELERATION_COOLDOWN_MINUTES = 10;
 const RAPID_ACCELERATION_INTELLIGENCE_SCORE = 35;
 
+const HARSH_CORNERING_MIN_SPEED_KMH = 30;
+const HARSH_CORNERING_MIN_HEADING_CHANGE_DEGREES = 45;
+const HARSH_CORNERING_MIN_INTERVAL_SECONDS = 2;
+const HARSH_CORNERING_MAX_INTERVAL_SECONDS = 15;
+
 type UpdateLocationBody = {
   vehicleId?: string;
   tripId?: string | null;
@@ -153,6 +158,14 @@ export async function POST(req: Request) {
       speedIncreaseKmh: number;
       intervalSeconds: number;
       accelerationMps2: number;
+    } | null = null;
+
+    let harshCorneringCandidate: {
+      previousHeading: number;
+      currentHeading: number;
+      headingChangeDegrees: number;
+      speedKmh: number;
+      intervalSeconds: number;
     } | null = null;
 
     const { data: lastPoint } = await supabase
@@ -309,6 +322,45 @@ export async function POST(req: Request) {
             accelerationMps2:
               Math.round(accelerationMps2 * 100) / 100,
           };
+        }
+
+        const validCorneringSample =
+          source !== "manual" &&
+          normalizedHeadingDeltaDegrees !== null &&
+          Number.isFinite(normalizedHeadingDeltaDegrees) &&
+          Number.isFinite(previousHeading) &&
+          Number.isFinite(heading) &&
+          Number.isFinite(speedKmh) &&
+          speedKmh >=
+            HARSH_CORNERING_MIN_SPEED_KMH &&
+          timeDiffSeconds >=
+            HARSH_CORNERING_MIN_INTERVAL_SECONDS &&
+          timeDiffSeconds <=
+            HARSH_CORNERING_MAX_INTERVAL_SECONDS;
+
+        if (validCorneringSample) {
+          const headingChangeDegrees =
+            normalizedHeadingDeltaDegrees!;
+
+          if (
+            headingChangeDegrees >=
+            HARSH_CORNERING_MIN_HEADING_CHANGE_DEGREES
+          ) {
+            harshCorneringCandidate = {
+              previousHeading:
+                Math.round(previousHeading * 10) / 10,
+              currentHeading:
+                Math.round(heading * 10) / 10,
+              headingChangeDegrees:
+                Math.round(
+                  headingChangeDegrees * 10
+                ) / 10,
+              speedKmh:
+                Math.round(speedKmh * 10) / 10,
+              intervalSeconds:
+                Math.round(timeDiffSeconds * 10) / 10,
+            };
+          }
         }
       }
     }
