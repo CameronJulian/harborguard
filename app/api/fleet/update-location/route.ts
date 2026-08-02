@@ -157,7 +157,7 @@ export async function POST(req: Request) {
 
     const { data: lastPoint } = await supabase
       .from("vehicle_locations")
-      .select("latitude, longitude, speed_kmh, recorded_at")
+      .select("latitude, longitude, speed_kmh, heading, recorded_at")
       .eq("vehicle_id", vehicleId)
       .eq("organization_id", organizationId)
       .order("recorded_at", { ascending: false })
@@ -167,6 +167,8 @@ export async function POST(req: Request) {
     if (lastPoint) {
       const previousLat = parseNumber(lastPoint.latitude);
       const previousLng = parseNumber(lastPoint.longitude);
+      const previousHeading =
+        parseNumber(lastPoint.heading);
 
       if (Number.isFinite(previousLat) && Number.isFinite(previousLng)) {
         const distance = getDistanceMeters(
