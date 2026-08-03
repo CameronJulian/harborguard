@@ -3171,3 +3171,35 @@ Regenerated and corrected Supabase TypeScript types.
 Verified with tsc --noEmit.
 Verified with a successful production build.
 Committed as 2ea0c6a.
+
+## 2026-08-03 – Harsh-Braking Multi-Vehicle Corroboration Helper
+
+Status: Completed
+
+Summary
+- Added a reusable, read-only helper for evaluating nearby harsh-braking telemetry.
+- The helper queries recent harsh-braking alerts within the same organization.
+- It filters out alerts without vehicle IDs, coordinates, or timestamps.
+- It calculates Haversine distance from the current event.
+- It counts distinct vehicles within a configurable radius and time window.
+- It does not create, update, or delete route-safety or fleet records.
+
+Implementation
+- File: lib/fleet/harshBrakingCorroboration.ts
+- Default time window: 15 minutes
+- Default radius: 150 metres
+- Default threshold: 2 distinct vehicles
+- Returns nearby alert evidence, distinct vehicle IDs, other vehicle IDs, and threshold status.
+
+Validation
+- Read-only safety checks passed.
+- TypeScript validation passed with npx tsc --noEmit.
+- Next.js production build completed successfully.
+- Static routes generated successfully: 119/119.
+
+Commit
+- 7e556bf Add harsh braking corroboration helper
+
+Next step
+- Integrate the helper into the harsh-braking insertion flow in diagnostic mode.
+- Do not create route_safety_alerts automatically until runtime evidence confirms the corroboration behaviour.
