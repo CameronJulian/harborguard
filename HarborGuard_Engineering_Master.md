@@ -3076,3 +3076,88 @@ Commit
 Conclusion
 - The validation harness is operational and repeatable.
 - More runs at different times and traffic conditions are required before promoting route-composite-v1 to production.
+
+
+# HarborGuard Progress — August 2026
+
+## Completed
+
+### Engineering Progress Update – 03 August 2026
+**Feature:** Provider Lifecycle Reconciliation & Provider Confidence Refresh
+
+#### Objective
+Improve the Route Safety provider ingestion pipeline so that provider metadata remains consistent throughout repeated HERE and TomTom imports while automatically reconciling stale provider observations.
+
+#### Changes Implemented
+
+- Added provider lifecycle reconciliation using `provider_last_seen`.
+- Automatically expires alerts when every provider observation becomes stale.
+- Removes only stale providers while preserving active provider confirmations.
+- Preserves multi-provider alerts whenever at least one provider remains active.
+- Added partial stale-provider reconciliation metrics to cron responses.
+- Added provider lifecycle statistics:
+  - `staleProviderObservations`
+  - `alertsWithStaleProviders`
+  - `alertsWithAllProvidersStale`
+  - `allProvidersStaleAlertsTransitioned`
+  - `partiallyReconciledAlerts`
+  - `partiallyStaleProvidersRemoved`
+- Updated same-provider refresh logic so repeated observations now reset:
+  - `provider_sources`
+  - `provider_confirmation_count`
+  - `provider_confidence`
+  - `provider_last_seen`
+  - `last_provider_confirmation_at`
+- Normalized provider incident mapping:
+  - HERE "collision" → `accident`
+  - TomTom incident type `1` → `accident`
+- Eliminated database constraint violations caused by obsolete `collision` values.
+
+#### Validation
+
+Completed successfully:
+
+- TypeScript verification (`npx tsc --noEmit`)
+- Production build (`npm run build`)
+- Provider cron execution
+- HERE ingestion
+- TomTom ingestion
+- Duplicate detection
+- Cross-provider reconciliation
+- Same-provider refresh
+- Provider confidence refresh
+- Provider lifecycle reconciliation
+
+#### Runtime Validation
+
+Final cron execution completed successfully.
+
+Results included:
+
+- Provider Runs: 2
+- Failed Providers: 0
+- HERE refreshes completed successfully.
+- TomTom imports completed successfully.
+- Cross-provider duplicate merging operational.
+- Partial stale-provider reconciliation operational.
+- Automatic stale-provider expiration operational.
+
+#### Database Validation
+
+Verified:
+
+- No remaining provider type constraint violations.
+- All active single-provider HERE alerts have provider confidence of 70.
+- All active single-provider TomTom alerts have provider confidence of 75.
+- Legacy HERE records with empty `provider_last_seen` values were repaired.
+- Verification query returned zero remaining confidence mismatches.
+
+#### Outcome
+
+The provider ingestion pipeline now maintains consistent provider confidence, provider confirmation counts, provider source lists, and provider lifecycle metadata across repeated imports while automatically reconciling stale provider observations without removing valid provider confirmations.
+
+#### Git History
+
+Commit:
+- `c71f0e2` — Normalize provider collisions as accidents
+- `fd6aa27` — Refresh provider confidence on same-provider updates
