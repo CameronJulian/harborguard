@@ -3203,3 +3203,19 @@ Commit
 Next step
 - Integrate the helper into the harsh-braking insertion flow in diagnostic mode.
 - Do not create route_safety_alerts automatically until runtime evidence confirms the corroboration behaviour.
+
+Added temporary harsh-braking corroboration diagnostics.
+Diagnostics execute only after a successful vehicle_alerts insert.
+Diagnostics are read-only and do not modify route_safety_alerts.
+Logged fields include:
+thresholdMet
+distinctVehicleCount
+distinctVehicleIds
+otherVehicleIds
+nearbyAlertCount
+radiusMeters
+timeWindowMinutes
+windowStartedAt
+windowEndedAt
+TypeScript verification passed.
+Production build passed.
