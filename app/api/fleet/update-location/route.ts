@@ -664,6 +664,8 @@ export async function POST(req: Request) {
                 organization_id: organizationId,
                 vehicle_id: vehicleId,
                 trip_id: activeTripId,
+                latitude,
+                longitude,
                 alert_type: "harsh_braking",
                 severity: "medium",
                 message: telemetryMessage,
@@ -1051,6 +1053,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: message }, { status });
   }
 }
-
-
-

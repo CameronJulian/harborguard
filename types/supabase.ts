@@ -1960,6 +1960,8 @@ export type Database = {
           intelligence_narrative: string | null
           intelligence_score: number | null
           is_resolved: boolean
+          latitude: number | null
+          longitude: number | null
           message: string
           organization_id: string | null
           resolution_notes: string | null
@@ -1977,6 +1979,8 @@ export type Database = {
           intelligence_narrative?: string | null
           intelligence_score?: number | null
           is_resolved?: boolean
+          latitude?: number | null
+          longitude?: number | null
           message: string
           organization_id?: string | null
           resolution_notes?: string | null
@@ -1994,6 +1998,8 @@ export type Database = {
           intelligence_narrative?: string | null
           intelligence_score?: number | null
           is_resolved?: boolean
+          latitude?: number | null
+          longitude?: number | null
           message?: string
           organization_id?: string | null
           resolution_notes?: string | null
