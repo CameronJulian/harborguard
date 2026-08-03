@@ -613,6 +613,9 @@ provider_sources,
       const { error: refreshError } = await supabase
         .from("route_safety_alerts")
         .update({
+          provider_sources: [source],
+          provider_confirmation_count: 1,
+          provider_confidence: baseConfidence,
           last_provider_confirmation_at: confirmedAt,
           provider_last_seen: providerLastSeen,
           verified_at: confirmedAt,
@@ -626,6 +629,10 @@ provider_sources,
         throw refreshError;
       }
 
+      sameProviderMatch.provider_sources = [source];
+      sameProviderMatch.provider_confirmation_count = 1;
+      sameProviderMatch.provider_confidence =
+        baseConfidence;
       sameProviderMatch.last_provider_confirmation_at =
         confirmedAt;
       sameProviderMatch.provider_last_seen = providerLastSeen;
