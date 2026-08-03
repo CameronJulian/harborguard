@@ -3161,3 +3161,13 @@ The provider ingestion pipeline now maintains consistent provider confidence, pr
 Commit:
 - `c71f0e2` — Normalize provider collisions as accidents
 - `fd6aa27` — Refresh provider confidence on same-provider updates
+
+Store coordinates on harsh braking alerts
+
+Added latitude and longitude columns to vehicle_alerts.
+Added latitude, longitude, and coordinate-pair validation constraints.
+Updated app/api/fleet/update-location/route.ts to persist telemetry coordinates with harsh braking alerts.
+Regenerated and corrected Supabase TypeScript types.
+Verified with tsc --noEmit.
+Verified with a successful production build.
+Committed as 2ea0c6a.
