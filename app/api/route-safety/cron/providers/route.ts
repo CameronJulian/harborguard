@@ -1392,6 +1392,8 @@ export async function GET(request: Request) {
     let alertsWithStaleProviders = 0;
     let alertsWithAllProvidersStale = 0;
     let allProvidersStaleAlertsTransitioned = 0;
+    let partiallyReconciledAlerts = 0;
+    let partiallyStaleProvidersRemoved = 0;
 
     for (const organizationId of organizationIds) {
       const expiredAt = new Date().toISOString();
@@ -1438,7 +1440,7 @@ export async function GET(request: Request) {
       } = await supabase
         .from("route_safety_alerts")
         .select(
-          "id, provider_last_seen"
+          "id, source, provider_sources, provider_last_seen"
         )
         .eq("organization_id", organizationId)
         .eq("status", "active");
@@ -1449,6 +1451,15 @@ export async function GET(request: Request) {
 
       const allProvidersStaleAlertIds: string[] = [];
 
+      const partiallyStaleAlertUpdates: Array<{
+        id: string;
+        source: string;
+        providerSources: string[];
+        providerLastSeen: Record<string, string>;
+        providerConfirmationCount: number;
+        providerConfidence: number;
+      }> = [];
+
       for (const alert of providerObservationAlerts || []) {
         const providerLastSeen =
           alert.provider_last_seen &&
@@ -1456,12 +1467,12 @@ export async function GET(request: Request) {
             ? alert.provider_last_seen
             : {};
 
-        const providerTimestamps = Object.values(
+        const providerEntries = Object.entries(
           providerLastSeen
         );
 
-        const staleCount = providerTimestamps.filter(
-          (value) => {
+        const staleProviderEntries = providerEntries.filter(
+          ([, value]) => {
             const timestamp = new Date(
               String(value)
             ).getTime();
@@ -1471,7 +1482,27 @@ export async function GET(request: Request) {
               timestamp < new Date(staleBefore).getTime()
             );
           }
-        ).length;
+        );
+
+        const freshProviderEntries = providerEntries.filter(
+          ([, value]) => {
+            const timestamp = new Date(
+              String(value)
+            ).getTime();
+
+            return (
+              Number.isFinite(timestamp) &&
+              timestamp >= new Date(staleBefore).getTime()
+            );
+          }
+        );
+
+        const providerTimestamps = providerEntries.map(
+          ([, value]) => value
+        );
+
+        const staleCount =
+          staleProviderEntries.length;
 
         staleProviderObservations += staleCount;
 
@@ -1487,6 +1518,115 @@ export async function GET(request: Request) {
           allProvidersStaleAlertIds.push(
             String(alert.id)
           );
+        } else if (
+          staleProviderEntries.length > 0 &&
+          freshProviderEntries.length > 0
+        ) {
+          const freshProviderLastSeen =
+            Object.fromEntries(
+              freshProviderEntries.map(
+                ([provider, value]) => [
+                  provider,
+                  String(value),
+                ]
+              )
+            );
+
+          const freshProviderSources = Array.from(
+            new Set(
+              freshProviderEntries
+                .map(([provider]) =>
+                  String(provider)
+                )
+                .filter(Boolean)
+            )
+          );
+
+          if (freshProviderSources.length === 0) {
+            continue;
+          }
+
+          const existingSource =
+            String(alert.source || "");
+
+          const primarySource =
+            freshProviderSources.includes(existingSource)
+              ? existingSource
+              : freshProviderSources[0];
+
+          const providerConfirmationCount =
+            freshProviderSources.length;
+
+          const sourceConfigurationResult =
+            await getIntelligenceSourceConfiguration(
+              supabase,
+              primarySource
+            );
+
+          if (!sourceConfigurationResult.configuration) {
+            throw new Error(
+              sourceConfigurationResult.error ||
+                `Provider configuration was not found: ${primarySource}`
+            );
+          }
+
+          const providerConfidence =
+            providerConfirmationCount === 1
+              ? sourceConfigurationResult.configuration
+                  .baseConfidence
+              : Math.min(
+                  100,
+                  60 +
+                    Math.max(
+                      0,
+                      providerConfirmationCount - 1
+                    ) *
+                      20
+                );
+
+          partiallyStaleAlertUpdates.push({
+            id: String(alert.id),
+            source: primarySource,
+            providerSources: freshProviderSources,
+            providerLastSeen: freshProviderLastSeen,
+            providerConfirmationCount,
+            providerConfidence,
+          });
+
+          partiallyStaleProvidersRemoved +=
+            staleProviderEntries.length;
+        }
+      }
+
+      for (const update of partiallyStaleAlertUpdates) {
+        const {
+          data: partiallyReconciledAlert,
+          error: partialReconciliationError,
+        } = await supabase
+          .from("route_safety_alerts")
+          .update({
+            source: update.source,
+            provider_sources:
+              update.providerSources,
+            provider_confirmation_count:
+              update.providerConfirmationCount,
+            provider_confidence:
+              update.providerConfidence,
+            provider_last_seen:
+              update.providerLastSeen,
+          })
+          .eq("organization_id", organizationId)
+          .eq("status", "active")
+          .eq("id", update.id)
+          .select("id")
+          .maybeSingle();
+
+        if (partialReconciliationError) {
+          throw partialReconciliationError;
+        }
+
+        if (partiallyReconciledAlert) {
+          partiallyReconciledAlerts += 1;
         }
       }
 
@@ -1551,6 +1691,8 @@ export async function GET(request: Request) {
       alertsWithStaleProviders,
       alertsWithAllProvidersStale,
       allProvidersStaleAlertsTransitioned,
+      partiallyReconciledAlerts,
+      partiallyStaleProvidersRemoved,
       imported,
       refreshedExisting,
       skippedDuplicates,
