@@ -79,7 +79,7 @@ function mapHereType(description: string) {
     text.includes("crash") ||
     text.includes("collision")
   ) {
-    return "collision";
+    return "accident";
   }
 
   if (text.includes("protest")) {
@@ -184,7 +184,7 @@ if (
   return "congestion";
 }
 
-  if (value === "1") return "collision";
+  if (value === "1") return "accident";
   if (value === "2") return "weather_hazard";
   if (value === "3") return "road_hazard";
   if (value === "4") return "weather_hazard";
