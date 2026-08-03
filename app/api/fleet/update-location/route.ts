@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireOrganization, requireRole } from "@/lib/server-auth";
 import { detectFleetRisks } from "@/lib/fleet/risk-detection";
+import { findHarshBrakingCorroboration } from "@/lib/fleet/harshBrakingCorroboration";
 
 const STOP_SPEED_KMH = 3;
 const STOP_MINUTES = 5;
@@ -682,6 +683,50 @@ export async function POST(req: Request) {
               "Harsh braking alert insert failed:",
               harshBrakingAlertError
             );
+          } else {
+            try {
+              const corroboration =
+                await findHarshBrakingCorroboration({
+                  supabase,
+                  organizationId,
+                  currentVehicleId: vehicleId,
+                  latitude,
+                  longitude,
+                });
+
+              console.info(
+                "[harsh-braking corroboration diagnostic]",
+                {
+                  organizationId,
+                  vehicleId,
+                  latitude,
+                  longitude,
+                  thresholdMet:
+                    corroboration.thresholdMet,
+                  distinctVehicleCount:
+                    corroboration.distinctVehicleCount,
+                  distinctVehicleIds:
+                    corroboration.distinctVehicleIds,
+                  otherVehicleIds:
+                    corroboration.otherVehicleIds,
+                  nearbyAlertCount:
+                    corroboration.nearbyAlertCount,
+                  radiusMeters:
+                    corroboration.radiusMeters,
+                  timeWindowMinutes:
+                    corroboration.timeWindowMinutes,
+                  windowStartedAt:
+                    corroboration.windowStartedAt,
+                  windowEndedAt:
+                    corroboration.windowEndedAt,
+                }
+              );
+            } catch (corroborationError) {
+              console.error(
+                "[harsh-braking corroboration diagnostic failed]",
+                corroborationError
+              );
+            }
           }
         }
       } catch (harshBrakingError) {
