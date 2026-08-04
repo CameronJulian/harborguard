@@ -3265,3 +3265,22 @@ Added temporary diagnostic logging after harsh braking alert creation within:
 - Code committed and pushed as:
   - `6734cb0 Extract shared route safety alert type`
 - This is the first preparation step for extracting the existing route-safety insert, duplicate matching, confidence, and lifecycle logic into a reusable shared helper.
+
+## Engineering Progress Update – 04 August 2026
+
+### Shared Route Safety Alert Upsert Helper
+
+Completed extraction of the provider alert insertion and duplicate-correlation
+logic into a reusable helper.
+
+Changes:
+- Created lib/route-safety/upsertRouteSafetyAlerts.ts
+- Moved insertNewProviderAlerts() into the shared helper
+- Moved duplicate detection helpers into the shared helper
+- Provider cron now imports the helper instead of containing duplicate logic
+- No behavioural changes intended
+
+Verification:
+- npx tsc --noEmit ✔
+- npm run build ✔
+- Git diff reviewed
