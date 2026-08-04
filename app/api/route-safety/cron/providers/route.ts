@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import type { RouteSafetyAlertRow } from "@/lib/route-safety/types";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -28,26 +29,7 @@ type IntelligenceSourceConfigurationResult = {
   error: string | null;
 };
 
-type AlertRow = {
-  organization_id: string;
-  type: string;
-  title: string;
-  description: string;
-  latitude: number;
-  longitude: number;
-  radius_meters: number;
-  severity: string;
-  source: string;
-  status: string;
-  expires_at: string | null;
-  verified_at: string;
 
-  // Provider metadata for future duplicate matching
-  road_name?: string | null;
-  road_from?: string | null;
-  road_to?: string | null;
-  provider_geometry?: unknown;
-};
 
 function mapHereSeverity(criticality?: string) {
   const value = String(criticality || "").toLowerCase();
@@ -501,7 +483,7 @@ async function insertNewProviderAlerts(
   organizationId: string,
   source: string,
   baseConfidence: number,
-  rows: AlertRow[]
+  rows: RouteSafetyAlertRow[]
 ) {
   if (rows.length === 0) {
     return {
@@ -558,7 +540,7 @@ provider_sources,
 
   const queuedSameProviderKeys = new Set<string>();
   const uniqueRows: Array<
-    AlertRow & {
+    RouteSafetyAlertRow & {
       provider_sources: string[];
       provider_confirmation_count: number;
       provider_confidence: number;
@@ -994,7 +976,7 @@ async function importHereIncidents(
       : [];
 
     const rows = incidents
-      .map((incident: any): AlertRow | null => {
+      .map((incident: any): RouteSafetyAlertRow | null => {
         const details = incident?.incidentDetails || {};
 
         const description = String(
@@ -1043,7 +1025,7 @@ provider_geometry:
   null,
         };
       })
-      .filter((row: AlertRow | null): row is AlertRow => row !== null);
+      .filter((row: RouteSafetyAlertRow | null): row is RouteSafetyAlertRow => row !== null);
 
     const result = await insertNewProviderAlerts(
       supabase,
@@ -1183,7 +1165,7 @@ async function importTomTomIncidents(
       : [];
 
     const rows = incidents
-      .map((incident: any): AlertRow | null => {
+      .map((incident: any): RouteSafetyAlertRow | null => {
         const coordinates = incident?.geometry?.coordinates;
 
         const firstPoint = Array.isArray(coordinates?.[0])
@@ -1250,7 +1232,7 @@ async function importTomTomIncidents(
     null,
 };
       })
-      .filter((row: AlertRow | null): row is AlertRow => row !== null);
+      .filter((row: RouteSafetyAlertRow | null): row is RouteSafetyAlertRow => row !== null);
 
     const result = await insertNewProviderAlerts(
       supabase,
