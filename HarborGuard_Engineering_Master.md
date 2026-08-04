@@ -3305,3 +3305,10 @@ Verification:
   - `npx tsc --noEmit`
   - `npm run build`
 - Production build completed successfully with 119 routes.
+
+extracted the shared TomTom provider importer,
+removed duplicate implementation from the cron route,
+validated with git diff,
+TypeScript passed,
+production build passed,
+shared provider architecture now used for both HERE and TomTom.
