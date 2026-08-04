@@ -3244,3 +3244,24 @@ Validate that harsh braking telemetry from multiple independent fleet vehicles c
 
 #### Diagnostic Logging
 Added temporary diagnostic logging after harsh braking alert creation within:
+
+
+### Shared Route-Safety Alert Type Extraction
+
+- Audited the HERE and TomTom provider ingestion pipeline before extracting shared route-safety logic.
+- Confirmed that the existing `AlertRow` type was used by:
+  - the HERE incident mapper;
+  - the TomTom incident mapper;
+  - the route-safety alert insertion and duplicate-matching logic.
+- Created `lib/route-safety/types.ts`.
+- Added the shared exported type `RouteSafetyAlertRow`.
+- Removed the duplicated local `AlertRow` definition from:
+  - `app/api/route-safety/cron/providers/route.ts`
+- Updated the provider ingestion pipeline to import and use `RouteSafetyAlertRow`.
+- Verified successfully with:
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
+- Code committed and pushed as:
+  - `6734cb0 Extract shared route safety alert type`
+- This is the first preparation step for extracting the existing route-safety insert, duplicate matching, confidence, and lifecycle logic into a reusable shared helper.
