@@ -3218,4 +3218,29 @@ timeWindowMinutes
 windowStartedAt
 windowEndedAt
 TypeScript verification passed.
-Production build passed.
+Production build passed.e
+
+### Harsh-Braking Corroboration Clock-Skew Fix
+
+- Runtime testing confirmed that a valid harsh-braking alert was inserted successfully, but the corroboration helper initially returned zero nearby alerts.
+- The inserted `vehicle_alerts.created_at` timestamp was approximately 191 ms later than the helper's `windowEndedAt` value.
+- Root cause: application and database clock/timestamp skew caused the newly inserted alert to fall just outside the query upper boundary.
+- Added `DEFAULT_FUTURE_TOLERANCE_SECONDS = 5` in `lib/fleet/harshBrakingCorroboration.ts`.
+- The helper now extends the upper corroboration boundary by five seconds before applying the `created_at <= windowEndedAt` filter.
+- TypeScript verification passed with `npx tsc --noEmit`.
+- Production build passed with `npm run build`.
+- Code committed and pushed as `c2735c9 Allow clock skew in harsh braking corroboration`.
+- Runtime verification result: pending confirmation that the diagnostic returns `nearbyAlertCount: 1` and `distinctVehicleCount: 1`.
+
+## Engineering Progress Update – 04 August 2026
+
+### Feature
+Harsh Braking Multi-Vehicle Corroboration Validation
+
+### Objective
+Validate that harsh braking telemetry from multiple independent fleet vehicles can be automatically corroborated before being considered a verified road intelligence event.
+
+### Work Completed
+
+#### Diagnostic Logging
+Added temporary diagnostic logging after harsh braking alert creation within:
