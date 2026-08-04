@@ -1,4 +1,5 @@
 const DEFAULT_TIME_WINDOW_MINUTES = 15;
+const DEFAULT_FUTURE_TOLERANCE_SECONDS = 5;
 const DEFAULT_RADIUS_METERS = 150;
 const DEFAULT_MINIMUM_DISTINCT_VEHICLES = 2;
 
@@ -167,7 +168,11 @@ export async function findHarshBrakingCorroboration({
   ).toISOString();
 
   const windowEndedAt =
-    windowEndedAtDate.toISOString();
+    new Date(
+      windowEndedAtDate.getTime() +
+        DEFAULT_FUTURE_TOLERANCE_SECONDS *
+          1000
+    ).toISOString();
 
   const {
     data: recentAlerts,
