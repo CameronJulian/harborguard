@@ -3284,3 +3284,24 @@ Verification:
 - npx tsc --noEmit ✔
 - npm run build ✔
 - Git diff reviewed
+
+### HERE Route-Safety Provider Importer Extraction
+
+- Audited the existing HERE provider ingestion flow and its exact dependencies.
+- Confirmed the HERE importer depended on:
+  - `mapHereSeverity`
+  - `mapHereType`
+  - `getHereLatLng`
+  - `getIntelligenceSourceConfiguration`
+  - the shared `insertNewProviderAlerts` helper
+- Created:
+  - `lib/route-safety/providers/importHereIncidents.ts`
+- Moved the HERE-specific severity mapping, type mapping, coordinate extraction, API request, incident normalization, and provider result handling into the new module.
+- Injected the existing intelligence-source configuration loader rather than duplicating registry access logic.
+- Updated the provider cron to call the shared HERE importer.
+- Removed the obsolete local HERE helper functions and importer from the cron route.
+- Left the TomTom importer unchanged.
+- Verified successfully with:
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
