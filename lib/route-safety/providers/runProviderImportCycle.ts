@@ -1,4 +1,7 @@
 import {
+  buildProviderImportSummary,
+} from "@/lib/route-safety/providers/buildProviderImportSummary";
+import {
   expireRouteSafetyAlerts,
 } from "@/lib/route-safety/providers/expireRouteSafetyAlerts";
 import {
@@ -106,39 +109,20 @@ export async function runProviderImportCycle(
       reconciliationMetrics.partiallyStaleProvidersRemoved;
   }
 
-  const imported = results.reduce(
-    (total, result) =>
-      total + result.imported,
-    0
-  );
-
-  const refreshedExisting = results.reduce(
-    (total, result) =>
-      total + result.refreshedExisting,
-    0
-  );
-
-  const skippedDuplicates = results.reduce(
-    (total, result) =>
-      total + result.skippedDuplicates,
-    0
-  );
-
-  const mergedDuplicates = results.reduce(
-    (total, result) =>
-      total + result.mergedDuplicates,
-    0
-  );
-
-  const failedProviders = results.filter(
-    (result) => !result.success
-  ).length;
+  const {
+    providerRuns,
+    imported,
+    refreshedExisting,
+    skippedDuplicates,
+    mergedDuplicates,
+    failedProviders,
+  } = buildProviderImportSummary(results);
 
   return {
     success: failedProviders === 0,
     generatedAt: new Date().toISOString(),
     organizationsProcessed: organizationIds.length,
-    providerRuns: results.length,
+    providerRuns,
     expiredAlertsTransitioned,
     staleProviderThresholdHours,
     staleProviderObservations,
