@@ -3320,3 +3320,21 @@ successful TypeScript verification
 successful production build
 the Turbopack development issue and its resolution by moving _audit-output outside the project and ignoring it
 the fact that the provider ingestion pipeline is now further modularized and easier to reuse
+
+### Shared Route-Safety Provider Result Type
+
+- Audited the remaining provider cron structure and confirmed that `ProviderResult` was the only local shared provider type still duplicated.
+- Created:
+  - `lib/route-safety/providers/types.ts`
+- Moved `ProviderResult` into the shared provider types module.
+- Updated:
+  - provider cron route
+  - HERE importer
+  - TomTom importer
+- Removed the TomTom importer’s type dependency on the HERE importer.
+- No runtime behavior changed.
+- Verified successfully with:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
