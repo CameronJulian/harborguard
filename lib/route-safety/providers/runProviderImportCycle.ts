@@ -1,4 +1,7 @@
 import {
+  expireRouteSafetyAlerts,
+} from "@/lib/route-safety/providers/expireRouteSafetyAlerts";
+import {
   getIntelligenceSourceConfiguration,
 } from "@/lib/route-safety/providers/getIntelligenceSourceConfiguration";
 import {
@@ -51,27 +54,11 @@ export async function runProviderImportCycle(
   let partiallyStaleProvidersRemoved = 0;
 
   for (const organizationId of organizationIds) {
-    const expiredAt = new Date().toISOString();
-
-    const {
-      data: expiredAlerts,
-      error: expiredAlertsError,
-    } = await supabase
-      .from("route_safety_alerts")
-      .update({
-        status: "expired",
-      })
-      .eq("organization_id", organizationId)
-      .eq("status", "active")
-      .lt("expires_at", expiredAt)
-      .select("id");
-
-    if (expiredAlertsError) {
-      throw expiredAlertsError;
-    }
-
     expiredAlertsTransitioned +=
-      expiredAlerts?.length || 0;
+      await expireRouteSafetyAlerts(
+        supabase,
+        organizationId
+      );
 
     const hereResult =
       await importHereIncidents(
