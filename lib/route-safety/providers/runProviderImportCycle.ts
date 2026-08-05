@@ -2,20 +2,8 @@ import {
   buildProviderImportSummary,
 } from "@/lib/route-safety/providers/buildProviderImportSummary";
 import {
-  expireRouteSafetyAlerts,
-} from "@/lib/route-safety/providers/expireRouteSafetyAlerts";
-import {
-  getIntelligenceSourceConfiguration,
-} from "@/lib/route-safety/providers/getIntelligenceSourceConfiguration";
-import {
-  importHereIncidents,
-} from "@/lib/route-safety/providers/importHereIncidents";
-import {
-  importTomTomIncidents,
-} from "@/lib/route-safety/providers/importTomTomIncidents";
-import {
-  reconcileProviderObservations,
-} from "@/lib/route-safety/providers/reconcileProviderObservations";
+  runOrganizationProviderImport,
+} from "@/lib/route-safety/providers/runOrganizationProviderImport";
 import type {
   ProviderResult,
 } from "@/lib/route-safety/providers/types";
@@ -57,56 +45,37 @@ export async function runProviderImportCycle(
   let partiallyStaleProvidersRemoved = 0;
 
   for (const organizationId of organizationIds) {
-    expiredAlertsTransitioned +=
-      await expireRouteSafetyAlerts(
-        supabase,
-        organizationId
-      );
-
-    const hereResult =
-      await importHereIncidents(
+    const organizationResult =
+      await runOrganizationProviderImport(
         supabase,
         organizationId,
-        getIntelligenceSourceConfiguration
-      );
-
-    const tomTomResult =
-      await importTomTomIncidents(
-        supabase,
-        organizationId,
-        getIntelligenceSourceConfiguration
-      );
-
-    results.push(
-      hereResult,
-      tomTomResult
-    );
-
-    const reconciliationMetrics =
-      await reconcileProviderObservations(
-        supabase,
-        organizationId,
-        getIntelligenceSourceConfiguration,
         staleProviderThresholdHours
       );
 
+    results.push(
+      ...organizationResult.providerResults
+    );
+
+    expiredAlertsTransitioned +=
+      organizationResult.expiredAlertsTransitioned;
+
     staleProviderObservations +=
-      reconciliationMetrics.staleProviderObservations;
+      organizationResult.staleProviderObservations;
 
     alertsWithStaleProviders +=
-      reconciliationMetrics.alertsWithStaleProviders;
+      organizationResult.alertsWithStaleProviders;
 
     alertsWithAllProvidersStale +=
-      reconciliationMetrics.alertsWithAllProvidersStale;
+      organizationResult.alertsWithAllProvidersStale;
 
     allProvidersStaleAlertsTransitioned +=
-      reconciliationMetrics.allProvidersStaleAlertsTransitioned;
+      organizationResult.allProvidersStaleAlertsTransitioned;
 
     partiallyReconciledAlerts +=
-      reconciliationMetrics.partiallyReconciledAlerts;
+      organizationResult.partiallyReconciledAlerts;
 
     partiallyStaleProvidersRemoved +=
-      reconciliationMetrics.partiallyStaleProvidersRemoved;
+      organizationResult.partiallyStaleProvidersRemoved;
   }
 
   const {
