@@ -1,20 +1,10 @@
 import type {
   IntelligenceSourceConfigurationLoader,
 } from "@/lib/route-safety/providers/getIntelligenceSourceConfiguration";
+import type { ProviderResult } from "@/lib/route-safety/providers/types";
 import type { RouteSafetyAlertRow } from "@/lib/route-safety/types";
 import { insertNewProviderAlerts } from "@/lib/route-safety/upsertRouteSafetyAlerts";
 
-export type ProviderResult = {
-  provider: "here" | "tomtom";
-  organizationId: string;
-  success: boolean;
-  rawCount: number;
-  imported: number;
-  refreshedExisting: number;
-  skippedDuplicates: number;
-  mergedDuplicates: number;
-  error: string | null;
-};
 
 
 function mapHereSeverity(criticality?: string) {

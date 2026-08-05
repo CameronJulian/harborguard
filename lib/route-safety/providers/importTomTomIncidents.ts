@@ -1,6 +1,4 @@
-import type {
-  ProviderResult,
-} from "@/lib/route-safety/providers/importHereIncidents";
+import type { ProviderResult } from "@/lib/route-safety/providers/types";
 import type {
   IntelligenceSourceConfigurationLoader,
 } from "@/lib/route-safety/providers/getIntelligenceSourceConfiguration";

@@ -9,21 +9,11 @@ import {
 import {
   getIntelligenceSourceConfiguration as getIntelligenceSourceConfigurationShared,
 } from "@/lib/route-safety/providers/getIntelligenceSourceConfiguration";
+import type { ProviderResult } from "@/lib/route-safety/providers/types";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-type ProviderResult = {
-  provider: "here" | "tomtom";
-  organizationId: string;
-  success: boolean;
-  rawCount: number;
-  imported: number;
-  refreshedExisting: number;
-  skippedDuplicates: number;
-  mergedDuplicates: number;
-  error: string | null;
-};
 
 
 
