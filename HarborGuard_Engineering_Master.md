@@ -3343,3 +3343,30 @@ completion of the provider reconciliation extraction,
 the new reconcileProviderObservations.ts shared module,
 validation (tsc + production build),
 remaining work.
+
+### Provider Observation Reconciliation Extraction
+
+- Audited the stale-provider reconciliation block in the route-safety provider cron endpoint.
+- Confirmed the block was an isolated business-logic unit inside the per-organization provider loop.
+- Created:
+  - `lib/route-safety/providers/reconcileProviderObservations.ts`
+- Extracted provider-observation reconciliation responsibilities:
+  - stale provider observation detection
+  - partial provider removal
+  - provider confidence recalculation
+  - source reassignment when the primary provider becomes stale
+  - fully stale alert expiration
+- The shared module returns six reconciliation metrics:
+  - `staleProviderObservations`
+  - `alertsWithStaleProviders`
+  - `alertsWithAllProvidersStale`
+  - `allProvidersStaleAlertsTransitioned`
+  - `partiallyReconciledAlerts`
+  - `partiallyStaleProvidersRemoved`
+- Updated the provider cron route to call the shared reconciliation module and accumulate its returned metrics.
+- Removed the duplicated inline reconciliation implementation from the route.
+- Verified successfully with:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
