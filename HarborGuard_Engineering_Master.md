@@ -3370,3 +3370,10 @@ remaining work.
   - `npx tsc --noEmit`
   - `npm run build`
 - Production build completed successfully with 119 routes.
+
+Extracted expireRouteSafetyAlerts.ts
+✅ Simplified runProviderImportCycle.ts
+✅ Passed git diff --check
+✅ Passed npx tsc --noEmit
+✅ Passed a full production next build
+✅ Committed and pushed the implementation (f9ef6dd)
