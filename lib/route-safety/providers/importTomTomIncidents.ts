@@ -1,7 +1,9 @@
 import type {
-  IntelligenceSourceConfigurationLoader,
   ProviderResult,
 } from "@/lib/route-safety/providers/importHereIncidents";
+import type {
+  IntelligenceSourceConfigurationLoader,
+} from "@/lib/route-safety/providers/getIntelligenceSourceConfiguration";
 import type { RouteSafetyAlertRow } from "@/lib/route-safety/types";
 import { insertNewProviderAlerts } from "@/lib/route-safety/upsertRouteSafetyAlerts";
 

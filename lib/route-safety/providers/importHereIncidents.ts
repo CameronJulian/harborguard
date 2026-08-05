@@ -1,3 +1,6 @@
+import type {
+  IntelligenceSourceConfigurationLoader,
+} from "@/lib/route-safety/providers/getIntelligenceSourceConfiguration";
 import type { RouteSafetyAlertRow } from "@/lib/route-safety/types";
 import { insertNewProviderAlerts } from "@/lib/route-safety/upsertRouteSafetyAlerts";
 
@@ -13,22 +16,6 @@ export type ProviderResult = {
   error: string | null;
 };
 
-type IntelligenceSourceConfiguration = {
-  sourceKey: string;
-  enabled: boolean;
-  approvedForIngestion: boolean;
-  baseConfidence: number;
-};
-
-type IntelligenceSourceConfigurationResult = {
-  configuration: IntelligenceSourceConfiguration | null;
-  error: string | null;
-};
-
-export type IntelligenceSourceConfigurationLoader = (
-  supabase: any,
-  sourceKey: string
-) => Promise<IntelligenceSourceConfigurationResult>;
 
 function mapHereSeverity(criticality?: string) {
   const value = String(criticality || "").toLowerCase();

@@ -6,6 +6,9 @@ import {
 import {
   importTomTomIncidents as importTomTomIncidentsShared,
 } from "@/lib/route-safety/providers/importTomTomIncidents";
+import {
+  getIntelligenceSourceConfiguration as getIntelligenceSourceConfigurationShared,
+} from "@/lib/route-safety/providers/getIntelligenceSourceConfiguration";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -22,17 +25,6 @@ type ProviderResult = {
   error: string | null;
 };
 
-type IntelligenceSourceConfiguration = {
-  sourceKey: string;
-  enabled: boolean;
-  approvedForIngestion: boolean;
-  baseConfidence: number;
-};
-
-type IntelligenceSourceConfigurationResult = {
-  configuration: IntelligenceSourceConfiguration | null;
-  error: string | null;
-};
 
 
 
@@ -41,62 +33,7 @@ type IntelligenceSourceConfigurationResult = {
 
 
 
-async function getIntelligenceSourceConfiguration(
-  supabase: any,
-  sourceKey: string
-): Promise<IntelligenceSourceConfigurationResult> {
-  const { data, error } = await supabase
-    .from("intelligence_sources")
-    .select(`
-      source_key,
-      enabled,
-      approved_for_ingestion,
-      base_confidence
-    `)
-    .eq("source_key", sourceKey)
-    .maybeSingle();
 
-  if (error) {
-    return {
-      configuration: null,
-      error: error.message,
-    };
-  }
-
-  if (!data) {
-    return {
-      configuration: null,
-      error:
-        `Intelligence source configuration was not found: ${sourceKey}`,
-    };
-  }
-
-  const rawBaseConfidence = Number(
-    data.base_confidence
-  );
-
-  const baseConfidence = Math.min(
-    100,
-    Math.max(
-      0,
-      Number.isFinite(rawBaseConfidence)
-        ? rawBaseConfidence
-        : 0
-    )
-  );
-
-  return {
-    configuration: {
-      sourceKey: String(data.source_key),
-      enabled: Boolean(data.enabled),
-      approvedForIngestion: Boolean(
-        data.approved_for_ingestion
-      ),
-      baseConfidence,
-    },
-    error: null,
-  };
-}
 
 
 
@@ -234,14 +171,14 @@ export async function GET(request: Request) {
         await importHereIncidentsShared(
           supabase,
           organizationId,
-          getIntelligenceSourceConfiguration
+          getIntelligenceSourceConfigurationShared
         );
 
       const tomTomResult =
         await importTomTomIncidentsShared(
           supabase,
           organizationId,
-          getIntelligenceSourceConfiguration
+          getIntelligenceSourceConfigurationShared
         );
 
       results.push(hereResult, tomTomResult);
@@ -374,7 +311,7 @@ export async function GET(request: Request) {
             freshProviderSources.length;
 
           const sourceConfigurationResult =
-            await getIntelligenceSourceConfiguration(
+            await getIntelligenceSourceConfigurationShared(
               supabase,
               primarySource
             );
