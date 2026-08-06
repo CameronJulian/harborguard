@@ -3625,3 +3625,24 @@ Pushed it to feature/expanded-incident-taxonomy.
   - `npx tsc --noEmit`
   - `npm run build`
 - Production build completed successfully with 119 routes.
+### Harsh Braking Candidate Detector Extraction
+
+- Created `lib/fleet/detectHarshBrakingCandidate.ts`.
+- Extracted harsh-braking candidate detection from `app/api/fleet/update-location/route.ts`.
+- The helper now owns:
+  - speed-drop calculation
+  - deceleration calculation
+  - telemetry-source validation
+  - speed and interval validation
+  - configurable harsh-braking threshold evaluation
+  - candidate rounding and construction
+  - null results for non-qualifying telemetry samples
+- The update-location route now delegates to `detectHarshBrakingCandidate(...)`.
+- Previous-speed parsing remains in the route because rapid-acceleration detection also uses it.
+- Harsh-braking alert creation remains delegated to `createHarshBrakingAlert(...)`.
+- No database, `NextResponse`, vehicle-alert, or Route Safety behavior was introduced.
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
