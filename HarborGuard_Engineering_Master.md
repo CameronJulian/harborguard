@@ -3397,3 +3397,23 @@ Only the intended two files were included.
 The staged diff was clean.
 The new builder owns both the cycle result type and final result construction.
 runProviderImportCycle.ts is now reduced to orchestration plus one builder cal
+
+### Provider Import Cycle Result Builder Extraction
+
+- Created:
+  - `lib/route-safety/providers/buildProviderImportCycleResult.ts`
+- Moved `ProviderImportCycleResult` into the result-builder module.
+- Moved final provider-summary aggregation and cycle response construction out of `runProviderImportCycle.ts`.
+- Updated `runProviderImportCycle.ts` to return one `buildProviderImportCycleResult(...)` call.
+- Preserved:
+  - provider result totals
+  - provider failure count
+  - generated timestamp
+  - organization count
+  - expiration and reconciliation metrics
+  - response shape
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
