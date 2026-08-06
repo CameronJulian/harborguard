@@ -16,6 +16,9 @@ import {
 import {
   createHarshBrakingAlert,
 } from "@/lib/fleet/createHarshBrakingAlert";
+import {
+  updateActiveTripFromLocation,
+} from "@/lib/fleet/updateActiveTripFromLocation";
 
 const STOP_SPEED_KMH = 3;
 const STOP_MINUTES = 5;
@@ -594,33 +597,13 @@ export async function POST(req: Request) {
       });
     }
 
-    if (activeTrip) {
-      if (activeTrip.status === "scheduled") {
-        await supabase
-          .from("vehicle_trips")
-          .update({
-            status: requestedStatus || "en_route_to_port",
-            actual_departure: now,
-          })
-          .eq("id", activeTrip.id)
-          .eq("organization_id", organizationId);
-      } else if (requestedStatus && requestedStatus !== activeTrip.status) {
-        const updates: Record<string, string> = {
-          status: requestedStatus,
-        };
-
-        if (requestedStatus === "delivered") {
-          updates.actual_arrival = now;
-        }
-
-        await supabase
-          .from("vehicle_trips")
-          .update(updates)
-          .eq("id", activeTrip.id)
-          .eq("organization_id", organizationId);
-      }
-    }
-
+    await updateActiveTripFromLocation({
+      supabase,
+      organizationId,
+      activeTrip,
+      requestedStatus,
+      occurredAt: now,
+    });
     if (speedKmh <= STOP_SPEED_KMH) {
       const since = new Date(
         Date.now() - STOP_MINUTES * 60 * 1000
