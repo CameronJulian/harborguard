@@ -7,6 +7,9 @@ import {
 import {
   createHarshCorneringAlert,
 } from "@/lib/fleet/createHarshCorneringAlert";
+import {
+  createSpeedingAlert,
+} from "@/lib/fleet/createSpeedingAlert";
 import { findHarshBrakingCorroboration } from "@/lib/fleet/harshBrakingCorroboration";
 import {
   createTelemetryObservation,
@@ -787,82 +790,15 @@ export async function POST(req: Request) {
     }
 
     if (speedingCandidate) {
-      try {
-        const speedingCooldownSince = new Date(
-          Date.now() -
-            SPEEDING_COOLDOWN_MINUTES *
-              60 *
-              1000
-        ).toISOString();
-
-        const {
-          data: recentSpeedingAlert,
-          error: recentSpeedingAlertError,
-        } = await supabase
-          .from("vehicle_alerts")
-          .select("id")
-          .eq("organization_id", organizationId)
-          .eq("vehicle_id", vehicleId)
-          .eq("alert_type", "speeding")
-          .eq("is_resolved", false)
-          .gte("created_at", speedingCooldownSince)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (recentSpeedingAlertError) {
-          console.error(
-            "Speeding cooldown lookup failed:",
-            recentSpeedingAlertError
-          );
-        } else if (!recentSpeedingAlert) {
-          const speedingMessage =
-            "Sustained speeding detected: " +
-            `${speedingCandidate.speedKmh} km/h, ` +
-            `above the fixed ${speedingCandidate.thresholdKmh} km/h threshold ` +
-            `for ${speedingCandidate.durationSeconds} seconds across ` +
-            `${speedingCandidate.consecutiveSamples} consecutive samples.`;
-
-          const speedingNarrative =
-            "Corroborated fleet telemetry candidate based on consecutive samples. " +
-            "This fixed threshold is not yet based on the road-specific speed limit. " +
-            `Coordinates: ${latitude}, ${longitude}. ` +
-            "The sequence requires contextual review and has not " +
-            "been classified as a verified road incident.";
-
-          const { error: speedingAlertError } =
-            await supabase
-              .from("vehicle_alerts")
-              .insert({
-                organization_id: organizationId,
-                vehicle_id: vehicleId,
-                trip_id: activeTripId,
-                latitude,
-                longitude,
-                alert_type: "speeding",
-                severity: "medium",
-                message: speedingMessage,
-                is_resolved: false,
-                intelligence_score:
-                  SPEEDING_INTELLIGENCE_SCORE,
-                behavioral_risk: "medium",
-                intelligence_narrative:
-                  speedingNarrative,
-              });
-
-          if (speedingAlertError) {
-            console.error(
-              "Speeding alert insert failed:",
-              speedingAlertError
-            );
-          }
-        }
-      } catch (speedingError) {
-        console.error(
-          "Speeding detection failed:",
-          speedingError
-        );
-      }
+      await createSpeedingAlert({
+        supabase,
+        organizationId,
+        vehicleId,
+        tripId: activeTripId,
+        latitude,
+        longitude,
+        candidate: speedingCandidate,
+      });
     }
 
     if (activeTrip) {
