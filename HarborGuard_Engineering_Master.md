@@ -3687,3 +3687,23 @@ Pushed it to feature/expanded-incident-taxonomy.
   - `npx tsc --noEmit`
   - `npm run build`
 - Production build completed successfully with 119 routes.
+### Heading Delta Calculation Extraction
+
+- Created `lib/fleet/calculateHeadingDelta.ts`.
+- Extracted heading-delta calculation from `app/api/fleet/update-location/route.ts`.
+- The helper now owns:
+  - finite-heading validation
+  - previous-heading normalization
+  - current-heading normalization
+  - raw angular-difference calculation
+  - shortest-arc heading-delta calculation
+  - null results for invalid heading inputs
+- The update-location route now delegates to `calculateHeadingDelta(...)`.
+- Harsh-cornering candidate detection continues to consume the calculated heading delta.
+- GPS movement evaluation remains delegated to `evaluateGpsMovement(...)`.
+- No database, `NextResponse`, vehicle-alert, or Route Safety behavior was introduced.
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
