@@ -3499,3 +3499,23 @@ Pushed it to feature/expanded-incident-taxonomy.
   - `npx tsc --noEmit`
   - `npm run build`
 - Production build completed successfully with 119 routes.
+
+### Speeding Alert Handler Extraction
+
+- Created `lib/fleet/createSpeedingAlert.ts`.
+- Extracted the speeding alert lifecycle from `app/api/fleet/update-location/route.ts`.
+- The helper now owns:
+  - cooldown lookup
+  - message construction
+  - intelligence narrative construction
+  - `vehicle_alerts` insertion
+  - latitude and longitude persistence
+  - structured creation, cooldown-skip, and error results
+- The update-location route now delegates to `createSpeedingAlert(...)`.
+- Speeding candidate detection remains in the route.
+- No Route Safety write or telemetry-observation call was introduced.
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
