@@ -19,6 +19,9 @@ import {
 import {
   updateActiveTripFromLocation,
 } from "@/lib/fleet/updateActiveTripFromLocation";
+import {
+  updateVehicleStopLifecycle,
+} from "@/lib/fleet/updateVehicleStopLifecycle";
 
 const STOP_SPEED_KMH = 3;
 const STOP_MINUTES = 5;
@@ -604,64 +607,19 @@ export async function POST(req: Request) {
       requestedStatus,
       occurredAt: now,
     });
-    if (speedKmh <= STOP_SPEED_KMH) {
-      const since = new Date(
-        Date.now() - STOP_MINUTES * 60 * 1000
-      ).toISOString();
-
-      const { data: recentSlowPoints } = await supabase
-        .from("vehicle_locations")
-        .select("id")
-        .eq("vehicle_id", vehicleId)
-        .eq("organization_id", organizationId)
-        .gte("recorded_at", since)
-        .lte("speed_kmh", STOP_SPEED_KMH);
-
-      if ((recentSlowPoints || []).length >= MIN_SLOW_POINTS) {
-        const { data: openStop } = await supabase
-          .from("vehicle_stops")
-          .select("id")
-          .eq("vehicle_id", vehicleId)
-          .eq("organization_id", organizationId)
-          .is("ended_at", null)
-          .maybeSingle();
-
-        if (!openStop) {
-          await supabase.from("vehicle_stops").insert({
-            organization_id: organizationId,
-            vehicle_id: vehicleId,
-            trip_id: activeTripId,
-            latitude,
-            longitude,
-            started_at: since,
-          });
-        }
-      }
-    } else {
-      const { data: openStop } = await supabase
-        .from("vehicle_stops")
-        .select("id, started_at")
-        .eq("vehicle_id", vehicleId)
-        .eq("organization_id", organizationId)
-        .is("ended_at", null)
-        .maybeSingle();
-
-      if (openStop) {
-        const durationSeconds = Math.floor(
-          (Date.now() - new Date(openStop.started_at).getTime()) / 1000
-        );
-
-        await supabase
-          .from("vehicle_stops")
-          .update({
-            ended_at: now,
-            duration_seconds: durationSeconds,
-          })
-          .eq("id", openStop.id)
-          .eq("organization_id", organizationId);
-      }
-    }
-
+    await updateVehicleStopLifecycle({
+      supabase,
+      organizationId,
+      vehicleId,
+      tripId: activeTripId,
+      latitude,
+      longitude,
+      speedKmh,
+      occurredAt: now,
+      stopSpeedKmh: STOP_SPEED_KMH,
+      stopMinutes: STOP_MINUTES,
+      minimumSlowPoints: MIN_SLOW_POINTS,
+    });
     let riskDetectionResult: any = null;
 
     try {
