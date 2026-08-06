@@ -14,6 +14,9 @@ import {
   detectSustainedSpeedingCandidate,
 } from "@/lib/fleet/detectSustainedSpeedingCandidate";
 import {
+  detectHarshBrakingCandidate,
+} from "@/lib/fleet/detectHarshBrakingCandidate";
+import {
   createGpsAnomalyAlert,
 } from "@/lib/fleet/createGpsAnomalyAlert";
 import {
@@ -319,48 +322,23 @@ export async function POST(req: Request) {
         const previousSpeedKmh =
           parseNumber(lastPoint.speed_kmh);
 
-        const speedDropKmh =
-          previousSpeedKmh - speedKmh;
-
-        const decelerationMps2 =
-          timeDiffSeconds > 0
-            ? (speedDropKmh / 3.6) /
-              timeDiffSeconds
-            : 0;
-
-        const validTelemetrySample =
-          source !== "manual" &&
-          Number.isFinite(previousSpeedKmh) &&
-          Number.isFinite(speedKmh) &&
-          speedKmh >= 0 &&
-          timeDiffSeconds >=
-            HARSH_BRAKING_MIN_INTERVAL_SECONDS &&
-          timeDiffSeconds <=
-            HARSH_BRAKING_MAX_INTERVAL_SECONDS;
-
-        if (
-          validTelemetrySample &&
-          previousSpeedKmh >=
-            HARSH_BRAKING_MIN_PREVIOUS_SPEED_KMH &&
-          speedDropKmh >=
-            HARSH_BRAKING_MIN_SPEED_DROP_KMH &&
-          decelerationMps2 >=
-            HARSH_BRAKING_MIN_DECELERATION_MPS2
-        ) {
-          harshBrakingCandidate = {
-            previousSpeedKmh:
-              Math.round(previousSpeedKmh * 10) / 10,
-            currentSpeedKmh:
-              Math.round(speedKmh * 10) / 10,
-            speedDropKmh:
-              Math.round(speedDropKmh * 10) / 10,
-            intervalSeconds:
-              Math.round(timeDiffSeconds * 10) / 10,
-            decelerationMps2:
-              Math.round(decelerationMps2 * 100) / 100,
-          };
-        }
-
+        harshBrakingCandidate =
+          detectHarshBrakingCandidate({
+            source,
+            previousSpeedKmh,
+            currentSpeedKmh: speedKmh,
+            intervalSeconds: timeDiffSeconds,
+            minimumPreviousSpeedKmh:
+              HARSH_BRAKING_MIN_PREVIOUS_SPEED_KMH,
+            minimumSpeedDropKmh:
+              HARSH_BRAKING_MIN_SPEED_DROP_KMH,
+            minimumIntervalSeconds:
+              HARSH_BRAKING_MIN_INTERVAL_SECONDS,
+            maximumIntervalSeconds:
+              HARSH_BRAKING_MAX_INTERVAL_SECONDS,
+            minimumDecelerationMps2:
+              HARSH_BRAKING_MIN_DECELERATION_MPS2,
+          });
         const speedIncreaseKmh =
           speedKmh - previousSpeedKmh;
 
