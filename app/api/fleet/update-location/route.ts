@@ -11,6 +11,9 @@ import {
   createSpeedingAlert,
 } from "@/lib/fleet/createSpeedingAlert";
 import {
+  detectSustainedSpeedingCandidate,
+} from "@/lib/fleet/detectSustainedSpeedingCandidate";
+import {
   createGpsAnomalyAlert,
 } from "@/lib/fleet/createGpsAnomalyAlert";
 import {
@@ -294,99 +297,25 @@ export async function POST(req: Request) {
           });
         }
 
-        if (
-          source !== "manual" &&
-          Number.isFinite(speedKmh) &&
-          speedKmh >= SPEEDING_MIN_SPEED_KMH
-        ) {
-          const speedingLookbackSince = new Date(
-            Date.now() -
-              SPEEDING_LOOKBACK_SECONDS *
-                1000
-          ).toISOString();
-
-          const {
-            data: recentSpeedingPoints,
-            error: recentSpeedingPointsError,
-          } = await supabase
-            .from("vehicle_locations")
-            .select("speed_kmh, recorded_at")
-            .eq("organization_id", organizationId)
-            .eq("vehicle_id", vehicleId)
-            .gte("recorded_at", speedingLookbackSince)
-            .order("recorded_at", { ascending: false })
-            .limit(20);
-
-          if (recentSpeedingPointsError) {
-            console.error(
-              "Sustained speeding history lookup failed:",
-              recentSpeedingPointsError
-            );
-          } else {
-            const consecutiveSpeedingSamples = [
-              {
-                speedKmh,
-                recordedAt: now,
-              },
-            ];
-
-            for (
-              const point of recentSpeedingPoints || []
-            ) {
-              const historicalSpeedKmh =
-                parseNumber(point.speed_kmh);
-
-              if (
-                !Number.isFinite(historicalSpeedKmh) ||
-                historicalSpeedKmh <
-                  SPEEDING_MIN_SPEED_KMH
-              ) {
-                break;
-              }
-
-              consecutiveSpeedingSamples.push({
-                speedKmh: historicalSpeedKmh,
-                recordedAt: point.recorded_at,
-              });
-            }
-
-            const oldestSpeedingSample =
-              consecutiveSpeedingSamples[
-                consecutiveSpeedingSamples.length - 1
-              ];
-
-            const sustainedDurationSeconds =
-              oldestSpeedingSample
-                ? (
-                    new Date(now).getTime() -
-                    new Date(
-                      oldestSpeedingSample.recordedAt
-                    ).getTime()
-                  ) / 1000
-                : 0;
-
-            if (
-              consecutiveSpeedingSamples.length >=
-                SPEEDING_MIN_CONSECUTIVE_SAMPLES &&
-              sustainedDurationSeconds >=
-                SPEEDING_MIN_DURATION_SECONDS
-            ) {
-              speedingCandidate = {
-                speedKmh:
-                  Math.round(speedKmh * 10) / 10,
-                thresholdKmh:
-                  SPEEDING_MIN_SPEED_KMH,
-                durationSeconds:
-                  Math.round(
-                    sustainedDurationSeconds * 10
-                  ) / 10,
-                consecutiveSamples:
-                  consecutiveSpeedingSamples.length,
-              };
-            }
-          }
+        if (source !== "manual") {
+          speedingCandidate =
+            await detectSustainedSpeedingCandidate({
+              supabase,
+              organizationId,
+              vehicleId,
+              speedKmh,
+              occurredAt: now,
+              parseNumber,
+              lookbackSeconds:
+                SPEEDING_LOOKBACK_SECONDS,
+              minimumSpeedKmh:
+                SPEEDING_MIN_SPEED_KMH,
+              minimumSamples:
+                SPEEDING_MIN_CONSECUTIVE_SAMPLES,
+              minimumDurationSeconds:
+                SPEEDING_MIN_DURATION_SECONDS,
+            });
         }
-
         const previousSpeedKmh =
           parseNumber(lastPoint.speed_kmh);
 
