@@ -1,3 +1,6 @@
+import {
+  getDistanceMeters,
+} from "@/lib/geo/getDistanceMeters";
 const DEFAULT_TIME_WINDOW_MINUTES = 15;
 const DEFAULT_FUTURE_TOLERANCE_SECONDS = 5;
 const DEFAULT_RADIUS_METERS = 150;
@@ -45,49 +48,6 @@ export type HarshBrakingCorroborationResult = {
   windowStartedAt: string;
   windowEndedAt: string;
 };
-
-function getDistanceMeters(
-  first: {
-    latitude: number;
-    longitude: number;
-  },
-  second: {
-    latitude: number;
-    longitude: number;
-  }
-) {
-  const earthRadiusMeters = 6371e3;
-
-  const firstLatitudeRadians =
-    (first.latitude * Math.PI) / 180;
-
-  const secondLatitudeRadians =
-    (second.latitude * Math.PI) / 180;
-
-  const latitudeDifferenceRadians =
-    ((second.latitude - first.latitude) * Math.PI) /
-    180;
-
-  const longitudeDifferenceRadians =
-    ((second.longitude - first.longitude) *
-      Math.PI) /
-    180;
-
-  const haversineValue =
-    Math.sin(latitudeDifferenceRadians / 2) ** 2 +
-    Math.cos(firstLatitudeRadians) *
-      Math.cos(secondLatitudeRadians) *
-      Math.sin(longitudeDifferenceRadians / 2) ** 2;
-
-  return (
-    earthRadiusMeters *
-    2 *
-    Math.atan2(
-      Math.sqrt(haversineValue),
-      Math.sqrt(1 - haversineValue)
-    )
-  );
-}
 
 function requirePositiveNumber(
   value: number,
