@@ -3391,3 +3391,9 @@ You have now successfully extracted:
 ✅ Organization provider import helper
 
 …and every step has been committed, pushed, and validated with tsc and a production build.
+
+87904ca — Extract provider import cycle result builder
+Only the intended two files were included.
+The staged diff was clean.
+The new builder owns both the cycle result type and final result construction.
+runProviderImportCycle.ts is now reduced to orchestration plus one builder cal
