@@ -808,6 +808,8 @@ export async function POST(req: Request) {
                 organization_id: organizationId,
                 vehicle_id: vehicleId,
                 trip_id: activeTripId,
+                latitude,
+                longitude,
                 alert_type: "rapid_acceleration",
                 severity: "medium",
                 message: rapidAccelerationMessage,
