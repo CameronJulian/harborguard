@@ -23,6 +23,9 @@ import {
   detectHarshCorneringCandidate,
 } from "@/lib/fleet/detectHarshCorneringCandidate";
 import {
+  evaluateGpsMovement,
+} from "@/lib/fleet/evaluateGpsMovement";
+import {
   createGpsAnomalyAlert,
 } from "@/lib/fleet/createGpsAnomalyAlert";
 import {
@@ -267,20 +270,29 @@ export async function POST(req: Request) {
           );
         }
 
-        const calculatedSpeedKmh =
-          timeDiffSeconds > 0
-            ? (distance / timeDiffSeconds) * 3.6
-            : 0;
+        const gpsMovement =
+          evaluateGpsMovement({
+            distanceMeters: distance,
+            intervalSeconds: timeDiffSeconds,
+            minimumDistanceMeters:
+              MIN_DISTANCE_METERS,
+            maximumAllowedSpeedKmh:
+              MAX_ALLOWED_SPEED_KMH,
+          });
 
-        if (distance < MIN_DISTANCE_METERS) {
+        const calculatedSpeedKmh =
+          gpsMovement.calculatedSpeedKmh;
+
+        if (gpsMovement.outcome === "jitter") {
           return NextResponse.json({
             success: true,
             skipped: "jitter",
-            message: "Location ignored because movement was too small.",
+            message:
+              "Location ignored because movement was too small.",
           });
         }
 
-        if (calculatedSpeedKmh > MAX_ALLOWED_SPEED_KMH) {
+        if (gpsMovement.outcome === "gps_spike") {
           if (source !== "manual") {
             await createGpsAnomalyAlert({
               supabase,
@@ -302,10 +314,10 @@ export async function POST(req: Request) {
           return NextResponse.json({
             success: true,
             skipped: "gps_spike",
-            message: "Location ignored because it looked like a GPS spike.",
+            message:
+              "Location ignored because it looked like a GPS spike.",
           });
         }
-
         if (source !== "manual") {
           speedingCandidate =
             await detectSustainedSpeedingCandidate({
