@@ -3417,3 +3417,28 @@ runProviderImportCycle.ts is now reduced to orchestration plus one builder cal
   - `npx tsc --noEmit`
   - `npm run build`
 - Production build completed successfully with 119 routes.
+
+### Telemetry Observation Builder
+
+- Created:
+  - `lib/route-safety/createTelemetryObservation.ts`
+- Added a pure builder that converts harsh-braking corroboration results into a normalized telemetry observation.
+- Added validation for:
+  - organization ID
+  - source vehicle ID
+  - latitude
+  - longitude
+  - occurrence timestamp
+- Preserved corroboration evidence including:
+  - threshold status
+  - distinct vehicle count and IDs
+  - nearby alert count
+  - radius
+  - time window
+- The helper performs no database writes.
+- The existing fleet location route and corroboration helper were not changed.
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
