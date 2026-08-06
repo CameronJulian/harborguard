@@ -887,6 +887,8 @@ export async function POST(req: Request) {
                 organization_id: organizationId,
                 vehicle_id: vehicleId,
                 trip_id: activeTripId,
+                latitude,
+                longitude,
                 alert_type: "harsh_cornering",
                 severity: "medium",
                 message: harshCorneringMessage,
