@@ -3519,3 +3519,22 @@ Pushed it to feature/expanded-incident-taxonomy.
   - `npx tsc --noEmit`
   - `npm run build`
 - Production build completed successfully with 119 routes.
+
+### GPS Anomaly Alert Handler Extraction
+
+- Created `lib/fleet/createGpsAnomalyAlert.ts`.
+- Extracted the GPS anomaly alert lifecycle from `app/api/fleet/update-location/route.ts`.
+- The helper now owns:
+  - cooldown lookup
+  - alert message construction
+  - intelligence narrative construction
+  - `vehicle_alerts` insertion
+  - structured creation, cooldown-skip, and error results
+- The update-location route now delegates to `createGpsAnomalyAlert(...)`.
+- GPS spike detection remains in the route.
+- GPS spike responses remain unchanged.
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
