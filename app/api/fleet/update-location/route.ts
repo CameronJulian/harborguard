@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { requireOrganization, requireRole } from "@/lib/server-auth";
 import { detectFleetRisks } from "@/lib/fleet/risk-detection";
 import { findHarshBrakingCorroboration } from "@/lib/fleet/harshBrakingCorroboration";
+import {
+  createTelemetryObservation,
+} from "@/lib/route-safety/createTelemetryObservation";
 
 const STOP_SPEED_KMH = 3;
 const STOP_MINUTES = 5;
@@ -693,6 +696,22 @@ export async function POST(req: Request) {
                   latitude,
                   longitude,
                 });
+
+              const telemetryObservation =
+                await createTelemetryObservation({
+                  organizationId,
+                  latitude,
+                  longitude,
+                  corroboration,
+                  occurredAt:
+                    new Date().toISOString(),
+                  sourceVehicleId: vehicleId,
+                });
+
+              console.info(
+                "[harsh-braking telemetry observation]",
+                telemetryObservation
+              );
 
               console.info(
                 "[harsh-braking corroboration diagnostic]",
