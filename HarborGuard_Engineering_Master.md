@@ -3560,3 +3560,24 @@ Pushed it to feature/expanded-incident-taxonomy.
   - `npx tsc --noEmit`
   - `npm run build`
 - Production build completed successfully with 119 routes.
+### Active Trip Transition Helper Extraction
+
+- Created `lib/fleet/updateActiveTripFromLocation.ts`.
+- Extracted active-trip transition logic from `app/api/fleet/update-location/route.ts`.
+- The helper now owns:
+  - scheduled-trip departure transitions
+  - default transition to `en_route_to_port`
+  - requested trip-status transitions
+  - `actual_departure` persistence
+  - `actual_arrival` persistence for delivered trips
+  - organization-scoped `vehicle_trips` updates
+  - structured previous-status, next-status, and update results
+- The update-location route now delegates to `updateActiveTripFromLocation(...)`.
+- Active-trip lookup and `activeTripId` resolution remain in the route.
+- Vehicle-stop lifecycle handling remains unchanged.
+- No `NextResponse`, vehicle-alert, or Route Safety behavior was introduced.
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
