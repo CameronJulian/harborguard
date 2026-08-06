@@ -1,33 +1,15 @@
 import {
-  buildProviderImportSummary,
-} from "@/lib/route-safety/providers/buildProviderImportSummary";
+  buildProviderImportCycleResult,
+} from "@/lib/route-safety/providers/buildProviderImportCycleResult";
+import type {
+  ProviderImportCycleResult,
+} from "@/lib/route-safety/providers/buildProviderImportCycleResult";
 import {
   runOrganizationProviderImport,
 } from "@/lib/route-safety/providers/runOrganizationProviderImport";
 import type {
   ProviderResult,
 } from "@/lib/route-safety/providers/types";
-
-export type ProviderImportCycleResult = {
-  success: boolean;
-  generatedAt: string;
-  organizationsProcessed: number;
-  providerRuns: number;
-  expiredAlertsTransitioned: number;
-  staleProviderThresholdHours: number;
-  staleProviderObservations: number;
-  alertsWithStaleProviders: number;
-  alertsWithAllProvidersStale: number;
-  allProvidersStaleAlertsTransitioned: number;
-  partiallyReconciledAlerts: number;
-  partiallyStaleProvidersRemoved: number;
-  imported: number;
-  refreshedExisting: number;
-  skippedDuplicates: number;
-  mergedDuplicates: number;
-  failedProviders: number;
-  results: ProviderResult[];
-};
 
 export async function runProviderImportCycle(
   supabase: any,
@@ -78,33 +60,16 @@ export async function runProviderImportCycle(
       organizationResult.partiallyStaleProvidersRemoved;
   }
 
-  const {
-    providerRuns,
-    imported,
-    refreshedExisting,
-    skippedDuplicates,
-    mergedDuplicates,
-    failedProviders,
-  } = buildProviderImportSummary(results);
-
-  return {
-    success: failedProviders === 0,
-    generatedAt: new Date().toISOString(),
-    organizationsProcessed: organizationIds.length,
-    providerRuns,
-    expiredAlertsTransitioned,
+  return buildProviderImportCycleResult({
+    organizationCount: organizationIds.length,
     staleProviderThresholdHours,
+    expiredAlertsTransitioned,
     staleProviderObservations,
     alertsWithStaleProviders,
     alertsWithAllProvidersStale,
     allProvidersStaleAlertsTransitioned,
     partiallyReconciledAlerts,
     partiallyStaleProvidersRemoved,
-    imported,
-    refreshedExisting,
-    skippedDuplicates,
-    mergedDuplicates,
-    failedProviders,
     results,
-  };
+  });
 }
