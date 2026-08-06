@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireOrganization, requireRole } from "@/lib/server-auth";
 import { detectFleetRisks } from "@/lib/fleet/risk-detection";
+import {
+  createRapidAccelerationAlert,
+} from "@/lib/fleet/createRapidAccelerationAlert";
 import { findHarshBrakingCorroboration } from "@/lib/fleet/harshBrakingCorroboration";
 import {
   createTelemetryObservation,
@@ -757,83 +760,15 @@ export async function POST(req: Request) {
     }
 
     if (rapidAccelerationCandidate) {
-      try {
-        const rapidAccelerationCooldownSince = new Date(
-          Date.now() -
-            RAPID_ACCELERATION_COOLDOWN_MINUTES *
-              60 *
-              1000
-        ).toISOString();
-
-        const {
-          data: recentRapidAccelerationAlert,
-          error: recentRapidAccelerationAlertError,
-        } = await supabase
-          .from("vehicle_alerts")
-          .select("id")
-          .eq("organization_id", organizationId)
-          .eq("vehicle_id", vehicleId)
-          .eq("alert_type", "rapid_acceleration")
-          .eq("is_resolved", false)
-          .gte("created_at", rapidAccelerationCooldownSince)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (recentRapidAccelerationAlertError) {
-          console.error(
-            "Rapid acceleration cooldown lookup failed:",
-            recentRapidAccelerationAlertError
-          );
-        } else if (!recentRapidAccelerationAlert) {
-          const rapidAccelerationMessage =
-            "Rapid acceleration candidate detected: " +
-            `${rapidAccelerationCandidate.previousSpeedKmh} km/h to ` +
-            `${rapidAccelerationCandidate.currentSpeedKmh} km/h over ` +
-            `${rapidAccelerationCandidate.intervalSeconds} seconds ` +
-            `(${rapidAccelerationCandidate.accelerationMps2} m/s2).`;
-
-          const rapidAccelerationNarrative =
-            "Low-confidence fleet telemetry candidate. " +
-            "Speed increase: " +
-            `${rapidAccelerationCandidate.speedIncreaseKmh} km/h. ` +
-            `Coordinates: ${latitude}, ${longitude}. ` +
-            "This event requires corroboration and has not " +
-            "been classified as a verified road incident.";
-
-          const { error: rapidAccelerationAlertError } =
-            await supabase
-              .from("vehicle_alerts")
-              .insert({
-                organization_id: organizationId,
-                vehicle_id: vehicleId,
-                trip_id: activeTripId,
-                latitude,
-                longitude,
-                alert_type: "rapid_acceleration",
-                severity: "medium",
-                message: rapidAccelerationMessage,
-                is_resolved: false,
-                intelligence_score:
-                  RAPID_ACCELERATION_INTELLIGENCE_SCORE,
-                behavioral_risk: "medium",
-                intelligence_narrative:
-                  rapidAccelerationNarrative,
-              });
-
-          if (rapidAccelerationAlertError) {
-            console.error(
-              "Rapid acceleration alert insert failed:",
-              rapidAccelerationAlertError
-            );
-          }
-        }
-      } catch (rapidAccelerationError) {
-        console.error(
-          "Rapid acceleration detection failed:",
-          rapidAccelerationError
-        );
-      }
+      await createRapidAccelerationAlert({
+        supabase,
+        organizationId,
+        vehicleId,
+        tripId: activeTripId,
+        latitude,
+        longitude,
+        candidate: rapidAccelerationCandidate,
+      });
     }
 
     if (harshCorneringCandidate) {
