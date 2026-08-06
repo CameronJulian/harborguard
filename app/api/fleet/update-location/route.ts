@@ -17,6 +17,9 @@ import {
   detectHarshBrakingCandidate,
 } from "@/lib/fleet/detectHarshBrakingCandidate";
 import {
+  detectRapidAccelerationCandidate,
+} from "@/lib/fleet/detectRapidAccelerationCandidate";
+import {
   createGpsAnomalyAlert,
 } from "@/lib/fleet/createGpsAnomalyAlert";
 import {
@@ -339,47 +342,21 @@ export async function POST(req: Request) {
             minimumDecelerationMps2:
               HARSH_BRAKING_MIN_DECELERATION_MPS2,
           });
-        const speedIncreaseKmh =
-          speedKmh - previousSpeedKmh;
-
-        const accelerationMps2 =
-          timeDiffSeconds > 0
-            ? (speedIncreaseKmh / 3.6) /
-              timeDiffSeconds
-            : 0;
-
-        const validAccelerationSample =
-          source !== "manual" &&
-          Number.isFinite(previousSpeedKmh) &&
-          Number.isFinite(speedKmh) &&
-          previousSpeedKmh >= 0 &&
-          speedKmh >= 0 &&
-          timeDiffSeconds >=
-            RAPID_ACCELERATION_MIN_INTERVAL_SECONDS &&
-          timeDiffSeconds <=
-            RAPID_ACCELERATION_MAX_INTERVAL_SECONDS;
-
-        if (
-          validAccelerationSample &&
-          speedIncreaseKmh >=
-            RAPID_ACCELERATION_MIN_SPEED_INCREASE_KMH &&
-          accelerationMps2 >=
-            RAPID_ACCELERATION_MIN_ACCELERATION_MPS2
-        ) {
-          rapidAccelerationCandidate = {
-            previousSpeedKmh:
-              Math.round(previousSpeedKmh * 10) / 10,
-            currentSpeedKmh:
-              Math.round(speedKmh * 10) / 10,
-            speedIncreaseKmh:
-              Math.round(speedIncreaseKmh * 10) / 10,
-            intervalSeconds:
-              Math.round(timeDiffSeconds * 10) / 10,
-            accelerationMps2:
-              Math.round(accelerationMps2 * 100) / 100,
-          };
-        }
-
+        rapidAccelerationCandidate =
+          detectRapidAccelerationCandidate({
+            source,
+            previousSpeedKmh,
+            currentSpeedKmh: speedKmh,
+            intervalSeconds: timeDiffSeconds,
+            minimumSpeedIncreaseKmh:
+              RAPID_ACCELERATION_MIN_SPEED_INCREASE_KMH,
+            minimumIntervalSeconds:
+              RAPID_ACCELERATION_MIN_INTERVAL_SECONDS,
+            maximumIntervalSeconds:
+              RAPID_ACCELERATION_MAX_INTERVAL_SECONDS,
+            minimumAccelerationMps2:
+              RAPID_ACCELERATION_MIN_ACCELERATION_MPS2,
+          });
         const validCorneringSample =
           source !== "manual" &&
           normalizedHeadingDeltaDegrees !== null &&
