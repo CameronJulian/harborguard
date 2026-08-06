@@ -29,6 +29,9 @@ import {
   calculateHeadingDelta,
 } from "@/lib/fleet/calculateHeadingDelta";
 import {
+  getDistanceMeters,
+} from "@/lib/geo/getDistanceMeters";
+import {
   createGpsAnomalyAlert,
 } from "@/lib/fleet/createGpsAnomalyAlert";
 import {
@@ -100,26 +103,6 @@ function parseNumber(value: unknown) {
   if (typeof value === "number") return value;
   if (typeof value === "string" && value.trim() !== "") return Number(value);
   return NaN;
-}
-
-function getDistanceMeters(
-  a: { lat: number; lng: number },
-  b: { lat: number; lng: number }
-) {
-  const R = 6371e3;
-  const p1 = (a.lat * Math.PI) / 180;
-  const p2 = (b.lat * Math.PI) / 180;
-  const dp = ((b.lat - a.lat) * Math.PI) / 180;
-  const dl = ((b.lng - a.lng) * Math.PI) / 180;
-
-  const x =
-    Math.sin(dp / 2) * Math.sin(dp / 2) +
-    Math.cos(p1) *
-      Math.cos(p2) *
-      Math.sin(dl / 2) *
-      Math.sin(dl / 2);
-
-  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
 }
 
 export async function POST(req: Request) {
@@ -241,8 +224,14 @@ export async function POST(req: Request) {
 
       if (Number.isFinite(previousLat) && Number.isFinite(previousLng)) {
         const distance = getDistanceMeters(
-          { lat: previousLat, lng: previousLng },
-          { lat: latitude, lng: longitude }
+          {
+            latitude: previousLat,
+            longitude: previousLng,
+          },
+          {
+            latitude,
+            longitude,
+          }
         );
 
         const timeDiffSeconds =
