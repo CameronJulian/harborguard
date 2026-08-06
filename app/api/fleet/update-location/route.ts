@@ -20,6 +20,9 @@ import {
   detectRapidAccelerationCandidate,
 } from "@/lib/fleet/detectRapidAccelerationCandidate";
 import {
+  detectHarshCorneringCandidate,
+} from "@/lib/fleet/detectHarshCorneringCandidate";
+import {
   createGpsAnomalyAlert,
 } from "@/lib/fleet/createGpsAnomalyAlert";
 import {
@@ -357,44 +360,23 @@ export async function POST(req: Request) {
             minimumAccelerationMps2:
               RAPID_ACCELERATION_MIN_ACCELERATION_MPS2,
           });
-        const validCorneringSample =
-          source !== "manual" &&
-          normalizedHeadingDeltaDegrees !== null &&
-          Number.isFinite(normalizedHeadingDeltaDegrees) &&
-          Number.isFinite(previousHeading) &&
-          Number.isFinite(heading) &&
-          Number.isFinite(speedKmh) &&
-          speedKmh >=
-            HARSH_CORNERING_MIN_SPEED_KMH &&
-          timeDiffSeconds >=
-            HARSH_CORNERING_MIN_INTERVAL_SECONDS &&
-          timeDiffSeconds <=
-            HARSH_CORNERING_MAX_INTERVAL_SECONDS;
-
-        if (validCorneringSample) {
-          const headingChangeDegrees =
-            normalizedHeadingDeltaDegrees!;
-
-          if (
-            headingChangeDegrees >=
-            HARSH_CORNERING_MIN_HEADING_CHANGE_DEGREES
-          ) {
-            harshCorneringCandidate = {
-              previousHeading:
-                Math.round(previousHeading * 10) / 10,
-              currentHeading:
-                Math.round(heading * 10) / 10,
-              headingChangeDegrees:
-                Math.round(
-                  headingChangeDegrees * 10
-                ) / 10,
-              speedKmh:
-                Math.round(speedKmh * 10) / 10,
-              intervalSeconds:
-                Math.round(timeDiffSeconds * 10) / 10,
-            };
-          }
-        }
+        harshCorneringCandidate =
+          detectHarshCorneringCandidate({
+            source,
+            previousHeading,
+            currentHeading: heading,
+            normalizedHeadingDeltaDegrees,
+            speedKmh,
+            intervalSeconds: timeDiffSeconds,
+            minimumSpeedKmh:
+              HARSH_CORNERING_MIN_SPEED_KMH,
+            minimumHeadingChangeDegrees:
+              HARSH_CORNERING_MIN_HEADING_CHANGE_DEGREES,
+            minimumIntervalSeconds:
+              HARSH_CORNERING_MIN_INTERVAL_SECONDS,
+            maximumIntervalSeconds:
+              HARSH_CORNERING_MAX_INTERVAL_SECONDS,
+          });
       }
     }
 
