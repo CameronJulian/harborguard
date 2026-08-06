@@ -3457,3 +3457,18 @@ runProviderImportCycle.ts is now reduced to orchestration plus one builder cal
   - `npx tsc --noEmit`
   - `npm run build`
 - Production build completed successfully with 119 routes.
+
+### Harsh Cornering Coordinate Storage
+
+- Updated `app/api/fleet/update-location/route.ts`.
+- Harsh-cornering `vehicle_alerts` now store:
+  - `latitude`
+  - `longitude`
+- No corroboration logic was added.
+- No telemetry observation was created.
+- No Route Safety database write was introduced.
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
