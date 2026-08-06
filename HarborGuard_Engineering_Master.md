@@ -3581,3 +3581,25 @@ Pushed it to feature/expanded-incident-taxonomy.
   - `npx tsc --noEmit`
   - `npm run build`
 - Production build completed successfully with 119 routes.
+### Vehicle Stop Lifecycle Helper Extraction
+
+- Created `lib/fleet/updateVehicleStopLifecycle.ts`.
+- Extracted the vehicle-stop lifecycle from `app/api/fleet/update-location/route.ts`.
+- The helper now owns:
+  - recent slow-location lookup
+  - minimum slow-point threshold evaluation
+  - open-stop lookup
+  - stop creation
+  - stop completion
+  - stop-duration calculation
+  - organization-scoped `vehicle_stops` inserts and updates
+  - structured started, ended, open-stop, and duration results
+- The update-location route now delegates to `updateVehicleStopLifecycle(...)`.
+- Stop thresholds remain configured in the route and are passed into the helper.
+- Risk detection remains in the route and runs after stop lifecycle handling.
+- No `NextResponse`, vehicle-alert, or Route Safety behavior was introduced.
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
