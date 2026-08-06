@@ -3603,3 +3603,25 @@ Pushed it to feature/expanded-incident-taxonomy.
   - `npx tsc --noEmit`
   - `npm run build`
 - Production build completed successfully with 119 routes.
+### Sustained Speeding Detector Extraction
+
+- Created `lib/fleet/detectSustainedSpeedingCandidate.ts`.
+- Extracted sustained-speeding candidate detection from `app/api/fleet/update-location/route.ts`.
+- The helper now owns:
+  - recent `vehicle_locations` history lookup
+  - configurable speeding lookback handling
+  - consecutive speeding-sample evaluation
+  - minimum sample-count evaluation
+  - minimum sustained-duration evaluation
+  - historical speed parsing
+  - candidate rounding and construction
+  - null results for non-qualifying samples and lookup failures
+- The update-location route now delegates to `detectSustainedSpeedingCandidate(...)`.
+- The manual-source exclusion remains in the route.
+- Speeding alert creation remains delegated to `createSpeedingAlert(...)`.
+- No `NextResponse`, `vehicle_alerts`, or Route Safety behavior was introduced.
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
