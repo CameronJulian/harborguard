@@ -3538,3 +3538,25 @@ Pushed it to feature/expanded-incident-taxonomy.
   - `npx tsc --noEmit`
   - `npm run build`
 - Production build completed successfully with 119 routes.
+
+### Harsh Braking Alert Handler Extraction
+
+- Created `lib/fleet/createHarshBrakingAlert.ts`.
+- Extracted the harsh-braking alert lifecycle from `app/api/fleet/update-location/route.ts`.
+- The helper now owns:
+  - cooldown lookup
+  - message and intelligence narrative construction
+  - `vehicle_alerts` insertion
+  - latitude and longitude persistence
+  - harsh-braking corroboration
+  - telemetry-observation creation
+  - corroboration diagnostic logging
+  - structured creation, cooldown-skip, telemetry-observation, and error results
+- The update-location route now delegates to `createHarshBrakingAlert(...)`.
+- Harsh-braking candidate detection remains in the route.
+- No direct Route Safety write or `NextResponse` handling was introduced.
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
