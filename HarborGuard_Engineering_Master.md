@@ -3646,3 +3646,24 @@ Pushed it to feature/expanded-incident-taxonomy.
   - `npx tsc --noEmit`
   - `npm run build`
 - Production build completed successfully with 119 routes.
+### Rapid Acceleration Candidate Detector Extraction
+
+- Created `lib/fleet/detectRapidAccelerationCandidate.ts`.
+- Extracted rapid-acceleration candidate detection from `app/api/fleet/update-location/route.ts`.
+- The helper now owns:
+  - speed-increase calculation
+  - acceleration calculation
+  - telemetry-source validation
+  - speed and interval validation
+  - configurable rapid-acceleration threshold evaluation
+  - candidate rounding and construction
+  - null results for non-qualifying telemetry samples
+- The update-location route now delegates to `detectRapidAccelerationCandidate(...)`.
+- Previous-speed parsing remains in the route because multiple detectors reuse it.
+- Rapid-acceleration alert creation remains delegated to `createRapidAccelerationAlert(...)`.
+- No database, `NextResponse`, vehicle-alert, or Route Safety behavior was introduced.
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
