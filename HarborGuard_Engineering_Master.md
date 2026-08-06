@@ -3667,3 +3667,23 @@ Pushed it to feature/expanded-incident-taxonomy.
   - `npx tsc --noEmit`
   - `npm run build`
 - Production build completed successfully with 119 routes.
+
+
+### GPS Movement Evaluation Extraction
+
+- Created `lib/fleet/evaluateGpsMovement.ts`.
+- Extracted GPS movement evaluation from `app/api/fleet/update-location/route.ts`.
+- The helper now owns:
+  - calculated speed computation
+  - minimum movement (GPS jitter) evaluation
+  - maximum speed (GPS spike) evaluation
+  - accepted/jitter/gps_spike decision generation
+- The update-location route now delegates to `evaluateGpsMovement(...)`.
+- GPS anomaly alert creation remains delegated to `createGpsAnomalyAlert(...)`.
+- Sustained-speeding detection continues after GPS movement evaluation.
+- No database writes, `NextResponse` changes, vehicle-alert creation, or Route Safety behavior were introduced by the helper.
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
