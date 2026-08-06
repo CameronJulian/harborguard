@@ -3472,3 +3472,10 @@ runProviderImportCycle.ts is now reduced to orchestration plus one builder cal
   - `npx tsc --noEmit`
   - `npm run build`
 - Production build completed successfully with 119 routes.
+
+Added latitude and longitude to the speeding vehicle_alerts insert.
+Passed npx tsc --noEmit.
+Passed a full production npm run build.
+Staged only the intended change.
+Committed it as "Store speeding alert coordinates".
+Pushed it to feature/expanded-incident-taxonomy.
