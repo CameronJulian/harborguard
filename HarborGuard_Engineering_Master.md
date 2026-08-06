@@ -3707,3 +3707,22 @@ Pushed it to feature/expanded-incident-taxonomy.
   - `npx tsc --noEmit`
   - `npm run build`
 - Production build completed successfully with 119 routes.
+### Shared Distance Utility Extraction
+
+- Created `lib/geo/getDistanceMeters.ts`.
+- Extracted the Haversine distance calculation from `app/api/fleet/update-location/route.ts`.
+- The shared helper now owns:
+  - geographic coordinate typing
+  - Earth-radius configuration
+  - latitude and longitude conversion to radians
+  - Haversine-value calculation
+  - distance-in-meters calculation
+- The update-location route now imports and delegates to `getDistanceMeters(...)`.
+- The route call now uses the shared `{ latitude, longitude }` coordinate shape.
+- Other existing distance implementations were intentionally left unchanged for separate follow-up migrations.
+- No database, `NextResponse`, vehicle-alert, or Route Safety behavior was introduced.
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
