@@ -13,10 +13,9 @@ import {
 import {
   createGpsAnomalyAlert,
 } from "@/lib/fleet/createGpsAnomalyAlert";
-import { findHarshBrakingCorroboration } from "@/lib/fleet/harshBrakingCorroboration";
 import {
-  createTelemetryObservation,
-} from "@/lib/route-safety/createTelemetryObservation";
+  createHarshBrakingAlert,
+} from "@/lib/fleet/createHarshBrakingAlert";
 
 const STOP_SPEED_KMH = 3;
 const STOP_MINUTES = 5;
@@ -32,8 +31,7 @@ const HARSH_BRAKING_MIN_SPEED_DROP_KMH = 20;
 const HARSH_BRAKING_MIN_INTERVAL_SECONDS = 2;
 const HARSH_BRAKING_MAX_INTERVAL_SECONDS = 15;
 const HARSH_BRAKING_MIN_DECELERATION_MPS2 = 3;
-const HARSH_BRAKING_COOLDOWN_MINUTES = 10;
-const HARSH_BRAKING_INTELLIGENCE_SCORE = 35;
+
 
 const RAPID_ACCELERATION_MIN_SPEED_INCREASE_KMH = 20;
 const RAPID_ACCELERATION_MIN_INTERVAL_SECONDS = 2;
@@ -550,148 +548,16 @@ export async function POST(req: Request) {
     const activeTripId = activeTrip?.id || tripId || null;
 
     if (harshBrakingCandidate) {
-      try {
-        const cooldownSince = new Date(
-          Date.now() -
-            HARSH_BRAKING_COOLDOWN_MINUTES *
-              60 *
-              1000
-        ).toISOString();
-
-        const {
-          data: recentHarshBrakingAlert,
-          error: recentHarshBrakingAlertError,
-        } = await supabase
-          .from("vehicle_alerts")
-          .select("id")
-          .eq("organization_id", organizationId)
-          .eq("vehicle_id", vehicleId)
-          .eq("alert_type", "harsh_braking")
-          .eq("is_resolved", false)
-          .gte("created_at", cooldownSince)
-          .order(
-            "created_at",
-            { ascending: false }
-          )
-          .limit(1)
-          .maybeSingle();
-
-        if (recentHarshBrakingAlertError) {
-          console.error(
-            "Harsh braking cooldown lookup failed:",
-            recentHarshBrakingAlertError
-          );
-        } else if (!recentHarshBrakingAlert) {
-          const telemetryMessage =
-            "Harsh braking candidate detected: " +
-            `${harshBrakingCandidate.previousSpeedKmh} km/h to ` +
-            `${harshBrakingCandidate.currentSpeedKmh} km/h over ` +
-            `${harshBrakingCandidate.intervalSeconds} seconds ` +
-            `(${harshBrakingCandidate.decelerationMps2} m/s2).`;
-
-          const telemetryNarrative =
-            "Low-confidence fleet telemetry candidate. " +
-            "Speed reduction: " +
-            `${harshBrakingCandidate.speedDropKmh} km/h. ` +
-            `Coordinates: ${latitude}, ${longitude}. ` +
-            "This event requires corroboration and has not " +
-            "been classified as a verified road incident.";
-
-          const { error: harshBrakingAlertError } =
-            await supabase
-              .from("vehicle_alerts")
-              .insert({
-                organization_id: organizationId,
-                vehicle_id: vehicleId,
-                trip_id: activeTripId,
-                latitude,
-                longitude,
-                alert_type: "harsh_braking",
-                severity: "medium",
-                message: telemetryMessage,
-                is_resolved: false,
-                intelligence_score:
-                  HARSH_BRAKING_INTELLIGENCE_SCORE,
-                behavioral_risk: "medium",
-                intelligence_narrative:
-                  telemetryNarrative,
-              });
-
-          if (harshBrakingAlertError) {
-            console.error(
-              "Harsh braking alert insert failed:",
-              harshBrakingAlertError
-            );
-          } else {
-            try {
-              const corroboration =
-                await findHarshBrakingCorroboration({
-                  supabase,
-                  organizationId,
-                  currentVehicleId: vehicleId,
-                  latitude,
-                  longitude,
-                });
-
-              const telemetryObservation =
-                await createTelemetryObservation({
-                  organizationId,
-                  latitude,
-                  longitude,
-                  corroboration,
-                  occurredAt:
-                    new Date().toISOString(),
-                  sourceVehicleId: vehicleId,
-                });
-
-              console.info(
-                "[harsh-braking telemetry observation]",
-                telemetryObservation
-              );
-
-              console.info(
-                "[harsh-braking corroboration diagnostic]",
-                {
-                  organizationId,
-                  vehicleId,
-                  latitude,
-                  longitude,
-                  thresholdMet:
-                    corroboration.thresholdMet,
-                  distinctVehicleCount:
-                    corroboration.distinctVehicleCount,
-                  distinctVehicleIds:
-                    corroboration.distinctVehicleIds,
-                  otherVehicleIds:
-                    corroboration.otherVehicleIds,
-                  nearbyAlertCount:
-                    corroboration.nearbyAlertCount,
-                  radiusMeters:
-                    corroboration.radiusMeters,
-                  timeWindowMinutes:
-                    corroboration.timeWindowMinutes,
-                  windowStartedAt:
-                    corroboration.windowStartedAt,
-                  windowEndedAt:
-                    corroboration.windowEndedAt,
-                }
-              );
-            } catch (corroborationError) {
-              console.error(
-                "[harsh-braking corroboration diagnostic failed]",
-                corroborationError
-              );
-            }
-          }
-        }
-      } catch (harshBrakingError) {
-        console.error(
-          "Harsh braking detection failed:",
-          harshBrakingError
-        );
-      }
+      await createHarshBrakingAlert({
+        supabase,
+        organizationId,
+        vehicleId,
+        tripId: activeTripId,
+        latitude,
+        longitude,
+        candidate: harshBrakingCandidate,
+      });
     }
-
     if (rapidAccelerationCandidate) {
       await createRapidAccelerationAlert({
         supabase,
