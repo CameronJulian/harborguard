@@ -24,15 +24,6 @@ import {
 
 import { requireOrganization, requireRole } from "@/lib/server-auth";
 
-
-
-
-
-
-
-
-
-
 const STOP_SPEED_KMH = 3;
 const STOP_MINUTES = 5;
 const MIN_SLOW_POINTS = 3;
