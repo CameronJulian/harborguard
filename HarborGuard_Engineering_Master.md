@@ -4863,3 +4863,54 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote branch hashes were verified identical at `5a7185b975e59861251be77942ca9774284432ce`.
 - Outcome Learning now allows operators to compare nearby candidate thresholds around the live threshold of `35` without turning historical evidence into an automatic recommendation.
 - Next step: audit whether the next smallest safe value is explicit delta-to-production guidance for the nearby comparisons or whether Outcome Learning should pause recommendation work until more completed-trip evidence exists.
+
+### Route Prediction Threshold Delta Guidance
+
+- Continued the audit-first Outcome Learning roadmap after adding the read-only `30 / 35 / 40` threshold comparison.
+- Audited the existing comparison cards, evidence guidance, performance metric shape and repository delta/change presentation patterns before adding any comparative guidance.
+- Confirmed HarborGuard does not have an established statistical or percentage-point comparison convention that must be reused here.
+- Confirmed the existing threshold comparison already provides a safe production reference at threshold `35`.
+- Updated `app/analytics/page.tsx`.
+- Added `routePredictionProductionThreshold`.
+- The production comparison reference is derived from the existing `routePredictionThresholdComparison` array by selecting threshold `35`.
+- No API change was required.
+- No database change was required.
+- No threshold-analysis helper change was required.
+- No completed-trip evaluation change was required.
+- Added neutral precision deltas against the production threshold.
+- Added neutral recall deltas against the production threshold.
+- Deltas are calculated in percentage points:
+  - `(candidate metric - production metric) * 100`.
+- Deltas are displayed using `pp` rather than relative percentage change.
+- Positive deltas receive a `+` prefix.
+- Negative deltas retain the normal negative sign.
+- The production threshold card does not display a meaningless `0.0 pp` delta.
+- Delta output is suppressed when either the candidate or production metric is unavailable.
+- Existing nullable metric behavior remains unchanged.
+- Delta text is descriptive only and uses the label:
+  - `vs production`.
+- No green/red interpretation was introduced.
+- No directional arrows implying good/bad were introduced.
+- No `better`, `worse`, `recommended`, `optimal` or `best threshold` language was introduced.
+- No threshold ranking was introduced.
+- No combined score was introduced.
+- No automatic calibration behavior was introduced.
+- No threshold mutation behavior was introduced.
+- Existing evidence-count guidance remains in place.
+- Existing small-sample caution remains in place.
+- Existing analysis-only guidance remains in place.
+- Existing `PREDICTION_POSITIVE_THRESHOLD = 35` was explicitly verified unchanged.
+- Validation completed:
+  - `git diff --check` passed.
+  - `npx tsc --noEmit` passed with exit code `0`.
+  - `npm run build` passed with exit code `0`.
+  - Next.js production build generated all `121/121` static pages successfully.
+  - `/analytics` remained registered as a static page.
+  - `/api/fleet/route-prediction-performance` remained registered as a dynamic route.
+  - `/api/fleet/route-prediction-threshold-analysis` remained registered as a dynamic route.
+  - `git diff --cached --check` passed.
+- Implementation commit: `f58bb3b` (`Show route prediction threshold deltas`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote branch hashes were verified identical at `f58bb3bd3e838491c3294812e6711fbe4727b336`.
+- Outcome Learning now shows how nearby historical candidate thresholds differ from the live production threshold in precision and recall without interpreting those deltas as recommendations.
+- Next step: pause automatic threshold recommendation work and audit whether the next smallest safe value is richer historical evidence collection, longer-window/vehicle-specific calibration review, or another Outcome Learning consumer that uses the existing evaluation data without changing production threshold behavior.
