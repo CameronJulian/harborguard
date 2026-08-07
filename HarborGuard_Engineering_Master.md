@@ -3739,3 +3739,16 @@ Pushed it to feature/expanded-incident-taxonomy.
   - `npx tsc --noEmit`
   - `npm run build`
 - Production build completed successfully with 119 routes.
+### Fleet Risk Detection Distance Utility Migration
+
+- Migrated `lib/fleet/risk-detection.ts` to the shared `lib/geo/getDistanceMeters.ts` utility.
+- Removed the file-local Haversine distance implementation.
+- Converted the geofence distance call from four numeric arguments to the shared `{ latitude, longitude }` coordinate shape.
+- Preserved geofence radius evaluation and breach detection behavior.
+- Preserved `notifyAlert(...)`, alert creation, incident correlation, driver-fatigue logic, long-stop logic, and all database behavior.
+- No Route Safety or telemetry-observation behavior was changed.
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
