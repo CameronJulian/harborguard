@@ -4769,3 +4769,50 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote branch hashes were verified identical.
 - Outcome Learning now exposes historical precision/recall behavior across candidate thresholds directly in Analytics while keeping production classification fixed at `35`.
 - Next step: audit whether the next smallest value is comparison guidance around the current threshold or a statistically safer minimum-sample / confidence layer before introducing any threshold recommendation.
+
+### Route Prediction Threshold Evidence Guidance
+
+- Continued the audit-first Outcome Learning roadmap after adding the first threshold-analysis Analytics consumer.
+- Audited HarborGuard for existing model-evaluation sample-size, statistical-confidence, minimum-observation and evidence-sufficiency conventions before introducing any threshold recommendation.
+- Confirmed there is no existing HarborGuard statistical sample-sufficiency convention that can be safely reused for route-prediction calibration.
+- Confirmed existing uses of confidence elsewhere in HarborGuard relate to operational/provider/model confidence and are not statistical confidence intervals for completed-trip prediction evaluation.
+- Confirmed existing minimum-sample rules in telemetry detection are operational detection thresholds and should not be reused as statistical evidence standards.
+- Deliberately did not introduce an arbitrary minimum evaluation count such as 10, 20, 30 or 100.
+- Deliberately did not label historical threshold evidence as statistically sufficient or insufficient.
+- Deliberately did not add confidence intervals.
+- Deliberately did not add a preferred, recommended or optimal threshold.
+- Updated `app/analytics/page.tsx`.
+- Added `routePredictionThresholdEvaluationCount`.
+- The evidence count is derived from the existing threshold-analysis payload:
+  - `routePredictionThresholdAnalysis[0]?.performance.totalEvaluations ?? 0`.
+- No API change was required because every threshold-analysis result already carries the same completed evaluation count.
+- No threshold-analysis helper change was required.
+- No database change was required.
+- Added an Analytics badge displaying the number of completed evaluations underlying the threshold curves.
+- The existing production threshold badge remains visible alongside the evidence count.
+- Added interpretation guidance explaining that:
+  - the chart is based on the displayed number of completed route-prediction evaluations in the selected period,
+  - smaller evaluation sets provide more limited evidence,
+  - smaller evaluation sets should therefore be interpreted cautiously.
+- The guidance does not define a hard minimum-sample cutoff.
+- The existing analysis-only statement remains in place.
+- HarborGuard still does not automatically recommend or apply a production threshold from the threshold-analysis chart.
+- Existing `PREDICTION_POSITIVE_THRESHOLD = 35` was explicitly verified unchanged.
+- Existing route-prediction performance behavior was not changed.
+- Existing threshold-analysis API behavior was not changed.
+- Existing threshold-analysis helper behavior was not changed.
+- Existing completed-trip evaluation behavior was not changed.
+- Validation completed:
+  - `git diff --check` passed.
+  - `npx tsc --noEmit` passed with exit code `0`.
+  - `npm run build` passed with exit code `0`.
+  - Next.js production build generated all `121/121` static pages successfully.
+  - `/analytics` remained registered as a static page.
+  - `/api/fleet/route-prediction-performance` remained registered as a dynamic route.
+  - `/api/fleet/route-prediction-threshold-analysis` remained registered as a dynamic route.
+  - `git diff --cached --check` passed.
+- Implementation commit: `68a58e3` (`Show threshold analysis evidence count`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote branch hashes were verified identical at `68a58e3442891e8ac405e709af8848fa646ec24e`.
+- Outcome Learning threshold analysis now exposes both the precision/recall tradeoff and the amount of completed-trip evidence underlying that analysis without overstating statistical certainty.
+- Next step: audit the smallest safe comparison layer around the current production threshold of `35`—for example, showing how nearby candidate thresholds compare—without selecting or applying a recommended threshold.
