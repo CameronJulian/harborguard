@@ -17,19 +17,11 @@ import {
   getActiveVehicleTrip,
 } from "@/lib/fleet/getActiveVehicleTrip";
 import {
-  createLocationBehaviorAlerts,
-} from "@/lib/fleet/createLocationBehaviorAlerts";
+  runPostLocationUpdateLifecycle,
+} from "@/lib/fleet/runPostLocationUpdateLifecycle";
+
 import { requireOrganization, requireRole } from "@/lib/server-auth";
-import { detectFleetRisks } from "@/lib/fleet/risk-detection";
-import {
-  createRapidAccelerationAlert,
-} from "@/lib/fleet/createRapidAccelerationAlert";
-import {
-  createHarshCorneringAlert,
-} from "@/lib/fleet/createHarshCorneringAlert";
-import {
-  createSpeedingAlert,
-} from "@/lib/fleet/createSpeedingAlert";
+
 import {
   detectSustainedSpeedingCandidate,
 } from "@/lib/fleet/detectSustainedSpeedingCandidate";
@@ -54,15 +46,6 @@ import {
 import {
   createGpsAnomalyAlert,
 } from "@/lib/fleet/createGpsAnomalyAlert";
-import {
-  createHarshBrakingAlert,
-} from "@/lib/fleet/createHarshBrakingAlert";
-import {
-  updateActiveTripFromLocation,
-} from "@/lib/fleet/updateActiveTripFromLocation";
-import {
-  updateVehicleStopLifecycle,
-} from "@/lib/fleet/updateVehicleStopLifecycle";
 
 const STOP_SPEED_KMH = 3;
 const STOP_MINUTES = 5;
@@ -78,7 +61,6 @@ const HARSH_BRAKING_MIN_SPEED_DROP_KMH = 20;
 const HARSH_BRAKING_MIN_INTERVAL_SECONDS = 2;
 const HARSH_BRAKING_MAX_INTERVAL_SECONDS = 15;
 const HARSH_BRAKING_MIN_DECELERATION_MPS2 = 3;
-
 
 const RAPID_ACCELERATION_MIN_SPEED_INCREASE_KMH = 20;
 const RAPID_ACCELERATION_MIN_INTERVAL_SECONDS = 2;
@@ -100,7 +82,6 @@ const SPEEDING_MIN_CONSECUTIVE_SAMPLES = 3;
 const SPEEDING_LOOKBACK_SECONDS = 90;
 const SPEEDING_COOLDOWN_MINUTES = 10;
 const SPEEDING_INTELLIGENCE_SCORE = 30;
-
 
 export async function POST(req: Request) {
   try {
@@ -368,32 +349,14 @@ export async function POST(req: Request) {
 
     const activeTripId = activeTrip?.id || tripId || null;
 
-    await createLocationBehaviorAlerts({
+    await runPostLocationUpdateLifecycle({
       supabase,
       organizationId,
       vehicleId,
       tripId,
-      activeTripId,
-      latitude,
-      longitude,
-      harshBrakingCandidate,
-      rapidAccelerationCandidate,
-      harshCorneringCandidate,
-      speedingCandidate,
-    });
-
-    await updateActiveTripFromLocation({
-      supabase,
-      organizationId,
       activeTrip,
+      activeTripId,
       requestedStatus,
-      occurredAt: now,
-    });
-    await updateVehicleStopLifecycle({
-      supabase,
-      organizationId,
-      vehicleId,
-      tripId: activeTripId,
       latitude,
       longitude,
       speedKmh,
@@ -401,18 +364,11 @@ export async function POST(req: Request) {
       stopSpeedKmh: STOP_SPEED_KMH,
       stopMinutes: STOP_MINUTES,
       minimumSlowPoints: MIN_SLOW_POINTS,
+      harshBrakingCandidate,
+      rapidAccelerationCandidate,
+      harshCorneringCandidate,
+      speedingCandidate,
     });
-    let riskDetectionResult: any = null;
-
-    try {
-      riskDetectionResult = await detectFleetRisks({
-        supabase,
-        organizationId,
-      });
-    } catch (riskError) {
-      console.error("Automatic risk detection failed:", riskError);
-    }
-
     return NextResponse.json({
       success: true,
       message: "Vehicle location updated successfully.",
