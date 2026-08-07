@@ -159,6 +159,8 @@ export default function AnalyticsPage() {
   const [selectedVehicleId, setSelectedVehicleId] = useState("");
   const [routePredictionPerformance, setRoutePredictionPerformance] =
     useState<RoutePredictionPerformance | null>(null);
+  const [routePredictionFleetPerformance, setRoutePredictionFleetPerformance] =
+    useState<RoutePredictionPerformance | null>(null);
   const [routePredictionPerformanceLoading, setRoutePredictionPerformanceLoading] =
     useState(false);
   const [routePredictionPerformanceError, setRoutePredictionPerformanceError] =
@@ -326,6 +328,7 @@ export default function AnalyticsPage() {
 
       if (!response.ok) {
         setRoutePredictionPerformance(null);
+        setRoutePredictionFleetPerformance(null);
         setRoutePredictionPerformanceError(
           "error" in result && result.error
             ? result.error
@@ -337,6 +340,39 @@ export default function AnalyticsPage() {
       setRoutePredictionPerformance(
         (result as RoutePredictionPerformanceResponse).performance
       );
+
+      if (selectedVehicleId) {
+        try {
+          const fleetParams = new URLSearchParams({
+            start: start.toISOString(),
+            end: end.toISOString(),
+          });
+
+          const fleetResponse = await fetchWithAuth(
+            `/api/fleet/route-prediction-performance?${fleetParams.toString()}`,
+            {
+              cache: "no-store",
+            }
+          );
+
+          const fleetResult =
+            (await fleetResponse.json()) as
+              | RoutePredictionPerformanceResponse
+              | { error?: string };
+
+          if (fleetResponse.ok) {
+            setRoutePredictionFleetPerformance(
+              (fleetResult as RoutePredictionPerformanceResponse).performance
+            );
+          } else {
+            setRoutePredictionFleetPerformance(null);
+          }
+        } catch {
+          setRoutePredictionFleetPerformance(null);
+        }
+      } else {
+        setRoutePredictionFleetPerformance(null);
+      }
     } catch (error: unknown) {
       setRoutePredictionPerformance(null);
       setRoutePredictionPerformanceError(
@@ -387,6 +423,26 @@ const { data: incidentData } = await supabase
     loadRoutePredictionPerformance();
     loadRoutePredictionThresholdAnalysis();
   }, [startDate, endDate, selectedVehicleId]);
+
+  const selectedVehicleLabel = useMemo(() => {
+    const vehicle = vehicles.find(
+      (entry) => entry.id === selectedVehicleId
+    );
+
+    if (!vehicle) {
+      return "Selected vehicle";
+    }
+
+    if (vehicle.nickname && vehicle.registration_number) {
+      return `${vehicle.nickname} (${vehicle.registration_number})`;
+    }
+
+    return (
+      vehicle.nickname ||
+      vehicle.registration_number ||
+      "Selected vehicle"
+    );
+  }, [vehicles, selectedVehicleId]);
 
   const routePredictionThresholdChartData = useMemo(
     () =>
@@ -954,6 +1010,134 @@ if (subscriptionLoaded && !premiumAllowed) {
                 </div>
               ))}
             </div>
+
+            {selectedVehicleId &&
+            routePredictionFleetPerformance &&
+            routePredictionFleetPerformance.totalEvaluations > 0 ? (
+              <div
+                style={{
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 16,
+                  padding: 18,
+                  marginBottom: 16,
+                  background: "#f8fafc",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    gap: 12,
+                    flexWrap: "wrap",
+                    marginBottom: 12,
+                  }}
+                >
+                  <div>
+                    <strong style={{ color: "#0f172a" }}>
+                      Selected Vehicle vs Fleet
+                    </strong>
+                    <div
+                      style={{
+                        ...mutedTextStyle,
+                        fontSize: 12,
+                        marginTop: 3,
+                      }}
+                    >
+                      {selectedVehicleLabel} compared with all vehicles
+                      for the same reporting period.
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      ...mutedTextStyle,
+                      fontSize: 12,
+                    }}
+                  >
+                    Vehicle evaluations: {formatNumber(
+                      routePredictionPerformance.totalEvaluations
+                    )} · Fleet evaluations: {formatNumber(
+                      routePredictionFleetPerformance.totalEvaluations
+                    )}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: isMobile
+                      ? "1fr"
+                      : "repeat(3, minmax(0, 1fr))",
+                    gap: 10,
+                  }}
+                >
+                  {[
+                    {
+                      label: "Accuracy",
+                      vehicleValue: routePredictionPerformance.accuracy,
+                      fleetValue: routePredictionFleetPerformance.accuracy,
+                    },
+                    {
+                      label: "Precision",
+                      vehicleValue: routePredictionPerformance.precision,
+                      fleetValue: routePredictionFleetPerformance.precision,
+                    },
+                    {
+                      label: "Recall",
+                      vehicleValue: routePredictionPerformance.recall,
+                      fleetValue: routePredictionFleetPerformance.recall,
+                    },
+                  ].map((item) => {
+                    const deltaPercentagePoints =
+                      item.vehicleValue !== null &&
+                      item.fleetValue !== null
+                        ? (item.vehicleValue - item.fleetValue) * 100
+                        : null;
+
+                    return (
+                      <div
+                        key={item.label}
+                        style={{
+                          background: "#ffffff",
+                          border: "1px solid #e5e7eb",
+                          borderRadius: 12,
+                          padding: 14,
+                        }}
+                      >
+                        <div
+                          style={{
+                            ...mutedTextStyle,
+                            fontSize: 12,
+                            marginBottom: 5,
+                          }}
+                        >
+                          {item.label}
+                        </div>
+                        <strong style={{ color: "#0f172a" }}>
+                          {formatPerformancePercent(item.vehicleValue)}
+                        </strong>
+                        <div
+                          style={{
+                            ...mutedTextStyle,
+                            fontSize: 11,
+                            marginTop: 4,
+                          }}
+                        >
+                          Fleet: {formatPerformancePercent(item.fleetValue)}
+                          {deltaPercentagePoints === null
+                            ? ""
+                            : " | " +
+                              (deltaPercentagePoints >= 0 ? "+" : "") +
+                              deltaPercentagePoints.toFixed(1) +
+                              " pp"}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
 
             <div
               style={{
