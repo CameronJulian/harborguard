@@ -18,6 +18,7 @@ import {
 } from "recharts";
 import AppShell from "@/components/AppShell";
 import { supabase } from "@/lib/supabase";
+import { fetchWithAuth } from "@/lib/auth-fetch";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -40,6 +41,23 @@ type IncidentRow = {
   status: string | null;
   summary: string | null;
   created_at: string | null;
+};
+type RoutePredictionPerformance = {
+  totalEvaluations: number;
+  truePositive: number;
+  falsePositive: number;
+  falseNegative: number;
+  trueNegative: number;
+  accuracy: number | null;
+  precision: number | null;
+  recall: number | null;
+  falsePositiveRate: number | null;
+  falseNegativeRate: number | null;
+};
+
+type RoutePredictionPerformanceResponse = {
+  success: boolean;
+  performance: RoutePredictionPerformance;
 };
 
 const cardStyle: CSSProperties = {
@@ -98,6 +116,10 @@ function formatNumber(value: number) {
 function formatOneDecimal(value: number) {
   return Number.isFinite(value) ? value.toFixed(1) : "0.0";
 }
+function formatPerformancePercent(value: number | null) {
+  if (value === null) return "-";
+  return `${(value * 100).toFixed(1)}%`;
+}
 
 function toDateInputValue(date: Date) {
   const year = date.getFullYear();
@@ -118,6 +140,12 @@ export default function AnalyticsPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [batches, setBatches] = useState<BatchRow[]>([]);
   const [incidents, setIncidents] = useState<IncidentRow[]>([]);
+  const [routePredictionPerformance, setRoutePredictionPerformance] =
+    useState<RoutePredictionPerformance | null>(null);
+  const [routePredictionPerformanceLoading, setRoutePredictionPerformanceLoading] =
+    useState(false);
+  const [routePredictionPerformanceError, setRoutePredictionPerformanceError] =
+    useState("");
   const [exportingPdf, setExportingPdf] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
  const {
@@ -165,6 +193,55 @@ export default function AnalyticsPage() {
       supabase.removeChannel(incidentChannel);
     };
   }, []);
+  async function loadRoutePredictionPerformance() {
+    setRoutePredictionPerformanceLoading(true);
+    setRoutePredictionPerformanceError("");
+
+    try {
+      const start = new Date(`${startDate}T00:00:00`);
+      const end = new Date(`${endDate}T23:59:59.999`);
+
+      const params = new URLSearchParams({
+        start: start.toISOString(),
+        end: end.toISOString(),
+      });
+
+      const response = await fetchWithAuth(
+        `/api/fleet/route-prediction-performance?${params.toString()}`,
+        {
+          cache: "no-store",
+        }
+      );
+
+      const result =
+        (await response.json()) as
+          | RoutePredictionPerformanceResponse
+          | { error?: string };
+
+      if (!response.ok) {
+        setRoutePredictionPerformance(null);
+        setRoutePredictionPerformanceError(
+          "error" in result && result.error
+            ? result.error
+            : "Failed to load route prediction performance."
+        );
+        return;
+      }
+
+      setRoutePredictionPerformance(
+        (result as RoutePredictionPerformanceResponse).performance
+      );
+    } catch (error: unknown) {
+      setRoutePredictionPerformance(null);
+      setRoutePredictionPerformanceError(
+        error instanceof Error
+          ? error.message
+          : "Failed to load route prediction performance."
+      );
+    } finally {
+      setRoutePredictionPerformanceLoading(false);
+    }
+  }
 
   async function loadAll() {
    const {
@@ -200,6 +277,9 @@ const { data: incidentData } = await supabase
     setBatches((batchData as BatchRow[]) || []);
     setIncidents((incidentData as IncidentRow[]) || []);
   }
+  useEffect(() => {
+    loadRoutePredictionPerformance();
+  }, [startDate, endDate]);
 
   const filteredBatches = useMemo(() => {
     const start = new Date(`${startDate}T00:00:00`);
@@ -606,6 +686,173 @@ if (subscriptionLoaded && !premiumAllowed) {
           </button>
         </div>
       </div>
+      <div style={{ ...cardStyle, padding: 26, marginBottom: 24 }}>
+        <div style={{ marginBottom: 18 }}>
+          <h2 style={sectionTitleStyle}>Route Prediction Performance</h2>
+          <p style={{ ...mutedTextStyle, marginBottom: 0 }}>
+            Completed-trip prediction quality for the selected reporting period.
+          </p>
+        </div>
+
+        {routePredictionPerformanceLoading ? (
+          <div style={{ color: "#64748b" }}>
+            Loading prediction performance...
+          </div>
+        ) : routePredictionPerformanceError ? (
+          <div
+            style={{
+              padding: 14,
+              borderRadius: 12,
+              background: "#fef2f2",
+              border: "1px solid #fecaca",
+              color: "#b91c1c",
+            }}
+          >
+            {routePredictionPerformanceError}
+          </div>
+        ) : !routePredictionPerformance ||
+          routePredictionPerformance.totalEvaluations === 0 ? (
+          <div style={{ color: "#64748b" }}>
+            No completed route prediction evaluations exist for this period yet.
+          </div>
+        ) : (
+          <>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  isMobile
+                    ? "1fr"
+                    : "repeat(4, minmax(0, 1fr))",
+                gap: 16,
+                marginBottom: 16,
+              }}
+            >
+              {[
+                {
+                  label: "Evaluations",
+                  value: formatNumber(
+                    routePredictionPerformance.totalEvaluations
+                  ),
+                },
+                {
+                  label: "Accuracy",
+                  value: formatPerformancePercent(
+                    routePredictionPerformance.accuracy
+                  ),
+                },
+                {
+                  label: "Precision",
+                  value: formatPerformancePercent(
+                    routePredictionPerformance.precision
+                  ),
+                },
+                {
+                  label: "Recall",
+                  value: formatPerformancePercent(
+                    routePredictionPerformance.recall
+                  ),
+                },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  style={{
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 16,
+                    padding: 20,
+                    background: "#fff",
+                  }}
+                >
+                  <div
+                    style={{
+                      color: "#64748b",
+                      fontSize: 14,
+                      marginBottom: 8,
+                    }}
+                  >
+                    {item.label}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 30,
+                      fontWeight: 800,
+                      lineHeight: 1.1,
+                    }}
+                  >
+                    {item.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  isMobile
+                    ? "1fr"
+                    : "repeat(4, minmax(0, 1fr))",
+                gap: 16,
+              }}
+            >
+              {[
+                {
+                  label: "True Positive",
+                  value: formatNumber(
+                    routePredictionPerformance.truePositive
+                  ),
+                },
+                {
+                  label: "False Positive",
+                  value: formatNumber(
+                    routePredictionPerformance.falsePositive
+                  ),
+                },
+                {
+                  label: "False Negative",
+                  value: formatNumber(
+                    routePredictionPerformance.falseNegative
+                  ),
+                },
+                {
+                  label: "True Negative",
+                  value: formatNumber(
+                    routePredictionPerformance.trueNegative
+                  ),
+                },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  style={{
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 16,
+                    padding: 18,
+                    background: "#f8fafc",
+                  }}
+                >
+                  <div
+                    style={{
+                      color: "#64748b",
+                      fontSize: 13,
+                      marginBottom: 8,
+                    }}
+                  >
+                    {item.label}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 24,
+                      fontWeight: 800,
+                    }}
+                  >
+                    {item.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
 
       <div
         style={{
@@ -751,6 +998,3 @@ if (subscriptionLoaded && !premiumAllowed) {
     </AppShell>
   );
 }
-
-
-
