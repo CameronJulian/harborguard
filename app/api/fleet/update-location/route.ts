@@ -16,6 +16,9 @@ import {
 import {
   getActiveVehicleTrip,
 } from "@/lib/fleet/getActiveVehicleTrip";
+import {
+  createLocationBehaviorAlerts,
+} from "@/lib/fleet/createLocationBehaviorAlerts";
 import { requireOrganization, requireRole } from "@/lib/server-auth";
 import { detectFleetRisks } from "@/lib/fleet/risk-detection";
 import {
@@ -365,52 +368,19 @@ export async function POST(req: Request) {
 
     const activeTripId = activeTrip?.id || tripId || null;
 
-    if (harshBrakingCandidate) {
-      await createHarshBrakingAlert({
-        supabase,
-        organizationId,
-        vehicleId,
-        tripId: activeTripId,
-        latitude,
-        longitude,
-        candidate: harshBrakingCandidate,
-      });
-    }
-    if (rapidAccelerationCandidate) {
-      await createRapidAccelerationAlert({
-        supabase,
-        organizationId,
-        vehicleId,
-        tripId: activeTripId,
-        latitude,
-        longitude,
-        candidate: rapidAccelerationCandidate,
-      });
-    }
-
-    if (harshCorneringCandidate) {
-      await createHarshCorneringAlert({
-        supabase,
-        organizationId,
-        vehicleId,
-        tripId: activeTripId,
-        latitude,
-        longitude,
-        candidate: harshCorneringCandidate,
-      });
-    }
-
-    if (speedingCandidate) {
-      await createSpeedingAlert({
-        supabase,
-        organizationId,
-        vehicleId,
-        tripId: activeTripId,
-        latitude,
-        longitude,
-        candidate: speedingCandidate,
-      });
-    }
+    await createLocationBehaviorAlerts({
+      supabase,
+      organizationId,
+      vehicleId,
+      tripId,
+      activeTripId,
+      latitude,
+      longitude,
+      harshBrakingCandidate,
+      rapidAccelerationCandidate,
+      harshCorneringCandidate,
+      speedingCandidate,
+    });
 
     await updateActiveTripFromLocation({
       supabase,
