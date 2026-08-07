@@ -5076,3 +5076,31 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote branch hashes were verified identical at `cd24ecf415cb6bf52b21b41aa1131d7f3b3db3c1`.
 - Outcome Learning now makes the relationship between historical evidence scope and displayed threshold metrics explicit without introducing automated calibration or changing live prediction behavior.
 - Next step: audit whether another small, evidence-backed Outcome Learning interpretation gap remains. If no precise gap is found, close this Outcome Learning improvement sequence rather than adding redundant analytics or automatic threshold-selection behavior.
+## Outcome Learning - Route Prediction Improvement Sequence Closure
+
+- Completed an audit-only review after adding historical scope interpretation guidance.
+- Audited the existing route-prediction performance consumer, threshold-analysis consumer, reporting-period behavior, vehicle filtering, vehicle-to-fleet comparison behavior, threshold-analysis API, performance API, threshold-analysis helper and live production threshold.
+- Confirmed route-prediction performance and threshold analysis continue to use the selected reporting period and optional vehicle scope.
+- Confirmed both analytics APIs remain organization-scoped and read-only.
+- Confirmed threshold analysis remains retrospective historical analysis and does not mutate production prediction behavior.
+- Confirmed the existing UI explicitly explains that changing reporting period or vehicle scope changes the historical evidence being reviewed and that differences between views are descriptive.
+- Confirmed existing Outcome Learning capabilities already provide:
+  - completed-trip route-prediction performance;
+  - historical threshold analysis;
+  - evidence-count and small-sample interpretation guidance;
+  - nearby `30 / 35 / 40` threshold comparison;
+  - neutral precision and recall deltas against production threshold `35`;
+  - vehicle-level historical filtering;
+  - vehicle-to-fleet performance comparison;
+  - `30 / 90 / 180` day historical review presets;
+  - explicit historical reporting-period and vehicle-scope interpretation guidance.
+- No additional precise, evidence-backed interpretation gap was identified during this audit.
+- No implementation change was made.
+- No API change was made.
+- No database change was made.
+- No scoring or completed-trip evaluation change was made.
+- No automatic calibration, threshold recommendation or threshold mutation behavior was introduced.
+- Existing production `PREDICTION_POSITIVE_THRESHOLD = 35` remains unchanged.
+- This Outcome Learning route-prediction improvement sequence is therefore closed rather than extending it with redundant analytics or unsupported automatic threshold-selection behavior.
+- Future route-prediction calibration work should be reopened only when additional completed-trip evidence or a concrete operator requirement identifies a new, specific gap.
+- Next step: return to the broader HarborGuard engineering roadmap and audit the next highest-value incomplete capability using the standard audit-first workflow.
