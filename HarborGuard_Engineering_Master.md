@@ -5142,3 +5142,39 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote branch hashes were verified identical at `0e410c12623eaddf610b2e6ee493f98a1824bf11`.
 - HarborGuard now has an explicit backend route-ranking contract that can support operator-selectable route strategy without weakening the established safety-first default.
 - Next step: audit the Command Center safer-route request and presentation path for the smallest safe UI change that allows an operator to choose `Safest`, `Fastest`, or `Balanced` while keeping automatic critical-risk rerouting fixed to the safest default.
+
+## 2026-08-07 - Operator-selectable route safety profiles
+
+- Completed a focused audit of the Command Center safer-route request and presentation path after the configurable route-safety profile backend contract was established.
+- Confirmed the backend already supports explicit `safest`, `fastest`, and `balanced` routing profiles through `/api/route-safety/reroute`.
+- Identified the precise remaining gap as operator profile selection in the Command Center rather than additional routing or ranking infrastructure.
+- Added Command Center routing-profile state with `safest` as the initial/default operator selection.
+- Added an operator-visible Route Strategy selector with:
+  - `Safest`
+  - `Balanced`
+  - `Fastest`
+- Propagated the selected routing profile through the existing Command Center operations and route-safety presentation path.
+- Updated explicit operator safer-route requests so the selected routing profile is sent to `/api/route-safety/reroute`.
+- Existing safer-route request behavior, route presentation and reroute result handling remain in place.
+- The selector affects explicit operator-requested safer-route evaluation only.
+- Automatic critical-risk prediction/rerouting behavior was intentionally left unchanged and continues to rely on the backend safety-first default rather than operator UI state.
+- `app/api/route-safety/predict/route.ts` was explicitly verified untouched.
+- No database schema change was required.
+- No route-risk evidence calculation change was required.
+- No HERE route-ranking algorithm change was required because the configurable profile contract was already implemented and validated separately.
+- The implementation was limited to:
+  - `app/command-center/hooks/useCommandCenterRouteSafety.ts`
+  - `app/command-center/page.tsx`
+  - `app/command-center/sections/CommandCenterOperationsPanelSection.tsx`
+  - `app/command-center/sections/CommandCenterRouteSafetySection.tsx`
+- Validation completed:
+  - `git diff --check` passed.
+  - `npx tsc --noEmit` passed with exit code `0`.
+  - `npm run build` passed with exit code `0`.
+  - Next.js production build generated all `121/121` static pages successfully.
+  - `git diff --cached --check` passed before the implementation commit.
+- Implementation commit: `0016d8f` (`Add operator routing profile selection`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote branch hashes were verified identical at `0016d8fa29502dfa9b07f7c4d4b960567de78a9b`.
+- HarborGuard operators can now explicitly choose `Safest`, `Balanced`, or `Fastest` when requesting a safer route while existing callers and automatic critical-risk behavior retain the established safety-first default.
+- Next step: audit the broader HarborGuard engineering roadmap for the next highest-value incomplete capability using the standard audit-first workflow rather than extending route-profile behavior without a specific operational requirement.
