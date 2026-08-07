@@ -3952,3 +3952,25 @@ Pushed it to feature/expanded-incident-taxonomy.
   - `npm run build`
 - Production build completed successfully with 119 routes.
 - Implementation commit: `c1a2264` (`Extract post location update lifecycle`).
+
+### Vehicle Location Telemetry Analysis Extraction
+
+- Created `lib/fleet/analyzeVehicleLocationTelemetry.ts`.
+- Extracted location-derived telemetry analysis from `app/api/fleet/update-location/route.ts`.
+- The helper now owns the telemetry-analysis stage used by the update-location route while preserving the existing detection behavior and thresholds.
+- The update-location route continues to own HTTP request/response handling and delegates the extracted telemetry analysis to `analyzeVehicleLocationTelemetry(...)`.
+- Existing vehicle lookup remains delegated to `getVehicleForLocationUpdate(...)`.
+- Existing latest-location lookup remains delegated to `getLatestVehicleLocation(...)`.
+- Existing vehicle-location persistence remains delegated to `createVehicleLocation(...)`.
+- Existing active-trip lookup remains delegated to `getActiveVehicleTrip(...)`.
+- Existing post-location lifecycle remains delegated to `runPostLocationUpdateLifecycle(...)`.
+- No raw database access was reintroduced into the update-location route.
+- No location persistence, active-trip lookup, post-location lifecycle, Route Safety, stop-lifecycle, or risk-detection behavior was changed.
+- Follow-up cleanup removed surplus blank lines between the final import and route constants without changing runtime behavior.
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
+- Implementation commit: `7267fde`.
+- Cleanup commit: `e74e5b7` (`Clean up update location imports`).
