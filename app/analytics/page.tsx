@@ -379,6 +379,11 @@ const { data: incidentData } = await supabase
     [routePredictionThresholdAnalysis]
   );
 
+  const routePredictionProductionThreshold =
+    routePredictionThresholdComparison.find(
+      (entry) => entry.threshold === 35
+    );
+
   const filteredBatches = useMemo(() => {
     const start = new Date(`${startDate}T00:00:00`);
     const end = new Date(`${endDate}T23:59:59`);
@@ -1100,6 +1105,28 @@ if (subscriptionLoaded && !premiumAllowed) {
               {routePredictionThresholdComparison.map((entry) => {
                 const isProductionThreshold = entry.threshold === 35;
 
+                const precisionDeltaPercentagePoints =
+                  !isProductionThreshold &&
+                  entry.performance.precision !== null &&
+                  routePredictionProductionThreshold?.performance.precision !== null &&
+                  routePredictionProductionThreshold?.performance.precision !== undefined
+                    ? (
+                        entry.performance.precision -
+                        routePredictionProductionThreshold.performance.precision
+                      ) * 100
+                    : null;
+
+                const recallDeltaPercentagePoints =
+                  !isProductionThreshold &&
+                  entry.performance.recall !== null &&
+                  routePredictionProductionThreshold?.performance.recall !== null &&
+                  routePredictionProductionThreshold?.performance.recall !== undefined
+                    ? (
+                        entry.performance.recall -
+                        routePredictionProductionThreshold.performance.recall
+                      ) * 100
+                    : null;
+
                 return (
                   <div
                     key={entry.threshold}
@@ -1167,6 +1194,18 @@ if (subscriptionLoaded && !premiumAllowed) {
                                 entry.performance.precision * 100
                               ).toFixed(1)}%`}
                         </strong>
+                    {precisionDeltaPercentagePoints !== null ? (
+                      <div
+                        style={{
+                          ...mutedTextStyle,
+                          fontSize: 11,
+                          marginTop: 4,
+                        }}
+                      >
+                        vs production: {precisionDeltaPercentagePoints >= 0 ? "+" : ""}
+                        {precisionDeltaPercentagePoints.toFixed(1)} pp
+                      </div>
+                    ) : null}
                       </div>
 
                       <div>
@@ -1186,6 +1225,18 @@ if (subscriptionLoaded && !premiumAllowed) {
                                 entry.performance.recall * 100
                               ).toFixed(1)}%`}
                         </strong>
+                    {recallDeltaPercentagePoints !== null ? (
+                      <div
+                        style={{
+                          ...mutedTextStyle,
+                          fontSize: 11,
+                          marginTop: 4,
+                        }}
+                      >
+                        vs production: {recallDeltaPercentagePoints >= 0 ? "+" : ""}
+                        {recallDeltaPercentagePoints.toFixed(1)} pp
+                      </div>
+                    ) : null}
                       </div>
                     </div>
                   </div>
