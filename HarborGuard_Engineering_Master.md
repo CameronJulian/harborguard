@@ -4536,3 +4536,73 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote branch hashes were verified identical.
 - Outcome Learning performance queries now have deterministic handling for malformed and inverted time-window inputs.
 - Next step: audit the smallest useful consumer for prediction-performance metrics before introducing any model-adjustment logic.
+
+### Route Prediction Performance Analytics Consumer
+
+- Continued the audit-first Outcome Learning roadmap after validating filtered performance inputs.
+- Audited existing Analytics, Risk Dashboard, Command Center and Fleet consumer patterns before adding the first prediction-performance UI.
+- Confirmed Analytics is the smallest appropriate consumer because it already:
+  - represents historical performance,
+  - owns an existing selected reporting period,
+  - uses responsive KPI/card patterns,
+  - avoids mixing model evaluation into live operational surfaces.
+- Confirmed Risk Dashboard and Command Center are primarily live/predictive operational surfaces and were intentionally not modified.
+- Confirmed Fleet is primarily a live vehicle/map surface and was intentionally not modified.
+- Updated `app/analytics/page.tsx`.
+- Added authenticated prediction-performance retrieval through `fetchWithAuth()`.
+- Added typed client contracts matching the existing performance API:
+  - total evaluations,
+  - true positives,
+  - false positives,
+  - false negatives,
+  - true negatives,
+  - accuracy,
+  - precision,
+  - recall,
+  - false-positive rate,
+  - false-negative rate.
+- Added a dedicated `loadRoutePredictionPerformance()` client loader.
+- The loader calls:
+  - `GET /api/fleet/route-prediction-performance`.
+- The existing Analytics `startDate` and `endDate` controls are reused.
+- Reporting-period boundaries preserve the page's existing inclusive-day semantics:
+  - selected start day begins at `00:00:00`,
+  - selected end day ends at `23:59:59.999`,
+  - both boundaries are converted to ISO timestamps before being sent to the API.
+- Prediction-performance data automatically reloads whenever the selected reporting period changes.
+- Added loading, error and zero-evaluation states.
+- Added a `Route Prediction Performance` Analytics section.
+- The first consumer displays:
+  - evaluation count,
+  - accuracy,
+  - precision,
+  - recall,
+  - true positives,
+  - false positives,
+  - false negatives,
+  - true negatives.
+- Undefined ratio metrics remain visually distinct from measured zero values:
+  - canonical `null` ratios render as `-`,
+  - they are not converted to `0%`.
+- The existing API calculator was not changed.
+- The performance API was not changed.
+- Existing Analytics batch and incident queries were not refactored.
+- Existing Analytics reporting/export behavior was not changed.
+- No vehicle selector was added.
+- No polling was added.
+- No additional persistence was added.
+- No model-adjustment or calibration behavior was introduced.
+- Existing Analytics file encoding was deliberately preserved rather than normalized as collateral work.
+- Validation completed:
+  - `npx tsc --noEmit` passed with exit code `0`.
+  - `npm run build` passed with exit code `0`.
+  - Next.js production build generated all `120/120` static pages successfully.
+  - `/analytics` remained registered as a static page.
+  - `/api/fleet/route-prediction-performance` remained registered as a dynamic route.
+  - `git diff --check` passed.
+  - `git diff --cached --check` passed.
+- Implementation commit: `170f477` (`Show route prediction performance in analytics`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote branch hashes were verified identical.
+- Outcome Learning now has its first end-user analytics consumer synchronized to the selected reporting period.
+- Next step: audit the smallest useful calibration-analysis layer before changing any route-risk scoring weights or thresholds.
