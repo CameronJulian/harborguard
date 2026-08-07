@@ -5,15 +5,50 @@ import {
   type RoutePredictionEvaluation,
 } from "@/lib/fleet/calculateRoutePredictionPerformance";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const { supabase, organizationId } =
       await requireOrganization();
 
-    const { data, error } = await supabase
+    const { searchParams } = new URL(req.url);
+
+    const vehicleId =
+      searchParams.get("vehicleId");
+
+    const start =
+      searchParams.get("start");
+
+    const end =
+      searchParams.get("end");
+
+    let evaluationsQuery = supabase
       .from("route_prediction_evaluations")
       .select("classification")
       .eq("organization_id", organizationId);
+
+    if (vehicleId) {
+      evaluationsQuery =
+        evaluationsQuery.eq("vehicle_id", vehicleId);
+    }
+
+    if (start) {
+      evaluationsQuery =
+        evaluationsQuery.gte(
+          "outcome_completed_at",
+          start
+        );
+    }
+
+    if (end) {
+      evaluationsQuery =
+        evaluationsQuery.lte(
+          "outcome_completed_at",
+          end
+        );
+    }
+
+    const { data, error } =
+      await evaluationsQuery;
 
     if (error) {
       throw error;
