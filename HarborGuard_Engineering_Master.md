@@ -4242,3 +4242,100 @@ Pushed it to feature/expanded-incident-taxonomy.
   - durable trip-linked route predictions,
   - durable completed-trip observed outcomes.
 - Next step: audit how HarborGuard should evaluate prediction accuracy and calibration by comparing `route_prediction_snapshots` against `route_prediction_outcomes` for the same completed trip.
+
+### Completed Trip Prediction Evaluation
+
+- Continued the audit-first Outcome Learning roadmap after completing durable trip-linked predictions and completed-trip observed outcomes.
+- Audited existing HarborGuard evaluation infrastructure before adding new evaluation storage.
+- Confirmed `traffic_model_evaluations` is specifically designed for production-versus-experimental traffic-model diagnostics and was not reused for completed-trip Route Safety Outcome Learning.
+- Confirmed Outcome Learning cardinality is:
+  - one completed vehicle trip,
+  - potentially multiple trip-linked route prediction snapshots,
+  - one completed-trip observed outcome,
+  - one v1 completed-trip prediction evaluation.
+- Defined the v1 snapshot-selection rule as:
+  - same organization,
+  - same vehicle,
+  - same trip,
+  - prediction created at or before trip completion,
+  - latest eligible prediction by `created_at desc`.
+- Confirmed production Route Safety overall risk levels use:
+  - LOW: 0-34,
+  - MEDIUM: 35-59,
+  - HIGH: 60-79,
+  - CRITICAL: 80-100.
+- Reused the existing production LOW-to-MEDIUM boundary as the v1 binary prediction threshold:
+  - `overall_risk_score >= 35` means predicted adverse event,
+  - `overall_risk_score < 35` means predicted no adverse event.
+- Reused `route_prediction_outcomes.adverse_event_occurred` as the completed-trip observed ground-truth label.
+- Added migration `20260807190000_create_route_prediction_evaluations.sql`.
+- Added `route_prediction_evaluations` as the durable completed-trip prediction evaluation store.
+- Each evaluation persists:
+  - organization,
+  - vehicle,
+  - trip,
+  - selected prediction snapshot,
+  - completed-trip outcome,
+  - prediction timestamp,
+  - outcome completion timestamp,
+  - predicted overall risk score,
+  - predicted overall risk level,
+  - prediction-positive threshold,
+  - predicted adverse-event boolean,
+  - observed adverse-event boolean,
+  - deterministic classification,
+  - evaluation metadata.
+- Supported deterministic classifications:
+  - `true_positive`,
+  - `false_positive`,
+  - `false_negative`,
+  - `true_negative`.
+- Enforced one evaluation per trip with a unique `trip_id` constraint.
+- Added a database check constraint limiting classification values to the supported four-way evaluation vocabulary.
+- Added foreign keys to:
+  - `route_prediction_snapshots`,
+  - `route_prediction_outcomes`,
+  - `vehicle_trips`,
+  - `vehicles`,
+  - `organizations`.
+- Added authenticated organization-scoped RLS policies for select and insert.
+- Added organization and vehicle evaluation indexes.
+- Added `lib/fleet/evaluateCompletedTripPrediction.ts`.
+- Evaluation helper behavior:
+  - checks for an existing evaluation before processing,
+  - verifies the completed outcome belongs to the organization, vehicle and trip,
+  - selects the latest eligible prediction snapshot for the same organization, vehicle and trip,
+  - excludes prediction snapshots created after trip completion,
+  - skips safely when no completed outcome exists,
+  - skips safely when no eligible prediction snapshot exists,
+  - clamps the persisted overall risk score to 0-100,
+  - derives the predicted adverse-event label from the existing threshold of 35,
+  - derives the observed label from the completed-trip outcome,
+  - calculates TP / FP / FN / TN deterministically,
+  - handles PostgreSQL unique-conflict error code `23505` idempotently.
+- Updated `lib/fleet/runPostLocationUpdateLifecycle.ts`.
+- Prediction evaluation runs only after:
+  - a real transition into `delivered`,
+  - completed-trip outcome persistence.
+- Prediction evaluation is intentionally non-fatal:
+  - evaluation failures are logged,
+  - failure does not invalidate the already-persisted trip completion or completed-trip outcome,
+  - remaining post-location lifecycle work continues.
+- Existing Route Safety scoring behavior was not changed.
+- Existing completed-trip outcome capture behavior was not changed.
+- Existing traffic-model experimental evaluation behavior was not changed.
+- No UI changes were required.
+- Validation completed:
+  - `npx tsc --noEmit` passed with exit code `0`.
+  - `npm run build` passed with exit code `0`.
+  - Next.js production build generated all `119/119` static pages successfully.
+  - `git diff --check` passed.
+  - `git diff --cached --check` passed.
+- Implementation commit: `2bc2b84` (`Evaluate completed trip predictions`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote branch hashes were verified identical.
+- Outcome Learning now has the complete v1 prediction-evaluation chain:
+  - trip-linked route prediction snapshots,
+  - completed-trip observed outcomes,
+  - deterministic completed-trip prediction evaluations.
+- Next step: audit how HarborGuard should aggregate completed prediction evaluations into calibration and accuracy metrics such as confusion-matrix counts, precision, recall, false-positive rate and false-negative rate before adding any reporting or model-adjustment logic.
