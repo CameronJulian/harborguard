@@ -4039,3 +4039,41 @@ Pushed it to feature/expanded-incident-taxonomy.
   - runtime historical recency weighting: implemented consistently across HERE routing and Route Safety prediction
   - database-level destructive risk decay: intentionally not introduced
 - Next step: resume the audit-first roadmap review and identify the next precise incomplete HarborGuard intelligence milestone.
+
+### Driver Trip Completion Lifecycle
+
+- Audited the existing HarborGuard vehicle trip lifecycle before implementation.
+- Confirmed `vehicle_trips` already supports lifecycle timestamps including `actual_departure` and `actual_arrival`.
+- Confirmed `lib/fleet/updateActiveTripFromLocation.ts` already:
+  - transitions scheduled trips into active route states,
+  - records `actual_departure`,
+  - accepts the `delivered` lifecycle status,
+  - records `actual_arrival` when a trip becomes delivered.
+- Confirmed `/api/fleet/update-location` already routes requested trip status through the existing post-location lifecycle.
+- Identified the precise gap in `app/driver/page.tsx`:
+  - the Driver `Stop Trip` action previously cleared only local client state,
+  - it did not persist the final delivered lifecycle transition.
+- Updated `sendLocation()` so lifecycle status can be supplied while retaining `en_route_to_port` as the default behavior.
+- Updated `sendLocation()` to return explicit success or failure status.
+- Updated Driver trip completion so:
+  - an active trip is required,
+  - current latitude and longitude are required,
+  - the final known driver location is sent through `/api/fleet/update-location`,
+  - the final lifecycle status is `delivered`,
+  - local `tripId` is cleared only after the server-side completion succeeds,
+  - location sharing is stopped only after successful completion,
+  - failed completion attempts preserve the active local trip state.
+- No new completion API was introduced because HarborGuard already had the required server-side lifecycle infrastructure.
+- No database schema or migration changes were required.
+- Validation completed:
+  - `git diff --check` passed.
+  - `npx tsc --noEmit` passed with exit code `0`.
+  - `npm run build` passed with exit code `0`.
+  - Next.js production build generated all `119/119` static pages successfully.
+- Implementation commit: `d116d9e` (`Persist driver trip completion lifecycle`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Outcome-learning significance:
+  - completed trips can now produce a trustworthy `delivered` lifecycle boundary,
+  - successful trip completion can persist `actual_arrival`,
+  - this creates a reliable future boundary for comparing predicted route risk with actual trip outcomes.
+- Next step: resume the audit-first Outcome Learning roadmap and identify how route prediction context should be durably linked to completed trips.
