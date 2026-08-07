@@ -1,5 +1,6 @@
 import { decode } from "@here/flexpolyline";
 import { calculateDistanceMeters } from "@/lib/utils/command-center";
+import { historicalRoadRiskRecencyWeight } from "@/lib/routing/roadRiskRecency";
 
 type RoutePoint = [number, number];
 
@@ -36,7 +37,6 @@ function scoreRouteRisk(
     });
   });
 
-  const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
   const now = Date.now();
 
   const scoredSegments = matchedSegments.map((segment) => {
@@ -47,28 +47,10 @@ function scoreRouteRisk(
       Number(segment?.verification_count) || 0
     );
 
-    let recencyWeight = 1;
-
-    const lastEvent = Date.parse(String(segment?.last_event_at ?? ""));
-
-    if (Number.isFinite(lastEvent)) {
-      const ageDays = Math.max(
-        0,
-        (now - lastEvent) / MILLISECONDS_PER_DAY
-      );
-
-      if (ageDays <= 7) {
-        recencyWeight = 1.25;
-      } else if (ageDays <= 30) {
-        recencyWeight = 1.1;
-      } else if (ageDays <= 90) {
-        recencyWeight = 1;
-      } else if (ageDays <= 180) {
-        recencyWeight = 0.85;
-      } else {
-        recencyWeight = 0.7;
-      }
-    }
+    const recencyWeight = historicalRoadRiskRecencyWeight(
+      segment?.last_event_at,
+      now
+    );
 
     const verificationWeight = Math.min(
       1.25,

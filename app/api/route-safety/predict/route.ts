@@ -7,6 +7,7 @@ import {
 } from "@/lib/traffic/intelligence";
 import type { WeatherProviderResult } from "@/lib/weather/types";
 import { routeIncidentSeverityWeight, routeIncidentTypeWeight } from "@/lib/route-safety/incidentWeights";
+import { historicalRoadRiskRecencyWeight } from "@/lib/routing/roadRiskRecency";
 
 const TRAFFIC_DIAGNOSTIC_COMPOSITE_CONFIG = {
   weights: {
@@ -1228,8 +1229,21 @@ if (roadRiskSegmentsError) {
           alert.aggregated_risk_score
         );
 
+        const historicalRecencyWeight =
+          Number.isFinite(aggregatedRiskScore)
+            ? historicalRoadRiskRecencyWeight(
+                normalizedCreatedAt
+              )
+            : 1;
+
         const unweightedScore = Number.isFinite(aggregatedRiskScore)
-          ? Math.min(100, Math.max(0, aggregatedRiskScore))
+          ? Math.min(
+              100,
+              Math.max(
+                0,
+                aggregatedRiskScore * historicalRecencyWeight
+              )
+            )
           : Math.min(
               100,
               applyIntelligenceWeighting(
@@ -1273,6 +1287,7 @@ if (roadRiskSegmentsError) {
           ),
           isLikelyOnRoute,
           unweightedScore,
+          historicalRecencyWeight,
           geometryScoreMultiplier,
           score,
           freshness: normalizedFreshness,
