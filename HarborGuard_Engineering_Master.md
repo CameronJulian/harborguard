@@ -3927,3 +3927,28 @@ Pushed it to feature/expanded-incident-taxonomy.
   - `npm run build`
 - Production build completed successfully with 119 routes.
 - Implementation commit: `3a89078` (`Extract location behavior alert orchestration`).
+
+### Post-Location Update Lifecycle Extraction
+
+- Created `lib/fleet/runPostLocationUpdateLifecycle.ts`.
+- Extracted post-location-update lifecycle orchestration from `app/api/fleet/update-location/route.ts`.
+- The helper now owns:
+  - location-derived driving-behavior alert orchestration
+  - active-trip update orchestration
+  - vehicle-stop lifecycle orchestration
+  - automatic fleet-risk detection
+  - existing best-effort risk-detection error handling
+- The update-location route now delegates the post-location lifecycle to `runPostLocationUpdateLifecycle(...)`.
+- `activeTripId` calculation remains in the route because it is also returned in the successful HTTP response.
+- Existing behavior-alert creation remains delegated to `createLocationBehaviorAlerts(...)`.
+- Existing active-trip mutation remains delegated to `updateActiveTripFromLocation(...)`.
+- Existing vehicle-stop lifecycle remains delegated to `updateVehicleStopLifecycle(...)`.
+- Existing risk detection remains delegated to `detectFleetRisks(...)`.
+- Automatic risk-detection failures remain non-fatal and continue to be logged without failing the location update.
+- No HTTP response construction, raw database access, location persistence, active-trip lookup, telemetry detection, or Route Safety behavior was moved into the lifecycle helper.
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
+- Implementation commit: `c1a2264` (`Extract post location update lifecycle`).
