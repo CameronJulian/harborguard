@@ -5007,3 +5007,44 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote branch hashes were verified identical at `ef3808ada9d87f9630c1d67ab6c94255236c6a88`.
 - Outcome Learning can now compare an individual vehicle's completed route-prediction performance with fleet-wide performance over the same reporting period while keeping the comparison read-only and the live production threshold fixed at `35`.
 - Next step: audit the smallest safe next Outcome Learning improvement using the existing historical evidence, with particular attention to longer-window calibration evidence or another interpretation layer that does not automatically change production prediction behavior.
+
+### Route Prediction Historical Window Presets
+
+- Continued the audit-first Outcome Learning roadmap after adding the vehicle-to-fleet route-prediction performance benchmark.
+- Audited the existing Analytics reporting controls, date-range state, vehicle filtering, route-prediction performance consumer and threshold-analysis consumer before adding longer historical review controls.
+- Updated `app/analytics/page.tsx`.
+- Added read-only historical window presets for:
+  - `30 days`,
+  - `90 days`,
+  - `180 days`.
+- Added `applyHistoricalWindow(days)` to update the existing Analytics `startDate` and `endDate` state.
+- Selecting a historical window sets the reporting end date to the current date and moves the reporting start date backward by the selected number of days.
+- The presets reuse the existing reporting date-range state rather than introducing a separate calibration data path.
+- Existing route-prediction analytics consumers therefore continue to use the selected reporting period through their existing date filtering.
+- Existing manual start-date and end-date controls remain available.
+- Existing vehicle filtering remains available and can be combined with the selected historical reporting window.
+- The historical-window controls are evidence-review controls only.
+- No production prediction behavior was changed.
+- No completed-trip evaluation behavior was changed.
+- No route-prediction performance API behavior was changed.
+- No route-prediction threshold-analysis API behavior was changed.
+- No database change was required.
+- No automatic calibration behavior was introduced.
+- No automatic threshold recommendation behavior was introduced.
+- No threshold mutation behavior was introduced.
+- Existing `PREDICTION_POSITIVE_THRESHOLD = 35` was explicitly verified unchanged.
+- Validation completed before the implementation commit:
+  - `git diff --check` passed.
+  - `npx tsc --noEmit` passed with exit code `0`.
+  - `npm run build` passed with exit code `0`.
+  - Next.js production build generated all `121/121` static pages successfully.
+  - `/analytics` remained registered as a static page.
+  - `/api/fleet/route-prediction-performance` remained registered as a dynamic route.
+  - `/api/fleet/route-prediction-threshold-analysis` remained registered as a dynamic route.
+  - `git diff --cached --check` passed before the implementation commit.
+- Implementation commit: `f0b3cc4` (`Add route prediction historical window presets`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote branch hashes were verified identical at `f0b3cc45c8673946615cd543b1cccbc2e6452cd9`.
+- Outcome Learning can now quickly review route-prediction evidence over 30-day, 90-day and 180-day historical windows while retaining manual date selection, vehicle-level filtering and fleet-wide comparison behavior.
+- The historical windows remain descriptive evidence scopes and do not imply that any window is statistically sufficient for calibration or that any candidate threshold should replace the live threshold of `35`.
+- Next step: audit the evidence now available across historical windows and vehicle/fleet scopes to identify the smallest safe interpretation improvement, without introducing automatic calibration, threshold recommendation or production-threshold mutation.
