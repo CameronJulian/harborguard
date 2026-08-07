@@ -3974,3 +3974,36 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Production build completed successfully with 119 routes.
 - Implementation commit: `7267fde`.
 - Cleanup commit: `e74e5b7` (`Clean up update location imports`).
+### Duplicate Route Threat Consolidation
+
+- Updated `app/api/route-safety/predict/route.ts`.
+- Added prediction-boundary duplicate threat consolidation without changing provider ingestion or database persistence.
+- Route-threat candidates now preserve alert latitude and longitude for duplicate-distance evaluation.
+- Candidate route threats are sorted by descending threat score before consolidation.
+- Same-type route threats within 250 metres are treated as duplicates at the prediction boundary.
+- The highest-scoring representative is retained when a duplicate is consolidated.
+- Threats with different types or greater than 250 metres of separation remain independently eligible for route-risk scoring.
+- Existing `threatRiskScore` aggregation continues to operate on the final consolidated `routeThreats`.
+- No database schema, provider-ingestion, provider-correlation, alert persistence, authentication, or unrelated Route Safety behavior was changed.
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+  - authenticated local `/api/route-safety/predict` runtime request
+- Production build completed successfully with 119 routes.
+- Live prediction validation:
+  - request completed successfully
+  - returned 5 route threats
+  - returned threats preserved latitude and longitude
+  - minimum separation between the five same-type live threats was 1095.9 metres
+  - all five therefore correctly remained independent under the 250-metre consolidation threshold
+- Controlled in-memory duplicate validation:
+  - same-type synthetic duplicate separation: 55.6 metres
+  - candidate count: 2
+  - consolidated count: 1
+  - highest-scoring representative retained: 85
+  - naive duplicate-inflated score: 100
+  - consolidated score: 85
+  - `DuplicatePrevented: True`
+- The controlled positive duplicate case reproduced the implemented consolidation rule in memory and did not insert synthetic alerts into Supabase.
+- Implementation commit: `684517e` (`Consolidate duplicate route threats`).
