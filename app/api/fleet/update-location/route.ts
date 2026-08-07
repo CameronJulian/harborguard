@@ -10,6 +10,9 @@ import {
 import {
   getLatestVehicleLocation,
 } from "@/lib/fleet/getLatestVehicleLocation";
+import {
+  createVehicleLocation,
+} from "@/lib/fleet/createVehicleLocation";
 import { requireOrganization, requireRole } from "@/lib/server-auth";
 import { detectFleetRisks } from "@/lib/fleet/risk-detection";
 import {
@@ -328,19 +331,20 @@ export async function POST(req: Request) {
       }
     }
 
-    const { error: locationError } = await supabase
-      .from("vehicle_locations")
-      .insert({
-        organization_id: organizationId,
-        vehicle_id: vehicleId,
-        trip_id: tripId,
-        latitude,
-        longitude,
-        speed_kmh: speedKmh,
-        heading,
-        recorded_at: now,
-        source,
-      });
+    const {
+      error: locationError,
+    } = await createVehicleLocation({
+      supabase,
+      organizationId,
+      vehicleId,
+      tripId,
+      latitude,
+      longitude,
+      speedKmh,
+      heading,
+      recordedAt: now,
+      source,
+    });
 
     if (locationError) {
       return NextResponse.json(
