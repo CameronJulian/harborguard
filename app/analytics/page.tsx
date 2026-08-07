@@ -361,6 +361,8 @@ const { data: incidentData } = await supabase
       })),
     [routePredictionThresholdAnalysis]
   );
+  const routePredictionThresholdEvaluationCount =
+    routePredictionThresholdAnalysis[0]?.performance.totalEvaluations ?? 0;
 
   const filteredBatches = useMemo(() => {
     const start = new Date(`${startDate}T00:00:00`);
@@ -953,20 +955,42 @@ if (subscriptionLoaded && !premiumAllowed) {
               Historical precision and recall across candidate thresholds for the selected reporting period.
             </p>
           </div>
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+          justifyContent: "flex-end",
+        }}
+      >
+        <div
+          style={{
+            padding: "8px 12px",
+            borderRadius: 999,
+            border: "1px solid #cbd5e1",
+            background: "#f8fafc",
+            color: "#334155",
+            fontSize: 13,
+            fontWeight: 700,
+          }}
+        >
+          Evaluations: {formatNumber(routePredictionThresholdEvaluationCount)}
+        </div>
 
-          <div
-            style={{
-              padding: "8px 12px",
-              borderRadius: 999,
-              border: "1px solid #cbd5e1",
-              background: "#f8fafc",
-              color: "#334155",
-              fontSize: 13,
-              fontWeight: 700,
-            }}
-          >
-            Current production threshold: 35
-          </div>
+        <div
+          style={{
+            padding: "8px 12px",
+            borderRadius: 999,
+            border: "1px solid #cbd5e1",
+            background: "#f8fafc",
+            color: "#334155",
+            fontSize: 13,
+            fontWeight: 700,
+          }}
+        >
+          Current production threshold: 35
+        </div>
+      </div>
         </div>
 
         {routePredictionThresholdAnalysisLoading ? (
@@ -1048,16 +1072,33 @@ if (subscriptionLoaded && !premiumAllowed) {
                 </LineChart>
               </ResponsiveContainer>
             </div>
+        <div
+          style={{
+            marginTop: 12,
+            display: "grid",
+            gap: 6,
+          }}
+        >
+          <p
+            style={{
+              ...mutedTextStyle,
+              margin: 0,
+              fontSize: 13,
+            }}
+          >
+            This chart is based on {formatNumber(routePredictionThresholdEvaluationCount)} completed route prediction evaluations in the selected period. Smaller evaluation sets provide more limited evidence and should be interpreted cautiously.
+          </p>
 
-            <p
-              style={{
-                ...mutedTextStyle,
-                marginTop: 12,
-                fontSize: 13,
-              }}
-            >
-              Analysis only. HarborGuard does not automatically recommend or apply a production threshold from this chart.
-            </p>
+          <p
+            style={{
+              ...mutedTextStyle,
+              margin: 0,
+              fontSize: 13,
+            }}
+          >
+            Analysis only. HarborGuard does not automatically recommend or apply a production threshold from this chart.
+          </p>
+        </div>
           </>
         )}
       </div>
