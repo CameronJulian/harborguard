@@ -3782,3 +3782,33 @@ Pushed it to feature/expanded-incident-taxonomy.
   - `npm run build`
 - Production build completed successfully with 119 routes.
 - Implementation commit: `2422b85` (`Use shared distance utility for mobile tracking`).
+### Update Location Input Parsing Extraction
+
+- Created `lib/fleet/parseUpdateLocationInput.ts`.
+- Extracted update-location request normalization and validation from `app/api/fleet/update-location/route.ts`.
+- The helper now owns:
+  - `UpdateLocationBody`
+  - update-location status and source types
+  - fleet telemetry number coercion via `parseFleetTelemetryNumber(...)`
+  - vehicle ID normalization
+  - trip ID normalization
+  - latitude and longitude parsing
+  - speed and heading parsing with zero defaults
+  - source defaulting to `mobile`
+  - requested-status extraction
+  - required vehicle ID validation
+  - finite-coordinate validation
+  - latitude-range validation
+  - longitude-range validation
+  - structured success and validation-error results
+- The update-location route now delegates to `parseUpdateLocationInput(...)`.
+- HTTP `400` response construction remains in the route.
+- Historical telemetry parsing now reuses `parseFleetTelemetryNumber(...)`.
+- Sustained-speeding detection continues receiving the parser through its existing `parseNumber` callback property.
+- No database, alert-lifecycle, Route Safety, or telemetry-observation behavior was changed.
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
+- Implementation commit: `f20e934` (`Extract update location input parsing`).
