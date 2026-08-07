@@ -4128,3 +4128,34 @@ Pushed it to feature/expanded-incident-taxonomy.
   - durable trip-linked production prediction snapshots,
   - existing trip-linked locations, alerts and telemetry available for later actual-outcome evaluation.
 - Next step: audit how completed-trip actual outcomes should be derived and persisted so HarborGuard can compare predicted route risk with what actually happened.
+
+### Trip Lifecycle Persistence Validation
+
+- Continued the audit-first Outcome Learning implementation after establishing durable trip-linked route prediction snapshots.
+- Audited `lib/fleet/updateActiveTripFromLocation.ts` before wiring completed-trip outcome persistence.
+- Confirmed the helper returns:
+  - `updated`,
+  - `previousStatus`,
+  - `nextStatus`.
+- Confirmed this result is the correct lifecycle contract for identifying a genuine transition to `delivered`.
+- Identified a persistence reliability gap:
+  - Supabase trip updates were awaited,
+  - but update errors were not checked before the helper returned `updated: true`.
+- Updated both trip lifecycle write paths to capture and validate Supabase update errors.
+- Scheduled-trip transition now throws when the underlying `vehicle_trips` update fails.
+- Active-trip status transition now throws when the underlying `vehicle_trips` update fails.
+- This prevents HarborGuard from reporting a successful lifecycle transition when the database did not persist it.
+- The `delivered` transition therefore becomes a trustworthy trigger for subsequent completed-trip Outcome Learning persistence.
+- No schema changes were included in this prerequisite commit.
+- The pending Outcome Learning files remain separate from this work item:
+  - `lib/fleet/createCompletedTripOutcome.ts`
+  - `supabase/migrations/20260807183000_create_route_prediction_outcomes.sql`
+- Validation completed:
+  - `npx tsc --noEmit` passed with exit code `0`.
+  - `npm run build` passed with exit code `0`.
+  - Next.js production build generated all `119/119` static pages successfully.
+  - `git diff --check` passed.
+- Implementation commit: `bbaf74a` (`Validate trip lifecycle update persistence`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote branch hashes were verified identical.
+- Next step: resume the focused Outcome Learning implementation by wiring completed-trip outcome creation only to a successfully persisted transition from a non-delivered trip state to `delivered`.
