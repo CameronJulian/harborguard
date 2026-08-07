@@ -4,6 +4,25 @@ import { historicalRoadRiskRecencyWeight } from "@/lib/routing/roadRiskRecency";
 
 type RoutePoint = [number, number];
 
+export type RoutingProfile = "safest" | "fastest" | "balanced";
+
+function normalizeRoutingProfile(
+  value: unknown
+): RoutingProfile {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  if (
+    normalized === "fastest" ||
+    normalized === "balanced"
+  ) {
+    return normalized;
+  }
+
+  return "safest";
+}
+
 function secondsToDuration(seconds: number) {
   return `${Math.max(0, Math.round(seconds))}s`;
 }
@@ -98,26 +117,116 @@ function scoreRouteRisk(
   };
 }
 
-function rankRoutesBySafety(routes: any[]) {
+function rankRoutes(
+  routes: any[],
+  profile: RoutingProfile
+) {
+  const durations = routes
+    .map((route) => Number(route?.durationSeconds || 0))
+    .filter((duration) => duration > 0);
+
+  const fastestDuration =
+    durations.length > 0
+      ? Math.min(...durations)
+      : 0;
+
   return [...routes]
+    .map((route) => {
+      const safetyScore = Math.max(
+        0,
+        Math.min(100, Number(route?.safetyScore || 0))
+      );
+
+      const durationSeconds = Math.max(
+        0,
+        Number(route?.durationSeconds || 0)
+      );
+
+      const durationScore =
+        fastestDuration > 0 && durationSeconds > 0
+          ? Math.max(
+              0,
+              Math.min(
+                100,
+                Math.round(
+                  (fastestDuration / durationSeconds) * 100
+                )
+              )
+            )
+          : 0;
+
+      const profileScore =
+        profile === "fastest"
+          ? durationScore
+          : profile === "balanced"
+            ? Math.round(
+                safetyScore * 0.7 +
+                  durationScore * 0.3
+              )
+            : safetyScore;
+
+      return {
+        ...route,
+        routingProfile: profile,
+        durationScore,
+        profileScore,
+      };
+    })
     .sort((firstRoute, secondRoute) => {
-      const safetyDifference =
-        Number(secondRoute?.safetyScore || 0) -
-        Number(firstRoute?.safetyScore || 0);
+      if (profile === "fastest") {
+        const durationDifference =
+          Number(firstRoute?.durationSeconds || 0) -
+          Number(secondRoute?.durationSeconds || 0);
 
-      if (safetyDifference !== 0) {
-        return safetyDifference;
+        if (durationDifference !== 0) {
+          return durationDifference;
+        }
+
+        const safetyDifference =
+          Number(secondRoute?.safetyScore || 0) -
+          Number(firstRoute?.safetyScore || 0);
+
+        if (safetyDifference !== 0) {
+          return safetyDifference;
+        }
+      } else if (profile === "balanced") {
+        const profileDifference =
+          Number(secondRoute?.profileScore || 0) -
+          Number(firstRoute?.profileScore || 0);
+
+        if (profileDifference !== 0) {
+          return profileDifference;
+        }
+
+        const safetyDifference =
+          Number(secondRoute?.safetyScore || 0) -
+          Number(firstRoute?.safetyScore || 0);
+
+        if (safetyDifference !== 0) {
+          return safetyDifference;
+        }
+      } else {
+        const safetyDifference =
+          Number(secondRoute?.safetyScore || 0) -
+          Number(firstRoute?.safetyScore || 0);
+
+        if (safetyDifference !== 0) {
+          return safetyDifference;
+        }
+
+        const durationDifference =
+          Number(firstRoute?.durationSeconds || 0) -
+          Number(secondRoute?.durationSeconds || 0);
+
+        if (durationDifference !== 0) {
+          return durationDifference;
+        }
       }
 
-      const durationDifference =
-        Number(firstRoute?.durationSeconds || 0) -
-        Number(secondRoute?.durationSeconds || 0);
-
-      if (durationDifference !== 0) {
-        return durationDifference;
-      }
-
-      return Number(firstRoute?.index || 0) - Number(secondRoute?.index || 0);
+      return (
+        Number(firstRoute?.index || 0) -
+        Number(secondRoute?.index || 0)
+      );
     })
     .map((route, position) => ({
       ...route,
@@ -192,8 +301,12 @@ function decodeHereRouteSections(sections: any[]): RoutePoint[] {
 export async function calculateHereRoutes(
   origin: any,
   destination: any,
-  roadRiskSegments: any[] = []
+  roadRiskSegments: any[] = [],
+  routingProfile: RoutingProfile = "safest"
 ) {
+  const profile = normalizeRoutingProfile(
+    routingProfile
+  );
   if (!process.env.HERE_API_KEY) {
     throw new Error("HERE_API_KEY is not configured.");
   }
@@ -286,14 +399,19 @@ export async function calculateHereRoutes(
     };
   });
 
-  const rankedRoutes = rankRoutesBySafety(routes);
-  const recommendedRoute = rankedRoutes[0] ?? null;
+  const rankedRoutes = rankRoutes(
+    routes,
+    profile
+  );
+
+  const recommendedRoute =
+    rankedRoutes[0] ?? null;
 
   return {
     provider: "here_routing_v8",
+    routingProfile: profile,
     routes: rankedRoutes,
     recommendedRoute,
     recommendation: recommendation(rankedRoutes),
   };
 }
-

@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 import { calculateHereRoutes } from "@/lib/routing/hereRouting";
 
@@ -7,7 +7,11 @@ export async function POST(req: NextRequest) {
     const { supabase, organizationId } = await requireOrganization();
 
     const body = await req.json();
-    const { origin, destination } = body;
+    const {
+      origin,
+      destination,
+      routingProfile = "safest",
+    } = body;
 
     if (!origin?.lat || !origin?.lng || !destination?.lat || !destination?.lng) {
       return NextResponse.json(
@@ -59,7 +63,8 @@ last_event_at
     const result = await calculateHereRoutes(
       origin,
       destination,
-      roadRiskSegments ?? []
+      roadRiskSegments ?? [],
+      routingProfile
     );
 
     return NextResponse.json({
@@ -73,4 +78,3 @@ last_event_at
     );
   }
 }
-
