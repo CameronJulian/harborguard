@@ -40,7 +40,7 @@ export async function updateActiveTripFromLocation(
     const nextStatus =
       requestedStatus || "en_route_to_port";
 
-    await supabase
+    const { error: tripUpdateError } = await supabase
       .from("vehicle_trips")
       .update({
         status: nextStatus,
@@ -48,6 +48,10 @@ export async function updateActiveTripFromLocation(
       })
       .eq("id", activeTrip.id)
       .eq("organization_id", organizationId);
+
+    if (tripUpdateError) {
+      throw tripUpdateError;
+    }
 
     return {
       updated: true,
@@ -68,11 +72,15 @@ export async function updateActiveTripFromLocation(
       updates.actual_arrival = occurredAt;
     }
 
-    await supabase
+    const { error: tripUpdateError } = await supabase
       .from("vehicle_trips")
       .update(updates)
       .eq("id", activeTrip.id)
       .eq("organization_id", organizationId);
+
+    if (tripUpdateError) {
+      throw tripUpdateError;
+    }
 
     return {
       updated: true,
