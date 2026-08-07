@@ -4404,3 +4404,47 @@ Pushed it to feature/expanded-incident-taxonomy.
   - deterministic completed-trip prediction evaluations,
   - canonical aggregate performance calculations.
 - Next step: audit the smallest organization-scoped reader/API boundary for exposing aggregate route prediction performance without introducing redundant persistence or premature UI/model-adjustment logic.
+
+### Route Prediction Performance API
+
+- Continued the audit-first Outcome Learning roadmap after adding canonical aggregate prediction-performance calculations.
+- Audited existing authentication, fleet API, analytics and service-layer patterns before exposing prediction-performance metrics.
+- Confirmed `requireOrganization()` is the canonical authenticated server boundary for organization-scoped fleet APIs.
+- Confirmed no existing reader/API exposed `route_prediction_evaluations`.
+- Confirmed no additional persistence table was required.
+- Added `GET /api/fleet/route-prediction-performance`.
+- Added `app/api/fleet/route-prediction-performance/route.ts`.
+- The endpoint:
+  - authenticates through `requireOrganization()`,
+  - resolves the current organization,
+  - reads only the `classification` field from `route_prediction_evaluations`,
+  - explicitly filters by `organization_id`,
+  - passes the evaluation rows through `calculateRoutePredictionPerformance()`,
+  - returns `{ success: true, performance }`.
+- The endpoint intentionally does not duplicate metric calculations.
+- The endpoint intentionally does not add:
+  - new database schema,
+  - stored aggregate rows,
+  - date-range filtering,
+  - vehicle filtering,
+  - service-layer wrappers,
+  - analytics UI,
+  - model-adjustment logic.
+- Existing Route Safety scoring behavior was not changed.
+- Existing prediction snapshot behavior was not changed.
+- Existing completed-trip outcome behavior was not changed.
+- Existing completed-trip evaluation behavior was not changed.
+- Existing aggregate calculation behavior was not changed.
+- Validation completed:
+  - `npx tsc --noEmit` passed with exit code `0`.
+  - `npm run build` passed with exit code `0`.
+  - Next.js production build generated all `120/120` static pages successfully.
+  - `/api/fleet/route-prediction-performance` was registered as a dynamic route.
+  - `git diff --check` passed.
+  - `git diff --cached --check` passed.
+- Initial implementation commit: `3ff46a1` (`Expose route prediction performance`).
+- Follow-up encoding normalization commit: `4a80882` (`Normalize route prediction performance encoding`).
+- The route source was normalized to UTF-8 without BOM.
+- Local and remote branch hashes were verified identical after the normalization commit.
+- Outcome Learning now exposes organization-scoped aggregate prediction performance through an authenticated API boundary.
+- Next step: audit whether HarborGuard should add time-window and vehicle-scoped performance slicing before introducing analytics UI or model-calibration behavior.
