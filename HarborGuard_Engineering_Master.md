@@ -4077,3 +4077,54 @@ Pushed it to feature/expanded-incident-taxonomy.
   - successful trip completion can persist `actual_arrival`,
   - this creates a reliable future boundary for comparing predicted route risk with actual trip outcomes.
 - Next step: resume the audit-first Outcome Learning roadmap and identify how route prediction context should be durably linked to completed trips.
+
+### Trip-Linked Route Prediction Snapshots
+
+- Continued the audit-first Outcome Learning roadmap after completing the Driver Trip Completion Lifecycle.
+- Audited existing prediction persistence before introducing new schema.
+- Confirmed `traffic_model_evaluations` is a diagnostic experimental traffic-model evaluation store rather than HarborGuard's canonical production route-prediction history.
+- Confirmed normal Route Safety predictions were not otherwise durably persisted.
+- Confirmed `/api/route-safety/predict` already receives:
+  - authenticated organization context,
+  - authenticated user context,
+  - optional vehicle ID,
+  - optional active trip ID,
+  - route origin and destination,
+  - finalized production risk scores and levels.
+- Added migration `20260807170000_create_route_prediction_snapshots.sql`.
+- Added immutable `route_prediction_snapshots` persistence with:
+  - organization linkage,
+  - user linkage,
+  - vehicle linkage,
+  - vehicle-trip linkage,
+  - route origin and destination,
+  - overall risk score and level,
+  - threat risk score and level,
+  - weather risk score,
+  - traffic risk score and level,
+  - compact diagnostic metadata,
+  - creation timestamp.
+- Added organization-scoped authenticated RLS policies for select and insert.
+- Added organization, trip and vehicle timestamp indexes for future Outcome Learning queries.
+- Route prediction snapshots are currently persisted only when a `tripId` exists so stored predictions can later be evaluated against actual trip outcomes.
+- Added ownership validation before snapshot persistence:
+  - supplied trip ID must belong to the authenticated organization,
+  - when a vehicle ID is supplied, the trip must also belong to that vehicle.
+- Snapshot logging is best-effort:
+  - snapshot failures are logged,
+  - a persistence failure does not cause a valid route-safety prediction request to fail.
+- Existing `traffic_model_evaluations` behavior was preserved.
+- Existing Route Safety scoring behavior was not changed.
+- No UI changes were required.
+- Validation completed:
+  - `git diff --cached --check` passed.
+  - `npx tsc --noEmit` passed with exit code `0`.
+  - `npm run build` passed with exit code `0`.
+  - Next.js production build generated all `119/119` static pages successfully.
+- Implementation commit: `d690e27` (`Persist trip-linked route prediction snapshots`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Outcome Learning foundation now has:
+  - a trustworthy trip-completion boundary,
+  - durable trip-linked production prediction snapshots,
+  - existing trip-linked locations, alerts and telemetry available for later actual-outcome evaluation.
+- Next step: audit how completed-trip actual outcomes should be derived and persisted so HarborGuard can compare predicted route risk with what actually happened.
