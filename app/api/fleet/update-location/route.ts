@@ -13,6 +13,9 @@ import {
 import {
   createVehicleLocation,
 } from "@/lib/fleet/createVehicleLocation";
+import {
+  getActiveVehicleTrip,
+} from "@/lib/fleet/getActiveVehicleTrip";
 import { requireOrganization, requireRole } from "@/lib/server-auth";
 import { detectFleetRisks } from "@/lib/fleet/risk-detection";
 import {
@@ -353,21 +356,12 @@ export async function POST(req: Request) {
       );
     }
 
-    const { data: activeTrip } = await supabase
-      .from("vehicle_trips")
-      .select("id, status")
-      .eq("vehicle_id", vehicleId)
-      .eq("organization_id", organizationId)
-      .in("status", [
-        "scheduled",
-        "en_route_to_port",
-        "collecting",
-        "en_route_to_fishery",
-        "emergency",
-      ])
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const activeTrip =
+      await getActiveVehicleTrip({
+        supabase,
+        organizationId,
+        vehicleId,
+      });
 
     const activeTripId = activeTrip?.id || tripId || null;
 
