@@ -146,6 +146,8 @@ export default function CommandCenterPage() {
 
   const {
     routePrediction,
+    routingProfile,
+    setRoutingProfile,
     routePredictionLoading,
     routeRerouteLoading,
     routeAssignLoading,
@@ -388,6 +390,8 @@ if (
           resolveFirstAlert={resolveFirstAlert}
           routeSafety={{
             routePrediction,
+            routingProfile,
+            setRoutingProfile,
             routePredictionLoading,
             routeAssignLoading,
             routeRerouteLoading,

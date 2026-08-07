@@ -7,6 +7,8 @@ import CommandCenterActiveOperationsSection from "./CommandCenterActiveOperation
 
 type RouteSafetyBundle = {
   routePrediction: any;
+  routingProfile: "safest" | "balanced" | "fastest";
+  setRoutingProfile: (value: "safest" | "balanced" | "fastest") => void;
   routePredictionLoading: boolean;
   routeAssignLoading: boolean;
   routeRerouteLoading: boolean;
@@ -72,6 +74,8 @@ export default function CommandCenterOperationsPanelSection(props: Props) {
 
   const {
     routePrediction,
+    routingProfile,
+    setRoutingProfile,
     routePredictionLoading,
     routeAssignLoading,
     routeRerouteLoading,
@@ -120,6 +124,8 @@ export default function CommandCenterOperationsPanelSection(props: Props) {
         filteredFleet={filteredFleet}
         selectedVehicleId={selectedVehicleId}
         routePrediction={routePrediction}
+        routingProfile={routingProfile}
+        setRoutingProfile={setRoutingProfile}
         routePredictionLoading={routePredictionLoading}
         routeAssignLoading={routeAssignLoading}
         routeRerouteLoading={routeRerouteLoading}

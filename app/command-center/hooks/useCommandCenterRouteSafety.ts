@@ -1,4 +1,5 @@
 ﻿import { useMemo, useState } from "react";
+import type { RoutingProfile } from "@/lib/routing/hereRouting";
 import type { Dispatch, SetStateAction } from "react";
 
 import { fetchWithAuth } from "@/lib/auth-fetch";
@@ -19,6 +20,7 @@ export function useCommandCenterRouteSafety({
   decodePolyline,
 }: UseCommandCenterRouteSafetyOptions) {
   const [routePrediction, setRoutePrediction] = useState<any | null>(null);
+  const [routingProfile, setRoutingProfile] = useState<RoutingProfile>("safest");
   const [routePredictionLoading, setRoutePredictionLoading] = useState(false);
   const [routeRerouteLoading, setRouteRerouteLoading] = useState(false);
   const [routeAssignLoading, setRouteAssignLoading] = useState(false);
@@ -156,6 +158,7 @@ export function useCommandCenterRouteSafety({
               lat: destination[0],
               lng: destination[1],
             },
+            routingProfile,
           }),
         }
       );
@@ -324,6 +327,8 @@ export function useCommandCenterRouteSafety({
 
   return {
     routePrediction,
+    routingProfile,
+    setRoutingProfile,
     routePredictionLoading,
     routeRerouteLoading,
     routeAssignLoading,

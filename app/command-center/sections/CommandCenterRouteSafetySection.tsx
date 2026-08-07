@@ -5,6 +5,8 @@ type Props = {
   filteredFleet: FleetVehicle[];
   selectedVehicleId: string | null;
   routePrediction: any | null;
+  routingProfile: "safest" | "balanced" | "fastest";
+  setRoutingProfile: (value: "safest" | "balanced" | "fastest") => void;
   routePredictionLoading: boolean;
   routeRerouteLoading: boolean;
   routeAssignLoading: boolean;
@@ -33,6 +35,8 @@ export default function CommandCenterRouteSafetySection({
   filteredFleet,
   selectedVehicleId,
   routePrediction,
+  routingProfile,
+  setRoutingProfile,
   routePredictionLoading,
   routeRerouteLoading,
   routeAssignLoading,
@@ -299,6 +303,8 @@ export default function CommandCenterRouteSafetySection({
                     <div key={route.index} style={{ padding: 8, borderRadius: 10, border: "1px solid #dcfce7" }}>
                       <strong>{route.label}</strong>
                       <br />
+                      Profile: {String(route.routingProfile || routingProfile).toUpperCase()}
+                      <br />
                       Distance: {Math.round((route.distanceMeters || 0) / 1000)} km
                       <br />
                       ETA: {route.duration || "N/A"}
@@ -316,6 +322,60 @@ export default function CommandCenterRouteSafetySection({
                 </div>
               </div>
             ) : null}
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                flexWrap: "wrap",
+                marginTop: 12,
+                marginBottom: 10,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "#475569",
+                }}
+              >
+                Routing profile:
+              </span>
+
+              {(["safest", "balanced", "fastest"] as const).map(
+                (profile) => {
+                  const selected = routingProfile === profile;
+
+                  return (
+                    <button
+                      key={profile}
+                      type="button"
+                      disabled={routeRerouteLoading}
+                      onClick={() => setRoutingProfile(profile)}
+                      style={{
+                        border: selected
+                          ? "1px solid #0f172a"
+                          : "1px solid #cbd5e1",
+                        background: selected ? "#0f172a" : "#ffffff",
+                        color: selected ? "#ffffff" : "#334155",
+                        borderRadius: 999,
+                        padding: "5px 9px",
+                        fontSize: 11,
+                        fontWeight: 800,
+                        cursor: routeRerouteLoading
+                          ? "not-allowed"
+                          : "pointer",
+                        opacity: routeRerouteLoading ? 0.65 : 1,
+                        textTransform: "capitalize",
+                      }}
+                    >
+                      {profile}
+                    </button>
+                  );
+                }
+              )}
+            </div>
 
             {routePrediction.threats?.length > 0 ? (
               <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
