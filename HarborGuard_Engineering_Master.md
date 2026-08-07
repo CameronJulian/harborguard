@@ -3767,3 +3767,18 @@ Pushed it to feature/expanded-incident-taxonomy.
   - `npm run build`
 - Production build completed successfully with 119 routes.
 - Implementation commit: `f766d1f` (`Use shared distance utility for fleet threat prediction`).
+### Mobile Tracker Distance Utility Migration
+
+- Migrated `app/mobile-tracker/page.tsx` to the shared `lib/geo/getDistanceMeters.ts` utility.
+- Removed the file-local Haversine distance implementation.
+- Preserved `"use client";` as the first module statement.
+- Adapted the mobile tracker's `{ lat, lng }` points to the shared `{ latitude, longitude }` coordinate shape at the call site.
+- Preserved `lastSentRef.current.time` and speed-sanity calculations.
+- Preserved GPS accuracy filtering, jitter filtering, anti-teleport filtering, location submission, and crowd-report behavior.
+- No API, database, Route Safety, alert-lifecycle, or telemetry-observation behavior was changed.
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
+- Implementation commit: `2422b85` (`Use shared distance utility for mobile tracking`).
