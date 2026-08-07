@@ -3903,3 +3903,27 @@ Pushed it to feature/expanded-incident-taxonomy.
   - `npm run build`
 - Production build completed successfully with 119 routes.
 - Implementation commit: `3d9e91c` (`Extract active vehicle trip lookup`).
+### Location Behavior Alert Orchestration Extraction
+
+- Created `lib/fleet/createLocationBehaviorAlerts.ts`.
+- Extracted location-derived driving-behavior alert orchestration from `app/api/fleet/update-location/route.ts`.
+- The helper now owns:
+  - active-trip and request-trip ID resolution for behavior alerts
+  - harsh-braking alert dispatch
+  - rapid-acceleration alert dispatch
+  - harsh-cornering alert dispatch
+  - speeding alert dispatch
+  - conditional alert creation based on candidate availability
+- The update-location route now delegates behavior-alert dispatch to `createLocationBehaviorAlerts(...)`.
+- `activeTripId` calculation remains in the route because downstream active-trip update and risk-detection behavior also consume it.
+- Existing alert helpers remain responsible for their individual alert lifecycle and persistence behavior.
+- Active-trip mutation remains delegated to `updateActiveTripFromLocation(...)`.
+- Vehicle-stop lifecycle remains delegated to `updateVehicleStopLifecycle(...)`.
+- Risk detection remains delegated to `detectFleetRisks(...)`.
+- No HTTP response, raw database, Route Safety, telemetry-detection, or stop-lifecycle behavior was introduced into the orchestration helper.
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
+- Implementation commit: `3a89078` (`Extract location behavior alert orchestration`).
