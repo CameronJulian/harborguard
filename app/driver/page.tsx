@@ -256,11 +256,12 @@ export default function DriverEmergencyPage() {
   }
 
   async function sendLocation(
-  latitude: number,
-  longitude: number,
-  speedKmh = 0,
-  heading = 0
-) {
+    latitude: number,
+    longitude: number,
+    speedKmh = 0,
+    heading = 0,
+    status: "en_route_to_port" | "delivered" = "en_route_to_port"
+  ) {
   if (!selectedVehicleId) return;
 
   try {
@@ -277,7 +278,7 @@ export default function DriverEmergencyPage() {
         speedKmh,
         heading,
         source: "mobile",
-        status: "en_route_to_port",
+        status,
       }),
     });
 
@@ -285,14 +286,16 @@ export default function DriverEmergencyPage() {
 
     if (!response.ok) {
       setStatusMessage(result.error || "Failed to update live location.");
-      return;
+      return false;
     }
 
     setStatusMessage(
       `LIVE â€¢ ${speedKmh.toFixed(1)} km/h â€¢ ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`
     );
+    return true;
   } catch {
     setStatusMessage("Connection lost. Retrying GPS sync...");
+    return false;
   }
 }
 
@@ -465,9 +468,41 @@ const heading =
   }
 
   async function stopTrip() {
-    setTripId(null);
-    stopSharingLocation();
-    setStatusMessage("Trip stopped. You can start another trip anytime.");
+    if (!tripId) {
+      setStatusMessage("No active trip to complete.");
+      return;
+    }
+
+    if (currentLat == null || currentLng == null) {
+      setStatusMessage(
+        "Current location is required before completing the trip."
+      );
+      return;
+    }
+
+    setBusy(true);
+
+    try {
+      const completed = await sendLocation(
+        currentLat,
+        currentLng,
+        currentSpeed,
+        0,
+        "delivered"
+      );
+
+      if (!completed) {
+        return;
+      }
+
+      setTripId(null);
+      stopSharingLocation();
+      setStatusMessage(
+        "Trip completed successfully. You can start another trip anytime."
+      );
+    } finally {
+      setBusy(false);
+    }
   }
     function formatDuration(duration: string | null) {
       if (!duration) return "N/A";
