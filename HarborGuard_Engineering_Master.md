@@ -4816,3 +4816,50 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote branch hashes were verified identical at `68a58e3442891e8ac405e709af8848fa646ec24e`.
 - Outcome Learning threshold analysis now exposes both the precision/recall tradeoff and the amount of completed-trip evidence underlying that analysis without overstating statistical certainty.
 - Next step: audit the smallest safe comparison layer around the current production threshold of `35`—for example, showing how nearby candidate thresholds compare—without selecting or applying a recommended threshold.
+
+### Route Prediction Threshold Comparison
+
+- Continued the audit-first Outcome Learning roadmap after adding threshold-analysis evidence-count guidance.
+- Audited the existing threshold-analysis helper, API, Analytics consumer, comparison patterns and production-threshold references before implementing comparison UI.
+- Confirmed the existing threshold-analysis payload already contains performance for every integer threshold from `0` through `100`.
+- Confirmed no new API, database or threshold-analysis helper was required.
+- Updated `app/analytics/page.tsx`.
+- Added read-only derived comparison data for thresholds:
+  - `30`,
+  - `35`,
+  - `40`.
+- Comparison data is derived directly from the existing `routePredictionThresholdAnalysis` array.
+- Threshold `35` remains the current production reference.
+- Threshold `30` and threshold `40` are shown only as nearby historical comparison points.
+- Added three comparison cards beneath the existing threshold-analysis chart.
+- Each comparison card displays:
+  - threshold,
+  - precision,
+  - recall.
+- Threshold `35` is visually marked as `Production`.
+- Nullable precision and recall values remain represented as unavailable rather than being converted to zero.
+- No threshold is labeled better, preferred, safer, recommended or optimal.
+- No ranking algorithm was introduced.
+- No score combining precision and recall was introduced.
+- No automatic calibration behavior was introduced.
+- No mutation behavior was introduced.
+- Existing evidence-count guidance remains in place.
+- Existing analysis-only guidance remains in place.
+- Existing `PREDICTION_POSITIVE_THRESHOLD = 35` was explicitly verified unchanged.
+- Existing route-prediction threshold-analysis API was not modified.
+- Existing route-prediction threshold-analysis helper was not modified.
+- Existing completed-trip evaluation behavior was not modified.
+- Validation completed:
+  - `git diff --check` passed.
+  - `npx tsc --noEmit` passed with exit code `0`.
+  - `npm run build` passed with exit code `0`.
+  - Next.js production build generated all `121/121` static pages successfully.
+  - `/analytics` remained registered as a static page.
+  - `/api/fleet/route-prediction-performance` remained registered as a dynamic route.
+  - `/api/fleet/route-prediction-threshold-analysis` remained registered as a dynamic route.
+  - `git diff --cached --check` passed.
+- Implementation commit: `5a7185b` (`Compare route prediction thresholds`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote branch hashes were verified identical at `5a7185b975e59861251be77942ca9774284432ce`.
+- Outcome Learning now allows operators to compare nearby candidate thresholds around the live threshold of `35` without turning historical evidence into an automatic recommendation.
+- Next step: audit whether the next smallest safe value is explicit delta-to-production guidance for the nearby comparisons or whether Outcome Learning should pause recommendation work until more completed-trip evidence exists.
