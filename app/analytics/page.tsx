@@ -1260,7 +1260,7 @@ if (subscriptionLoaded && !premiumAllowed) {
               Route Prediction Threshold Analysis
             </h2>
             <p style={{ ...mutedTextStyle, marginBottom: 0 }}>
-              Historical precision and recall across candidate thresholds for the selected reporting period.
+              Historical precision and recall across candidate thresholds for the selected reporting period and vehicle scope. Changing either scope changes the historical evidence being reviewed; differences between views are descriptive and do not imply that the production threshold should change.
             </p>
           </div>
       <div
