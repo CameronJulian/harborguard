@@ -5048,3 +5048,31 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Outcome Learning can now quickly review route-prediction evidence over 30-day, 90-day and 180-day historical windows while retaining manual date selection, vehicle-level filtering and fleet-wide comparison behavior.
 - The historical windows remain descriptive evidence scopes and do not imply that any window is statistically sufficient for calibration or that any candidate threshold should replace the live threshold of `35`.
 - Next step: audit the evidence now available across historical windows and vehicle/fleet scopes to identify the smallest safe interpretation improvement, without introducing automatic calibration, threshold recommendation or production-threshold mutation.
+
+## Outcome Learning — Historical Scope Interpretation Guidance
+
+- Audited the existing route-prediction Outcome Learning analytics after historical window presets and vehicle-level filtering were available.
+- Confirmed both route-prediction performance and threshold-analysis evidence already follow the selected reporting period and vehicle scope.
+- Identified one interpretation gap: the threshold-analysis description did not explicitly explain that changing the reporting period or vehicle changes the historical evidence set being reviewed.
+- Updated `app/analytics/page.tsx` so the Route Prediction Threshold Analysis description now states that:
+  - historical precision and recall apply to the selected reporting period and vehicle scope;
+  - changing either scope changes the historical evidence being reviewed;
+  - differences between views are descriptive;
+  - differences between views do not imply that the production threshold should change.
+- No API, database, scoring, prediction, threshold-analysis helper, or production classification behavior was changed.
+- Existing analysis-only guidance remains in place and HarborGuard still does not automatically recommend or apply a production threshold.
+- Existing production `PREDICTION_POSITIVE_THRESHOLD = 35` remained unchanged.
+- Validation completed:
+  - `git diff --check` passed.
+  - `npx tsc --noEmit` passed with exit code `0`.
+  - `npm run build` passed with exit code `0`.
+  - Next.js production build generated all `121/121` static pages successfully.
+  - `/analytics` remained registered as a static page.
+  - `/api/fleet/route-prediction-performance` remained registered as a dynamic route.
+  - `/api/fleet/route-prediction-threshold-analysis` remained registered as a dynamic route.
+  - `git diff --cached --check` passed before the implementation commit.
+- Implementation commit: `cd24ecf` (`Clarify route prediction outcome scope`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote branch hashes were verified identical at `cd24ecf415cb6bf52b21b41aa1131d7f3b3db3c1`.
+- Outcome Learning now makes the relationship between historical evidence scope and displayed threshold metrics explicit without introducing automated calibration or changing live prediction behavior.
+- Next step: audit whether another small, evidence-backed Outcome Learning interpretation gap remains. If no precise gap is found, close this Outcome Learning improvement sequence rather than adding redundant analytics or automatic threshold-selection behavior.
