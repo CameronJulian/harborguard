@@ -1,3 +1,6 @@
+import {
+  getDistanceMeters,
+} from "@/lib/geo/getDistanceMeters";
 import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 import { createCommandCenterNotification } from "@/lib/command-center/notifications";
@@ -8,27 +11,6 @@ import { correlateVehicleAlertToIncident } from "@/lib/incidents/correlation";
 
 const OFFLINE_MINUTES = 15;
 const LONG_STOP_MINUTES = 20;
-
-function getDistanceMeters(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
-) {
-  const R = 6371000;
-  const toRad = (v: number) => (v * Math.PI) / 180;
-
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) ** 2;
-
-  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 async function notifyAlert(params: {
   vehicleNickname?: string | null;
@@ -372,10 +354,14 @@ export async function detectFleetRisks(params: {
 
     for (const zone of geofences || []) {
       const distance = getDistanceMeters(
-        latest.latitude,
-        latest.longitude,
-        zone.center_lat,
-        zone.center_lng
+        {
+          latitude: latest.latitude,
+          longitude: latest.longitude,
+        },
+        {
+          latitude: zone.center_lat,
+          longitude: zone.center_lng,
+        }
       );
 
       if (distance <= zone.radius_meters) {
@@ -403,4 +389,3 @@ export async function detectFleetRisks(params: {
     alerts: createdAlerts,
   };
 }
-
