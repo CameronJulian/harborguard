@@ -3855,3 +3855,27 @@ Pushed it to feature/expanded-incident-taxonomy.
   - `npm run build`
 - Production build completed successfully with 119 routes.
 - Implementation commit: `d5c0433` (`Extract latest vehicle location lookup`).
+### Vehicle Location Persistence Extraction
+
+- Created `lib/fleet/createVehicleLocation.ts`.
+- Extracted vehicle-location persistence from `app/api/fleet/update-location/route.ts`.
+- The helper now owns:
+  - `vehicle_locations` table insertion
+  - organization ID persistence
+  - vehicle ID persistence
+  - trip ID persistence
+  - latitude and longitude persistence
+  - speed and heading persistence
+  - recorded-at persistence
+  - location-source persistence
+  - structured database-error return handling
+- The update-location route now delegates to `createVehicleLocation(...)`.
+- HTTP `500` response construction remains in the route.
+- Existing location-persistence error messaging remains unchanged.
+- No latest-location lookup, telemetry detection, alert lifecycle, active-trip, Route Safety, stop-lifecycle, or risk-detection behavior was changed.
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
+- Implementation commit: `b7bf9c3` (`Extract vehicle location persistence`).
