@@ -10,6 +10,9 @@ import {
   createCompletedTripOutcome,
 } from "@/lib/fleet/createCompletedTripOutcome";
 import {
+  evaluateCompletedTripPrediction,
+} from "@/lib/fleet/evaluateCompletedTripPrediction";
+import {
   updateVehicleStopLifecycle,
 } from "@/lib/fleet/updateVehicleStopLifecycle";
 import { detectFleetRisks } from "@/lib/fleet/risk-detection";
@@ -97,6 +100,20 @@ export async function runPostLocationUpdateLifecycle(
       vehicleId,
       tripId: activeTripId,
     });
+
+    try {
+      await evaluateCompletedTripPrediction({
+        supabase,
+        organizationId,
+        vehicleId,
+        tripId: activeTripId,
+      });
+    } catch (evaluationError) {
+      console.error(
+        "Completed-trip prediction evaluation failed:",
+        evaluationError
+      );
+    }
   }
 
   await updateVehicleStopLifecycle({
