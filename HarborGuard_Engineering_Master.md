@@ -3812,3 +3812,24 @@ Pushed it to feature/expanded-incident-taxonomy.
   - `npm run build`
 - Production build completed successfully with 119 routes.
 - Implementation commit: `f20e934` (`Extract update location input parsing`).
+### Update Location Vehicle Lookup Extraction
+
+- Created `lib/fleet/getVehicleForLocationUpdate.ts`.
+- Extracted the organization-scoped vehicle lookup from `app/api/fleet/update-location/route.ts`.
+- The helper now owns:
+  - `vehicles` table lookup
+  - vehicle ID filtering
+  - organization ID filtering
+  - selection of `id`, `is_active`, `nickname`, `registration_number`, and `organization_id`
+  - single-row lookup result handling
+  - structured vehicle and error return values
+- The update-location route now delegates to `getVehicleForLocationUpdate(...)`.
+- HTTP `404` response construction remains in the route.
+- Existing vehicle-not-found error messaging remains unchanged.
+- No location persistence, telemetry detection, alert lifecycle, active-trip, Route Safety, or risk-detection behavior was changed.
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
+- Implementation commit: `2f918b3` (`Extract update location vehicle lookup`).
