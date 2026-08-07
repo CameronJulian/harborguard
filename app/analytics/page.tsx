@@ -59,6 +59,15 @@ type RoutePredictionPerformanceResponse = {
   success: boolean;
   performance: RoutePredictionPerformance;
 };
+type RoutePredictionThresholdAnalysis = {
+  threshold: number;
+  performance: RoutePredictionPerformance;
+};
+
+type RoutePredictionThresholdAnalysisResponse = {
+  success: boolean;
+  analysis: RoutePredictionThresholdAnalysis[];
+};
 
 const cardStyle: CSSProperties = {
   background: "#ffffff",
@@ -146,6 +155,12 @@ export default function AnalyticsPage() {
     useState(false);
   const [routePredictionPerformanceError, setRoutePredictionPerformanceError] =
     useState("");
+  const [routePredictionThresholdAnalysis, setRoutePredictionThresholdAnalysis] =
+    useState<RoutePredictionThresholdAnalysis[]>([]);
+  const [routePredictionThresholdAnalysisLoading, setRoutePredictionThresholdAnalysisLoading] =
+    useState(false);
+  const [routePredictionThresholdAnalysisError, setRoutePredictionThresholdAnalysisError] =
+    useState("");
   const [exportingPdf, setExportingPdf] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
  const {
@@ -193,6 +208,55 @@ export default function AnalyticsPage() {
       supabase.removeChannel(incidentChannel);
     };
   }, []);
+  async function loadRoutePredictionThresholdAnalysis() {
+    setRoutePredictionThresholdAnalysisLoading(true);
+    setRoutePredictionThresholdAnalysisError("");
+
+    try {
+      const start = new Date(`${startDate}T00:00:00`);
+      const end = new Date(`${endDate}T23:59:59.999`);
+
+      const params = new URLSearchParams({
+        start: start.toISOString(),
+        end: end.toISOString(),
+      });
+
+      const response = await fetchWithAuth(
+        `/api/fleet/route-prediction-threshold-analysis?${params.toString()}`,
+        {
+          cache: "no-store",
+        }
+      );
+
+      const result =
+        (await response.json()) as
+          | RoutePredictionThresholdAnalysisResponse
+          | { error?: string };
+
+      if (!response.ok) {
+        setRoutePredictionThresholdAnalysis([]);
+        setRoutePredictionThresholdAnalysisError(
+          "error" in result && result.error
+            ? result.error
+            : "Failed to load route prediction threshold analysis."
+        );
+        return;
+      }
+
+      setRoutePredictionThresholdAnalysis(
+        (result as RoutePredictionThresholdAnalysisResponse).analysis
+      );
+    } catch (error: unknown) {
+      setRoutePredictionThresholdAnalysis([]);
+      setRoutePredictionThresholdAnalysisError(
+        error instanceof Error
+          ? error.message
+          : "Failed to load route prediction threshold analysis."
+      );
+    } finally {
+      setRoutePredictionThresholdAnalysisLoading(false);
+    }
+  }
   async function loadRoutePredictionPerformance() {
     setRoutePredictionPerformanceLoading(true);
     setRoutePredictionPerformanceError("");
@@ -279,7 +343,24 @@ const { data: incidentData } = await supabase
   }
   useEffect(() => {
     loadRoutePredictionPerformance();
+    loadRoutePredictionThresholdAnalysis();
   }, [startDate, endDate]);
+
+  const routePredictionThresholdChartData = useMemo(
+    () =>
+      routePredictionThresholdAnalysis.map((entry) => ({
+        threshold: entry.threshold,
+        precision:
+          entry.performance.precision === null
+            ? null
+            : Number((entry.performance.precision * 100).toFixed(1)),
+        recall:
+          entry.performance.recall === null
+            ? null
+            : Number((entry.performance.recall * 100).toFixed(1)),
+      })),
+    [routePredictionThresholdAnalysis]
+  );
 
   const filteredBatches = useMemo(() => {
     const start = new Date(`${startDate}T00:00:00`);
@@ -850,6 +931,133 @@ if (subscriptionLoaded && !premiumAllowed) {
                 </div>
               ))}
             </div>
+          </>
+        )}
+      </div>
+      <div style={{ ...cardStyle, padding: 26, marginBottom: 24 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: 16,
+            flexWrap: "wrap",
+            marginBottom: 18,
+          }}
+        >
+          <div>
+            <h2 style={sectionTitleStyle}>
+              Route Prediction Threshold Analysis
+            </h2>
+            <p style={{ ...mutedTextStyle, marginBottom: 0 }}>
+              Historical precision and recall across candidate thresholds for the selected reporting period.
+            </p>
+          </div>
+
+          <div
+            style={{
+              padding: "8px 12px",
+              borderRadius: 999,
+              border: "1px solid #cbd5e1",
+              background: "#f8fafc",
+              color: "#334155",
+              fontSize: 13,
+              fontWeight: 700,
+            }}
+          >
+            Current production threshold: 35
+          </div>
+        </div>
+
+        {routePredictionThresholdAnalysisLoading ? (
+          <div style={{ color: "#64748b" }}>
+            Loading threshold analysis...
+          </div>
+        ) : routePredictionThresholdAnalysisError ? (
+          <div
+            style={{
+              padding: 14,
+              borderRadius: 12,
+              background: "#fef2f2",
+              border: "1px solid #fecaca",
+              color: "#b91c1c",
+            }}
+          >
+            {routePredictionThresholdAnalysisError}
+          </div>
+        ) : routePredictionThresholdChartData.length === 0 ? (
+          <div style={{ color: "#64748b" }}>
+            No completed route prediction evaluations exist for threshold analysis in this period yet.
+          </div>
+        ) : (
+          <>
+            <div
+              style={{
+                border: "1px solid #e5e7eb",
+                borderRadius: 16,
+                padding: 18,
+                height: 380,
+                background: "#fff",
+              }}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={routePredictionThresholdChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="threshold"
+                    domain={[0, 100]}
+                    type="number"
+                    tickCount={11}
+                  />
+                  <YAxis
+                    domain={[0, 100]}
+                    tickFormatter={(value) => `${value}%`}
+                  />
+                  <Tooltip
+                    formatter={(value, name) => [
+                      value === null || value === undefined
+                        ? "-"
+                        : `${Number(value).toFixed(1)}%`,
+                      name === "precision" ? "Precision" : "Recall",
+                    ]}
+                    labelFormatter={(value) =>
+                      `Threshold ${value}${
+                        Number(value) === 35
+                          ? " (current production)"
+                          : ""
+                      }`
+                    }
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="precision"
+                    name="Precision"
+                    connectNulls={false}
+                    strokeWidth={3}
+                    dot={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="recall"
+                    name="Recall"
+                    connectNulls={false}
+                    strokeWidth={3}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            <p
+              style={{
+                ...mutedTextStyle,
+                marginTop: 12,
+                fontSize: 13,
+              }}
+            >
+              Analysis only. HarborGuard does not automatically recommend or apply a production threshold from this chart.
+            </p>
           </>
         )}
       </div>
