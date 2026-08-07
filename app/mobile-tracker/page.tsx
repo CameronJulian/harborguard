@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  getDistanceMeters,
+} from "@/lib/geo/getDistanceMeters";
+
 import { useEffect, useRef, useState } from "react";
 
 export default function MobileTrackerPage() {
@@ -20,22 +24,6 @@ export default function MobileTrackerPage() {
   const MIN_DISTANCE_METERS = 10;   // ignore tiny jitter
   const MAX_ACCURACY_METERS = 50;   // ignore bad GPS
   const MAX_SPEED_KMH = 180;        // ignore teleport spikes
-
-  function getDistanceMeters(a: any, b: any) {
-    const R = 6371e3;
-    const φ1 = (a.lat * Math.PI) / 180;
-    const φ2 = (b.lat * Math.PI) / 180;
-    const Δφ = ((b.lat - a.lat) * Math.PI) / 180;
-    const Δλ = ((b.lng - a.lng) * Math.PI) / 180;
-
-    const x =
-      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-      Math.cos(φ1) * Math.cos(φ2) *
-      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-
-    const c = 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
-    return R * c;
-  }
 
   function stopTracking() {
     if (watchIdRef.current !== null) {
@@ -80,7 +68,16 @@ export default function MobileTrackerPage() {
 
         // ===== FILTER 2: Distance check
         if (lastSentRef.current) {
-          const distance = getDistanceMeters(lastSentRef.current, current);
+          const distance = getDistanceMeters(
+            {
+              latitude: lastSentRef.current.lat,
+              longitude: lastSentRef.current.lng,
+            },
+            {
+              latitude: current.lat,
+              longitude: current.lng,
+            }
+          );
 
           if (distance < MIN_DISTANCE_METERS) {
             // ignore jitter
