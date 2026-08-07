@@ -4711,3 +4711,61 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote branch hashes were verified identical.
 - Outcome Learning now exposes authenticated organization-scoped historical threshold-analysis evidence without changing the live production threshold.
 - Next step: audit the smallest useful consumer for threshold-analysis evidence before introducing any threshold recommendation or production calibration behavior.
+
+### Route Prediction Threshold Analysis Analytics Consumer
+
+- Continued the audit-first Outcome Learning roadmap after exposing the authenticated threshold-analysis API.
+- Audited the existing Analytics performance consumer, chart patterns, threshold-analysis endpoint and production threshold before adding the first threshold-analysis UI.
+- Confirmed Analytics is the appropriate consumer because it already:
+  - represents historical performance,
+  - owns the selected reporting period,
+  - uses Recharts,
+  - already displays route-prediction performance.
+- Updated `app/analytics/page.tsx`.
+- Added typed client contracts for route-prediction threshold analysis.
+- Added dedicated loading, error and analysis state.
+- Added authenticated retrieval through `fetchWithAuth()`.
+- Added client request to:
+  - `GET /api/fleet/route-prediction-threshold-analysis`.
+- The threshold-analysis request reuses the existing Analytics reporting period.
+- Selected start dates are sent from local day start at `00:00:00`.
+- Selected end dates are sent through `23:59:59.999`.
+- Both boundaries are normalized to ISO timestamps before being sent to the API.
+- Threshold analysis reloads automatically when the selected Analytics date range changes.
+- Added historical chart data for:
+  - threshold,
+  - precision,
+  - recall.
+- Precision and recall are converted to percentage display values.
+- Canonical `null` precision/recall values remain `null` in chart data and are not converted to `0`.
+- Added `Route Prediction Threshold Analysis` section directly after the existing route-prediction performance section.
+- Added a read-only Recharts line chart across thresholds `0` through `100`.
+- The chart displays:
+  - Precision,
+  - Recall.
+- The current live production threshold is clearly labeled:
+  - `35`.
+- Tooltip labeling identifies threshold `35` as the current production threshold.
+- The UI explicitly states that threshold analysis is analysis-only.
+- No preferred threshold is calculated.
+- No threshold ranking is calculated.
+- No "optimal" threshold is displayed.
+- No automatic calibration behavior was introduced.
+- No mutation endpoint was introduced.
+- No threshold-analysis API changes were required.
+- No threshold-analysis helper changes were required.
+- No database changes were required.
+- Existing `PREDICTION_POSITIVE_THRESHOLD = 35` was explicitly verified unchanged.
+- Validation completed:
+  - `npx tsc --noEmit` passed with exit code `0`.
+  - `npm run build` passed with exit code `0`.
+  - Next.js production build generated all `121/121` static pages successfully.
+  - `/analytics` remained registered as a static page.
+  - `/api/fleet/route-prediction-threshold-analysis` remained registered as a dynamic route.
+  - `git diff --check` passed.
+  - `git diff --cached --check` passed.
+- Implementation commit: `f8f8e3b` (`Show route prediction threshold analysis`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote branch hashes were verified identical.
+- Outcome Learning now exposes historical precision/recall behavior across candidate thresholds directly in Analytics while keeping production classification fixed at `35`.
+- Next step: audit whether the next smallest value is comparison guidance around the current threshold or a statistically safer minimum-sample / confidence layer before introducing any threshold recommendation.
