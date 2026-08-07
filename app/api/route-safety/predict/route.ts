@@ -1645,6 +1645,75 @@ if (roadRiskSegmentsError) {
         );
       }
     }
+    if (tripId) {
+      try {
+        let tripValidationQuery = supabase
+          .from("vehicle_trips")
+          .select("id")
+          .eq("id", tripId)
+          .eq("organization_id", organizationId);
+
+        if (vehicleId) {
+          tripValidationQuery = tripValidationQuery.eq(
+            "vehicle_id",
+            vehicleId
+          );
+        }
+
+        const { data: validatedTrip, error: tripValidationError } =
+          await tripValidationQuery.maybeSingle();
+
+        if (tripValidationError) {
+          console.error(
+            "Route prediction snapshot trip validation failed:",
+            tripValidationError
+          );
+        } else if (!validatedTrip) {
+          console.error(
+            "Route prediction snapshot skipped: trip does not belong to the current organization or vehicle."
+          );
+        } else {
+          const { error: snapshotError } = await supabase
+            .from("route_prediction_snapshots")
+            .insert({
+            organization_id: organizationId,
+            user_id: user.id,
+            vehicle_id: vehicleId,
+            trip_id: tripId,
+            origin_latitude: originLat,
+            origin_longitude: originLng,
+            destination_latitude: destinationLat,
+            destination_longitude: destinationLng,
+            overall_risk_score: riskScore,
+            overall_risk_level: riskLevel,
+            threat_risk_score: threatRiskScore,
+            threat_risk_level: threatRiskLevel,
+            weather_risk_score: weatherRiskScore,
+            traffic_risk_score: trafficRiskScore,
+            traffic_risk_level: trafficRiskLevel,
+            metadata: {
+              weatherContribution,
+              trafficContribution,
+              trafficCongestionMultiplier,
+              diagnosticTrafficWeightedThreatRisk,
+              threatCount: routeThreats.length,
+            },
+          });
+
+          if (snapshotError) {
+            console.error(
+              "Route prediction snapshot logging failed:",
+              snapshotError
+            );
+          }
+        }
+      } catch (snapshotLoggingError) {
+        console.error(
+          "Route prediction snapshot logging failed:",
+          snapshotLoggingError
+        );
+      }
+    }
     return NextResponse.json({
       routeEstimate,
       riskScore,
