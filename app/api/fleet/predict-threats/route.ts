@@ -1,3 +1,6 @@
+import {
+  getDistanceMeters,
+} from "@/lib/geo/getDistanceMeters";
 import { NextRequest, NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 import { requirePremiumAccess } from "@/lib/require-premium";
@@ -30,21 +33,6 @@ function calculateThreatProbability(params: {
   else if (score >= 25) level = "Medium";
 
   return { probability: score, level };
-}
-
-function getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371000;
-  const toRad = (v: number) => (v * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) ** 2;
-
-  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 export async function GET(request: NextRequest) {
@@ -173,10 +161,14 @@ export async function GET(request: NextRequest) {
 
       for (const zone of geofencesResult.data || []) {
         const distance = getDistanceMeters(
-          latest.latitude,
-          latest.longitude,
-          zone.center_lat,
-          zone.center_lng
+          {
+            latitude: latest.latitude,
+            longitude: latest.longitude,
+          },
+          {
+            latitude: zone.center_lat,
+            longitude: zone.center_lng,
+          }
         );
 
         const speed = latest.speed_kmh || 0;
@@ -199,10 +191,14 @@ export async function GET(request: NextRequest) {
 
       for (const incident of incidentsResult.data || []) {
         const distance = getDistanceMeters(
-          latest.latitude,
-          latest.longitude,
-          incident.latitude,
-          incident.longitude
+          {
+            latitude: latest.latitude,
+            longitude: latest.longitude,
+          },
+          {
+            latitude: incident.latitude,
+            longitude: incident.longitude,
+          }
         );
 
         if (distance <= incident.radius_meters) {
