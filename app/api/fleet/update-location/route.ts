@@ -4,6 +4,9 @@ import {
   parseUpdateLocationInput,
   type UpdateLocationBody,
 } from "@/lib/fleet/parseUpdateLocationInput";
+import {
+  getVehicleForLocationUpdate,
+} from "@/lib/fleet/getVehicleForLocationUpdate";
 import { requireOrganization, requireRole } from "@/lib/server-auth";
 import { detectFleetRisks } from "@/lib/fleet/risk-detection";
 import {
@@ -116,18 +119,14 @@ export async function POST(req: Request) {
       requestedStatus,
     } = parsedInput.value;
 
-    const { data: vehicle, error: vehicleError } = await supabase
-      .from("vehicles")
-      .select(`
-        id,
-        is_active,
-        nickname,
-        registration_number,
-        organization_id
-      `)
-      .eq("id", vehicleId)
-      .eq("organization_id", organizationId)
-      .single();
+    const {
+      vehicle,
+      error: vehicleError,
+    } = await getVehicleForLocationUpdate({
+      supabase,
+      organizationId,
+      vehicleId,
+    });
 
     if (vehicleError || !vehicle) {
       return NextResponse.json(
