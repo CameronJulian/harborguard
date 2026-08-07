@@ -7,6 +7,9 @@ import {
 import {
   getVehicleForLocationUpdate,
 } from "@/lib/fleet/getVehicleForLocationUpdate";
+import {
+  getLatestVehicleLocation,
+} from "@/lib/fleet/getLatestVehicleLocation";
 import { requireOrganization, requireRole } from "@/lib/server-auth";
 import { detectFleetRisks } from "@/lib/fleet/risk-detection";
 import {
@@ -168,14 +171,12 @@ export async function POST(req: Request) {
       consecutiveSamples: number;
     } | null = null;
 
-    const { data: lastPoint } = await supabase
-      .from("vehicle_locations")
-      .select("latitude, longitude, speed_kmh, heading, recorded_at")
-      .eq("vehicle_id", vehicleId)
-      .eq("organization_id", organizationId)
-      .order("recorded_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const lastPoint =
+      await getLatestVehicleLocation({
+        supabase,
+        organizationId,
+        vehicleId,
+      });
 
     if (lastPoint) {
       const previousLat = parseFleetTelemetryNumber(lastPoint.latitude);
