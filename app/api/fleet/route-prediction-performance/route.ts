@@ -21,6 +21,56 @@ export async function GET(req: Request) {
     const end =
       searchParams.get("end");
 
+    const parsedStart =
+      start ? new Date(start) : null;
+
+    const parsedEnd =
+      end ? new Date(end) : null;
+
+    if (
+      parsedStart &&
+      Number.isNaN(parsedStart.getTime())
+    ) {
+      return NextResponse.json(
+        {
+          error: "Invalid start date.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    if (
+      parsedEnd &&
+      Number.isNaN(parsedEnd.getTime())
+    ) {
+      return NextResponse.json(
+        {
+          error: "Invalid end date.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    if (
+      parsedStart &&
+      parsedEnd &&
+      parsedStart.getTime() > parsedEnd.getTime()
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "start must be earlier than or equal to end.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
     let evaluationsQuery = supabase
       .from("route_prediction_evaluations")
       .select("classification")
@@ -31,19 +81,19 @@ export async function GET(req: Request) {
         evaluationsQuery.eq("vehicle_id", vehicleId);
     }
 
-    if (start) {
+    if (parsedStart) {
       evaluationsQuery =
         evaluationsQuery.gte(
           "outcome_completed_at",
-          start
+          parsedStart.toISOString()
         );
     }
 
-    if (end) {
+    if (parsedEnd) {
       evaluationsQuery =
         evaluationsQuery.lte(
           "outcome_completed_at",
-          end
+          parsedEnd.toISOString()
         );
     }
 
