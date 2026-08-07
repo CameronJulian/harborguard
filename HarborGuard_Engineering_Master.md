@@ -5104,3 +5104,41 @@ Pushed it to feature/expanded-incident-taxonomy.
 - This Outcome Learning route-prediction improvement sequence is therefore closed rather than extending it with redundant analytics or unsupported automatic threshold-selection behavior.
 - Future route-prediction calibration work should be reopened only when additional completed-trip evidence or a concrete operator requirement identifies a new, specific gap.
 - Next step: return to the broader HarborGuard engineering roadmap and audit the next highest-value incomplete capability using the standard audit-first workflow.
+
+## 2026-08-07 - Configurable route safety profiles
+
+- Completed a focused audit of HarborGuard safer-route behavior before implementation.
+- Confirmed that safer rerouting using organization-scoped aggregated `road_risk_segments` already existed and did not need to be rebuilt.
+- Confirmed that `calculateHereRoutes()` already requested HERE route alternatives, calculated route safety evidence, and ranked candidate routes.
+- Identified the precise remaining gap as configurable route-ranking profiles rather than missing rerouting infrastructure.
+- Added explicit routing profiles in `lib/routing/hereRouting.ts`:
+  - `safest`
+  - `fastest`
+  - `balanced`
+- Preserved `safest` as the default routing profile so all existing callers retain the previous production safety-first behavior unless they explicitly request another profile.
+- `safest` preserves the existing ranking behavior:
+  - higher route safety score first;
+  - shorter duration as the tie-breaker.
+- `fastest` ranks by route duration first and uses safety score as a tie-breaker.
+- `balanced` uses a deterministic profile score weighted:
+  - 70% route safety;
+  - 30% relative duration.
+- Added per-route `routingProfile`, `durationScore`, and `profileScore` evidence to make profile ranking explicit and inspectable.
+- Added the selected `routingProfile` to the HERE routing result.
+- Updated `/api/route-safety/reroute` to accept an optional `routingProfile`.
+- The reroute API defaults omitted or unsupported profile values to `safest`.
+- Existing Command Center, dispatch, and automatic critical-risk rerouting callers therefore remain safety-first without requiring caller changes.
+- Emergency Response was intentionally not added during this change because its ranking requirements need separate evidence and operational definition.
+- No Command Center routing-profile selector was added yet; this change establishes and validates the backend contract first.
+- Validation completed before commit:
+  - `git diff --check` passed.
+  - `npx tsc --noEmit` passed with exit code `0`.
+  - `npm run build` passed with exit code `0`.
+  - Next.js production build generated all `121/121` static pages successfully.
+  - `/api/route-safety/reroute` remained registered as a dynamic route.
+  - `git diff --cached --check` passed before the implementation commit.
+- Implementation commit: `0e410c1` (`Add configurable route safety profiles`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote branch hashes were verified identical at `0e410c12623eaddf610b2e6ee493f98a1824bf11`.
+- HarborGuard now has an explicit backend route-ranking contract that can support operator-selectable route strategy without weakening the established safety-first default.
+- Next step: audit the Command Center safer-route request and presentation path for the smallest safe UI change that allows an operator to choose `Safest`, `Fastest`, or `Balanced` while keeping automatic critical-risk rerouting fixed to the safest default.
