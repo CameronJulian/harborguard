@@ -4956,3 +4956,54 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote branch hashes were verified identical at `9a641ac9e2d76da6db0a218fb0887e64ac168ba4`.
 - Outcome Learning can now review completed route-prediction performance and threshold behavior for an individual vehicle while retaining the existing fleet-wide view and keeping the live production threshold fixed at `35`.
 - Next step: audit whether the next smallest safe Outcome Learning improvement is a longer historical calibration window, vehicle-to-fleet comparison guidance, or another evidence consumer that improves interpretation without automatically changing production prediction behavior.
+
+### Route Prediction Vehicle-to-Fleet Performance Benchmark
+
+- Continued the audit-first Outcome Learning roadmap after adding vehicle-level route-prediction outcome filtering.
+- Audited the existing route-prediction performance panel, vehicle filtering behavior, performance metric shape and fleet-wide analytics behavior before adding comparison guidance.
+- Confirmed the existing `GET /api/fleet/route-prediction-performance` endpoint already supports both fleet-wide and vehicle-filtered historical performance, so no API change was required.
+- Updated `app/analytics/page.tsx`.
+- Added a read-only fleet benchmark when an individual vehicle is selected in Analytics.
+- The selected vehicle performance continues to use the existing vehicle-filtered route-prediction performance request.
+- Added a separate fleet-wide route-prediction performance request for the same selected reporting period.
+- The fleet benchmark deliberately omits `vehicleId`, preserving organization-wide fleet scope.
+- Vehicle and fleet performance are therefore compared over the same date range.
+- Selecting `All vehicles` preserves the existing fleet-wide performance presentation and does not show a redundant vehicle-versus-fleet comparison.
+- Added vehicle-to-fleet comparison guidance for:
+  - evaluation count,
+  - accuracy,
+  - precision,
+  - recall.
+- Accuracy, precision and recall comparisons are expressed as neutral percentage-point deltas against fleet performance.
+- Percentage-point deltas are calculated as:
+  - `(vehicle metric - fleet metric) * 100`.
+- Positive deltas receive a `+` prefix.
+- Negative deltas retain the normal negative sign.
+- Nullable metrics remain unavailable when either side of the comparison does not provide the required metric.
+- Evaluation counts are shown for both the selected vehicle and fleet benchmark so operators can see the amount of completed-trip evidence underlying each scope.
+- Comparison language is descriptive only.
+- No green/red good-or-bad interpretation was introduced.
+- No vehicle ranking was introduced.
+- No fleet ranking was introduced.
+- No preferred, recommended or optimal threshold behavior was introduced.
+- No automatic calibration behavior was introduced.
+- No threshold mutation behavior was introduced.
+- No production prediction behavior was changed.
+- No completed-trip evaluation behavior was changed.
+- No route-prediction performance API behavior was changed.
+- No database change was required.
+- Existing `PREDICTION_POSITIVE_THRESHOLD = 35` was explicitly verified unchanged.
+- Validation completed:
+  - `git diff --check` passed.
+  - `npx tsc --noEmit` passed with exit code `0`.
+  - `npm run build` passed with exit code `0`.
+  - Next.js production build generated all `121/121` static pages successfully.
+  - `/analytics` remained registered as a static page.
+  - `/api/fleet/route-prediction-performance` remained registered as a dynamic route.
+  - `/api/fleet/route-prediction-threshold-analysis` remained registered as a dynamic route.
+  - `git diff --cached --check` passed before the implementation commit.
+- Implementation commit: `ef3808a` (`Compare vehicle route prediction performance with fleet`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote branch hashes were verified identical at `ef3808ada9d87f9630c1d67ab6c94255236c6a88`.
+- Outcome Learning can now compare an individual vehicle's completed route-prediction performance with fleet-wide performance over the same reporting period while keeping the comparison read-only and the live production threshold fixed at `35`.
+- Next step: audit the smallest safe next Outcome Learning improvement using the existing historical evidence, with particular attention to longer-window calibration evidence or another interpretation layer that does not automatically change production prediction behavior.
