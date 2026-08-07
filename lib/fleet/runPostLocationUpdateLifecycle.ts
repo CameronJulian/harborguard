@@ -7,6 +7,9 @@ import {
   type ActiveTripFromLocation,
 } from "@/lib/fleet/updateActiveTripFromLocation";
 import {
+  createCompletedTripOutcome,
+} from "@/lib/fleet/createCompletedTripOutcome";
+import {
   updateVehicleStopLifecycle,
 } from "@/lib/fleet/updateVehicleStopLifecycle";
 import { detectFleetRisks } from "@/lib/fleet/risk-detection";
@@ -74,13 +77,27 @@ export async function runPostLocationUpdateLifecycle(
     speedingCandidate,
   });
 
-  await updateActiveTripFromLocation({
+  const tripUpdate = await updateActiveTripFromLocation({
     supabase,
     organizationId,
     activeTrip,
     requestedStatus,
     occurredAt,
   });
+
+  if (
+    activeTripId &&
+    tripUpdate.updated &&
+    tripUpdate.previousStatus !== "delivered" &&
+    tripUpdate.nextStatus === "delivered"
+  ) {
+    await createCompletedTripOutcome({
+      supabase,
+      organizationId,
+      vehicleId,
+      tripId: activeTripId,
+    });
+  }
 
   await updateVehicleStopLifecycle({
     supabase,
