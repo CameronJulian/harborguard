@@ -185,6 +185,15 @@ export default function AnalyticsPage() {
   const [startDate, setStartDate] = useState(toDateInputValue(thirtyDaysAgo));
   const [endDate, setEndDate] = useState(toDateInputValue(today));
 
+  function applyHistoricalWindow(days: number) {
+    const rangeEnd = new Date();
+    const rangeStart = new Date(rangeEnd);
+    rangeStart.setDate(rangeEnd.getDate() - days);
+
+    setStartDate(toDateInputValue(rangeStart));
+    setEndDate(toDateInputValue(rangeEnd));
+  }
+
   useEffect(() => {
     const updateLayout = () => setIsMobile(window.innerWidth < 980);
     updateLayout();
@@ -869,6 +878,34 @@ if (subscriptionLoaded && !premiumAllowed) {
             />
           </div>
 
+
+          <div>
+            <div style={{ ...mutedTextStyle, marginBottom: 8, fontSize: 13 }}>
+              Historical Window
+            </div>
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              {[30, 90, 180].map((days) => (
+                <button
+                  key={days}
+                  type="button"
+                  style={{
+                    ...secondaryButtonStyle,
+                    padding: "10px 12px",
+                    whiteSpace: "nowrap",
+                  }}
+                  onClick={() => applyHistoricalWindow(days)}
+                >
+                  {days} days
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div>
             <div style={{ ...mutedTextStyle, marginBottom: 8, fontSize: 13 }}>Vehicle</div>
