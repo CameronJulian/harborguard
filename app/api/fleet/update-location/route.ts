@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import {
-  parseFleetTelemetryNumber,
   parseUpdateLocationInput,
   type UpdateLocationBody,
 } from "@/lib/fleet/parseUpdateLocationInput";
@@ -10,6 +9,9 @@ import {
 import {
   getLatestVehicleLocation,
 } from "@/lib/fleet/getLatestVehicleLocation";
+import {
+  analyzeVehicleLocationTelemetry,
+} from "@/lib/fleet/analyzeVehicleLocationTelemetry";
 import {
   createVehicleLocation,
 } from "@/lib/fleet/createVehicleLocation";
@@ -22,30 +24,14 @@ import {
 
 import { requireOrganization, requireRole } from "@/lib/server-auth";
 
-import {
-  detectSustainedSpeedingCandidate,
-} from "@/lib/fleet/detectSustainedSpeedingCandidate";
-import {
-  detectHarshBrakingCandidate,
-} from "@/lib/fleet/detectHarshBrakingCandidate";
-import {
-  detectRapidAccelerationCandidate,
-} from "@/lib/fleet/detectRapidAccelerationCandidate";
-import {
-  detectHarshCorneringCandidate,
-} from "@/lib/fleet/detectHarshCorneringCandidate";
-import {
-  evaluateGpsMovement,
-} from "@/lib/fleet/evaluateGpsMovement";
-import {
-  calculateHeadingDelta,
-} from "@/lib/fleet/calculateHeadingDelta";
-import {
-  getDistanceMeters,
-} from "@/lib/geo/getDistanceMeters";
-import {
-  createGpsAnomalyAlert,
-} from "@/lib/fleet/createGpsAnomalyAlert";
+
+
+
+
+
+
+
+
 
 const STOP_SPEED_KMH = 3;
 const STOP_MINUTES = 5;
@@ -130,37 +116,6 @@ export async function POST(req: Request) {
 
     const now = new Date().toISOString();
 
-    let harshBrakingCandidate: {
-      previousSpeedKmh: number;
-      currentSpeedKmh: number;
-      speedDropKmh: number;
-      intervalSeconds: number;
-      decelerationMps2: number;
-    } | null = null;
-
-    let rapidAccelerationCandidate: {
-      previousSpeedKmh: number;
-      currentSpeedKmh: number;
-      speedIncreaseKmh: number;
-      intervalSeconds: number;
-      accelerationMps2: number;
-    } | null = null;
-
-    let harshCorneringCandidate: {
-      previousHeading: number;
-      currentHeading: number;
-      headingChangeDegrees: number;
-      speedKmh: number;
-      intervalSeconds: number;
-    } | null = null;
-
-    let speedingCandidate: {
-      speedKmh: number;
-      thresholdKmh: number;
-      durationSeconds: number;
-      consecutiveSamples: number;
-    } | null = null;
-
     const lastPoint =
       await getLatestVehicleLocation({
         supabase,
@@ -168,156 +123,83 @@ export async function POST(req: Request) {
         vehicleId,
       });
 
-    if (lastPoint) {
-      const previousLat = parseFleetTelemetryNumber(lastPoint.latitude);
-      const previousLng = parseFleetTelemetryNumber(lastPoint.longitude);
-      const previousHeading =
-        parseFleetTelemetryNumber(lastPoint.heading);
+    const telemetryAnalysis =
+      await analyzeVehicleLocationTelemetry({
+        supabase,
+        organizationId,
+        vehicleId,
+        tripId,
+        lastPoint,
+        latitude,
+        longitude,
+        speedKmh,
+        heading,
+        source,
+        occurredAt: now,
+        minimumDistanceMeters:
+          MIN_DISTANCE_METERS,
+        maximumAllowedSpeedKmh:
+          MAX_ALLOWED_SPEED_KMH,
+        speedingLookbackSeconds:
+          SPEEDING_LOOKBACK_SECONDS,
+        speedingMinimumSpeedKmh:
+          SPEEDING_MIN_SPEED_KMH,
+        speedingMinimumSamples:
+          SPEEDING_MIN_CONSECUTIVE_SAMPLES,
+        speedingMinimumDurationSeconds:
+          SPEEDING_MIN_DURATION_SECONDS,
+        harshBrakingMinimumPreviousSpeedKmh:
+          HARSH_BRAKING_MIN_PREVIOUS_SPEED_KMH,
+        harshBrakingMinimumSpeedDropKmh:
+          HARSH_BRAKING_MIN_SPEED_DROP_KMH,
+        harshBrakingMinimumIntervalSeconds:
+          HARSH_BRAKING_MIN_INTERVAL_SECONDS,
+        harshBrakingMaximumIntervalSeconds:
+          HARSH_BRAKING_MAX_INTERVAL_SECONDS,
+        harshBrakingMinimumDecelerationMps2:
+          HARSH_BRAKING_MIN_DECELERATION_MPS2,
+        rapidAccelerationMinimumSpeedIncreaseKmh:
+          RAPID_ACCELERATION_MIN_SPEED_INCREASE_KMH,
+        rapidAccelerationMinimumIntervalSeconds:
+          RAPID_ACCELERATION_MIN_INTERVAL_SECONDS,
+        rapidAccelerationMaximumIntervalSeconds:
+          RAPID_ACCELERATION_MAX_INTERVAL_SECONDS,
+        rapidAccelerationMinimumAccelerationMps2:
+          RAPID_ACCELERATION_MIN_ACCELERATION_MPS2,
+        harshCorneringMinimumSpeedKmh:
+          HARSH_CORNERING_MIN_SPEED_KMH,
+        harshCorneringMinimumHeadingChangeDegrees:
+          HARSH_CORNERING_MIN_HEADING_CHANGE_DEGREES,
+        harshCorneringMinimumIntervalSeconds:
+          HARSH_CORNERING_MIN_INTERVAL_SECONDS,
+        harshCorneringMaximumIntervalSeconds:
+          HARSH_CORNERING_MAX_INTERVAL_SECONDS,
+      });
 
-      if (Number.isFinite(previousLat) && Number.isFinite(previousLng)) {
-        const distance = getDistanceMeters(
-          {
-            latitude: previousLat,
-            longitude: previousLng,
-          },
-          {
-            latitude,
-            longitude,
-          }
-        );
-
-        const timeDiffSeconds =
-          (new Date(now).getTime() -
-            new Date(lastPoint.recorded_at).getTime()) /
-          1000;
-
-        const normalizedHeadingDeltaDegrees =
-          calculateHeadingDelta({
-            previousHeading,
-            currentHeading: heading,
-          });
-        const gpsMovement =
-          evaluateGpsMovement({
-            distanceMeters: distance,
-            intervalSeconds: timeDiffSeconds,
-            minimumDistanceMeters:
-              MIN_DISTANCE_METERS,
-            maximumAllowedSpeedKmh:
-              MAX_ALLOWED_SPEED_KMH,
-          });
-
-        const calculatedSpeedKmh =
-          gpsMovement.calculatedSpeedKmh;
-
-        if (gpsMovement.outcome === "jitter") {
-          return NextResponse.json({
-            success: true,
-            skipped: "jitter",
-            message:
-              "Location ignored because movement was too small.",
-          });
-        }
-
-        if (gpsMovement.outcome === "gps_spike") {
-          if (source !== "manual") {
-            await createGpsAnomalyAlert({
-              supabase,
-              organizationId,
-              vehicleId,
-              tripId,
-              previousLatitude: previousLat,
-              previousLongitude: previousLng,
-              rejectedLatitude: latitude,
-              rejectedLongitude: longitude,
-              distanceMeters: distance,
-              intervalSeconds: timeDiffSeconds,
-              calculatedSpeedKmh,
-              maximumAllowedSpeedKmh:
-                MAX_ALLOWED_SPEED_KMH,
-            });
-          }
-
-          return NextResponse.json({
-            success: true,
-            skipped: "gps_spike",
-            message:
-              "Location ignored because it looked like a GPS spike.",
-          });
-        }
-        if (source !== "manual") {
-          speedingCandidate =
-            await detectSustainedSpeedingCandidate({
-              supabase,
-              organizationId,
-              vehicleId,
-              speedKmh,
-              occurredAt: now,
-              parseNumber: parseFleetTelemetryNumber,
-              lookbackSeconds:
-                SPEEDING_LOOKBACK_SECONDS,
-              minimumSpeedKmh:
-                SPEEDING_MIN_SPEED_KMH,
-              minimumSamples:
-                SPEEDING_MIN_CONSECUTIVE_SAMPLES,
-              minimumDurationSeconds:
-                SPEEDING_MIN_DURATION_SECONDS,
-            });
-        }
-        const previousSpeedKmh =
-          parseFleetTelemetryNumber(lastPoint.speed_kmh);
-
-        harshBrakingCandidate =
-          detectHarshBrakingCandidate({
-            source,
-            previousSpeedKmh,
-            currentSpeedKmh: speedKmh,
-            intervalSeconds: timeDiffSeconds,
-            minimumPreviousSpeedKmh:
-              HARSH_BRAKING_MIN_PREVIOUS_SPEED_KMH,
-            minimumSpeedDropKmh:
-              HARSH_BRAKING_MIN_SPEED_DROP_KMH,
-            minimumIntervalSeconds:
-              HARSH_BRAKING_MIN_INTERVAL_SECONDS,
-            maximumIntervalSeconds:
-              HARSH_BRAKING_MAX_INTERVAL_SECONDS,
-            minimumDecelerationMps2:
-              HARSH_BRAKING_MIN_DECELERATION_MPS2,
-          });
-        rapidAccelerationCandidate =
-          detectRapidAccelerationCandidate({
-            source,
-            previousSpeedKmh,
-            currentSpeedKmh: speedKmh,
-            intervalSeconds: timeDiffSeconds,
-            minimumSpeedIncreaseKmh:
-              RAPID_ACCELERATION_MIN_SPEED_INCREASE_KMH,
-            minimumIntervalSeconds:
-              RAPID_ACCELERATION_MIN_INTERVAL_SECONDS,
-            maximumIntervalSeconds:
-              RAPID_ACCELERATION_MAX_INTERVAL_SECONDS,
-            minimumAccelerationMps2:
-              RAPID_ACCELERATION_MIN_ACCELERATION_MPS2,
-          });
-        harshCorneringCandidate =
-          detectHarshCorneringCandidate({
-            source,
-            previousHeading,
-            currentHeading: heading,
-            normalizedHeadingDeltaDegrees,
-            speedKmh,
-            intervalSeconds: timeDiffSeconds,
-            minimumSpeedKmh:
-              HARSH_CORNERING_MIN_SPEED_KMH,
-            minimumHeadingChangeDegrees:
-              HARSH_CORNERING_MIN_HEADING_CHANGE_DEGREES,
-            minimumIntervalSeconds:
-              HARSH_CORNERING_MIN_INTERVAL_SECONDS,
-            maximumIntervalSeconds:
-              HARSH_CORNERING_MAX_INTERVAL_SECONDS,
-          });
-      }
+    if (telemetryAnalysis.skipped === "jitter") {
+      return NextResponse.json({
+        success: true,
+        skipped: "jitter",
+        message:
+          "Location ignored because movement was too small.",
+      });
     }
 
+    if (telemetryAnalysis.skipped === "gps_spike") {
+      return NextResponse.json({
+        success: true,
+        skipped: "gps_spike",
+        message:
+          "Location ignored because it looked like a GPS spike.",
+      });
+    }
+
+    const {
+      harshBrakingCandidate,
+      rapidAccelerationCandidate,
+      harshCorneringCandidate,
+      speedingCandidate,
+    } = telemetryAnalysis;
     const {
       error: locationError,
     } = await createVehicleLocation({
