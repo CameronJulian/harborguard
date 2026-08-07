@@ -4664,3 +4664,50 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote branch hashes were verified identical.
 - Outcome Learning can now perform analysis-only historical threshold sweeps without modifying production scoring behavior.
 - Next step: audit the smallest authenticated organization-scoped read boundary for supplying historical `predicted_risk_score` and `observed_adverse_event` evaluation rows to the threshold-analysis helper without selecting or applying a production threshold.
+
+### Route Prediction Threshold Analysis API
+
+- Continued the audit-first Outcome Learning roadmap after implementing the pure historical threshold-analysis helper.
+- Audited the existing performance API, server authentication boundary, route-prediction evaluation schema and existing evaluation readers before exposing threshold analysis.
+- Added authenticated read-only endpoint:
+  - `GET /api/fleet/route-prediction-threshold-analysis`.
+- The endpoint authenticates through `requireOrganization()`.
+- All evaluation reads are explicitly scoped to the authenticated `organization_id`.
+- Existing Supabase row-level security provides an additional organization-isolation boundary.
+- The endpoint reads only the historical fields required for calibration analysis:
+  - `predicted_risk_score`,
+  - `observed_adverse_event`.
+- Database rows are mapped into the existing `RoutePredictionThresholdEvaluation` helper contract.
+- The endpoint delegates threshold calculation to `analyzeRoutePredictionThresholds()`.
+- Analysis covers every integer threshold from `0` through `100`, inclusive.
+- The endpoint supports the same optional slicing contract as route-prediction performance:
+  - `vehicleId`,
+  - `start`,
+  - `end`.
+- Time-window filtering is applied to `outcome_completed_at`.
+- Invalid `start` values return HTTP `400`.
+- Invalid `end` values return HTTP `400`.
+- Inverted ranges where `start > end` return HTTP `400`.
+- Valid dates are normalized to ISO timestamps before querying.
+- The endpoint is read-only.
+- No evaluation rows are modified.
+- No new persistence was introduced.
+- No threshold recommendation or ranking was introduced.
+- No automatic threshold selection was introduced.
+- No route-risk scoring weights were changed.
+- No production model-adjustment behavior was introduced.
+- Existing `PREDICTION_POSITIVE_THRESHOLD = 35` was explicitly verified unchanged after implementation.
+- Existing performance API behavior was not changed.
+- Existing Analytics behavior was not changed.
+- Validation completed:
+  - `npx tsc --noEmit` passed.
+  - `npm run build` passed.
+  - Next.js production build generated all `121/121` static pages successfully.
+  - `/api/fleet/route-prediction-threshold-analysis` was registered as a dynamic route.
+  - `git diff --check` passed.
+  - `git diff --cached --check` passed.
+- Implementation commit: `91f3b6d` (`Expose route prediction threshold analysis`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote branch hashes were verified identical.
+- Outcome Learning now exposes authenticated organization-scoped historical threshold-analysis evidence without changing the live production threshold.
+- Next step: audit the smallest useful consumer for threshold-analysis evidence before introducing any threshold recommendation or production calibration behavior.
