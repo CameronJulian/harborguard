@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { usePremiumAccess } from "@/hooks/usePremiumAccess";
 import TrialBanner from "@/components/billing/TrialBanner";
 import PremiumGate from "@/components/PremiumGate";
@@ -363,6 +363,21 @@ const { data: incidentData } = await supabase
   );
   const routePredictionThresholdEvaluationCount =
     routePredictionThresholdAnalysis[0]?.performance.totalEvaluations ?? 0;
+
+  const routePredictionThresholdComparison = useMemo(
+    () =>
+      [30, 35, 40]
+        .map((threshold) =>
+          routePredictionThresholdAnalysis.find(
+            (entry) => entry.threshold === threshold
+          )
+        )
+        .filter(
+          (entry): entry is RoutePredictionThresholdAnalysis =>
+            entry !== undefined
+        ),
+    [routePredictionThresholdAnalysis]
+  );
 
   const filteredBatches = useMemo(() => {
     const start = new Date(`${startDate}T00:00:00`);
@@ -1072,6 +1087,112 @@ if (subscriptionLoaded && !premiumAllowed) {
                 </LineChart>
               </ResponsiveContainer>
             </div>
+            <div
+              style={{
+                marginTop: 14,
+                display: "grid",
+                gridTemplateColumns: isMobile
+                  ? "1fr"
+                  : "repeat(3, minmax(0, 1fr))",
+                gap: 10,
+              }}
+            >
+              {routePredictionThresholdComparison.map((entry) => {
+                const isProductionThreshold = entry.threshold === 35;
+
+                return (
+                  <div
+                    key={entry.threshold}
+                    style={{
+                      padding: 14,
+                      borderRadius: 14,
+                      border: isProductionThreshold
+                        ? "2px solid #334155"
+                        : "1px solid #e5e7eb",
+                      background: isProductionThreshold
+                        ? "#f8fafc"
+                        : "#ffffff",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 8,
+                        marginBottom: 10,
+                      }}
+                    >
+                      <strong style={{ color: "#0f172a" }}>
+                        Threshold {entry.threshold}
+                      </strong>
+
+                      {isProductionThreshold ? (
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: "4px 7px",
+                            borderRadius: 999,
+                            background: "#e2e8f0",
+                            color: "#334155",
+                          }}
+                        >
+                          Production
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 10,
+                      }}
+                    >
+                      <div>
+                        <div
+                          style={{
+                            ...mutedTextStyle,
+                            fontSize: 12,
+                            marginBottom: 3,
+                          }}
+                        >
+                          Precision
+                        </div>
+                        <strong style={{ color: "#0f172a" }}>
+                          {entry.performance.precision === null
+                            ? "-"
+                            : `${(
+                                entry.performance.precision * 100
+                              ).toFixed(1)}%`}
+                        </strong>
+                      </div>
+
+                      <div>
+                        <div
+                          style={{
+                            ...mutedTextStyle,
+                            fontSize: 12,
+                            marginBottom: 3,
+                          }}
+                        >
+                          Recall
+                        </div>
+                        <strong style={{ color: "#0f172a" }}>
+                          {entry.performance.recall === null
+                            ? "-"
+                            : `${(
+                                entry.performance.recall * 100
+                              ).toFixed(1)}%`}
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
         <div
           style={{
             marginTop: 12,
