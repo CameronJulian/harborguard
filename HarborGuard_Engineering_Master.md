@@ -4007,3 +4007,35 @@ Pushed it to feature/expanded-incident-taxonomy.
   - `DuplicatePrevented: True`
 - The controlled positive duplicate case reproduced the implemented consolidation rule in memory and did not insert synthetic alerts into Supabase.
 - Implementation commit: `684517e` (`Consolidate duplicate route threats`).
+
+### Shared Historical Road-Risk Recency Weighting
+
+- Completed audit of historical road-risk ageing across HERE route ranking and `/api/route-safety/predict`.
+- Confirmed `road_risk_segments.risk_score` remains persistent historical evidence and is not database-decayed.
+- Confirmed HERE route ranking already applied runtime recency weighting to historical road-risk segments.
+- Identified a consistency gap where `/api/route-safety/predict` used the persisted aggregated risk score without applying equivalent historical recency weighting.
+- Added `lib/routing/roadRiskRecency.ts` as the shared historical road-risk recency helper.
+- Preserved the existing validated recency bands:
+  - 0-7 days: `1.25`
+  - 8-30 days: `1.10`
+  - 31-90 days: `1.00`
+  - 91-180 days: `0.85`
+  - older than 180 days: `0.70`
+  - invalid or missing timestamps: `1.00`
+- Refactored `lib/routing/hereRouting.ts` to use the shared helper without changing its existing recency behavior.
+- Updated `app/api/route-safety/predict/route.ts` so aggregated `road_risk_segments` risk is multiplied by the shared historical recency weight before geometry weighting and `threatRiskScore` aggregation.
+- Added `historicalRecencyWeight` to returned threat diagnostics for validation and observability.
+- Live provider-alert scoring and `applyIntelligenceWeighting()` behavior were not changed.
+- No database schema, migration, persisted event counts, provider lifecycle, provider ingestion, or stored `road_risk_segments.risk_score` values were changed.
+- Validation completed:
+  - `git diff --check` passed.
+  - `npx tsc --noEmit` passed with exit code `0`.
+  - `npm run build` passed with exit code `0`.
+  - Next.js production build generated all `119/119` static pages successfully.
+- Implementation commit: `b14931a` (`Apply shared historical road risk recency weighting`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Roadmap status:
+  - persistent historical evidence retention: implemented
+  - runtime historical recency weighting: implemented consistently across HERE routing and Route Safety prediction
+  - database-level destructive risk decay: intentionally not introduced
+- Next step: resume the audit-first roadmap review and identify the next precise incomplete HarborGuard intelligence milestone.
