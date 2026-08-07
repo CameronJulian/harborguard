@@ -1,4 +1,9 @@
 import { NextResponse } from "next/server";
+import {
+  parseFleetTelemetryNumber,
+  parseUpdateLocationInput,
+  type UpdateLocationBody,
+} from "@/lib/fleet/parseUpdateLocationInput";
 import { requireOrganization, requireRole } from "@/lib/server-auth";
 import { detectFleetRisks } from "@/lib/fleet/risk-detection";
 import {
@@ -81,29 +86,6 @@ const SPEEDING_LOOKBACK_SECONDS = 90;
 const SPEEDING_COOLDOWN_MINUTES = 10;
 const SPEEDING_INTELLIGENCE_SCORE = 30;
 
-type UpdateLocationBody = {
-  vehicleId?: string;
-  tripId?: string | null;
-  latitude?: number | string;
-  longitude?: number | string;
-  speedKmh?: number | string;
-  heading?: number | string;
-  source?: "mobile" | "hardware" | "manual";
-  status?:
-    | "scheduled"
-    | "en_route_to_port"
-    | "collecting"
-    | "en_route_to_fishery"
-    | "delivered"
-    | "cancelled"
-    | "emergency";
-};
-
-function parseNumber(value: unknown) {
-  if (typeof value === "number") return value;
-  if (typeof value === "string" && value.trim() !== "") return Number(value);
-  return NaN;
-}
 
 export async function POST(req: Request) {
   try {
@@ -113,46 +95,26 @@ export async function POST(req: Request) {
 
     const body = (await req.json()) as UpdateLocationBody;
 
-    const vehicleId = body.vehicleId;
-    const tripId = body.tripId ?? null;
-    const latitude = parseNumber(body.latitude);
-    const longitude = parseNumber(body.longitude);
-    const speedKmh = Number.isFinite(parseNumber(body.speedKmh))
-      ? parseNumber(body.speedKmh)
-      : 0;
-    const heading = Number.isFinite(parseNumber(body.heading))
-      ? parseNumber(body.heading)
-      : 0;
-    const source = body.source || "mobile";
-    const requestedStatus = body.status;
+    const parsedInput =
+      parseUpdateLocationInput(body);
 
-    if (!vehicleId) {
+    if (!parsedInput.ok) {
       return NextResponse.json(
-        { error: "vehicleId is required." },
+        { error: parsedInput.error },
         { status: 400 }
       );
     }
 
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      return NextResponse.json(
-        { error: "Valid latitude and longitude are required." },
-        { status: 400 }
-      );
-    }
-
-    if (latitude < -90 || latitude > 90) {
-      return NextResponse.json(
-        { error: "Latitude must be between -90 and 90." },
-        { status: 400 }
-      );
-    }
-
-    if (longitude < -180 || longitude > 180) {
-      return NextResponse.json(
-        { error: "Longitude must be between -180 and 180." },
-        { status: 400 }
-      );
-    }
+    const {
+      vehicleId,
+      tripId,
+      latitude,
+      longitude,
+      speedKmh,
+      heading,
+      source,
+      requestedStatus,
+    } = parsedInput.value;
 
     const { data: vehicle, error: vehicleError } = await supabase
       .from("vehicles")
@@ -217,10 +179,10 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     if (lastPoint) {
-      const previousLat = parseNumber(lastPoint.latitude);
-      const previousLng = parseNumber(lastPoint.longitude);
+      const previousLat = parseFleetTelemetryNumber(lastPoint.latitude);
+      const previousLng = parseFleetTelemetryNumber(lastPoint.longitude);
       const previousHeading =
-        parseNumber(lastPoint.heading);
+        parseFleetTelemetryNumber(lastPoint.heading);
 
       if (Number.isFinite(previousLat) && Number.isFinite(previousLng)) {
         const distance = getDistanceMeters(
@@ -300,7 +262,7 @@ export async function POST(req: Request) {
               vehicleId,
               speedKmh,
               occurredAt: now,
-              parseNumber,
+              parseNumber: parseFleetTelemetryNumber,
               lookbackSeconds:
                 SPEEDING_LOOKBACK_SECONDS,
               minimumSpeedKmh:
@@ -312,7 +274,7 @@ export async function POST(req: Request) {
             });
         }
         const previousSpeedKmh =
-          parseNumber(lastPoint.speed_kmh);
+          parseFleetTelemetryNumber(lastPoint.speed_kmh);
 
         harshBrakingCandidate =
           detectHarshBrakingCandidate({
