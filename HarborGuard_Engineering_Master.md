@@ -4159,3 +4159,86 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Local and remote branch hashes were verified identical.
 - Next step: resume the focused Outcome Learning implementation by wiring completed-trip outcome creation only to a successfully persisted transition from a non-delivered trip state to `delivered`.
+
+### Completed Trip Prediction Outcomes
+
+- Continued the audit-first Outcome Learning roadmap after validating trip lifecycle persistence.
+- Audited the completed-trip lifecycle, vehicle alert persistence, trip timestamps, route prediction snapshots and exact insertion point before implementing outcome capture.
+- Confirmed completed-trip observation windows are defined by:
+  - `vehicle_trips.actual_departure`,
+  - `vehicle_trips.actual_arrival`.
+- Confirmed current trip-linked `vehicle_alerts` provide durable evidence for:
+  - panic,
+  - route safety threats,
+  - harsh braking,
+  - harsh cornering,
+  - rapid acceleration,
+  - speeding,
+  - GPS anomalies,
+  - long stops,
+  - suspicious stops.
+- Added migration `20260807183000_create_route_prediction_outcomes.sql`.
+- Added `route_prediction_outcomes` as the durable actual-outcome side of Outcome Learning.
+- Each outcome is linked to:
+  - organization,
+  - vehicle,
+  - completed vehicle trip.
+- Enforced one outcome record per trip with a unique `trip_id` constraint.
+- Added persisted outcome fields for:
+  - completion timestamp,
+  - adverse-event occurrence,
+  - highest alert severity,
+  - total alert count,
+  - panic count,
+  - route safety threat count,
+  - harsh braking count,
+  - harsh cornering count,
+  - rapid acceleration count,
+  - speeding count,
+  - GPS anomaly count,
+  - long stop count,
+  - suspicious stop count,
+  - outcome metadata.
+- Added organization-scoped authenticated RLS policies for select and insert.
+- Added organization and vehicle completion-time indexes.
+- Added `lib/fleet/createCompletedTripOutcome.ts`.
+- Completed-trip outcome creation:
+  - validates organization ownership,
+  - validates vehicle ownership,
+  - requires trip status `delivered`,
+  - requires persisted `actual_departure`,
+  - requires persisted `actual_arrival`,
+  - uses the persisted `actual_arrival` as the authoritative `completed_at`,
+  - limits observed evidence to alerts linked to the same trip,
+  - restricts evidence to the actual trip observation window,
+  - derives the highest observed severity,
+  - derives per-alert-type counts,
+  - records whether an adverse event occurred.
+- Outcome creation is idempotent:
+  - existing outcomes are detected before insert,
+  - database unique-constraint races are handled through PostgreSQL error code `23505`.
+- Updated `lib/fleet/runPostLocationUpdateLifecycle.ts`.
+- The lifecycle now captures the result of `updateActiveTripFromLocation()`.
+- Completed-trip outcome creation runs only when:
+  - the active trip ID exists,
+  - the trip lifecycle update actually persisted,
+  - the previous status was not `delivered`,
+  - the next status is `delivered`.
+- Repeated location updates after delivery do not create duplicate outcomes.
+- Route prediction snapshots and completed-trip outcomes are independently linked by `trip_id`, allowing prediction-versus-outcome evaluation without inventing an arbitrary single prediction-selection rule.
+- Existing Route Safety scoring behavior was not changed.
+- Existing vehicle alert detection behavior was not changed.
+- No UI changes were required.
+- Validation completed:
+  - `npx tsc --noEmit` passed with exit code `0`.
+  - `npm run build` passed with exit code `0`.
+  - Next.js production build generated all `119/119` static pages successfully.
+  - `git diff --check` passed.
+  - `git diff --cached --check` passed.
+- Implementation commit: `e8bfb89` (`Capture completed trip prediction outcomes`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote branch hashes were verified identical.
+- Outcome Learning now has both sides of the evaluation pair:
+  - durable trip-linked route predictions,
+  - durable completed-trip observed outcomes.
+- Next step: audit how HarborGuard should evaluate prediction accuracy and calibration by comparing `route_prediction_snapshots` against `route_prediction_outcomes` for the same completed trip.
