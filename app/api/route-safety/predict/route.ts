@@ -1096,7 +1096,7 @@ if (roadRiskSegmentsError) {
       ...historicalThreatInputs,
     ];
 
-    const routeThreats = threatInputs
+    const candidateRouteThreats = threatInputs
       .map((alert: any) => {
         const distanceFromOrigin = distanceMeters(
           originLat,
@@ -1261,6 +1261,8 @@ if (roadRiskSegmentsError) {
           type: alert.type,
           title: alert.title,
           severity: alert.severity,
+          latitude: Number(alert.latitude),
+          longitude: Number(alert.longitude),
           radiusMeters: radius,
           distanceFromOrigin: Math.round(distanceFromOrigin),
           distanceFromDestination: Math.round(distanceFromDestination),
@@ -1292,8 +1294,46 @@ if (roadRiskSegmentsError) {
           suggestedRoute: alert.suggested_route || null,
         };
       })
-      .filter((alert: any) => alert.isLikelyOnRoute)
-      .sort((a: any, b: any) => b.score - a.score);
+      .filter((alert: any) => alert.isLikelyOnRoute);
+
+    const routeThreats = candidateRouteThreats
+      .sort((a: any, b: any) => b.score - a.score)
+      .reduce((consolidated: any[], threat: any) => {
+        const duplicateThreat = consolidated.find((existing: any) => {
+          if (String(existing.type || "") !== String(threat.type || "")) {
+            return false;
+          }
+
+          const existingLatitude = Number(existing.latitude);
+          const existingLongitude = Number(existing.longitude);
+          const threatLatitude = Number(threat.latitude);
+          const threatLongitude = Number(threat.longitude);
+
+          if (
+            !Number.isFinite(existingLatitude) ||
+            !Number.isFinite(existingLongitude) ||
+            !Number.isFinite(threatLatitude) ||
+            !Number.isFinite(threatLongitude)
+          ) {
+            return false;
+          }
+
+          return (
+            distanceMeters(
+              existingLatitude,
+              existingLongitude,
+              threatLatitude,
+              threatLongitude
+            ) <= 250
+          );
+        });
+
+        if (!duplicateThreat) {
+          consolidated.push(threat);
+        }
+
+        return consolidated;
+      }, []);
 
     const threatRiskScore = Math.min(
       100,
