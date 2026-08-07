@@ -4339,3 +4339,68 @@ Pushed it to feature/expanded-incident-taxonomy.
   - completed-trip observed outcomes,
   - deterministic completed-trip prediction evaluations.
 - Next step: audit how HarborGuard should aggregate completed prediction evaluations into calibration and accuracy metrics such as confusion-matrix counts, precision, recall, false-positive rate and false-negative rate before adding any reporting or model-adjustment logic.
+
+### Route Prediction Performance Aggregation
+
+- Continued the audit-first Outcome Learning roadmap after establishing deterministic completed-trip prediction evaluations.
+- Audited existing HarborGuard aggregation, analytics and reporting patterns before adding prediction-performance logic.
+- Confirmed no existing Route Safety confusion-matrix, precision, recall, false-positive-rate or false-negative-rate implementation existed.
+- Confirmed `route_prediction_evaluations` already contains the durable primitives required for aggregate performance analysis:
+  - `true_positive`,
+  - `false_positive`,
+  - `false_negative`,
+  - `true_negative`.
+- Confirmed no additional persistence table was required for v1 aggregate metrics.
+- Added `lib/fleet/calculateRoutePredictionPerformance.ts`.
+- Added a pure deterministic aggregation helper that accepts completed-trip evaluation classifications and calculates:
+  - total evaluation count,
+  - true positives,
+  - false positives,
+  - false negatives,
+  - true negatives,
+  - accuracy,
+  - precision,
+  - recall,
+  - false-positive rate,
+  - false-negative rate.
+- Accuracy is calculated as:
+  - `(TP + TN) / total evaluations`.
+- Precision is calculated as:
+  - `TP / (TP + FP)`.
+- Recall is calculated as:
+  - `TP / (TP + FN)`.
+- False-positive rate is calculated as:
+  - `FP / (FP + TN)`.
+- False-negative rate is calculated as:
+  - `FN / (FN + TP)`.
+- Metrics with a zero denominator return `null` rather than `0`.
+- This preserves the distinction between:
+  - a measured zero rate,
+  - a mathematically undefined metric due to insufficient observations.
+- The helper is intentionally pure:
+  - no Supabase access,
+  - no organization lookup,
+  - no authentication logic,
+  - no API route,
+  - no UI coupling,
+  - no additional database schema.
+- This establishes one canonical prediction-performance calculation implementation before any transport or presentation layer is added.
+- Existing Route Safety scoring behavior was not changed.
+- Existing completed-trip prediction evaluation behavior was not changed.
+- Existing database schema was not changed.
+- No UI changes were required.
+- Validation completed:
+  - `npx tsc --noEmit` passed with exit code `0`.
+  - `npm run build` passed with exit code `0`.
+  - Next.js production build generated all `119/119` static pages successfully.
+  - `git diff --check` passed.
+  - `git diff --cached --check` passed.
+- Implementation commit: `843739f` (`Calculate route prediction performance`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote branch hashes were verified identical.
+- Outcome Learning now has:
+  - trip-linked route prediction snapshots,
+  - completed-trip observed outcomes,
+  - deterministic completed-trip prediction evaluations,
+  - canonical aggregate performance calculations.
+- Next step: audit the smallest organization-scoped reader/API boundary for exposing aggregate route prediction performance without introducing redundant persistence or premature UI/model-adjustment logic.
