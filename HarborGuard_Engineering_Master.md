@@ -4606,3 +4606,61 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote branch hashes were verified identical.
 - Outcome Learning now has its first end-user analytics consumer synchronized to the selected reporting period.
 - Next step: audit the smallest useful calibration-analysis layer before changing any route-risk scoring weights or thresholds.
+
+### Route Prediction Threshold Analysis
+
+- Continued the audit-first Outcome Learning roadmap after adding the first Analytics performance consumer.
+- Audited the existing completed-trip evaluation schema, route-risk scoring references, performance calculator, testing conventions and production prediction threshold before implementing calibration analysis.
+- Confirmed completed-trip evaluations already persist the historical inputs required for threshold analysis:
+  - `predicted_risk_score`,
+  - `prediction_positive_threshold`,
+  - `predicted_adverse_event`,
+  - `observed_adverse_event`,
+  - `classification`.
+- Confirmed the current production route-prediction positive threshold remains `35`.
+- Confirmed no reusable completed-route threshold-analysis helper previously existed.
+- Confirmed no repository test framework or existing unit-test convention is currently configured.
+- Added `lib/fleet/analyzeRoutePredictionThresholds.ts`.
+- Added a pure analysis contract accepting:
+  - predicted risk score,
+  - observed adverse-event outcome.
+- Added deterministic threshold evaluation across every integer threshold from `0` through `100`, inclusive.
+- For each candidate threshold, the helper derives:
+  - true positive,
+  - false positive,
+  - false negative,
+  - true negative classifications.
+- The helper reuses `calculateRoutePredictionPerformance()` for:
+  - total evaluations,
+  - accuracy,
+  - precision,
+  - recall,
+  - false-positive rate,
+  - false-negative rate.
+- Metric formulas were not duplicated.
+- The helper intentionally does not:
+  - select a preferred threshold,
+  - rank thresholds,
+  - recommend a production threshold,
+  - update the production threshold,
+  - modify route-risk scoring,
+  - write database rows,
+  - expose an API,
+  - modify Analytics UI,
+  - perform automatic model tuning.
+- Existing `PREDICTION_POSITIVE_THRESHOLD = 35` in `evaluateCompletedTripPrediction.ts` was verified unchanged after implementation.
+- Existing route prediction persistence was not changed.
+- Existing completed-trip evaluation behavior was not changed.
+- Existing performance API behavior was not changed.
+- Existing Analytics behavior was not changed.
+- Validation completed:
+  - `npx tsc --noEmit` passed.
+  - `npm run build` passed.
+  - Next.js production build generated all `120/120` static pages successfully.
+  - `git diff --check` passed.
+  - `git diff --cached --check` passed.
+- Implementation commit: `ae3de45` (`Analyze route prediction thresholds`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote branch hashes were verified identical.
+- Outcome Learning can now perform analysis-only historical threshold sweeps without modifying production scoring behavior.
+- Next step: audit the smallest authenticated organization-scoped read boundary for supplying historical `predicted_risk_score` and `observed_adverse_event` evaluation rows to the threshold-analysis helper without selecting or applying a production threshold.
