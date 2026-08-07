@@ -4914,3 +4914,45 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote branch hashes were verified identical at `f58bb3bd3e838491c3294812e6711fbe4727b336`.
 - Outcome Learning now shows how nearby historical candidate thresholds differ from the live production threshold in precision and recall without interpreting those deltas as recommendations.
 - Next step: pause automatic threshold recommendation work and audit whether the next smallest safe value is richer historical evidence collection, longer-window/vehicle-specific calibration review, or another Outcome Learning consumer that uses the existing evaluation data without changing production threshold behavior.
+
+### Route Prediction Vehicle Outcome Filtering
+
+- Continued the audit-first Outcome Learning roadmap after adding neutral threshold delta guidance.
+- Audited the existing Analytics reporting controls, vehicle data, route-prediction performance consumer and route-prediction threshold-analysis consumer before adding vehicle-level historical filtering.
+- Confirmed the existing route-prediction analytics APIs already support a `vehicleId` filter, so no API change was required.
+- Updated `app/analytics/page.tsx`.
+- Added a vehicle selector to the existing Analytics reporting controls.
+- The selector supports:
+  - `All vehicles`,
+  - individual vehicles from the existing fleet vehicle data.
+- Added `routePredictionVehicleId` client state for the selected historical vehicle scope.
+- The selected vehicle is passed as `vehicleId` to:
+  - `GET /api/fleet/route-prediction-performance`,
+  - `GET /api/fleet/route-prediction-threshold-analysis`.
+- Both route-prediction analytics requests automatically reload when the selected vehicle changes.
+- Existing date-range filtering remains in place and combines with the selected vehicle scope.
+- Selecting `All vehicles` preserves the existing fleet-wide historical behavior.
+- Vehicle filtering is read-only analytics behavior.
+- No production prediction behavior was changed.
+- No completed-trip evaluation behavior was changed.
+- No route-prediction performance API behavior was changed.
+- No route-prediction threshold-analysis API behavior was changed.
+- No database change was required.
+- No automatic calibration behavior was introduced.
+- No threshold recommendation behavior was introduced.
+- No threshold mutation behavior was introduced.
+- Existing `PREDICTION_POSITIVE_THRESHOLD = 35` was explicitly verified unchanged.
+- Validation completed:
+  - `git diff --check` passed.
+  - `npx tsc --noEmit` passed with exit code `0`.
+  - `npm run build` passed with exit code `0`.
+  - Next.js production build generated all `121/121` static pages successfully.
+  - `/analytics` remained registered as a static page.
+  - `/api/fleet/route-prediction-performance` remained registered as a dynamic route.
+  - `/api/fleet/route-prediction-threshold-analysis` remained registered as a dynamic route.
+  - `git diff --cached --check` passed before the implementation commit.
+- Implementation commit: `9a641ac` (`Filter route prediction outcomes by vehicle`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote branch hashes were verified identical at `9a641ac9e2d76da6db0a218fb0887e64ac168ba4`.
+- Outcome Learning can now review completed route-prediction performance and threshold behavior for an individual vehicle while retaining the existing fleet-wide view and keeping the live production threshold fixed at `35`.
+- Next step: audit whether the next smallest safe Outcome Learning improvement is a longer historical calibration window, vehicle-to-fleet comparison guidance, or another evidence consumer that improves interpretation without automatically changing production prediction behavior.
