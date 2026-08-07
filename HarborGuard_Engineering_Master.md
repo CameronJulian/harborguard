@@ -4448,3 +4448,50 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote branch hashes were verified identical after the normalization commit.
 - Outcome Learning now exposes organization-scoped aggregate prediction performance through an authenticated API boundary.
 - Next step: audit whether HarborGuard should add time-window and vehicle-scoped performance slicing before introducing analytics UI or model-calibration behavior.
+
+### Filtered Route Prediction Performance
+
+- Continued the audit-first Outcome Learning roadmap after exposing authenticated organization-scoped aggregate route prediction performance.
+- Audited the existing evaluation schema, performance API, calculator and fleet query-filter patterns before modifying the API.
+- Confirmed no schema change was required.
+- Confirmed `route_prediction_evaluations` already contains:
+  - `vehicle_id`,
+  - `outcome_completed_at`,
+  - organization scoping,
+  - existing indexes supporting organization and vehicle evaluation access.
+- Updated `GET /api/fleet/route-prediction-performance`.
+- Added optional query parameters:
+  - `vehicleId`,
+  - `start`,
+  - `end`.
+- Organization scoping remains mandatory for all performance queries.
+- Optional vehicle filtering applies:
+  - `.eq("vehicle_id", vehicleId)`.
+- Optional time-window filtering uses the completed-trip outcome timestamp:
+  - `.gte("outcome_completed_at", start)`,
+  - `.lte("outcome_completed_at", end)`.
+- `outcome_completed_at` was deliberately selected rather than generic evaluation `created_at` because the performance window represents completed-trip outcomes.
+- When no optional filters are provided, the endpoint preserves the existing organization-wide behavior.
+- The canonical `calculateRoutePredictionPerformance()` helper was not changed.
+- No additional persistence table was added.
+- No analytics UI was added.
+- No service-layer wrapper was added.
+- No model-adjustment behavior was introduced.
+- Existing Route Safety scoring behavior was not changed.
+- Existing completed-trip outcome behavior was not changed.
+- Existing evaluation classification behavior was not changed.
+- Validation completed:
+  - `npx tsc --noEmit` passed with exit code `0`.
+  - `npm run build` passed with exit code `0`.
+  - Next.js production build generated all `120/120` static pages successfully.
+  - `/api/fleet/route-prediction-performance` remained registered as a dynamic route.
+  - `git diff --check` passed.
+  - `git diff --cached --check` passed.
+- Implementation commit: `8ce791e` (`Filter route prediction performance`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote branch hashes were verified identical.
+- Outcome Learning now supports:
+  - organization-wide aggregate performance,
+  - vehicle-scoped aggregate performance,
+  - completed-outcome time-window performance slicing.
+- Next step: audit whether the current filtering contract requires input validation/default windows and whether the next smallest value is a service/UI consumer or calibration analysis.
