@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 import {
   calculateRoutePredictionPerformance,
