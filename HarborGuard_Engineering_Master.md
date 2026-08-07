@@ -4495,3 +4495,44 @@ Pushed it to feature/expanded-incident-taxonomy.
   - vehicle-scoped aggregate performance,
   - completed-outcome time-window performance slicing.
 - Next step: audit whether the current filtering contract requires input validation/default windows and whether the next smallest value is a service/UI consumer or calibration analysis.
+
+### Route Prediction Performance Filter Validation
+
+- Continued the audit-first Outcome Learning roadmap after adding vehicle-scoped and completed-outcome time-window performance filtering.
+- Audited existing HarborGuard request-validation patterns before modifying the performance API.
+- Confirmed fleet APIs commonly return HTTP `400` for malformed or missing client input.
+- Confirmed no reusable UUID validation helper currently exists in the audited code paths.
+- Confirmed existing date parsing precedent uses `new Date(value)` with `Number.isNaN(parsed.getTime())`.
+- Updated `GET /api/fleet/route-prediction-performance`.
+- Added validation for optional `start` and `end` query parameters.
+- Invalid `start` values now return:
+  - HTTP `400`,
+  - `Invalid start date.`
+- Invalid `end` values now return:
+  - HTTP `400`,
+  - `Invalid end date.`
+- Inverted ranges where `start > end` now return:
+  - HTTP `400`,
+  - `start must be earlier than or equal to end.`
+- Valid date inputs are normalized with `toISOString()` before being applied to the Supabase query.
+- Existing organization scoping remains unchanged.
+- Existing optional `vehicleId` filtering remains unchanged.
+- No default performance time window was introduced.
+- Omitting `start` and `end` continues to preserve organization-wide historical performance behavior.
+- No UUID validation was added for `vehicleId` because organization scoping already prevents cross-organization access and an unknown vehicle ID safely yields no matching evaluations.
+- No schema changes were required.
+- No calculation-helper changes were required.
+- No UI changes were required.
+- No model-calibration behavior was introduced.
+- Validation completed:
+  - `npx tsc --noEmit` passed with exit code `0`.
+  - `npm run build` passed with exit code `0`.
+  - Next.js production build generated all `120/120` static pages successfully.
+  - `/api/fleet/route-prediction-performance` remained registered as a dynamic route.
+  - `git diff --check` passed.
+  - `git diff --cached --check` passed.
+- Implementation commit: `d816d49` (`Validate route prediction performance filters`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote branch hashes were verified identical.
+- Outcome Learning performance queries now have deterministic handling for malformed and inverted time-window inputs.
+- Next step: audit the smallest useful consumer for prediction-performance metrics before introducing any model-adjustment logic.
