@@ -3752,3 +3752,18 @@ Pushed it to feature/expanded-incident-taxonomy.
   - `npx tsc --noEmit`
   - `npm run build`
 - Production build completed successfully with 119 routes.
+### Fleet Threat Prediction Distance Utility Migration
+
+- Migrated `app/api/fleet/predict-threats/route.ts` to the shared `lib/geo/getDistanceMeters.ts` utility.
+- Removed the file-local Haversine distance implementation.
+- Converted both existing distance calls from four numeric arguments to the shared `{ latitude, longitude }` coordinate shape.
+- Preserved geofence proximity calculations and predicted geofence-risk behavior.
+- Preserved road-incident proximity detection and `nearIncident` behavior.
+- Preserved threat-probability calculation, premium-access enforcement, rate limiting, database queries, and response construction.
+- No database, alert-lifecycle, telemetry-observation, or Route Safety behavior was changed.
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
+- Implementation commit: `f766d1f` (`Use shared distance utility for fleet threat prediction`).
