@@ -3726,3 +3726,16 @@ Pushed it to feature/expanded-incident-taxonomy.
   - `npx tsc --noEmit`
   - `npm run build`
 - Production build completed successfully with 119 routes.
+### Harsh Braking Distance Utility Migration
+
+- Migrated `lib/fleet/harshBrakingCorroboration.ts` to the shared `lib/geo/getDistanceMeters.ts` utility.
+- Removed the file-local Haversine distance implementation.
+- Preserved the existing `{ latitude, longitude }` distance-call shape.
+- Preserved `requirePositiveNumber(...)` and all corroboration validation behavior.
+- Harsh-braking corroboration query, radius filtering, distinct-vehicle evaluation, and result construction remain unchanged.
+- No database, alert-lifecycle, telemetry-observation, or Route Safety behavior was changed.
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
