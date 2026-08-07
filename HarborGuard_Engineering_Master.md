@@ -3879,3 +3879,27 @@ Pushed it to feature/expanded-incident-taxonomy.
   - `npm run build`
 - Production build completed successfully with 119 routes.
 - Implementation commit: `b7bf9c3` (`Extract vehicle location persistence`).
+### Active Vehicle Trip Lookup Extraction
+
+- Created `lib/fleet/getActiveVehicleTrip.ts`.
+- Extracted the organization-scoped active vehicle-trip lookup from `app/api/fleet/update-location/route.ts`.
+- The helper now owns:
+  - `vehicle_trips` table lookup
+  - selection of `id` and `status`
+  - vehicle ID filtering
+  - organization ID filtering
+  - active-status filtering for `scheduled`, `en_route_to_port`, `collecting`, `en_route_to_fishery`, and `emergency`
+  - newest-first `created_at` ordering
+  - single-row limiting
+  - nullable active-trip result handling via `maybeSingle()`
+- The update-location route now delegates to `getActiveVehicleTrip(...)`.
+- Existing `activeTripId` fallback behavior remains in the route.
+- Harsh-braking, rapid-acceleration, harsh-cornering, and speeding alert creation remain unchanged.
+- Active-trip mutation remains delegated to `updateActiveTripFromLocation(...)`.
+- No location persistence, telemetry detection, Route Safety, stop-lifecycle, or risk-detection behavior was changed.
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
+- Implementation commit: `3d9e91c` (`Extract active vehicle trip lookup`).
