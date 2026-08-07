@@ -42,6 +42,12 @@ type IncidentRow = {
   summary: string | null;
   created_at: string | null;
 };
+type VehicleOption = {
+  id: string;
+  nickname: string | null;
+  registration_number: string | null;
+};
+
 type RoutePredictionPerformance = {
   totalEvaluations: number;
   truePositive: number;
@@ -149,6 +155,8 @@ export default function AnalyticsPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [batches, setBatches] = useState<BatchRow[]>([]);
   const [incidents, setIncidents] = useState<IncidentRow[]>([]);
+  const [vehicles, setVehicles] = useState<VehicleOption[]>([]);
+  const [selectedVehicleId, setSelectedVehicleId] = useState("");
   const [routePredictionPerformance, setRoutePredictionPerformance] =
     useState<RoutePredictionPerformance | null>(null);
   const [routePredictionPerformanceLoading, setRoutePredictionPerformanceLoading] =
@@ -184,6 +192,7 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     loadAll();
+    loadVehicles();
 
     const batchChannel = supabase
       .channel("analytics-batches-live")
@@ -208,6 +217,31 @@ export default function AnalyticsPage() {
       supabase.removeChannel(incidentChannel);
     };
   }, []);
+  async function loadVehicles() {
+    try {
+      const response = await fetchWithAuth("/api/fleet/vehicles", {
+        cache: "no-store",
+      });
+
+      const result = (await response.json()) as
+        | { success: boolean; vehicles: VehicleOption[] }
+        | { error?: string };
+
+      if (!response.ok) {
+        setVehicles([]);
+        return;
+      }
+
+      setVehicles(
+        "vehicles" in result && Array.isArray(result.vehicles)
+          ? result.vehicles
+          : []
+      );
+    } catch {
+      setVehicles([]);
+    }
+  }
+
   async function loadRoutePredictionThresholdAnalysis() {
     setRoutePredictionThresholdAnalysisLoading(true);
     setRoutePredictionThresholdAnalysisError("");
@@ -220,6 +254,10 @@ export default function AnalyticsPage() {
         start: start.toISOString(),
         end: end.toISOString(),
       });
+
+      if (selectedVehicleId) {
+        params.set("vehicleId", selectedVehicleId);
+      }
 
       const response = await fetchWithAuth(
         `/api/fleet/route-prediction-threshold-analysis?${params.toString()}`,
@@ -269,6 +307,10 @@ export default function AnalyticsPage() {
         start: start.toISOString(),
         end: end.toISOString(),
       });
+
+      if (selectedVehicleId) {
+        params.set("vehicleId", selectedVehicleId);
+      }
 
       const response = await fetchWithAuth(
         `/api/fleet/route-prediction-performance?${params.toString()}`,
@@ -344,7 +386,7 @@ const { data: incidentData } = await supabase
   useEffect(() => {
     loadRoutePredictionPerformance();
     loadRoutePredictionThresholdAnalysis();
-  }, [startDate, endDate]);
+  }, [startDate, endDate, selectedVehicleId]);
 
   const routePredictionThresholdChartData = useMemo(
     () =>
@@ -533,7 +575,6 @@ const { data: incidentData } = await supabase
     ],
     [filteredBatches]
   );
-
   function exportBatchesCsv() {
     const headers = [
       "Batch Code",
@@ -747,7 +788,7 @@ if (subscriptionLoaded && !premiumAllowed) {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr auto auto auto auto",
+            gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr minmax(180px, 1fr) auto auto auto auto",
             gap: 12,
             alignItems: "end",
           }}
@@ -770,6 +811,32 @@ if (subscriptionLoaded && !premiumAllowed) {
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
             />
+          </div>
+
+
+          <div>
+            <div style={{ ...mutedTextStyle, marginBottom: 8, fontSize: 13 }}>Vehicle</div>
+            <select
+              style={inputStyle}
+              value={selectedVehicleId}
+              onChange={(e) => setSelectedVehicleId(e.target.value)}
+            >
+              <option value="">All vehicles</option>
+              {vehicles.map((vehicle) => {
+                const label =
+                  vehicle.nickname && vehicle.registration_number
+                    ? `${vehicle.nickname} (${vehicle.registration_number})`
+                    : vehicle.nickname ||
+                      vehicle.registration_number ||
+                      "Unnamed vehicle";
+
+                return (
+                  <option key={vehicle.id} value={vehicle.id}>
+                    {label}
+                  </option>
+                );
+              })}
+            </select>
           </div>
 
           <button style={secondaryButtonStyle} onClick={exportBatchesCsv}>
