@@ -3833,3 +3833,25 @@ Pushed it to feature/expanded-incident-taxonomy.
   - `npm run build`
 - Production build completed successfully with 119 routes.
 - Implementation commit: `2f918b3` (`Extract update location vehicle lookup`).
+### Latest Vehicle Location Lookup Extraction
+
+- Created `lib/fleet/getLatestVehicleLocation.ts`.
+- Extracted the organization-scoped latest vehicle-location lookup from `app/api/fleet/update-location/route.ts`.
+- The helper now owns:
+  - `vehicle_locations` table lookup
+  - selection of `latitude`, `longitude`, `speed_kmh`, `heading`, and `recorded_at`
+  - vehicle ID filtering
+  - organization ID filtering
+  - newest-first `recorded_at` ordering
+  - single-row limiting
+  - nullable latest-location result handling via `maybeSingle()`
+- The update-location route now delegates to `getLatestVehicleLocation(...)`.
+- Existing downstream `lastPoint` telemetry analysis remains in the route.
+- Historical latitude, longitude, heading, and speed parsing behavior remains unchanged.
+- No location persistence, telemetry detection, alert lifecycle, active-trip, Route Safety, stop-lifecycle, or risk-detection behavior was changed.
+- Validation completed:
+  - `git diff --check`
+  - `npx tsc --noEmit`
+  - `npm run build`
+- Production build completed successfully with 119 routes.
+- Implementation commit: `d5c0433` (`Extract latest vehicle location lookup`).
