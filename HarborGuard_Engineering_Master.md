@@ -6533,3 +6533,42 @@ Pushed it to feature/expanded-incident-taxonomy.
 - The implementation was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Local and remote heads were verified identical at `8eff1e9`.
 - Next step: audit the smallest Traccar polling/sync-cycle boundary that loads provider positions, normalizes them, delegates each position to `processTelematicsPosition(...)` and advances organization/provider sync state only after the cycle completes safely.
+## 2026-08-08 - Traccar position sync cycle
+
+- Continued the external-telematics roadmap from verified baseline `bf6e895`.
+- Audited the existing Traccar provider client, normalized telematics position processor and `telematics_sync_state` contract before implementation.
+- Added `lib/telematics/runTraccarPositionSync.ts`.
+- Added `runTraccarPositionSync(...)` as the internal server-side orchestration boundary for one organization-scoped Traccar position synchronization cycle.
+- The sync cycle accepts an injected Supabase client and explicit organization ID.
+- Blank organization IDs are rejected before provider or database work begins.
+- The cycle loads the latest positions through the existing Traccar provider client rather than duplicating provider HTTP or normalization logic.
+- Each provider position is normalized through the existing Traccar normalization boundary.
+- Each normalized position is delegated to `processTelematicsPosition(...)`.
+- Vehicle resolution, receipt claiming, duplicate/in-progress handling, normalized vehicle-location processing and guarded receipt finalization remain owned by the existing lower-level telematics boundaries.
+- Added cycle summary accounting for received positions, normally processed positions, duplicates, positions already being processed, jitter skips and GPS-spike skips.
+- A non-successful `processTelematicsPosition(...)` result fails the overall cycle rather than silently recording the position as successful.
+- Successful completion upserts organization/provider/stream state into `telematics_sync_state`.
+- Successful sync state records `last_successful_sync_at` and clears prior failure state.
+- Sync metadata records the cycle summary.
+- Provider or processing failures attempt to record `last_failure_at` and `last_failure_message`.
+- If both the original cycle and sync-state failure recording fail, an `AggregateError` preserves both failures.
+- The sync state continues to use provider `traccar` and stream `positions`.
+- No public API route was added in this work item.
+- No cron route was added in this work item.
+- No scheduler was added in this work item.
+- No live Traccar token was committed or written to tracked source.
+- No database schema or migration was changed.
+- No telemetry thresholds, alert behavior, trip lifecycle or fleet-risk behavior was changed.
+- Validation completed before commit:
+  - `npx tsc --noEmit` passed;
+  - `npm run build` passed;
+  - production compilation succeeded;
+  - all 121/121 static pages were generated successfully;
+  - exactly one TypeScript file was staged;
+  - staged diff validation passed.
+- Implementation commit: `5056b88` (`Add Traccar position sync cycle`).
+- The implementation commit contains exactly one new TypeScript file with 271 insertions.
+- The implementation was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote heads were verified identical at `5056b88`.
+- The external-telematics path now has an internal Traccar synchronization cycle from provider loading through normalized/idempotent HarborGuard processing and organization/provider sync-state recording.
+- Next step: audit the smallest protected server execution boundary for invoking `runTraccarPositionSync(...)`, including existing HarborGuard cron/machine-authentication conventions and organization-selection semantics, before exposing the sync cycle through an API route or scheduler.
