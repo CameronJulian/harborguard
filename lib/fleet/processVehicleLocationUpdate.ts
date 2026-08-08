@@ -101,6 +101,7 @@ export async function processVehicleLocationUpdate({
     heading,
     source,
     requestedStatus,
+    recordedAt,
   } = location;
 
   const {
@@ -120,7 +121,8 @@ export async function processVehicleLocationUpdate({
     };
   }
 
-  const now = new Date().toISOString();
+  const occurredAt =
+    recordedAt ?? new Date().toISOString();
 
   const lastPoint =
     await getLatestVehicleLocation({
@@ -141,7 +143,7 @@ export async function processVehicleLocationUpdate({
       speedKmh,
       heading,
       source,
-      occurredAt: now,
+      occurredAt,
       minimumDistanceMeters:
         MIN_DISTANCE_METERS,
       maximumAllowedSpeedKmh:
@@ -207,7 +209,7 @@ export async function processVehicleLocationUpdate({
     longitude,
     speedKmh,
     heading,
-    recordedAt: now,
+    recordedAt: occurredAt,
     source,
   });
 
@@ -240,7 +242,7 @@ export async function processVehicleLocationUpdate({
     latitude,
     longitude,
     speedKmh,
-    occurredAt: now,
+    occurredAt,
     stopSpeedKmh: STOP_SPEED_KMH,
     stopMinutes: STOP_MINUTES,
     minimumSlowPoints: MIN_SLOW_POINTS,
@@ -265,7 +267,7 @@ export async function processVehicleLocationUpdate({
       speedKmh,
       heading,
       source,
-      recordedAt: now,
+      recordedAt: occurredAt,
     },
     activeTripId,
   };

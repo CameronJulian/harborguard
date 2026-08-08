@@ -21,6 +21,7 @@ export type UpdateLocationBody = {
   heading?: number | string;
   source?: UpdateLocationSource;
   status?: UpdateLocationStatus;
+  recordedAt?: string;
 };
 
 export type ParsedUpdateLocationInput = {
@@ -32,6 +33,7 @@ export type ParsedUpdateLocationInput = {
   heading: number;
   source: UpdateLocationSource;
   requestedStatus?: UpdateLocationStatus;
+  recordedAt?: string;
 };
 
 export type ParseUpdateLocationInputResult =
@@ -89,6 +91,39 @@ export function parseUpdateLocationInput(
   const requestedStatus =
     body.status;
 
+  let recordedAt: string | undefined;
+
+  if (body.recordedAt !== undefined) {
+    if (
+      typeof body.recordedAt !== "string" ||
+      body.recordedAt.trim() === ""
+    ) {
+      return {
+        ok: false,
+        error:
+          "recordedAt must be a valid date-time string.",
+      };
+    }
+
+    const parsedRecordedAt =
+      new Date(body.recordedAt);
+
+    if (
+      Number.isNaN(
+        parsedRecordedAt.getTime()
+      )
+    ) {
+      return {
+        ok: false,
+        error:
+          "recordedAt must be a valid date-time string.",
+      };
+    }
+
+    recordedAt =
+      parsedRecordedAt.toISOString();
+  }
+
   if (!vehicleId) {
     return {
       ok: false,
@@ -140,6 +175,7 @@ export function parseUpdateLocationInput(
       heading,
       source,
       requestedStatus,
+      recordedAt,
     },
   };
 }
