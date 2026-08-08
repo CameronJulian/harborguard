@@ -1467,7 +1467,7 @@ HarborGuard now treats HERE and TomTom as corroborating traffic intelligence sou
 ### Summary
 - Added road risk scoring for every HERE route alternative.
 - Reused the shared calculateDistanceMeters() helper.
-- Evaluated decoded HERE route geometry against oad_risk_segments.
+- Evaluated decoded HERE route geometry against oad_risk_segments.
 - Added:
   - safetyScore
   - riskScore
@@ -1487,7 +1487,7 @@ HarborGuard now treats HERE and TomTom as corroborating traffic intelligence sou
 **Commit:** 916288d
 
 ### Summary
-- Added ankRoutesBySafety().
+- Added ankRoutesBySafety().
 - Ranked routes by:
   1. Safety Score
   2. Duration
@@ -1669,7 +1669,7 @@ Taxonomy v2 road risk segment UI milestone completed.
 
 - Audited pp/api/route-safety/cron/providers/route.ts.
 - Updated HERE collision-related incidents to emit collision instead of the legacy ccident value.
-- Left oadblock unchanged because it remains a supported category.
+- Left oadblock unchanged because it remains a supported category.
 - TypeScript validation passed.
 - Next.js production build passed.
 
@@ -5883,3 +5883,55 @@ Pushed it to feature/expanded-incident-taxonomy.
 - The tracked tree was clean after implementation push.
 - Performance principle reinforced by this work: for realtime dashboards that retain conservative fallback polling, place document-visibility protection at the shared refresh executor so both realtime and fallback paths avoid hidden-tab network fan-out while preserving one reconciliation refresh on return.
 - Next step: continue the audit-first stabilization roadmap from the post-documentation baseline, with Insurance Response Center visibility coordination as the leading remaining candidate subject to fresh verification.
+
+## 2026-08-08 - Insurance Response Center visibility coordination
+
+- Continued the audit-first performance-stabilization roadmap after Executive Operations visibility coordination.
+- Started from verified implementation baseline `3782842`.
+- Re-audited `components/command-center/InsuranceResponseCenter.tsx` before documenting the completed change.
+- Confirmed Insurance Response Center already had coordinated refresh behavior from the earlier insurance-response refresh work:
+  - initial insurance load;
+  - Supabase Realtime invalidation;
+  - 250 ms realtime coalescing;
+  - in-flight refresh protection;
+  - queued refresh handling;
+  - 60-second fallback polling.
+- Confirmed the remaining gap was document visibility: both realtime-triggered and fallback refreshes could still reach the shared refresh executor while the browser document was hidden.
+- Selected visibility coordination as the smallest safe performance optimization.
+- Updated only `components/command-center/InsuranceResponseCenter.tsx`.
+- Added a document-visibility guard to `runInsuranceRefresh()` so automatic refresh work exits before network requests while the document is hidden.
+- Preserved the existing active/disposal guard.
+- Preserved the existing initial insurance load.
+- Preserved the existing Supabase Realtime subscriptions.
+- Preserved the existing 250 ms realtime coalescing behavior.
+- Preserved existing in-flight refresh protection.
+- Preserved existing queued-refresh behavior.
+- Preserved the existing 60-second fallback refresh cadence.
+- Added a `visibilitychange` listener.
+- Added an immediate insurance refresh when the document becomes visible again.
+- Added cleanup for the `visibilitychange` listener.
+- Preserved existing timeout, interval and Supabase channel cleanup.
+- Did not abort an insurance request already in progress when the document becomes hidden; subsequent automatic refresh attempts are suppressed instead.
+- No API route was changed.
+- No database query was changed.
+- No database schema or migration was changed.
+- No realtime subscription dependency was changed.
+- No insurance workflow or package semantics were changed.
+- Validation completed before implementation commit:
+  - only `components/command-center/InsuranceResponseCenter.tsx` changed;
+  - the hidden-document guard was verified;
+  - the visibility-return listener and cleanup were verified;
+  - existing refresh coordination remained intact;
+  - `git diff --check` passed;
+  - `npx tsc --noEmit` passed;
+  - `npm run build` passed;
+  - the production build completed successfully;
+  - final scope verification confirmed one tracked changed file and nothing staged before commit;
+  - only the Insurance Response Center component was staged;
+  - staged diff validation passed.
+- Implementation commit: `3782842` (`Coordinate insurance visibility refresh`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote implementation heads were verified identical at `3782842ea84d7dd7d7d0c2db95f06da81685526d`.
+- The tracked tree was clean after implementation push.
+- Performance principle reinforced by this work: when realtime invalidation and conservative fallback polling already share a coordinated refresh executor, visibility protection belongs at that shared boundary so hidden documents avoid both realtime-triggered and timer-triggered network work while one reconciliation refresh occurs on return.
+- Next step: continue the audit-first performance-stabilization roadmap with a fresh ranking audit from the post-Insurance-visibility documentation baseline.
