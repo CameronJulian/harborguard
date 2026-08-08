@@ -6492,3 +6492,44 @@ Pushed it to feature/expanded-incident-taxonomy.
 - The implementation was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Local and remote heads were verified identical at `5757e43`.
 - Next step: audit the exact normalized Traccar-position ingestion boundary, including provider message identity, organization/device mapping and the existing `processVehicleLocationUpdate()` contract, before wiring live provider data into HarborGuard.
+## 2026-08-08 - Normalized telematics position processing boundary
+
+- Continued the external-telematics roadmap from verified baseline `db71f87`.
+- Added `lib/telematics/processTelematicsPosition.ts`.
+- Added a provider-neutral normalized telematics processing boundary.
+- The processor accepts an injected Supabase client, organization ID, provider, stream and normalized position.
+- Normalized positions carry provider message ID, provider device ID, latitude, longitude, speed in km/h, heading and provider-recorded event time.
+- Vehicle identity is resolved before message claiming through the organization-scoped `resolveVehicleForProviderDevice(...)` boundary.
+- Vehicle resolution continues to use `vehicles.tracker_device_id`.
+- Vehicle resolution failures return `vehicle_not_found` or `ambiguous_device` without claiming the provider message.
+- Provider messages are claimed through `claimTelematicsMessage(...)`.
+- Claim metadata records provider device ID, resolved HarborGuard vehicle ID and provider event time.
+- Existing processed receipts are treated as duplicates and are not reprocessed.
+- Existing active processing receipts are treated as already being processed and are not reprocessed.
+- Successfully claimed positions are delegated to the shared `processVehicleLocationUpdate(...)` pipeline.
+- External telematics continues to use `source: "hardware"`.
+- Provider event time is preserved through `recordedAt`.
+- Provider speed, heading, latitude and longitude flow through the existing normalized fleet location-processing path.
+- Successful processing finalizes the exact claimed receipt attempt through `completeTelematicsMessage(...)`.
+- Intentional `jitter` and `gps_spike` skips are treated as successfully handled observations and therefore complete the receipt rather than causing indefinite provider retries.
+- Normalized location-processing failures mark the exact claim attempt failed through `failTelematicsMessage(...)`.
+- Unexpected thrown processing errors are also marked failed where possible.
+- If both processing and failure finalization fail, the processor throws an `AggregateError` so the dual failure is not hidden.
+- No Traccar API call was added in this work item.
+- No polling or cron route was added.
+- No live Traccar token was used.
+- No `telematics_sync_state` write was added.
+- No provider polling cursor was introduced.
+- No telemetry thresholds, alert behavior, trip lifecycle or fleet-risk behavior was changed.
+- Validation completed before commit:
+  - `npx tsc --noEmit` passed;
+  - `npm run build` passed;
+  - production compilation succeeded;
+  - all 121/121 static pages were generated successfully;
+  - exactly one TypeScript file was staged;
+  - staged diff validation passed.
+- Implementation commit: `8eff1e9` (`Add normalized telematics position processing`).
+- The implementation commit contains exactly one new TypeScript file with 210 insertions.
+- The implementation was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote heads were verified identical at `8eff1e9`.
+- Next step: audit the smallest Traccar polling/sync-cycle boundary that loads provider positions, normalizes them, delegates each position to `processTelematicsPosition(...)` and advances organization/provider sync state only after the cycle completes safely.
