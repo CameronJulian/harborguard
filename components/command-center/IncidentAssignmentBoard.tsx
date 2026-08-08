@@ -111,22 +111,93 @@ export default function IncidentAssignmentBoard() {
   }
 
   useEffect(() => {
-    loadBoard();
+    let disposed = false;
+    let refreshInFlight = false;
+    let refreshQueued = false;
+    let realtimeRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+    async function runBoardRefresh() {
+      if (disposed || document.visibilityState !== "visible") {
+        return;
+      }
+
+      if (refreshInFlight) {
+        refreshQueued = true;
+        return;
+      }
+
+      refreshInFlight = true;
+
+      try {
+        do {
+          refreshQueued = false;
+          await loadBoard();
+        } while (
+          refreshQueued &&
+          !disposed &&
+          document.visibilityState === "visible"
+        );
+      } finally {
+        refreshInFlight = false;
+      }
+    }
+
+    function scheduleRealtimeRefresh() {
+      if (disposed || document.visibilityState !== "visible") {
+        return;
+      }
+
+      if (realtimeRefreshTimer) {
+        clearTimeout(realtimeRefreshTimer);
+      }
+
+      realtimeRefreshTimer = setTimeout(() => {
+        realtimeRefreshTimer = null;
+        void runBoardRefresh();
+      }, 250);
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        void runBoardRefresh();
+      }
+    }
+
+    void runBoardRefresh();
 
     const channel = supabase
       .channel("incident-assignment-board-live")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "incidents" },
-        () => loadBoard()
+        scheduleRealtimeRefresh
       )
       .subscribe();
 
-    const interval = setInterval(loadBoard, 60000);
+    const interval = setInterval(() => {
+      void runBoardRefresh();
+    }, 60000);
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange
+    );
 
     return () => {
+      disposed = true;
+      refreshQueued = false;
+
+      if (realtimeRefreshTimer) {
+        clearTimeout(realtimeRefreshTimer);
+      }
+
       supabase.removeChannel(channel);
       clearInterval(interval);
+
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+      );
     };
   }, []);
 
