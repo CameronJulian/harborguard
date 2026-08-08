@@ -1,7 +1,8 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
+import { supabase } from "@/lib/supabase";
 
 function label(value: string) {
   return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -13,6 +14,9 @@ export default function IncidentCommandDashboard() {
   const [actions, setActions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const refreshInFlightRef = useRef(false);
+  const refreshQueuedRef = useRef(false);
 
   async function loadIncidents() {
     const response = await fetchWithAuth("/api/incidents/command", {
@@ -83,17 +87,95 @@ export default function IncidentCommandDashboard() {
   }
 
   useEffect(() => {
-    async function load() {
+    let active = true;
+
+    async function runIncidentRefresh() {
+      if (!active || document.visibilityState !== "visible") {
+        return;
+      }
+
+      if (refreshInFlightRef.current) {
+        refreshQueuedRef.current = true;
+        return;
+      }
+
+      refreshInFlightRef.current = true;
+
       try {
         await loadIncidents();
       } finally {
+        refreshInFlightRef.current = false;
         setLoading(false);
+
+        if (
+          active &&
+          refreshQueuedRef.current &&
+          document.visibilityState === "visible"
+        ) {
+          refreshQueuedRef.current = false;
+          void runIncidentRefresh();
+        }
       }
     }
 
-    load();
-    const interval = setInterval(loadIncidents, 30000);
-    return () => clearInterval(interval);
+    function scheduleRealtimeRefresh() {
+      if (!active || document.visibilityState !== "visible") {
+        return;
+      }
+
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+
+      refreshTimeoutRef.current = setTimeout(() => {
+        refreshTimeoutRef.current = null;
+        void runIncidentRefresh();
+      }, 250);
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        void runIncidentRefresh();
+      }
+    }
+
+    void runIncidentRefresh();
+
+    const channel = supabase
+      .channel("incident-command-dashboard-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "incidents" },
+        scheduleRealtimeRefresh
+      )
+      .subscribe();
+
+    const interval = setInterval(() => {
+      void runIncidentRefresh();
+    }, 60000);
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange
+    );
+
+    return () => {
+      active = false;
+      refreshQueuedRef.current = false;
+
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
+
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+      );
+    };
   }, []);
 
   useEffect(() => {
