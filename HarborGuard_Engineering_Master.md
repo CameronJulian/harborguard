@@ -5268,3 +5268,59 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote branch hashes were verified identical at `9299d95082d2dcc626e8e30db1a6341010196dc9`.
 - Performance principle established by this work: provider polling should not be removed merely because realtime infrastructure exists; polling and realtime must first be audited for authoritative data ownership and feedback paths.
 - Next step: continue the performance-stabilization roadmap with another audit-first investigation of demonstrated request, query or write amplification. Select one precise bottleneck before changing code rather than performing a broad Command Center polling cleanup.
+
+## 2026-08-08 - Dashcam realtime refresh-loop prevention
+
+- Continued the performance-stabilization roadmap after the CCTV realtime refresh-loop prevention work.
+- Ran a read-only ranking audit across recurring Command Center workloads before selecting another optimization target.
+- Compared polling frequency, endpoint work, duplicate consumers, realtime overlap and write side effects rather than treating polling itself as a defect.
+- Selected Dashcam monitoring as the strongest next amplification candidate.
+- Audited `components/command-center/DashcamMonitoring.tsx`, `/api/command-center/dashcam`, the Dashcam provider layer, `dashcam_events`, `vision_events` and Supabase realtime/publication references before implementation.
+- Confirmed the Dashcam component had three refresh mechanisms:
+  - an immediate `loadDashcams()` call;
+  - a 30-second `setInterval(loadDashcams, 30000)` provider refresh;
+  - a `dashcam-events-realtime` Supabase subscription on `INSERT` events for `dashcam_events` whose callback invoked `loadDashcams()` again.
+- Confirmed `GET /api/command-center/dashcam` is not a simple read-only endpoint:
+  - it loads current Dashcam/provider state;
+  - it runs the automatic vision-analysis path for eligible snapshots;
+  - it checks persisted processing state;
+  - it can query vehicle location;
+  - it can insert new `vision_events`;
+  - it inserts the current Dashcam snapshot batch into `dashcam_events`;
+  - it then rereads persisted Dashcam and recent vision-event state for the response.
+- This established a code-level amplification path of GET -> provider/database work -> `dashcam_events` INSERT -> realtime callback -> GET -> another potential `dashcam_events` INSERT.
+- The repository migration audit showed explicit Supabase realtime publication configuration for other tables but did not establish that `dashcam_events` is currently included in a realtime publication.
+- The work is therefore recorded as prevention of an architectural amplification risk rather than evidence that a production refresh loop was actively occurring.
+- Confirmed provider polling remains operationally necessary:
+  - `loadDashcams()` selects the configured mock, local or Samsara provider;
+  - local/provider-backed modes obtain state outside the HarborGuard database;
+  - database realtime events therefore cannot be assumed to represent authoritative external Dashcam freshness.
+- Updated only `components/command-center/DashcamMonitoring.tsx`.
+- Removed the component's direct Supabase import.
+- Removed the `dashcam-events-realtime` subscription.
+- Removed `supabase.removeChannel(channel)` cleanup associated with that subscription.
+- Preserved the existing immediate `loadDashcams()` call.
+- Preserved the existing `loadOpenIncidents()` initialization.
+- Preserved the existing 30-second `setInterval(loadDashcams, 30000)` provider refresh.
+- Preserved `clearInterval(interval)` cleanup when the component unmounts.
+- Preserved the manual Dashcam refresh action.
+- `/api/command-center/dashcam` was not changed.
+- The Dashcam provider layer was not changed.
+- Automatic vision-analysis behavior was not changed.
+- `dashcam_events` and `vision_events` persistence behavior was not changed.
+- No database migration was required.
+- No broad Command Center polling rewrite was introduced.
+- Validation completed before the implementation commit:
+  - `git diff --check` passed;
+  - `npx tsc --noEmit` passed with exit code `0`;
+  - `npm run build` passed with exit code `0`;
+  - Next.js production build generated all `121/121` static pages successfully;
+  - `/api/command-center/dashcam` remained registered as a dynamic route;
+  - final `git diff --check` passed;
+  - only `components/command-center/DashcamMonitoring.tsx` was included in the implementation change;
+  - `git diff --cached --check` passed before commit.
+- Implementation commit: `3a905b4` (`Prevent Dashcam realtime refresh loop`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote branch hashes were verified identical at `3a905b47b3b09bffb4bd8312bb37ff88982bf177`.
+- Performance principle reinforced by this work: remove demonstrated feedback/amplification paths without discarding polling that remains necessary to obtain authoritative external provider state.
+- Next step: continue performance stabilization with another read-only ranking audit of remaining recurring workloads and select one demonstrated request, query or write bottleneck before changing code.
