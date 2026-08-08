@@ -6028,3 +6028,73 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Stabilization principle established by the completed sequence: prefer realtime invalidation where appropriate, retain conservative fallback polling where operationally useful, coalesce bursty refresh triggers, protect expensive refresh executors from overlap, suppress automatic network work while documents are hidden, and reconcile once when visibility returns.
 - Completed implementation/documentation milestones include coordinated refresh, polling and visibility work across the major Command Center and operational dashboard surfaces, culminating in shared `useRealtimeRefresh` visibility coordination.
 - Next step: leave performance stabilization closed unless new measured evidence exposes a regression or material recurring-network hotspot, and continue with the next HarborGuard roadmap area using the same audit-first workflow.
+
+## 2026-08-08 - Normalized vehicle-location processing extraction
+
+- Continued the audit-first roadmap after formal closure of the performance-stabilization sequence.
+- Started from verified baseline `6bdf571`.
+- Re-audited the fleet telemetry and telematics architecture before selecting the next implementation target.
+- Confirmed the older telemetry decision artifact proposing harsh-braking detection was stale because HarborGuard already contains harsh-braking, rapid-acceleration, harsh-cornering, sustained-speeding, GPS-anomaly and related post-location telemetry behavior.
+- Confirmed the actual remaining roadmap gap is first-class external telematics ingestion rather than telemetry intelligence itself.
+- Audited the external-provider insertion boundary before implementation.
+- Confirmed `vehicles.tracker_device_id` already exists as the vehicle/device identity slot.
+- Confirmed `vehicle_locations.source` already supports `hardware`, allowing an external telematics adapter to feed normalized hardware locations without an immediate schema migration.
+- Confirmed `/api/fleet/update-location` remained user/session authenticated through `requireOrganization()` and therefore was not itself suitable as a machine-to-machine provider webhook boundary.
+- Confirmed the route already delegated most processing behavior into reusable fleet helpers but still owned the complete normalized orchestration sequence.
+- Selected extraction of normalized vehicle-location processing as the smallest safe prerequisite before adding any provider-specific machine-ingestion endpoint.
+- Added `lib/fleet/processVehicleLocationUpdate.ts`.
+- The new helper now owns the reusable normalized processing sequence:
+  - organization-scoped vehicle lookup;
+  - latest vehicle-location lookup;
+  - telemetry analysis;
+  - jitter rejection;
+  - GPS-spike rejection;
+  - normalized vehicle-location persistence;
+  - active-trip lookup;
+  - active-trip ID resolution;
+  - post-location lifecycle orchestration;
+  - successful normalized vehicle/location response construction.
+- Moved the active telemetry and lifecycle thresholds that are consumed by this processing sequence out of the HTTP route and into the reusable helper.
+- Removed stale route-local cooldown/intelligence constants whose effective ownership already resides in alert helpers.
+- Updated `app/api/fleet/update-location/route.ts` so it now owns HTTP-specific responsibilities only:
+  - organization/user authentication;
+  - operator/admin/owner role enforcement;
+  - request JSON parsing;
+  - normalized input parsing and validation;
+  - HTTP status selection;
+  - `NextResponse` response construction;
+  - top-level HTTP error translation.
+- Preserved the existing update-location HTTP contract.
+- Preserved 400 handling for invalid normalized input.
+- Preserved 404 behavior for missing organization-scoped vehicles.
+- Preserved 500 behavior for location-persistence failures.
+- Preserved successful jitter and GPS-spike response semantics.
+- Preserved the successful vehicle, location and active-trip response shape.
+- Preserved the existing user/session authentication model for `/api/fleet/update-location`.
+- Did not add a Samsara endpoint yet.
+- Did not add machine authentication yet.
+- Did not add a provider-specific database table.
+- Did not add a new location source.
+- Did not change telemetry thresholds.
+- Did not change database schema or migrations.
+- Did not change telemetry alert behavior.
+- Did not change active-trip, completed-trip, stop-lifecycle or fleet-risk behavior.
+- During validation, TypeScript initially exposed insufficient narrowing because jitter and GPS-spike outcomes shared one union member.
+- Corrected the result type into separate literal discriminants for `jitter` and `gps_spike`.
+- Removed the accidental UTF-8 BOM introduced by the initial PowerShell file write.
+- Final validation completed before commit:
+  - normalized processing no longer remains in the HTTP route;
+  - both implementation files are UTF-8 without BOM;
+  - `git diff --check` passed;
+  - `npx tsc --noEmit` passed;
+  - `npm run build` passed;
+  - the production build compiled successfully;
+  - all 121/121 static pages were generated successfully;
+  - exactly two implementation files were staged;
+  - staged diff validation passed.
+- Implementation commit: `f82c2bd` (`Extract normalized vehicle location processing`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote implementation heads were verified identical at `f82c2bd973bdd1fde1ee95af546dc7d71d159038`.
+- The tracked tree was clean after implementation push.
+- Architectural principle established by this extraction: provider-specific transport/authentication should terminate at a thin adapter, while normalized vehicle-location processing should run through one shared server-side pipeline so telemetry validation, persistence, alerting and trip/risk lifecycle behavior cannot diverge between mobile and external hardware sources.
+- Next step: audit the smallest machine-authenticated Samsara vehicle-location ingestion adapter against this reusable processing boundary, using `tracker_device_id` for vehicle identity and normalized `hardware` locations rather than duplicating the update-location pipeline.
