@@ -1,6 +1,6 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
 
 type ShiftSummary = {
@@ -38,8 +38,13 @@ function statusColor(status: string) {
 export default function AIShiftSummary() {
   const [summary, setSummary] = useState<ShiftSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const refreshInFlight = useRef(false);
 
   async function loadShiftSummary() {
+    if (refreshInFlight.current) return;
+
+    refreshInFlight.current = true;
+
     try {
       const response = await fetchWithAuth("/api/ai/shift-summary", {
         method: "GET",
@@ -56,6 +61,7 @@ export default function AIShiftSummary() {
     } catch (error) {
       console.error("AI shift summary load failed:", error);
     } finally {
+      refreshInFlight.current = false;
       setLoading(false);
     }
   }
@@ -63,9 +69,20 @@ export default function AIShiftSummary() {
   useEffect(() => {
     loadShiftSummary();
 
-    const interval = setInterval(loadShiftSummary, 60000);
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "visible") {
+        loadShiftSummary();
+      }
+    };
 
-    return () => clearInterval(interval);
+    const interval = setInterval(refreshIfVisible, 60000);
+
+    document.addEventListener("visibilitychange", refreshIfVisible);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+    };
   }, []);
 
   if (loading) {
