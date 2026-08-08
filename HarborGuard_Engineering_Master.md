@@ -5824,3 +5824,62 @@ Pushed it to feature/expanded-incident-taxonomy.
 - The tracked tree was clean after implementation push.
 - Performance principle reinforced by this work: when a polling endpoint writes the same domain data it exposes, hidden-tab suppression and overlap prevention are safer first-line optimizations than write-triggered realtime invalidation.
 - Next step: continue the audit-first performance-stabilization roadmap with a fresh ranking audit from the post-CCTV documentation baseline.
+
+## 2026-08-08 - Executive Operations visibility coordination
+
+- Continued the audit-first performance-stabilization roadmap after CCTV polling coordination.
+- Ran a fresh post-CCTV recurring-workload audit from baseline `10cac2c`.
+- Confirmed most remaining timers were already coordinated, local-only playback/interpolation timers, provider timeouts or archived code.
+- Identified Executive Operations Dashboard and Insurance Response Center as remaining visibility-coordination gaps.
+- Ranked Executive Operations Dashboard first because each refresh fans out into three parallel API requests.
+- Audited `components/command-center/ExecutiveOperationsDashboard.tsx` before implementation.
+- Confirmed each Executive refresh requests `/api/fleet/health`, `/api/dispatcher/recommendations` and `/api/command-center/notifications` in parallel.
+- Confirmed `/api/fleet/health` performs five parallel organization-scoped Supabase reads covering vehicles, vehicle locations, unresolved vehicle alerts, vehicle trips and incidents.
+- Confirmed fleet health may also build traffic intelligence and load weather intelligence.
+- Confirmed the existing Executive refresh lifecycle already had in-flight protection, queued refresh handling and 250 ms realtime coalescing.
+- Confirmed existing realtime subscriptions cover `vehicle_alerts`, `vehicle_locations`, `incidents` and `command_center_notifications`.
+- Confirmed the existing 60-second fallback refresh remained active while the browser document was hidden.
+- Confirmed realtime-triggered refreshes also reached `runDashboardLoad()` without document-visibility protection.
+- Selected visibility coordination as the smallest safe optimization.
+- Updated only `components/command-center/ExecutiveOperationsDashboard.tsx`.
+- Preserved the existing initial dashboard load.
+- Preserved all four existing Supabase Realtime subscriptions.
+- Preserved the existing 250 ms realtime coalescing delay.
+- Preserved existing in-flight protection.
+- Preserved existing queued-refresh behavior.
+- Preserved the existing 60-second fallback cadence.
+- Added a visibility guard to `runDashboardLoad()` so automatic refresh work exits before network requests while the document is hidden.
+- Added a `visibilitychange` listener.
+- Added an immediate dashboard refresh when the document becomes visible again.
+- Added cleanup for the `visibilitychange` listener.
+- Preserved the existing realtime channel cleanup and fallback interval cleanup.
+- Did not abort a request already in progress when the document becomes hidden; subsequent refresh attempts are suppressed instead.
+- No API route was changed.
+- No database query was changed.
+- No database schema or migration was changed.
+- No realtime subscription dependency was changed.
+- No dashboard metric semantics were changed.
+- Preserved the existing UTF-8 BOM and CRLF source format of `ExecutiveOperationsDashboard.tsx`.
+- Initial PowerShell multiline replacement attempts were rejected safely because exact source assumptions did not match.
+- Those failed attempts were not committed.
+- The successful implementation used unique audited insertion blocks and executed inside a terminating PowerShell script block so failed preconditions could not continue into later write steps.
+- Validation completed before commit:
+  - only `components/command-center/ExecutiveOperationsDashboard.tsx` changed;
+  - unique insertion points were verified before writing;
+  - the hidden-document guard was verified;
+  - the visibility-return listener and cleanup were verified;
+  - the existing plain `if (disposed) return;` guard remained on `scheduleRealtimeRefresh()`;
+  - UTF-8 BOM and CRLF were preserved;
+  - `git diff --check` passed;
+  - `npx tsc --noEmit` passed;
+  - `npm run build` passed;
+  - the production build generated all `121/121` static pages successfully;
+  - final scope verification confirmed one tracked changed file and nothing staged before commit;
+  - only the Executive Operations component was staged;
+  - staged diff validation passed.
+- Implementation commit: `eb83b38` (`Coordinate executive visibility refresh`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote implementation heads were verified identical at `eb83b3845eff44915bb61f1f21d0fed60dc91dcd`.
+- The tracked tree was clean after implementation push.
+- Performance principle reinforced by this work: for realtime dashboards that retain conservative fallback polling, place document-visibility protection at the shared refresh executor so both realtime and fallback paths avoid hidden-tab network fan-out while preserving one reconciliation refresh on return.
+- Next step: continue the audit-first stabilization roadmap from the post-documentation baseline, with Insurance Response Center visibility coordination as the leading remaining candidate subject to fresh verification.
