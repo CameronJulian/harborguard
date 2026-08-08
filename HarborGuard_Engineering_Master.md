@@ -6297,3 +6297,42 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote heads were verified identical at `7824ec5`.
 - Architectural principle reinforced: provider-specific API transport and normalization belong in a thin provider client, while HarborGuard vehicle identity, idempotency and normalized location processing remain separate shared concerns.
 - Next step: audit and implement the smallest Traccar device-to-HarborGuard vehicle resolution boundary using the existing `tracker_device_id` contract before adding polling or live database writes.
+## 2026-08-08 - Organization-scoped telematics device vehicle resolver
+
+- Continued the provider-neutral external-telematics roadmap from verified baseline `9316497`.
+- Audited the existing vehicle schema before implementation.
+- Confirmed `vehicles.tracker_device_id` already exists as the external-device identity field.
+- Confirmed `vehicles.organization_id` already provides the required tenant boundary.
+- Confirmed no existing schema uniqueness constraint was found for `tracker_device_id` globally or together with `organization_id`.
+- Chose not to introduce a new database uniqueness migration in this work item.
+- Added `lib/telematics/resolveVehicleForProviderDevice.ts`.
+- Added `resolveVehicleForProviderDevice()` as the shared provider-device-to-HarborGuard-vehicle resolution boundary.
+- The resolver requires explicit `organizationId` and `providerDeviceId`.
+- Provider device IDs are trimmed before lookup.
+- Blank provider device IDs fail closed as `vehicle_not_found`.
+- Vehicle lookup is scoped by both `organization_id` and `tracker_device_id`.
+- The resolver requests at most two rows so it can distinguish a unique mapping from an ambiguous mapping.
+- Zero matching vehicles return `vehicle_not_found`.
+- More than one matching vehicle returns `ambiguous_device`.
+- A unique match returns the HarborGuard vehicle UUID plus the existing `tracker_device_id`.
+- Database query errors are propagated instead of being silently treated as not-found mappings.
+- This resolver is intentionally provider-neutral and can be reused by Traccar, Webfleet or another future provider that normalizes an external device identity.
+- No Traccar polling route was added.
+- No provider API request was added in this work item.
+- No `telematics_sync_state` write was added.
+- No `telematics_message_receipts` write was added.
+- No call to `processVehicleLocationUpdate()` was added.
+- No database schema or migration was changed.
+- No telemetry thresholds, alert behavior, trip lifecycle or fleet-risk behavior was changed.
+- Validation completed before commit:
+  - `npx tsc --noEmit` passed;
+  - `npm run build` passed;
+  - the production build compiled successfully;
+  - all 121/121 static pages were generated successfully;
+  - only `lib/telematics/resolveVehicleForProviderDevice.ts` was staged;
+  - staged diff validation passed.
+- Implementation commit: `76bdc6d` (`Add telematics device vehicle resolver`).
+- The implementation commit contains exactly one file with 88 insertions.
+- The implementation was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote heads were verified identical at `76bdc6d`.
+- Next step: audit the smallest Traccar ingestion-cycle boundary that combines provider positions, organization-scoped vehicle resolution, idempotency receipts and normalized `processVehicleLocationUpdate()` processing without yet exposing a public route.
