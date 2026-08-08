@@ -5565,3 +5565,48 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Performance principle reinforced by this work: when an expensive backend computation is intentionally triggered by both realtime events and polling, coordinate those triggers at the client boundary before changing backend semantics that serve distinct contexts.
 - Next step: continue the audit-first performance-stabilization roadmap by ranking the remaining recurring frontend and backend workloads and selecting one demonstrated bottleneck before making another focused change.
+
+## 2026-08-08 - AI Shift Summary refresh coordination
+
+- Continued the audit-first performance-stabilization roadmap after Dispatcher Recommendations refresh coordination.
+- Ran a repository-wide ranking audit of remaining recurring frontend workloads before selecting another target.
+- Audited Incident Command Dashboard first and rejected it as the next optimization target because its automatic 30-second refresh performs one bounded organization-scoped incidents query limited to 10 rows.
+- Selected AI Shift Summary after a focused frontend and backend audit demonstrated a higher recurring workload.
+- Confirmed `components/command-center/AIShiftSummary.tsx` loads `/api/ai/shift-summary` immediately after mount and every 60 seconds.
+- Confirmed the existing polling effect had no document-visibility awareness and no in-flight request protection.
+- Confirmed the AI Shift Summary component is the only direct caller of `/api/ai/shift-summary`.
+- Confirmed the component is mounted through the Command Center intelligence modules section behind deferred mounting.
+- Audited `app/api/ai/shift-summary/route.ts` before implementation.
+- Confirmed each shift-summary request performs five Supabase reads covering vehicles and recent operational activity from `vehicle_alerts`, `incidents`, `vehicle_trips`, and `command_center_notifications`.
+- Confirmed the activity queries cover the preceding eight-hour shift window.
+- Confirmed the endpoint does not currently make an external LLM request; the summary and recommendations are constructed deterministically from the retrieved operational data.
+- Rejected adding realtime subscriptions in this work item because the summary depends on five separate data sources and doing so would materially broaden the change.
+- Rejected API/query-semantic changes because the demonstrated gap was at the client refresh boundary.
+- Selected client-side polling coordination as the smallest safe optimization.
+- Updated only `components/command-center/AIShiftSummary.tsx`.
+- Preserved the existing immediate initial load.
+- Preserved the existing 60-second polling cadence while the document is visible.
+- Preserved the existing authenticated `GET /api/ai/shift-summary` request and API contract.
+- Added an in-flight request guard so AI Shift Summary refresh requests cannot overlap within one component instance.
+- Added document-visibility awareness so routine 60-second refreshes do not execute while the page is hidden.
+- Added a visibility-change refresh when the document becomes visible again.
+- Added cleanup for the visibility-change event listener while preserving interval cleanup.
+- No API route was changed.
+- No database query was changed.
+- No database schema or migration was changed.
+- No realtime subscription was added or removed.
+- No shift-summary calculation semantics were changed.
+- Validation completed before commit:
+  - only `components/command-center/AIShiftSummary.tsx` changed;
+  - `git diff --check` passed;
+  - `npx tsc --noEmit` passed;
+  - `npm run build` passed;
+  - the production build generated all `121/121` static pages successfully;
+  - the final diff was reviewed before staging;
+  - only the target component was staged;
+  - the tracked tree was clean after commit.
+- Implementation commit: `c800fac` (`Coordinate AI shift summary refresh`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote implementation heads were verified identical at `c800fac80fdd7ac5fda164c75899093f61f556f5`.
+- Performance principle reinforced by this work: when a periodically refreshed aggregate fans out into several backend reads, first prevent unnecessary hidden-tab and overlapping executions at the narrow client boundary before changing broader backend or realtime semantics.
+- Next step: continue the audit-first performance-stabilization roadmap by ranking the remaining demonstrated recurring workloads and selecting one precise bottleneck before making another focused change.
