@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
 
 type CCTVCamera = {
@@ -38,8 +38,15 @@ export default function CCTVMonitoring() {
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const refreshInFlightRef = useRef(false);
 
   async function loadCCTV() {
+    if (refreshInFlightRef.current) {
+      return;
+    }
+
+    refreshInFlightRef.current = true;
+
     try {
       setMessage("");
 
@@ -59,6 +66,7 @@ export default function CCTVMonitoring() {
     } catch (error: any) {
       setMessage(error.message || "Failed to load CCTV monitoring.");
     } finally {
+      refreshInFlightRef.current = false;
       setLoading(false);
     }
   }
@@ -66,10 +74,29 @@ export default function CCTVMonitoring() {
   useEffect(() => {
     loadCCTV();
 
-    const interval = setInterval(loadCCTV, 30000);
+    function refreshCCTVIfVisible() {
+      if (document.visibilityState === "visible") {
+        void loadCCTV();
+      }
+    }
+
+    const interval = setInterval(
+      refreshCCTVIfVisible,
+      30000
+    );
+
+    document.addEventListener(
+      "visibilitychange",
+      refreshCCTVIfVisible
+    );
 
     return () => {
       clearInterval(interval);
+
+      document.removeEventListener(
+        "visibilitychange",
+        refreshCCTVIfVisible
+      );
     };
   }, []);
 
