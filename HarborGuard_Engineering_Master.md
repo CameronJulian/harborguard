@@ -1467,7 +1467,7 @@ HarborGuard now treats HERE and TomTom as corroborating traffic intelligence sou
 ### Summary
 - Added road risk scoring for every HERE route alternative.
 - Reused the shared calculateDistanceMeters() helper.
-- Evaluated decoded HERE route geometry against oad_risk_segments.
+- Evaluated decoded HERE route geometry against oad_risk_segments.
 - Added:
   - safetyScore
   - riskScore
@@ -1487,7 +1487,7 @@ HarborGuard now treats HERE and TomTom as corroborating traffic intelligence sou
 **Commit:** 916288d
 
 ### Summary
-- Added ankRoutesBySafety().
+- Added ankRoutesBySafety().
 - Ranked routes by:
   1. Safety Score
   2. Duration
@@ -1669,7 +1669,7 @@ Taxonomy v2 road risk segment UI milestone completed.
 
 - Audited pp/api/route-safety/cron/providers/route.ts.
 - Updated HERE collision-related incidents to emit collision instead of the legacy ccident value.
-- Left oadblock unchanged because it remains a supported category.
+- Left oadblock unchanged because it remains a supported category.
 - TypeScript validation passed.
 - Next.js production build passed.
 
