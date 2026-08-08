@@ -6195,3 +6195,59 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote heads were verified identical at `cc175d4`.
 - Architectural principle established: normalized vehicle-location processing must distinguish event time from ingestion time so delayed provider telemetry preserves correct chronology and derived telemetry semantics.
 - Next step: implement the smallest Samsara GPS feed synchronizer and machine-triggered cron adapter using the organization-scoped `telematics_sync_state` checkpoint, existing Samsara HTTP conventions, `tracker_device_id` vehicle resolution, normalized `hardware` source, provider event time and `processVehicleLocationUpdate()`.
+## 2026-08-08 - Telematics message receipts and Traccar live-provider validation
+
+- Continued the external-telematics roadmap from verified baseline `4f8bfb1`.
+- Added migration `supabase/migrations/20260808134000_create_telematics_message_receipts.sql`.
+- Added `public.telematics_message_receipts` as the provider-neutral idempotency ledger for externally ingested telematics messages.
+- Each receipt is organization scoped through required `organization_id`.
+- Each receipt records required `provider`, `stream` and `provider_message_id`.
+- Added uniqueness across `(organization_id, provider, stream, provider_message_id)` so the same provider message cannot be processed twice for the same tenant and stream.
+- Added `received_at` with a server-side default timestamp.
+- Added JSONB `metadata` for limited provider-message context that does not warrant dedicated columns.
+- Added non-blank constraints for provider, stream and provider message ID.
+- Added an `(organization_id, provider, received_at desc)` index.
+- Enabled row-level security.
+- Added authenticated own-organization SELECT visibility through `public.profiles.organization_id`.
+- Did not add authenticated INSERT, UPDATE or DELETE policies because the intended writer remains a machine-side service-role ingestion path.
+- Did not change vehicle identity schema.
+- Did not change normalized vehicle-location processing.
+- Did not change telemetry thresholds, alert behavior, trip lifecycle behavior or fleet-risk behavior.
+- Migration commit: `453a42d` (`Add telematics message receipts`).
+- The migration commit contains exactly one file with 60 insertions.
+- The migration was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote implementation heads were verified identical at `453a42d`.
+
+### External-provider status
+
+- Samsara remains part of HarborGuard's existing dashcam/media integration plan, but production/sandbox API access remains unavailable for the current fleet-telemetry implementation path.
+- A Webfleet integration-partner application was submitted successfully.
+- Webfleet API credentials remain pending, so live Webfleet API validation has not yet been performed.
+- Traccar was selected as the immediately available development telematics provider so HarborGuard can continue live external-telemetry work without waiting for provider approval.
+- A Traccar Demo 3 account was created successfully.
+- A Traccar API token was generated successfully and remains secret; it was not committed to the repository and must only be supplied through local/server environment configuration.
+- Registered Traccar test device `HarborGuard Test Vehicle 01`.
+- Configured the Traccar Client device identifier to match the registered Traccar device.
+- Configured Traccar Client to submit telemetry to the Demo 3 server.
+- Confirmed Android location permission and precise-location access.
+- Confirmed a live phone GPS sample was acquired and uploaded successfully to Traccar with HTTP response `200`.
+- Confirmed the Traccar web application displayed `HarborGuard Test Vehicle 01` as online and plotted the transmitted live position.
+- This establishes a working live development telemetry path from phone GPS -> Traccar Client -> Traccar server.
+
+### Architecture decision
+
+- Traccar does not replace HarborGuard's provider-neutral telematics architecture.
+- Provider-specific transport, authentication and response parsing must terminate at a thin Traccar adapter.
+- Traccar-normalized locations must reuse the existing `hardware` vehicle-location source.
+- HarborGuard vehicle resolution should continue using the existing external-device identity contract rather than introducing a second vehicle identity model without evidence that one is required.
+- Provider observation time must be preserved and passed into the existing normalized event-time path.
+- Normalized Traccar telemetry must enter `processVehicleLocationUpdate()` so persistence, telemetry analysis, jitter rejection, GPS-spike rejection, alerts, trips, stop lifecycle and fleet-risk behavior remain shared with other ingestion paths.
+- `telematics_sync_state` remains the organization/provider/stream synchronization-state primitive.
+- `telematics_message_receipts` remains the organization/provider/stream/message idempotency primitive.
+- Webfleet and future providers can later terminate at equivalent thin adapters and feed the same normalized processing boundary.
+
+### Next step
+
+- Audit the exact Traccar REST API contract and the current HarborGuard vehicle-resolution/server-authentication insertion points.
+- Then implement the smallest credential-gated Traccar server-side adapter that reads authorized Traccar position data, maps it to the existing external vehicle identity, preserves provider event time, records idempotency state where appropriate and delegates normalized locations to `processVehicleLocationUpdate()`.
+- Keep all Traccar credentials out of tracked source and Git history.
