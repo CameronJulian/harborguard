@@ -5421,3 +5421,46 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote branch hashes were verified identical at `f9801dfc188d20a799360294c287ac6b11790d2d`.
 - Performance principle reinforced by this work: preserve useful operational freshness mechanisms while routing competing refresh triggers through one guarded, coalesced execution path instead of allowing polling and realtime activity to create overlapping request work.
 - Next step: continue the audit-first performance-stabilization roadmap by ranking the remaining recurring workloads and selecting one demonstrated request, query or write bottleneck before making another focused change.
+
+## 2026-08-08 - Route Safety alert polling coordination
+
+- Continued the audit-first performance-stabilization roadmap after completing Risk Dashboard refresh coordination.
+- Ran a read-only ranking audit of remaining recurring frontend workloads before selecting the next target.
+- Selected `app/route-safety/page.tsx` because it retained a direct 10-second alert polling loop rather than the coordinated refresh behavior already introduced in higher-priority dashboard surfaces.
+- Audited the Route Safety page, `/api/route-safety/nearby`, duplicate callers, database operations, query bounds, application-side distance processing and realtime coverage before implementation.
+- Confirmed `/api/route-safety/nearby` is a read-only endpoint.
+- Confirmed the nearby endpoint queries active, non-expired organization alerts and then performs distance filtering and result sorting in application code.
+- Confirmed the Route Safety page requested browser geolocation and `/api/route-safety/nearby` immediately and every 10 seconds while mounted.
+- Confirmed the existing polling loop had no page-visibility guard and no in-flight refresh coordination.
+- Confirmed `loadSafetyAlerts()` previously returned before its callback-based `navigator.geolocation.getCurrentPosition()` and subsequent alert fetch completed, meaning simply awaiting the function would not have provided genuine concurrency protection.
+- Kept the existing 10-second visible-page freshness cadence because location movement can change which alerts are nearby even when no database row changes.
+- Did not replace polling with realtime because database-change notifications alone cannot represent changes caused by vehicle/device movement.
+- Updated only `app/route-safety/page.tsx`.
+- Converted the geolocation-backed alert loader into an awaitable lifecycle so completion now represents both location acquisition and the subsequent nearby-alert request.
+- Added one coordinated automatic refresh path with in-flight protection.
+- Added queued-refresh behavior so refresh requests arriving during active work collapse into a subsequent refresh rather than creating overlapping geolocation/request work.
+- Added page-visibility awareness so automatic Route Safety polling does not repeatedly perform geolocation and nearby-alert requests while the page is hidden.
+- Added a visibility-change refresh when the page becomes visible again.
+- Preserved the existing 10-second polling cadence while the page is visible.
+- Preserved timer and visibility-listener cleanup on component unmount.
+- Preserved the existing manual alert creation flow.
+- Preserved the existing HERE incident import flow.
+- Preserved the existing alert verification flow.
+- Left `/api/route-safety/nearby` unchanged.
+- No API route was modified.
+- No database schema or migration change was required.
+- No realtime subscription was introduced or removed.
+- Validation completed before commit:
+  - only `app/route-safety/page.tsx` changed;
+  - `git diff --check` passed;
+  - mutating Route Safety actions remained present;
+  - the coordinated refresh structure was verified directly in the source;
+  - `npx tsc --noEmit` passed;
+  - `npm run build` passed;
+  - the production build generated all `121/121` static pages successfully;
+  - final `git diff --check` passed;
+  - staged diff validation passed before commit.
+- Implementation commit: `ddef4a5` (`Coordinate Route Safety alert polling`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Performance principle reinforced by this work: recurring location-aware polling can remain operationally useful, but its complete asynchronous lifecycle must be awaitable and coordinated so hidden tabs and overlapping timer cycles do not multiply geolocation and backend request work.
+- Next step: continue the audit-first performance-stabilization roadmap by ranking the remaining recurring workloads and selecting one demonstrated request, query or write bottleneck before making another focused change.
