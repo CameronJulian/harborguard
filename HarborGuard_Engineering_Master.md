@@ -6151,3 +6151,47 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote heads were verified identical at `96957c8`.
 - Architectural principle established: provider synchronization progress is tenant-specific operational state and should be stored separately from HarborGuard's global provider/intelligence registry.
 - Next step: audit and implement the smallest Samsara GPS feed synchronizer and cron adapter using the organization-scoped telematics checkpoint, existing Samsara provider HTTP conventions, `tracker_device_id` vehicle resolution, normalized `hardware` input and `processVehicleLocationUpdate()`.
+
+## 2026-08-08 - Vehicle telemetry event-time preservation
+
+- Continued the external-telematics roadmap from verified baseline `aa602e7`.
+- Audited the normalized vehicle-location processing boundary before implementing the Samsara GPS feed synchronizer.
+- Confirmed provider GPS samples may arrive after their actual observation time and therefore must preserve provider event time rather than always using ingestion time.
+- Confirmed `createVehicleLocation()` already accepts an explicit `recordedAt` timestamp.
+- Confirmed `processVehicleLocationUpdate()` previously created its own `new Date().toISOString()` timestamp and used that value for telemetry analysis, persistence, trip lifecycle processing and its returned location.
+- Confirmed telemetry interval calculations depend on the relationship between the current event time and the previous `vehicle_locations.recorded_at`.
+- Identified event-time preservation as a prerequisite for safe delayed or historical hardware telemetry ingestion.
+- Updated `lib/fleet/parseUpdateLocationInput.ts`.
+- Added optional `recordedAt` to `UpdateLocationBody`.
+- Added optional normalized `recordedAt` to `ParsedUpdateLocationInput`.
+- When supplied, `recordedAt` must be a non-empty valid date-time string.
+- Valid provider/client timestamps are normalized through `Date.toISOString()` before entering shared processing.
+- Existing callers remain backward compatible because `recordedAt` is optional.
+- Updated `lib/fleet/processVehicleLocationUpdate.ts`.
+- The shared processor now resolves one canonical event timestamp as `recordedAt ?? new Date().toISOString()`.
+- The resolved event timestamp is used for telemetry analysis.
+- The resolved event timestamp is persisted as `vehicle_locations.recorded_at`.
+- The resolved event timestamp is passed to trip and vehicle lifecycle processing.
+- The resolved event timestamp is returned with the normalized persisted location.
+- Existing mobile ingestion therefore retains current-time behavior when it omits `recordedAt`.
+- Future hardware/provider ingestion can supply the actual provider observation time without duplicating the shared processing lifecycle.
+- No Samsara-specific parsing was added in this prerequisite.
+- No Samsara polling or cron route was added.
+- No sync cursor behavior was changed.
+- No telemetry thresholds were changed.
+- No trip lifecycle rules were changed.
+- No schema migration was required.
+- Validation completed before commit:
+  - exactly two tracked files were modified;
+  - UTF-8 BOM checks passed;
+  - `git diff --check` passed;
+  - `npx tsc --noEmit` passed;
+  - `npm run build` passed;
+  - the production build compiled successfully;
+  - all 121/121 static pages were generated successfully.
+- Implementation commit: `cc175d4` (`Preserve vehicle telemetry event time`).
+- The implementation commit contains exactly two files with 43 insertions and 5 deletions.
+- The implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote heads were verified identical at `cc175d4`.
+- Architectural principle established: normalized vehicle-location processing must distinguish event time from ingestion time so delayed provider telemetry preserves correct chronology and derived telemetry semantics.
+- Next step: implement the smallest Samsara GPS feed synchronizer and machine-triggered cron adapter using the organization-scoped `telematics_sync_state` checkpoint, existing Samsara HTTP conventions, `tracker_device_id` vehicle resolution, normalized `hardware` source, provider event time and `processVehicleLocationUpdate()`.
