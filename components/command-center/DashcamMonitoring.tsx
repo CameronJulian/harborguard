@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
 import { fetchWithAuth } from "@/lib/auth-fetch";
 
 type Dashcam = {
@@ -257,24 +256,8 @@ export default function DashcamMonitoring() {
 
     const interval = setInterval(loadDashcams, 30000);
 
-    const channel = supabase
-      .channel("dashcam-events-realtime")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "dashcam_events",
-        },
-        () => {
-          loadDashcams();
-        }
-      )
-      .subscribe();
-
     return () => {
       clearInterval(interval);
-      supabase.removeChannel(channel);
     };
   }, []);
 
