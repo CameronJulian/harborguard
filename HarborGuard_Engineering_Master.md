@@ -5324,3 +5324,61 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote branch hashes were verified identical at `3a905b47b3b09bffb4bd8312bb37ff88982bf177`.
 - Performance principle reinforced by this work: remove demonstrated feedback/amplification paths without discarding polling that remains necessary to obtain authoritative external provider state.
 - Next step: continue performance stabilization with another read-only ranking audit of remaining recurring workloads and select one demonstrated request, query or write bottleneck before changing code.
+
+## 2026-08-08 - Executive Operations Dashboard refresh coalescing
+
+- Continued the audit-first performance-stabilization roadmap after the CCTV and Dashcam realtime refresh-loop prevention work.
+- Ran a read-only repository-wide ranking audit of remaining recurring Command Center workloads before selecting another optimization target.
+- Ranked candidates by recurring frequency, endpoint cost, duplicate consumers, write amplification and realtime overlap.
+- Selected `components/command-center/ExecutiveOperationsDashboard.tsx` because it combined four realtime change sources with a 60-second polling fallback around the same dashboard refresh operation.
+- Audited the dashboard component, its three API requests, their database behavior and indirect helper chains before changing code.
+- Confirmed one `loadExecutiveDashboard()` execution performs three authenticated uncached GET requests in parallel:
+  - `/api/fleet/health`;
+  - `/api/dispatcher/recommendations`;
+  - `/api/command-center/notifications`.
+- Confirmed the dashboard subscribed to changes from four tables:
+  - `vehicle_alerts`;
+  - `vehicle_locations`;
+  - `incidents`;
+  - `command_center_notifications`.
+- Confirmed each realtime event directly invoked the full `loadExecutiveDashboard()` request bundle.
+- Confirmed the same loader also ran immediately on mount and every 60 seconds through the existing polling fallback.
+- Audited `/api/fleet/health`, `/api/dispatcher/recommendations` and `/api/command-center/notifications` before implementation.
+- Confirmed `/api/command-center/notifications` is read-only.
+- Confirmed `/api/fleet/health` directly performs read operations and delegates traffic intelligence construction to `buildTrafficIntelligence()`.
+- Confirmed `/api/dispatcher/recommendations` delegates recommendation construction to `buildDispatchCopilot()`.
+- Audited `buildTrafficIntelligence()`, `buildDispatchCopilot()` and `buildFleetOptimization()` through their indirect call chain.
+- Confirmed the audited request/helper chain does not write into `vehicle_alerts`, `vehicle_locations`, `incidents` or `command_center_notifications`.
+- Therefore classified the issue as realtime/read amplification rather than a demonstrated write -> realtime -> write feedback loop.
+- Updated only `components/command-center/ExecutiveOperationsDashboard.tsx`.
+- Preserved the immediate initial dashboard load.
+- Preserved all four existing Supabase realtime subscriptions.
+- Preserved the existing 60-second polling fallback.
+- Preserved the existing three dashboard API requests and their response/UI semantics.
+- Added an in-flight guard so multiple dashboard refreshes cannot execute concurrently.
+- Added a queued-refresh flag so refresh requests received while a load is active collapse into one subsequent refresh instead of being lost or multiplying concurrent request bundles.
+- Added a 250 ms realtime debounce window so bursts across the four subscribed tables collapse into a single scheduled dashboard refresh.
+- Routed the 60-second polling fallback through the same guarded dashboard loader.
+- Added disposal protection so refresh work is not started after component unmount.
+- Added cleanup for a pending realtime debounce timer.
+- Preserved Supabase channel removal and interval cleanup.
+- No API route was changed.
+- No helper/service implementation was changed.
+- No database migration was required.
+- No realtime subscription was removed.
+- No broad Command Center polling rewrite was introduced.
+- Validation completed before the implementation commit:
+  - exact effect boundaries and pre-change callback structure were verified before editing;
+  - the existing UTF-8 BOM was preserved;
+  - only `components/command-center/ExecutiveOperationsDashboard.tsx` changed;
+  - `git diff --check` passed;
+  - `npx tsc --noEmit` passed;
+  - `npm run build` passed;
+  - Next.js production build compiled successfully and generated all `121/121` static pages;
+  - the implementation diff contained `55` insertions and `6` deletions;
+  - staged diff validation passed before commit.
+- Implementation commit: `6ebb9b3` (`Coalesce executive dashboard realtime refreshes`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote branch hashes were verified identical at `6ebb9b3045c73d36e358527764c2d4258cd1bc01`.
+- Performance principle reinforced by this work: preserve realtime freshness and polling fallbacks when they serve distinct reliability purposes, while coalescing burst triggers before they multiply expensive aggregate reads.
+- Next step: continue performance stabilization with another read-only ranking audit of the remaining recurring workloads and select one demonstrated bottleneck before changing code.
