@@ -6604,3 +6604,40 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote heads were verified identical at `78719b0`.
 - HarborGuard now has a protected machine-execution boundary capable of invoking the internal Traccar position synchronization cycle for one explicitly configured organization.
 - Next step: audit deployment configuration and the existing Vercel cron cadence conventions before deciding whether and how `/api/telematics/cron/traccar` should be scheduled; separately verify the required Traccar runtime environment variables before any live provider invocation.
+## 2026-08-08 - First successful live Traccar telematics sync
+
+- Continued the external-telematics roadmap from verified baseline `46a64f3`.
+- Configured the required Traccar runtime environment variables outside tracked source.
+- Confirmed the HarborGuard Demo organization for the active test user.
+- Confirmed the protected Preview deployment route could be reached through Vercel Deployment Protection using the automation bypass mechanism while retaining HarborGuard `CRON_SECRET` authentication.
+- Identified that the remote Supabase database was behind the repository migration history.
+- Applied the pending migration chain through `20260808154500`.
+- Confirmed local and remote Supabase migration history are now aligned through `20260808154500`.
+- Confirmed `telematics_sync_state` exists and is accessible remotely.
+- Confirmed `telematics_message_receipts` exists and is accessible remotely.
+- Confirmed `claim_telematics_message`, `complete_telematics_message` and `fail_telematics_message` are present and execute validation successfully.
+- Confirmed Traccar device `16839` is `HarborGuard Test Vehicle 01`.
+- Confirmed the Traccar device unique identifier is `41877137`.
+- Added a dedicated HarborGuard Demo vehicle for this external telematics test rather than overwriting an existing vehicle mapping.
+- Created HarborGuard vehicle `TRACCAR-16839` with nickname `HarborGuard Test Vehicle 01`.
+- Mapped `vehicles.tracker_device_id` to provider device ID `16839`.
+- Completed the first successful protected live Traccar synchronization request.
+- The live request returned HTTP 200.
+- The synchronization summary reported:
+  - `received = 1`;
+  - `processed = 1`;
+  - `duplicates = 0`;
+  - `alreadyProcessing = 0`;
+  - `jitterSkipped = 0`;
+  - `gpsSpikeSkipped = 0`.
+- Confirmed `telematics_sync_state` recorded a successful `traccar` / `positions` cycle.
+- Confirmed `last_failure_at` and `last_failure_message` are clear after the successful cycle.
+- Confirmed the sync-state metadata records one received and one processed position.
+- Confirmed provider message `116208899` exists in `telematics_message_receipts`.
+- Confirmed that receipt reached `processing_status = processed`.
+- Confirmed the receipt completed on attempt `1`.
+- Confirmed the dedicated HarborGuard vehicle remains active and mapped to Traccar device `16839`.
+- This validates the full live path from Traccar position retrieval through normalization, organization-scoped vehicle resolution, atomic receipt claiming, normalized HarborGuard location processing, receipt finalization and sync-state success recording.
+- No Traccar token, Supabase service-role key, cron secret or Vercel automation bypass secret was committed to Git.
+- No recurring Traccar scheduler has been enabled yet.
+- Next step: audit the appropriate Traccar polling cadence and Vercel scheduling constraints before adding any automatic invocation of `/api/telematics/cron/traccar`.
