@@ -5515,3 +5515,53 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote branch hashes were verified identical at `5a41d17d87ca56e4dc6ec38f577944953c796dc8`.
 - Performance principle reinforced by this work: retain realtime freshness and polling reliability while routing competing refresh triggers through one guarded execution path and debouncing burst-driven database reloads.
 - Next step: continue the audit-first performance-stabilization roadmap by ranking the remaining recurring workloads and selecting one demonstrated request, query or write bottleneck before making another focused change.
+
+## 2026-08-08 - Dispatcher recommendation refresh coordination
+
+- Continued the audit-first performance-stabilization roadmap after Incident Assignment Board refresh coordination.
+- Ran a focused frontend audit of `components/command-center/DispatcherRecommendations.tsx` before making changes.
+- Confirmed the component loads `/api/dispatcher/recommendations` immediately on mount, on every `vehicle_alerts` realtime event and independently every 60 seconds.
+- Confirmed the recommendation request uses authenticated `GET` semantics with `cache: "no-store"`.
+- Confirmed the component previously had no realtime debounce, in-flight request protection, queued-refresh behavior or page-visibility protection.
+- Audited the `/api/dispatcher/recommendations` backend call chain before selecting the optimization.
+- Confirmed the route delegates recommendation construction to the dispatch copilot rather than performing the workload directly in the route.
+- Confirmed one dispatcher recommendation request performs a non-trivial backend workload including alert retrieval, fleet optimization and traffic-intelligence processing.
+- Investigated whether the traffic-intelligence work inside dispatch copilot and fleet optimization could safely be deduplicated.
+- Rejected that backend deduplication because the two traffic-intelligence calls are not guaranteed to represent the same geographic scope:
+  - dispatch copilot can use the traffic-intelligence default center;
+  - fleet optimization derives its traffic center from available fleet-location coordinates.
+- Confirmed `buildFleetOptimization()` also has callers outside Dispatcher Recommendations, so changing its traffic semantics would broaden the work item beyond the demonstrated frontend bottleneck.
+- Selected frontend refresh coordination as the smallest safe optimization.
+- Updated only `components/command-center/DispatcherRecommendations.tsx`.
+- Preserved the existing initial recommendation load.
+- Preserved the existing `vehicle_alerts` Supabase realtime subscription.
+- Preserved the existing 60-second polling fallback.
+- Preserved the existing `/api/dispatcher/recommendations` GET request and `cache: "no-store"` semantics.
+- Added an in-flight guard so recommendation refresh requests cannot execute concurrently within one component instance.
+- Added queued-refresh behavior so refresh requests received while a recommendation request is active collapse into one subsequent refresh.
+- Added a 250 ms realtime debounce window so bursts of `vehicle_alerts` changes collapse before launching the expensive recommendation request chain repeatedly.
+- Added page-visibility awareness so automatic recommendation refreshes do not continue while the document is hidden.
+- Added a visibility-change refresh when the page becomes visible again.
+- Preserved cleanup of the Supabase realtime channel and 60-second polling interval.
+- Added cleanup for a pending realtime debounce timer and the visibility-change listener.
+- No API route was changed.
+- No backend helper was changed.
+- No database query semantics were changed.
+- No database schema or migration was changed.
+- No realtime subscription was removed.
+- Validation completed before commit:
+  - the audited original refresh effect was verified before replacement;
+  - only `components/command-center/DispatcherRecommendations.tsx` changed;
+  - `git diff --check` passed;
+  - the authenticated recommendation API request was verified unchanged;
+  - refresh-coordination structure was verified directly in source;
+  - `npx tsc --noEmit` passed;
+  - `npm run build` passed;
+  - the production build generated all `121/121` static pages successfully;
+  - final `git diff --check` passed;
+  - final tracked scope contained only the target component;
+  - staged diff validation passed before commit.
+- Implementation commit: `13f73d0` (`Optimize dispatcher recommendation refresh coordination`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Performance principle reinforced by this work: when an expensive backend computation is intentionally triggered by both realtime events and polling, coordinate those triggers at the client boundary before changing backend semantics that serve distinct contexts.
+- Next step: continue the audit-first performance-stabilization roadmap by ranking the remaining recurring frontend and backend workloads and selecting one demonstrated bottleneck before making another focused change.
