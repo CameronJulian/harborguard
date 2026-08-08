@@ -29,6 +29,8 @@ export function useRealtimeRefresh({
 
   useEffect(() => {
     function runRefresh() {
+      if (document.visibilityState !== "visible") return;
+
       void refreshRef.current();
     }
 
@@ -56,7 +58,16 @@ export function useRealtimeRefresh({
       ? setInterval(runRefresh, pollingMs)
       : null;
 
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        runRefresh();
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
