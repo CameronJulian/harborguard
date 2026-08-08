@@ -76,35 +76,84 @@ export default function ExecutiveOperationsDashboard() {
   }
 
   useEffect(() => {
-    loadExecutiveDashboard();
+    let disposed = false;
+    let loadInFlight = false;
+    let refreshQueued = false;
+    let realtimeRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const runDashboardLoad = async () => {
+      if (disposed) return;
+
+      if (loadInFlight) {
+        refreshQueued = true;
+        return;
+      }
+
+      loadInFlight = true;
+
+      try {
+        await loadExecutiveDashboard();
+      } finally {
+        loadInFlight = false;
+
+        if (!disposed && refreshQueued) {
+          refreshQueued = false;
+          void runDashboardLoad();
+        }
+      }
+    };
+
+    const scheduleRealtimeRefresh = () => {
+      if (disposed) return;
+
+      if (realtimeRefreshTimer) {
+        clearTimeout(realtimeRefreshTimer);
+      }
+
+      realtimeRefreshTimer = setTimeout(() => {
+        realtimeRefreshTimer = null;
+        void runDashboardLoad();
+      }, 250);
+    };
+
+    void runDashboardLoad();
 
     const channel = supabase
       .channel("executive-operations-dashboard-live")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "vehicle_alerts" },
-        () => loadExecutiveDashboard()
+        scheduleRealtimeRefresh
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "vehicle_locations" },
-        () => loadExecutiveDashboard()
+        scheduleRealtimeRefresh
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "incidents" },
-        () => loadExecutiveDashboard()
+        scheduleRealtimeRefresh
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "command_center_notifications" },
-        () => loadExecutiveDashboard()
+        scheduleRealtimeRefresh
       )
       .subscribe();
 
-    const interval = setInterval(loadExecutiveDashboard, 60000);
+    const interval = setInterval(() => {
+      void runDashboardLoad();
+    }, 60000);
 
     return () => {
+      disposed = true;
+      refreshQueued = false;
+
+      if (realtimeRefreshTimer) {
+        clearTimeout(realtimeRefreshTimer);
+      }
+
       supabase.removeChannel(channel);
       clearInterval(interval);
     };
