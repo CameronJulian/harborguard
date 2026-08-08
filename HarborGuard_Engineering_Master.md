@@ -6251,3 +6251,49 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Audit the exact Traccar REST API contract and the current HarborGuard vehicle-resolution/server-authentication insertion points.
 - Then implement the smallest credential-gated Traccar server-side adapter that reads authorized Traccar position data, maps it to the existing external vehicle identity, preserves provider event time, records idempotency state where appropriate and delegates normalized locations to `processVehicleLocationUpdate()`.
 - Keep all Traccar credentials out of tracked source and Git history.
+## 2026-08-08 - Traccar telematics provider client
+
+- Continued the provider-neutral external-telematics roadmap from verified baseline `9f1321e`.
+- Audited the existing HarborGuard provider, normalized-location and machine-authentication patterns before implementation.
+- Confirmed `processVehicleLocationUpdate()` remains the shared destination for normalized telemetry.
+- Confirmed `vehicles.tracker_device_id` remains the external-device identity slot.
+- Confirmed normalized external telemetry continues to use the existing `hardware` source.
+- Confirmed provider observation time must continue through the existing `recordedAt` path.
+- Added `lib/telematics/providers/traccar.ts`.
+- Added Traccar configuration through `TRACCAR_API_TOKEN`.
+- Added configurable `TRACCAR_API_BASE_URL` with `https://demo3.traccar.org` as the development default.
+- Added bearer-token authorization for Traccar API requests.
+- Added `Accept: application/json`.
+- Added `cache: "no-store"` for provider requests.
+- Added a 10-second provider request timeout using `AbortController`.
+- Added `loadTraccarDevices()` using `GET /api/devices`.
+- Added `loadTraccarLatestPositions()` using `GET /api/positions`.
+- Added typed Traccar device and position response shapes.
+- Added normalization of Traccar position IDs into provider message IDs.
+- Added normalization of Traccar device IDs into provider device IDs.
+- Added latitude and longitude finite/range validation.
+- Added Traccar speed conversion from knots to kilometers per hour using factor `1.852`.
+- Added Traccar course normalization into HarborGuard heading.
+- Added provider event-time preservation using Traccar `fixTime`, then `deviceTime`, then `serverTime` as fallback order.
+- Invalid or absent provider timestamps now fail normalization rather than silently replacing event time with ingestion time.
+- Did not add a polling or cron route yet.
+- Did not write to `telematics_sync_state` yet.
+- Did not write to `telematics_message_receipts` yet.
+- Did not connect provider device IDs to HarborGuard vehicles yet.
+- Did not call `processVehicleLocationUpdate()` yet.
+- Did not modify any existing tracked application file.
+- No database schema or migration was changed.
+- No telemetry thresholds, alert behavior, trip lifecycle or fleet-risk behavior was changed.
+- Validation completed before commit:
+  - `npx tsc --noEmit` passed;
+  - `npm run build` passed;
+  - the production build compiled successfully;
+  - all 121/121 static pages were generated successfully;
+  - only `lib/telematics/providers/traccar.ts` was staged;
+  - staged diff validation passed.
+- Implementation commit: `7824ec5` (`Add Traccar telematics provider client`).
+- The implementation commit contains exactly one file with 225 insertions.
+- The implementation was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote heads were verified identical at `7824ec5`.
+- Architectural principle reinforced: provider-specific API transport and normalization belong in a thin provider client, while HarborGuard vehicle identity, idempotency and normalized location processing remain separate shared concerns.
+- Next step: audit and implement the smallest Traccar device-to-HarborGuard vehicle resolution boundary using the existing `tracker_device_id` contract before adding polling or live database writes.
