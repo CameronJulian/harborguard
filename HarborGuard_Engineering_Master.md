@@ -6336,3 +6336,43 @@ Pushed it to feature/expanded-incident-taxonomy.
 - The implementation was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Local and remote heads were verified identical at `76bdc6d`.
 - Next step: audit the smallest Traccar ingestion-cycle boundary that combines provider positions, organization-scoped vehicle resolution, idempotency receipts and normalized `processVehicleLocationUpdate()` processing without yet exposing a public route.
+## 2026-08-08 - Telematics message receipt processing state
+
+- Continued the external-telematics ingestion roadmap from verified baseline `23fd9ad`.
+- Audited the existing `telematics_message_receipts` contract before implementation.
+- Confirmed the existing receipt table uniquely identifies messages by `organization_id`, `provider`, `stream` and `provider_message_id`.
+- Confirmed the existing receipt model could only represent receipt existence and could not distinguish a claimed message from successful or failed processing.
+- Confirmed no application-level receipt claiming implementation currently exists.
+- Added migration `20260808151000_add_telematics_message_processing_state.sql`.
+- Added `processing_status` with allowed states `processing`, `processed` and `failed`.
+- Existing receipt rows default to `processed` so historical receipt semantics remain intact.
+- Added nullable `claimed_at`.
+- Added nullable `processed_at`.
+- Added nullable `last_failure_at`.
+- Added nullable `last_failure_message`.
+- Added `attempt_count` with a minimum value of 1.
+- Added a processing-status check constraint.
+- Added an attempt-count check constraint.
+- Existing processed receipt rows are backfilled so `processed_at` falls back to `received_at` when no processed timestamp exists.
+- Added an organization/provider/stream/status/received-time index for processing-state lookup.
+- This migration establishes the state required for future atomic message claiming and retry semantics.
+- No Traccar provider request was added.
+- No live Traccar token was used.
+- No polling or public ingestion route was added.
+- No message-claim application helper was added yet.
+- No sync-state write was added.
+- No call to `processVehicleLocationUpdate()` was added.
+- No vehicle mapping behavior was changed.
+- No telemetry thresholds, alert behavior, trip lifecycle or fleet-risk behavior was changed.
+- Validation completed before commit:
+  - `npx tsc --noEmit` passed;
+  - `npm run build` passed;
+  - the production build compiled successfully;
+  - all 121/121 static pages were generated successfully;
+  - only the receipt processing-state migration was staged;
+  - staged diff validation passed.
+- Implementation commit: `724997b` (`Add telematics receipt processing state`).
+- The implementation commit contains exactly one migration with 63 insertions.
+- The implementation was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote heads were verified identical at `724997b`.
+- Next step: audit and implement the smallest atomic telematics message-claim boundary using the new receipt processing states before wiring normalized Traccar positions into `processVehicleLocationUpdate()`.
