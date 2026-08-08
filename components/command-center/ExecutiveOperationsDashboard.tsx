@@ -82,7 +82,7 @@ export default function ExecutiveOperationsDashboard() {
     let realtimeRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 
     const runDashboardLoad = async () => {
-      if (disposed) return;
+      if (disposed || document.visibilityState !== "visible") return;
 
       if (loadInFlight) {
         refreshQueued = true;
@@ -146,6 +146,14 @@ export default function ExecutiveOperationsDashboard() {
       void runDashboardLoad();
     }, 60000);
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void runDashboardLoad();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     return () => {
       disposed = true;
       refreshQueued = false;
@@ -154,6 +162,7 @@ export default function ExecutiveOperationsDashboard() {
         clearTimeout(realtimeRefreshTimer);
       }
 
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       supabase.removeChannel(channel);
       clearInterval(interval);
     };
