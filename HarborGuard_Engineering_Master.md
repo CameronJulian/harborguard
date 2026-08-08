@@ -5660,3 +5660,54 @@ Pushed it to feature/expanded-incident-taxonomy.
 - The tracked tree was clean after the implementation push.
 - Performance principle reinforced by this work: when an aggregate endpoint has a small, known set of realtime-capable dependencies, prefer coalesced dependency-driven invalidation with a conservative fallback interval over frequent unconditional polling.
 - Next step: continue the audit-first performance-stabilization roadmap by ranking the remaining demonstrated recurring workloads before selecting another focused change.
+
+## 2026-08-08 - Incident Command Dashboard refresh coordination
+
+- Continued the audit-first performance-stabilization roadmap after Insurance Response Center refresh coordination.
+- Ran a fresh recurring-workload ranking audit from baseline `08bfaa0` before selecting another target.
+- Re-evaluated Incident Command Dashboard rather than changing it automatically after earlier audits.
+- Confirmed `components/command-center/IncidentCommandDashboard.tsx` still loaded incidents immediately and then polled `/api/incidents/command` every 30 seconds for the component lifetime.
+- Confirmed the automatic incident-list refresh had no document-visibility awareness, in-flight guard, queued-refresh handling or realtime invalidation.
+- Audited `app/api/incidents/command/route.ts` before implementation.
+- Confirmed the recurring no-`incidentId` GET performs one bounded Supabase read from `incidents`.
+- Confirmed the incident-list query is organization-scoped, excludes resolved incidents, orders newest-first and is limited to 10 rows.
+- Confirmed the selected-incident action GET reads `incident_command_actions` separately and is driven by selected incident state rather than the automatic incident-list timer.
+- Confirmed workflow creation and action updates use separate POST/PATCH semantics.
+- Preserved those action-workflow semantics unchanged.
+- Confirmed existing Command Center code already establishes Supabase Realtime precedent for the `incidents` table.
+- Selected incident-list refresh coordination as the smallest safe optimization.
+- Updated only `components/command-center/IncidentCommandDashboard.tsx`.
+- Preserved the existing authenticated `GET /api/incidents/command` contract.
+- Preserved the initial incident load.
+- Preserved selected-incident action loading.
+- Preserved the existing workflow POST behavior.
+- Preserved the existing action PATCH behavior.
+- Replaced unconditional 30-second incident polling with Supabase Realtime invalidation on `incidents`.
+- Added a 250 ms realtime debounce window so bursts of incident changes collapse before launching another incident-list request.
+- Added an in-flight guard so automatic incident-list refreshes cannot overlap.
+- Added queued-refresh handling so a refresh signal received during an active request runs once afterward.
+- Added document-visibility protection so automatic incident-list refreshes do not run while the page is hidden.
+- Added a visibility-change refresh when the document becomes visible again.
+- Added a 60-second fallback interval for eventual freshness.
+- Added cleanup for the realtime channel, debounce timer, fallback interval and visibility-change listener.
+- No API route was changed.
+- No database query was changed.
+- No database schema or migration was changed.
+- No workflow action semantics were changed.
+- Preserved the original UTF-8 BOM state of `IncidentCommandDashboard.tsx`.
+- Validation completed before commit:
+  - only `components/command-center/IncidentCommandDashboard.tsx` changed;
+  - `git diff --check` passed;
+  - action lifecycle checks passed;
+  - `npx tsc --noEmit` passed;
+  - `npm run build` passed;
+  - the production build generated all `121/121` static pages successfully;
+  - post-build `git diff --check` passed;
+  - nothing was staged before final review;
+  - staged diff validation passed before commit.
+- Implementation commit: `388631a` (`Coordinate incident command refresh`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote implementation heads were verified identical at `388631a465d521b765f80b6a6e5b6db181c66b8f`.
+- The tracked tree was clean after implementation push.
+- Performance principle reinforced by this work: when a frequently polled list is already backed by a small bounded query and has a direct realtime dependency, optimize the client refresh lifecycle before changing server query semantics.
+- Next step: continue the audit-first performance-stabilization roadmap with another ranking audit of the remaining recurring workloads.
