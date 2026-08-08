@@ -5774,3 +5774,53 @@ Pushed it to feature/expanded-incident-taxonomy.
 - The tracked tree was clean after implementation push.
 - Performance principle reinforced by this work: when a polling endpoint itself performs provider work, AI analysis and database writes, first prevent hidden-tab and overlapping executions without introducing write-triggered realtime invalidation that can recreate feedback loops.
 - Next step: continue the audit-first performance-stabilization roadmap by evaluating CCTV Monitoring and the remaining recurring workloads from the new post-documentation baseline.
+
+## 2026-08-08 - CCTV polling coordination
+
+- Continued the audit-first performance-stabilization roadmap after Dashcam polling coordination.
+- Ran a fresh recurring-workload ranking audit from baseline `40006cb`.
+- Confirmed CCTV Monitoring remained the strongest uncoordinated recurring Command Center network workload after Dashcam was completed.
+- Confirmed `components/command-center/CCTVMonitoring.tsx` loaded CCTV monitoring immediately and then called `/api/command-center/cctv` every 30 seconds.
+- Confirmed the manual Refresh CCTV button also calls `loadCCTV()`.
+- Confirmed the existing CCTV client had no in-flight guard and no visibility-aware automatic refresh behavior.
+- Audited `app/api/command-center/cctv/route.ts` before implementation.
+- Confirmed each CCTV GET reads up to 10 organization vehicles.
+- Confirmed each CCTV GET loads CCTV provider state.
+- Confirmed the endpoint persists generated CCTV rows into `cctv_events`.
+- Confirmed the endpoint then reads up to 100 recent `cctv_events` for the returned monitoring state.
+- Confirmed `/api/command-center/cctv` has one direct client caller: `CCTVMonitoring.tsx`.
+- Rejected CCTV realtime invalidation because the endpoint itself writes `cctv_events`, which could recreate the realtime feedback loop previously fixed by commit `9299d95`.
+- Rejected API and database changes because the demonstrated gap was unnecessary hidden-tab polling and possible overlapping client refreshes.
+- Updated only `components/command-center/CCTVMonitoring.tsx`.
+- Preserved the existing initial CCTV load.
+- Preserved the existing manual Refresh CCTV behavior.
+- Preserved the existing 30-second visible-tab refresh cadence.
+- Added an in-flight guard inside `loadCCTV()` so automatic, visibility-return and manual CCTV requests cannot overlap.
+- Added guard release in the existing `finally` block.
+- Replaced the unconditional 30-second timer callback with a visibility-aware CCTV refresh wrapper.
+- Automatic CCTV polling now skips requests while `document.visibilityState` is not `visible`.
+- Added a `visibilitychange` listener so CCTV monitoring refreshes when the document becomes visible again.
+- Added cleanup for the visibility listener while preserving interval cleanup.
+- No CCTV realtime channel was introduced.
+- No API route was changed.
+- No database query was changed.
+- No database schema or migration was changed.
+- Preserved the original UTF-8 BOM state of `CCTVMonitoring.tsx`.
+- Validation completed before commit:
+  - only `components/command-center/CCTVMonitoring.tsx` changed;
+  - implementation guards confirmed the in-flight and visibility protections;
+  - the old `setInterval(loadCCTV, 30000)` callback was absent;
+  - no CCTV realtime channel was introduced;
+  - `git diff --check` passed;
+  - `npx tsc --noEmit` passed;
+  - `npm run build` passed;
+  - the production build generated all `121/121` static pages successfully;
+  - final post-build scope verification confirmed one tracked changed file and nothing staged before commit;
+  - only the CCTV component was staged;
+  - staged diff validation passed.
+- Implementation commit: `5d7d0c0` (`Coordinate CCTV polling`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote implementation heads were verified identical at `5d7d0c0c6dc307fb7f67e15763b47f761aa0f5d1`.
+- The tracked tree was clean after implementation push.
+- Performance principle reinforced by this work: when a polling endpoint writes the same domain data it exposes, hidden-tab suppression and overlap prevention are safer first-line optimizations than write-triggered realtime invalidation.
+- Next step: continue the audit-first performance-stabilization roadmap with a fresh ranking audit from the post-CCTV documentation baseline.
