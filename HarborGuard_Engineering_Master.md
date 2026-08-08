@@ -6452,3 +6452,43 @@ Pushed it to feature/expanded-incident-taxonomy.
 - The implementation was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Local and remote heads were verified identical at `d3cc203`.
 - Next step: implement the smallest TypeScript receipt lifecycle helper around the atomic claim, completion and failure RPC boundaries before wiring Traccar positions into vehicle-location processing.
+## 2026-08-08 - Telematics receipt lifecycle application helper
+
+- Continued the external-telematics ingestion roadmap from verified baseline `2d43960`.
+- Implemented the application-side receipt lifecycle boundary after establishing database-level atomic claim and guarded finalization semantics.
+- Added `lib/telematics/messageReceiptLifecycle.ts`.
+- Added `claimTelematicsMessage(...)`.
+- The claim helper validates organization ID, provider, stream and provider message ID before calling the database claim RPC.
+- The claim helper calls `public.claim_telematics_message(...)` through Supabase RPC.
+- Claim metadata can be passed through to the receipt boundary.
+- The helper validates the shape of the database claim response before exposing it to callers.
+- A successful claim exposes the receipt ID and attempt count required to preserve processing ownership.
+- A rejected duplicate/busy claim exposes the existing receipt ID, processing status and attempt count without granting processing ownership.
+- Added `completeTelematicsMessage(...)`.
+- Successful completion calls `public.complete_telematics_message(...)` with the receipt ID and exact claimed attempt count.
+- Completion throws when the database rejects finalization because the claim is no longer active.
+- Added `failTelematicsMessage(...)`.
+- Failed processing calls `public.fail_telematics_message(...)` with the receipt ID, exact claimed attempt count and validated failure message.
+- Failure finalization throws when the database rejects finalization because the claim is no longer active.
+- Added positive-integer validation for attempt counts.
+- Added non-blank validation for lifecycle identifiers and failure messages.
+- The helper preserves dependency injection by accepting the Supabase client from its caller.
+- No Traccar polling or ingestion route was added in this work item.
+- No live Traccar API request was made.
+- No Traccar token was used.
+- No normalized Traccar position was processed.
+- No call to `processVehicleLocationUpdate()` was added.
+- No vehicle mapping behavior was changed.
+- No telemetry thresholds, alert behavior, trip lifecycle or fleet-risk behavior was changed.
+- Validation completed before commit:
+  - `npx tsc --noEmit` passed;
+  - `npm run build` passed;
+  - production compilation succeeded;
+  - all 121/121 static pages were generated successfully;
+  - exactly one TypeScript file was staged;
+  - staged diff validation passed.
+- Implementation commit: `5757e43` (`Add telematics receipt lifecycle helper`).
+- The implementation commit contains exactly one new TypeScript file with 250 insertions.
+- The implementation was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote heads were verified identical at `5757e43`.
+- Next step: audit the exact normalized Traccar-position ingestion boundary, including provider message identity, organization/device mapping and the existing `processVehicleLocationUpdate()` contract, before wiring live provider data into HarborGuard.
