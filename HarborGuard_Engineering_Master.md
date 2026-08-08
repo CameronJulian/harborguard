@@ -5711,3 +5711,66 @@ Pushed it to feature/expanded-incident-taxonomy.
 - The tracked tree was clean after implementation push.
 - Performance principle reinforced by this work: when a frequently polled list is already backed by a small bounded query and has a direct realtime dependency, optimize the client refresh lifecycle before changing server query semantics.
 - Next step: continue the audit-first performance-stabilization roadmap with another ranking audit of the remaining recurring workloads.
+
+## 2026-08-08 - Dashcam polling coordination
+
+- Continued the audit-first performance-stabilization roadmap after Incident Command Dashboard refresh coordination.
+- Ran a fresh repository-wide recurring-workload ranking audit from baseline `40e6705`.
+- Re-evaluated remaining timer-based workloads rather than assuming every `setInterval` represented network polling.
+- Excluded non-network timers such as local map interpolation, playback animation and request-abort timeouts from the performance candidate pool.
+- Identified CCTV Monitoring and Dashcam Monitoring as the main remaining recurring network polling surfaces.
+- Ran a focused comparison audit of `components/command-center/CCTVMonitoring.tsx`, `app/api/command-center/cctv/route.ts`, `components/command-center/DashcamMonitoring.tsx` and `app/api/command-center/dashcam/route.ts`.
+- Selected Dashcam Monitoring as the higher-cost target because each automatic Dashcam GET may perform substantially more backend work than CCTV.
+- Confirmed `components/command-center/DashcamMonitoring.tsx` loaded Dashcam monitoring immediately and then called `/api/command-center/dashcam` every 30 seconds.
+- Confirmed the recurring Dashcam timer called only `loadDashcams()`; `loadOpenIncidents()` remained an initial-load operation.
+- Confirmed the manual Refresh Cameras button also calls `loadDashcams()`.
+- Audited `app/api/command-center/dashcam/route.ts` before implementation.
+- Confirmed a Dashcam GET can load organization vehicles, resolve Dashcam provider state and inspect a current snapshot candidate.
+- Confirmed automatic vision processing is capped at one candidate per refresh by `MAX_AUTO_ANALYSES_PER_REFRESH`.
+- Confirmed the automatic vision path can check `dashcam_events` or `vision_events` for an already-analysed snapshot.
+- Confirmed a new candidate may invoke `analyseFrame()`.
+- Confirmed the analysis path can read the vehicle's latest location.
+- Confirmed detected results may be inserted into `vision_events`.
+- Confirmed the request persists current Dashcam rows into `dashcam_events`.
+- Confirmed the request then reads up to 100 persisted Dashcam events and the latest eight vision events for the returned monitoring state.
+- Rejected adding Dashcam realtime invalidation because the endpoint itself writes `dashcam_events` and potentially `vision_events`, which could recreate the self-triggering realtime refresh loop previously fixed by commit `3a905b4`.
+- Rejected API and database changes because the demonstrated gap was unnecessary hidden-tab polling and possible overlapping client requests.
+- Preserved the existing 30-second visible-tab refresh cadence.
+- Preserved the existing initial Dashcam load.
+- Preserved the existing initial open-incidents load.
+- Preserved the existing manual Refresh Cameras behavior.
+- Added an in-flight guard inside `loadDashcams()` so automatic, visibility-return and manual Dashcam requests cannot overlap.
+- Added guard release in the existing `finally` block.
+- Replaced the unconditional 30-second timer callback with a visibility-aware Dashcam refresh wrapper.
+- Automatic Dashcam polling now skips requests while `document.visibilityState` is not `visible`.
+- Added a `visibilitychange` listener so Dashcam monitoring refreshes when the document becomes visible again.
+- Added cleanup for the visibility listener while preserving interval cleanup.
+- No Dashcam realtime channel was introduced.
+- No API route was changed.
+- No database query was changed.
+- No database schema or migration was changed.
+- No automatic vision-analysis semantics were changed.
+- No review workflow behavior was changed.
+- Preserved `DashcamMonitoring.tsx` as UTF-8 without BOM.
+- Two initial patch attempts failed because PowerShell matching was sensitive to the current source formatting and line endings.
+- Neither failed attempt was committed.
+- Restored `DashcamMonitoring.tsx` from the tracked `HEAD` source before the successful implementation.
+- The final successful implementation normalized line endings only in memory, applied exact literal transformations, and wrote the file back as UTF-8 without BOM.
+- Validation completed before commit:
+  - only `components/command-center/DashcamMonitoring.tsx` changed;
+  - implementation guards confirmed the in-flight and visibility protections;
+  - the old `setInterval(loadDashcams, 30000)` callback was absent;
+  - no Dashcam realtime channel was introduced;
+  - `git diff --check` passed;
+  - `npx tsc --noEmit` passed;
+  - `npm run build` passed;
+  - the production build generated all `121/121` static pages successfully;
+  - final post-build scope verification confirmed one tracked changed file and nothing staged before commit;
+  - only the Dashcam component was staged;
+  - staged diff validation passed.
+- Implementation commit: `68d7e86` (`Coordinate dashcam polling`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote implementation heads were verified identical at `68d7e863a7bb500b9ae39f99c4164172b78f2ccd`.
+- The tracked tree was clean after implementation push.
+- Performance principle reinforced by this work: when a polling endpoint itself performs provider work, AI analysis and database writes, first prevent hidden-tab and overlapping executions without introducing write-triggered realtime invalidation that can recreate feedback loops.
+- Next step: continue the audit-first performance-stabilization roadmap by evaluating CCTV Monitoring and the remaining recurring workloads from the new post-documentation baseline.
