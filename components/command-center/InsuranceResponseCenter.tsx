@@ -1,7 +1,8 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
+import { supabase } from "@/lib/supabase";
 
 type InsurancePackage = {
   id: string;
@@ -35,6 +36,9 @@ export default function InsuranceResponseCenter() {
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const refreshInFlightRef = useRef(false);
+  const refreshQueuedRef = useRef(false);
 
   async function loadInsurance() {
     try {
@@ -61,9 +65,70 @@ export default function InsuranceResponseCenter() {
   }
 
   useEffect(() => {
-    loadInsurance();
-    const interval = setInterval(loadInsurance, 30000);
-    return () => clearInterval(interval);
+    let active = true;
+
+    async function runInsuranceRefresh() {
+      if (!active) return;
+
+      if (refreshInFlightRef.current) {
+        refreshQueuedRef.current = true;
+        return;
+      }
+
+      refreshInFlightRef.current = true;
+
+      try {
+        await loadInsurance();
+      } finally {
+        refreshInFlightRef.current = false;
+
+        if (active && refreshQueuedRef.current) {
+          refreshQueuedRef.current = false;
+          void runInsuranceRefresh();
+        }
+      }
+    }
+
+    function scheduleRealtimeRefresh() {
+      if (!active || refreshTimeoutRef.current) return;
+
+      refreshTimeoutRef.current = setTimeout(() => {
+        refreshTimeoutRef.current = null;
+        void runInsuranceRefresh();
+      }, 500);
+    }
+
+    void runInsuranceRefresh();
+
+    const channel = supabase
+      .channel("insurance-response-center-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "incidents" },
+        scheduleRealtimeRefresh
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "vehicle_alerts" },
+        scheduleRealtimeRefresh
+      )
+      .subscribe();
+
+    const interval = setInterval(() => {
+      void runInsuranceRefresh();
+    }, 60000);
+
+    return () => {
+      active = false;
+
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
+
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   return (
