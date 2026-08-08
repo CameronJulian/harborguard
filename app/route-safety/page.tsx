@@ -177,20 +177,27 @@ export default function RouteSafetyPage() {
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
+    await new Promise<void>((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
 
-        setLatitude(String(lat));
-        setLongitude(String(lng));
+            setLatitude(String(lat));
+            setLongitude(String(lng));
 
-        await fetchAlerts(lat, lng, "safety");
-      },
-      () => {
-        setMessage("Location permission denied or unavailable.");
-      }
-    );
+            await fetchAlerts(lat, lng, "safety");
+          } finally {
+            resolve();
+          }
+        },
+        () => {
+          setMessage("Location permission denied or unavailable.");
+          resolve();
+        }
+      );
+    });
   }
 
   async function loadTestDurbanAlerts() {
@@ -258,11 +265,62 @@ export default function RouteSafetyPage() {
   }
 
   useEffect(() => {
-    loadSafetyAlerts();
+    let disposed = false;
+    let refreshInFlight = false;
+    let refreshQueued = false;
 
-    const interval = setInterval(loadSafetyAlerts, 10000);
+    async function runSafetyRefresh() {
+      if (disposed || document.visibilityState !== "visible") {
+        return;
+      }
 
-    return () => clearInterval(interval);
+      if (refreshInFlight) {
+        refreshQueued = true;
+        return;
+      }
+
+      refreshInFlight = true;
+
+      try {
+        do {
+          refreshQueued = false;
+          await loadSafetyAlerts();
+        } while (
+          refreshQueued &&
+          !disposed &&
+          document.visibilityState === "visible"
+        );
+      } finally {
+        refreshInFlight = false;
+      }
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        void runSafetyRefresh();
+      }
+    }
+
+    void runSafetyRefresh();
+
+    const interval = setInterval(() => {
+      void runSafetyRefresh();
+    }, 10000);
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange
+    );
+
+    return () => {
+      disposed = true;
+      refreshQueued = false;
+      clearInterval(interval);
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+      );
+    };
   }, []);
   async function importHereIncidents() {
     try {
