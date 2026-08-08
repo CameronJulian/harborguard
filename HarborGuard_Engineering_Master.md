@@ -6376,3 +6376,42 @@ Pushed it to feature/expanded-incident-taxonomy.
 - The implementation was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Local and remote heads were verified identical at `724997b`.
 - Next step: audit and implement the smallest atomic telematics message-claim boundary using the new receipt processing states before wiring normalized Traccar positions into `processVehicleLocationUpdate()`.
+## 2026-08-08 - Atomic telematics message claiming
+
+- Continued the external-telematics ingestion roadmap from verified baseline `d22d8f5`.
+- Audited the existing telematics provider, vehicle resolver, Supabase usage and receipt migrations before implementation.
+- Confirmed message claiming requires a database-level atomicity boundary rather than an application-level read-then-write sequence.
+- Added migration `20260808152500_add_telematics_message_claim_function.sql`.
+- Added `public.claim_telematics_message(...)`.
+- The claim function uses the existing unique receipt identity across organization, provider, stream and provider message ID.
+- New messages are inserted directly with `processing_status = 'processing'`.
+- New claims record `claimed_at`, initialize `attempt_count` to 1 and preserve receipt metadata.
+- Duplicate insertion is handled with `ON CONFLICT DO NOTHING`.
+- Existing conflicting receipts are selected with `FOR UPDATE`.
+- Existing failed receipts can be atomically reclaimed.
+- Reclaiming a failed receipt changes its status back to `processing`.
+- Reclaiming clears prior processed/failure timestamps and failure message.
+- Reclaiming increments `attempt_count`.
+- Existing `processing` or `processed` receipts return `claimed = false` and are not reprocessed by the claim boundary.
+- The function validates organization ID, provider, stream and provider message ID inputs.
+- The function uses `SECURITY INVOKER` and an explicit `public` search path.
+- No TypeScript receipt helper was added in this work item.
+- No receipt success/failure finalization helper was added.
+- No Traccar polling or ingestion route was added.
+- No live Traccar API request was made.
+- No Traccar token was used.
+- No call to `processVehicleLocationUpdate()` was added.
+- No vehicle mapping behavior was changed.
+- No telemetry thresholds, alert behavior, trip lifecycle or fleet-risk behavior was changed.
+- Validation completed before commit:
+  - `npx tsc --noEmit` passed;
+  - `npm run build` passed;
+  - production compilation succeeded;
+  - all 121/121 static pages were generated successfully;
+  - exactly one migration was staged;
+  - staged diff validation passed.
+- Implementation commit: `7ab2e2f` (`Add atomic telematics message claim`).
+- The implementation commit contains exactly one migration with 128 insertions.
+- The implementation was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote heads were verified identical at `7ab2e2f`.
+- Next step: audit the exact application-side insertion point for a TypeScript receipt claim/finalization helper before wiring normalized Traccar positions into the existing vehicle-location processing pipeline.
