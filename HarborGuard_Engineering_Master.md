@@ -5224,3 +5224,47 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote branch hashes were verified identical at `74d03a87a4029abddf040cd4843664ebbb0cf545`.
 - Known scalability follow-up: effective-risk filtering currently requires the segment API to retrieve the organization's candidate segment set before applying runtime recency weighting, effective-risk filtering, sorting and the requested response limit in application memory. This preserves correct semantics but should be revisited if organization segment volume becomes large enough to require bounded/database-assisted candidate retrieval.
 - Next step: return to the broader HarborGuard engineering roadmap and audit the next highest-value incomplete capability. Do not extend road-risk decay or mutate persisted historical segment scores without a specific operational or performance requirement.
+
+## 2026-08-08 - CCTV realtime refresh-loop prevention
+
+- Continued the broader HarborGuard roadmap using the audit-first workflow, with performance stabilization selected as the next investigation area rather than extending the recently completed route-risk work.
+- Audited Command Center request and polling behavior before making any performance changes.
+- Confirmed several Command Center intelligence modules are mounted together and independently refresh operational data.
+- Narrowed the first performance-hardening candidate to CCTV monitoring rather than attempting a broad polling or state-management rewrite.
+- Audited `components/command-center/CCTVMonitoring.tsx`, `/api/command-center/cctv`, CCTV persistence references and Supabase realtime references before implementation.
+- Confirmed CCTV provider polling remains operationally necessary:
+  - the CCTV GET endpoint calls the external CCTV/provider integration to obtain current camera snapshots;
+  - external camera state can change without HarborGuard first receiving a database event;
+  - the existing initial load and 30-second provider refresh therefore remain in place.
+- Identified a separate amplification risk in the CCTV realtime path:
+  - `CCTVMonitoring` called `GET /api/command-center/cctv`;
+  - that GET could persist fresh CCTV snapshots into `cctv_events`;
+  - the component also subscribed to `INSERT` events on `cctv_events`;
+  - a matching realtime insert could therefore invoke `loadCCTV()` again, causing another GET and another potential insert.
+- This formed a potential GET -> `cctv_events` INSERT -> realtime callback -> GET refresh loop if the table is published through Supabase Realtime.
+- The repository migration audit did not establish that `cctv_events` is currently included in a Supabase realtime publication, so this work is recorded as prevention of an architectural amplification risk rather than proof of a production incident.
+- Updated only `components/command-center/CCTVMonitoring.tsx`.
+- Removed the component's direct Supabase dependency.
+- Removed the `cctv-events-realtime` subscription and its channel cleanup.
+- Preserved the existing immediate `loadCCTV()` call.
+- Preserved the existing 30-second `setInterval(loadCCTV, 30000)` provider refresh.
+- Preserved `clearInterval(interval)` cleanup when the component unmounts.
+- Manual CCTV refresh behavior and the existing CCTV API contract were not changed.
+- `/api/command-center/cctv` was not changed.
+- CCTV provider integration behavior was not changed.
+- CCTV persistence/schema behavior was not changed.
+- No database migration was required.
+- No broad Command Center polling rewrite was introduced.
+- Validation completed before the implementation commit:
+  - `git diff --check` passed;
+  - `npx tsc --noEmit` passed with exit code `0`;
+  - `npm run build` passed with exit code `0`;
+  - Next.js production build generated all `121/121` static pages successfully;
+  - `/api/command-center/cctv` remained registered as a dynamic route;
+  - only `components/command-center/CCTVMonitoring.tsx` was included in the implementation change;
+  - `git diff --cached --check` passed before commit.
+- Implementation commit: `9299d95` (`Prevent CCTV realtime refresh loop`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote branch hashes were verified identical at `9299d95082d2dcc626e8e30db1a6341010196dc9`.
+- Performance principle established by this work: provider polling should not be removed merely because realtime infrastructure exists; polling and realtime must first be audited for authoritative data ownership and feedback paths.
+- Next step: continue the performance-stabilization roadmap with another audit-first investigation of demonstrated request, query or write amplification. Select one precise bottleneck before changing code rather than performing a broad Command Center polling cleanup.
