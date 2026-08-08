@@ -5464,3 +5464,54 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Performance principle reinforced by this work: recurring location-aware polling can remain operationally useful, but its complete asynchronous lifecycle must be awaitable and coordinated so hidden tabs and overlapping timer cycles do not multiply geolocation and backend request work.
 - Next step: continue the audit-first performance-stabilization roadmap by ranking the remaining recurring workloads and selecting one demonstrated request, query or write bottleneck before making another focused change.
+
+## 2026-08-08 - Incident Assignment Board refresh coordination
+
+- Continued the audit-first performance-stabilization roadmap after Route Safety polling coordination.
+- Ran a read-only ranking audit of the remaining timer-bearing frontend workloads before selecting another optimization target.
+- Selected `components/command-center/IncidentAssignmentBoard.tsx` because it combined an immediate load, an `incidents` realtime subscription and a 60-second polling fallback around the same multi-query board refresh.
+- Audited the complete component source, refresh lifecycle, table readers, Command Center composition, schema/index evidence and related history before implementation.
+- Confirmed each `loadBoard()` execution:
+  - calls `supabase.auth.getUser()`;
+  - reads the current user's `organization_id` from `profiles`;
+  - reads the latest 30 organization incidents;
+  - reads organization profiles used for assignee names and dispatcher workload.
+- Confirmed the incidents query is bounded to 30 rows.
+- Confirmed the organization profiles query remains intentionally unbounded because the board uses the complete organization profile set to resolve assignment names and workload counts.
+- Confirmed every realtime `incidents` change previously invoked `loadBoard()` immediately.
+- Confirmed a separate 60-second interval independently invoked the same `loadBoard()` function.
+- Confirmed the component had no realtime debounce, in-flight refresh guard, queued refresh behavior or page-visibility protection.
+- Confirmed the board is mounted directly in the Command Center intelligence module section rather than behind the nearby deferred-mount boundary.
+- Reviewed schema/index evidence and did not make a database index change because the current work item demonstrated duplicate refresh execution more directly than a proven query-plan bottleneck.
+- Updated only `components/command-center/IncidentAssignmentBoard.tsx`.
+- Preserved the existing initial board load.
+- Preserved the existing `incidents` Supabase realtime subscription.
+- Preserved the existing 60-second polling fallback.
+- Preserved all existing authentication and Supabase query semantics.
+- Added an in-flight guard so multiple board refreshes cannot execute concurrently.
+- Added queued-refresh behavior so refresh requests received while a board load is active collapse into one subsequent refresh.
+- Added a 250 ms realtime debounce window so bursts of incident changes collapse before invoking the multi-query board loader repeatedly.
+- Added page-visibility awareness so automatic board refreshes do not continue while the document is hidden.
+- Added a visibility-change refresh when the page becomes visible again.
+- Preserved cleanup of the Supabase realtime channel and polling interval.
+- Added cleanup for a pending realtime debounce timer and the visibility-change listener.
+- No API route was changed.
+- No Supabase query semantics were changed.
+- No database schema or migration was changed.
+- No realtime subscription was removed.
+- Validation completed before commit:
+  - the exact audited refresh effect was verified before replacement;
+  - only `components/command-center/IncidentAssignmentBoard.tsx` changed;
+  - `git diff --check` passed;
+  - the authentication, organization-profile, incident and profile-list queries were verified unchanged;
+  - refresh-coordination structure was verified directly in the source;
+  - `npx tsc --noEmit` passed;
+  - `npm run build` passed;
+  - the production build generated all `121/121` static pages successfully;
+  - final `git diff --check` passed;
+  - staged diff validation passed before commit.
+- Implementation commit: `5a41d17` (`Coordinate incident assignment refreshes`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote branch hashes were verified identical at `5a41d17d87ca56e4dc6ec38f577944953c796dc8`.
+- Performance principle reinforced by this work: retain realtime freshness and polling reliability while routing competing refresh triggers through one guarded execution path and debouncing burst-driven database reloads.
+- Next step: continue the audit-first performance-stabilization roadmap by ranking the remaining recurring workloads and selecting one demonstrated request, query or write bottleneck before making another focused change.
