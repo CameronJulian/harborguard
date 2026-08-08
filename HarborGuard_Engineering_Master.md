@@ -5610,3 +5610,53 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote implementation heads were verified identical at `c800fac80fdd7ac5fda164c75899093f61f556f5`.
 - Performance principle reinforced by this work: when a periodically refreshed aggregate fans out into several backend reads, first prevent unnecessary hidden-tab and overlapping executions at the narrow client boundary before changing broader backend or realtime semantics.
 - Next step: continue the audit-first performance-stabilization roadmap by ranking the remaining demonstrated recurring workloads and selecting one precise bottleneck before making another focused change.
+
+## 2026-08-08 - Insurance Response Center refresh coordination
+
+- Continued the audit-first performance-stabilization roadmap after AI Shift Summary refresh coordination.
+- Ran a fresh repository-wide ranking audit of remaining recurring frontend workloads before selecting another target.
+- Compared the remaining 30-second polling surfaces rather than automatically modifying the next timer found.
+- Selected Insurance Response Center after the ranking audit identified its recurring `/api/command-center/insurance` workload as the stronger remaining candidate.
+- Audited `components/command-center/InsuranceResponseCenter.tsx` and `app/api/command-center/insurance/route.ts` before implementation.
+- Confirmed the client previously loaded immediately and then polled `/api/command-center/insurance` every 30 seconds for the component lifetime.
+- Confirmed each insurance request performs two bounded Supabase reads: up to 10 unresolved `incidents` and up to 25 unresolved `vehicle_alerts`.
+- Confirmed the route constructs insurance packages and summary information from those query results.
+- Confirmed `incidents` and `vehicle_alerts` are the actual database dependencies of the current insurance response.
+- Confirmed the current route does not directly query separate telemetry, dashcam, CCTV, ANPR, or vision-event tables for the displayed insurance package.
+- Confirmed existing Command Center code already establishes Supabase Realtime precedent for both `incidents` and `vehicle_alerts`.
+- Rejected API/query changes because both server-side reads are already bounded and the demonstrated gap was the unconditional client refresh loop.
+- Rejected subscriptions to unrelated evidence tables because they are not direct dependencies of the current endpoint.
+- Selected realtime invalidation plus a slower fallback refresh as the smallest safe optimization.
+- Updated only `components/command-center/InsuranceResponseCenter.tsx`.
+- Preserved the existing immediate initial load.
+- Replaced unconditional 30-second polling with Supabase Realtime refresh triggers for `incidents` and `vehicle_alerts`.
+- Added a 500 ms coalescing window so bursts of related realtime changes schedule one refresh rather than one request per event.
+- Added an in-flight guard so insurance refresh requests cannot overlap.
+- Added queued-refresh handling so a refresh signal arriving during an active request is serviced after that request completes.
+- Added a 60-second fallback refresh to preserve eventual freshness if a realtime event is unavailable or missed.
+- Added cleanup for the realtime channel, fallback interval, and pending refresh timeout.
+- Preserved the existing authenticated `/api/command-center/insurance` API contract.
+- No API route was changed.
+- No database query was changed.
+- No database schema or migration was changed.
+- No insurance-package calculation or evidence semantics were changed.
+- During the first implementation attempt, PowerShell `Set-Content` altered the file encoding and corrupted existing Unicode characters.
+- The failed attempt was not committed.
+- Restored `InsuranceResponseCenter.tsx` byte-for-byte from the pre-change safety copy before reapplying the implementation.
+- Reapplied the focused change using explicit UTF-8 handling while preserving the file's original UTF-8 BOM and existing Unicode characters.
+- Explicitly verified preservation of the existing middle-dot, checkmark, and multiplication-sign characters before validation.
+- Validation completed before commit:
+  - only `components/command-center/InsuranceResponseCenter.tsx` changed;
+  - `git diff --check` passed;
+  - `npx tsc --noEmit` passed;
+  - `npm run build` passed;
+  - the production build generated all `121/121` static pages successfully;
+  - post-build `git diff --check` passed;
+  - the final diff was reviewed before staging;
+  - only the target component was staged.
+- Implementation commit: `42db00f` (`Coordinate insurance response refresh`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote implementation heads were verified identical at `42db00feebc45d66343a7290807ddc81980c1b60`.
+- The tracked tree was clean after the implementation push.
+- Performance principle reinforced by this work: when an aggregate endpoint has a small, known set of realtime-capable dependencies, prefer coalesced dependency-driven invalidation with a conservative fallback interval over frequent unconditional polling.
+- Next step: continue the audit-first performance-stabilization roadmap by ranking the remaining demonstrated recurring workloads before selecting another focused change.
