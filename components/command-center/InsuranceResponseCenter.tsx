@@ -68,7 +68,7 @@ export default function InsuranceResponseCenter() {
     let active = true;
 
     async function runInsuranceRefresh() {
-      if (!active) return;
+      if (!active || document.visibilityState !== "visible") return;
 
       if (refreshInFlightRef.current) {
         refreshQueuedRef.current = true;
@@ -118,6 +118,14 @@ export default function InsuranceResponseCenter() {
       void runInsuranceRefresh();
     }, 60000);
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void runInsuranceRefresh();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     return () => {
       active = false;
 
@@ -126,6 +134,7 @@ export default function InsuranceResponseCenter() {
         refreshTimeoutRef.current = null;
       }
 
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       clearInterval(interval);
       supabase.removeChannel(channel);
     };
