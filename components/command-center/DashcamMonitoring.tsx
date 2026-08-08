@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
 
 type Dashcam = {
@@ -100,6 +100,7 @@ export default function DashcamMonitoring() {
 
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const refreshInFlightRef = useRef(false);
 
   const filteredVisionEvents =
     recentVisionEvents.filter((event) => {
@@ -122,6 +123,12 @@ export default function DashcamMonitoring() {
     });
 
   async function loadDashcams() {
+    if (refreshInFlightRef.current) {
+      return;
+    }
+
+    refreshInFlightRef.current = true;
+
     try {
       setMessage("");
 
@@ -148,6 +155,7 @@ export default function DashcamMonitoring() {
     } catch (error: any) {
       setMessage(error.message || "Failed to load dashcam monitoring.");
     } finally {
+      refreshInFlightRef.current = false;
       setLoading(false);
     }
   }
@@ -254,10 +262,29 @@ export default function DashcamMonitoring() {
     loadDashcams();
     loadOpenIncidents();
 
-    const interval = setInterval(loadDashcams, 30000);
+    function refreshDashcamsIfVisible() {
+      if (document.visibilityState === "visible") {
+        void loadDashcams();
+      }
+    }
+
+    const interval = setInterval(
+      refreshDashcamsIfVisible,
+      30000
+    );
+
+    document.addEventListener(
+      "visibilitychange",
+      refreshDashcamsIfVisible
+    );
 
     return () => {
       clearInterval(interval);
+
+      document.removeEventListener(
+        "visibilitychange",
+        refreshDashcamsIfVisible
+      );
     };
   }, []);
 
