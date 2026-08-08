@@ -6098,3 +6098,56 @@ Pushed it to feature/expanded-incident-taxonomy.
 - The tracked tree was clean after implementation push.
 - Architectural principle established by this extraction: provider-specific transport/authentication should terminate at a thin adapter, while normalized vehicle-location processing should run through one shared server-side pipeline so telemetry validation, persistence, alerting and trip/risk lifecycle behavior cannot diverge between mobile and external hardware sources.
 - Next step: audit the smallest machine-authenticated Samsara vehicle-location ingestion adapter against this reusable processing boundary, using `tracker_device_id` for vehicle identity and normalized `hardware` locations rather than duplicating the update-location pipeline.
+
+## 2026-08-08 - Organization-scoped telematics sync state
+
+- Continued the external-telematics roadmap after extracting the reusable normalized vehicle-location processing boundary.
+- Started from verified baseline `fea720d`.
+- Audited the Samsara machine-ingestion boundary and current provider integration before implementation.
+- Confirmed HarborGuard already has a Samsara provider client using `SAMSARA_API_TOKEN`, configurable `SAMSARA_API_BASE_URL`, bearer authentication, timeout handling and no-store requests.
+- Confirmed HarborGuard already has machine-triggered cron patterns using `CRON_SECRET` and Supabase service-role access.
+- Confirmed `vehicles.tracker_device_id` remains the existing external-device identity slot and no new vehicle/provider mapping table is required for the first Samsara GPS integration.
+- Confirmed normalized external GPS locations can use the existing `hardware` vehicle-location source.
+- Confirmed the reusable `processVehicleLocationUpdate()` boundary is the correct destination for provider-normalized locations so mobile and hardware ingestion do not duplicate telemetry, persistence, alerting, trip or risk lifecycle behavior.
+- Confirmed Samsara telematics synchronization requires durable cursor/checkpoint state between feed runs.
+- Audited existing schema and application code for cursor, checkpoint, sync-state, integration-state and provider-state storage.
+- Confirmed there was no existing organization-scoped state store suitable for a per-tenant Samsara telematics feed cursor.
+- Deliberately did not reuse the global `intelligence_sources` provider registry because its provider-health and fetch metadata are not an organization-scoped stream checkpoint contract.
+- Added migration `supabase/migrations/20260808124500_create_telematics_sync_state.sql`.
+- Added `public.telematics_sync_state` as the minimal durable provider-stream checkpoint primitive.
+- The table is organization-scoped through a required `organization_id` foreign key to `public.organizations` with cascade deletion.
+- Added required `provider` and `stream` identifiers.
+- Added nullable `cursor` storage for provider feed continuation tokens.
+- Added `last_successful_sync_at`.
+- Added `last_failure_at`.
+- Added `last_failure_message`.
+- Added JSONB `metadata` for limited provider-stream state that does not warrant dedicated columns.
+- Added `created_at` and `updated_at`.
+- Added uniqueness across `(organization_id, provider, stream)` so each tenant has one durable checkpoint per provider stream.
+- Added non-blank constraints for provider and stream.
+- Added an `(organization_id, provider)` index.
+- Enabled row-level security.
+- Added authenticated own-organization SELECT visibility through `public.profiles.organization_id`.
+- Did not add authenticated INSERT, UPDATE or DELETE policies because the intended writer is a machine-side service-role synchronization path.
+- Did not modify `intelligence_sources`.
+- Did not add a Samsara polling route yet.
+- Did not add provider-specific GPS parsing yet.
+- Did not change vehicle identity schema.
+- Did not change normalized vehicle-location processing.
+- Did not change telemetry thresholds or alert behavior.
+- Did not modify existing tracked application files.
+- Migration validation completed before commit:
+  - the target table did not previously exist;
+  - only the new migration was intentionally created;
+  - the migration was UTF-8 without BOM;
+  - migration diff validation passed;
+  - `npx tsc --noEmit` passed;
+  - `npm run build` passed;
+  - the production build compiled successfully;
+  - all 121/121 static pages were generated successfully.
+- Migration commit: `96957c8` (`Add telematics sync state`).
+- The commit contains exactly one file and 57 insertions.
+- Migration pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote heads were verified identical at `96957c8`.
+- Architectural principle established: provider synchronization progress is tenant-specific operational state and should be stored separately from HarborGuard's global provider/intelligence registry.
+- Next step: audit and implement the smallest Samsara GPS feed synchronizer and cron adapter using the organization-scoped telematics checkpoint, existing Samsara provider HTTP conventions, `tracker_device_id` vehicle resolution, normalized `hardware` input and `processVehicleLocationUpdate()`.
