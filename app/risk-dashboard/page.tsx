@@ -256,21 +256,72 @@ export default function RiskDashboardPage() {
   }
 
   useEffect(() => {
-	  
-  loadFleet();
-  loadPredictions();
+    let disposed = false;
+    let refreshInFlight = false;
+    let refreshQueued = false;
 
-  const interval = setInterval(async () => {
-    try {
-      await loadFleet();
-      await loadPredictions();
-    } catch (err) {
-      console.error(err);
+    async function runDashboardRefresh() {
+      if (disposed || document.visibilityState !== "visible") {
+        return;
+      }
+
+      if (refreshInFlight) {
+        refreshQueued = true;
+        return;
+      }
+
+      refreshInFlight = true;
+
+      try {
+        do {
+          refreshQueued = false;
+
+          await loadFleet();
+
+          if (disposed || document.visibilityState !== "visible") {
+            break;
+          }
+
+          await loadPredictions();
+        } while (
+          refreshQueued &&
+          !disposed &&
+          document.visibilityState === "visible"
+        );
+      } catch (err) {
+        console.error(err);
+      } finally {
+        refreshInFlight = false;
+      }
     }
-  }, 15000);
 
-  return () => clearInterval(interval);
-}, []);
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        void runDashboardRefresh();
+      }
+    }
+
+    void runDashboardRefresh();
+
+    const interval = setInterval(() => {
+      void runDashboardRefresh();
+    }, 15000);
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange
+    );
+
+    return () => {
+      disposed = true;
+      refreshQueued = false;
+      clearInterval(interval);
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+      );
+    };
+  }, []);
 const anomalyForecast = useMemo(() => {
   const avgThreat =
     predictions.length === 0
