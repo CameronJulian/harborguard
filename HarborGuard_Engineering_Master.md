@@ -5935,3 +5935,57 @@ Pushed it to feature/expanded-incident-taxonomy.
 - The tracked tree was clean after implementation push.
 - Performance principle reinforced by this work: when realtime invalidation and conservative fallback polling already share a coordinated refresh executor, visibility protection belongs at that shared boundary so hidden documents avoid both realtime-triggered and timer-triggered network work while one reconciliation refresh occurs on return.
 - Next step: continue the audit-first performance-stabilization roadmap with a fresh ranking audit from the post-Insurance-visibility documentation baseline.
+
+## 2026-08-08 - Shared realtime refresh visibility coordination
+
+- Continued the audit-first performance-stabilization roadmap after Insurance Response Center visibility coordination.
+- Started from verified implementation baseline `6cec48c`.
+- Performed a fresh performance ranking audit before selecting another implementation target.
+- Confirmed the previously coordinated explicit polling surfaces remained visibility-aware.
+- Audited the shared `lib/realtime/useRealtimeRefresh.ts` lifecycle before implementation.
+- Confirmed the shared hook was an active cross-cutting refresh primitive rather than dormant code.
+- Confirmed multiple Command Center dashboards use the shared hook with configured fallback polling.
+- Confirmed polling cadences included active 15-second, 30-second, 60-second and 5-minute refresh surfaces.
+- Confirmed the shared `runRefresh()` executor was used by realtime invalidation, optional mount loading and configured fallback polling.
+- Identified the precise remaining gap: the shared executor had no document-visibility guard, so hidden documents could continue automatic network refresh work across multiple dashboards.
+- Selected shared-hook visibility coordination as the smallest safe cross-cutting performance optimization.
+- Updated only `lib/realtime/useRealtimeRefresh.ts`.
+- Added a document-visibility guard to `runRefresh()` so automatic shared-hook refresh work exits while the document is hidden.
+- Preserved existing realtime subscriptions.
+- Preserved the existing default 250 ms debounce behavior.
+- Preserved all caller-configured polling intervals.
+- Preserved optional `loadOnMount` behavior.
+- Added a `visibilitychange` listener.
+- Added one reconciliation refresh when the document becomes visible again.
+- Added cleanup for the `visibilitychange` listener.
+- Preserved existing debounce timeout cleanup.
+- Preserved existing polling interval cleanup.
+- Preserved existing realtime unsubscribe cleanup.
+- Did not add in-flight or queued-refresh semantics as part of this change.
+- Did not change any caller component.
+- Did not change any API route.
+- Did not change any database query.
+- Did not change any database schema or migration.
+- Did not change polling frequencies.
+- Did not change realtime subscription dependencies.
+- Manual component refresh actions remain outside this shared automatic-refresh visibility guard where callers invoke their load functions directly.
+- Validation completed before implementation commit:
+  - only `lib/realtime/useRealtimeRefresh.ts` changed;
+  - the hidden-document guard was verified in the shared refresh executor;
+  - the visibility-return listener and cleanup were verified;
+  - the malformed cleanup-line formatting discovered during exact diff review was corrected before commit;
+  - `git diff --check` passed;
+  - `npx tsc --noEmit` passed;
+  - `npm run build` passed;
+  - the production build compiled successfully;
+  - all 121/121 static pages were generated successfully;
+  - final scope verification confirmed one tracked changed file and nothing staged before commit;
+  - only the shared realtime-refresh hook was staged;
+  - staged diff validation passed.
+- Implementation commit: `76742cb` (`Coordinate shared realtime refresh visibility`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote implementation heads were verified identical at `76742cb`.
+- The tracked tree was clean after implementation push.
+- Performance principle reinforced by this work: when realtime invalidation, mount loading and fallback polling converge on one shared automatic refresh executor, document visibility should be enforced at that shared boundary so all automatic callers inherit hidden-tab suppression without duplicating lifecycle logic across dashboards.
+- This closes the identified shared-hook visibility gap discovered by the post-Insurance fresh ranking audit.
+- Next step: perform one final read-only post-implementation ranking audit from the documented shared-hook baseline; if no remaining material recurring-network coordination gap ranks above diminishing returns, formally close the performance-stabilization sequence and move to the next HarborGuard roadmap area.
