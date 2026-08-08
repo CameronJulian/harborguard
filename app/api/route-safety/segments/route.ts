@@ -1,6 +1,7 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 
 import { requireOrganization } from "@/lib/server-auth";
+import { historicalRoadRiskRecencyWeight } from "@/lib/routing/roadRiskRecency";
 
 const DEFAULT_LIMIT = 250;
 const MAX_LIMIT = 500;
@@ -75,10 +76,7 @@ export async function GET(req: NextRequest) {
           "updated_at",
         ].join(",")
       )
-      .eq("organization_id", organizationId)
-      .gte("risk_score", minimumRisk)
-      .order("risk_score", { ascending: false })
-      .limit(limit);
+      .eq("organization_id", organizationId);
 
     if (error) {
       return NextResponse.json(
@@ -87,9 +85,42 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    const segments = (data || [])
+      .map((segment: any) => {
+        const rawRiskScore = Math.min(
+          100,
+          Math.max(0, Number(segment.risk_score) || 0)
+        );
+
+        const effectiveRiskScore = Math.min(
+          100,
+          Math.max(
+            0,
+            Math.round(
+              rawRiskScore *
+                historicalRoadRiskRecencyWeight(segment.last_event_at)
+            )
+          )
+        );
+
+        return {
+          ...segment,
+          effective_risk_score: effectiveRiskScore,
+        };
+      })
+      .filter(
+        (segment: any) =>
+          segment.effective_risk_score >= minimumRisk
+      )
+      .sort(
+        (a: any, b: any) =>
+          b.effective_risk_score - a.effective_risk_score
+      )
+      .slice(0, limit);
+
     return NextResponse.json({
-      segments: data || [],
-      count: data?.length || 0,
+      segments,
+      count: segments.length,
       minimumRisk,
       limit,
     });

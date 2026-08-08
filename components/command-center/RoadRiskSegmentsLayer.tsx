@@ -14,6 +14,7 @@ type RoadRiskSegment = {
   longitude: number;
   radius_meters: number;
   risk_score: number;
+  effective_risk_score: number;
     collision_count: number;
   crime_count: number;
   roadblock_count: number;
@@ -160,11 +161,14 @@ export default function RoadRiskSegmentsLayer({
           )
         )
         .map((segment) => {
-          const riskScore = Number(
+          const historicalRiskScore = Number(
             segment.risk_score || 0
           );
+          const effectiveRiskScore = Number(
+            segment.effective_risk_score || 0
+          );
 
-          const color = riskColor(riskScore);
+          const color = riskColor(effectiveRiskScore);
 return (
             <Circle
               key={segment.id}
@@ -182,9 +186,9 @@ return (
                 fillOpacity: 0.2,
                 opacity: 0.9,
                 weight:
-                  riskScore >= 80
+                  effectiveRiskScore >= 80
                     ? 4
-                    : riskScore >= 50
+                    : effectiveRiskScore >= 50
                       ? 3
                       : 2,
               }}
@@ -214,9 +218,14 @@ return (
                   ) : null}
 
                   <div>
-                    <strong>Risk score:</strong>{" "}
-                    {riskScore}/100
+                    <strong>Effective risk:</strong>{" "}
+                    {effectiveRiskScore}/100
                   </div>
+                  <div>
+                    <strong>Historical risk:</strong>{" "}
+                    {historicalRiskScore}/100
+                  </div>
+
 
                   <div>
                     <strong>Crime events:</strong>{" "}
