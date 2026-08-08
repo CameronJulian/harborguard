@@ -1,0 +1,145 @@
+import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import {
+  runTraccarPositionSync,
+} from "@/lib/telematics/runTraccarPositionSync";
+
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
+export async function GET(request: Request) {
+  try {
+    const cronSecret =
+      process.env.CRON_SECRET;
+
+    if (!cronSecret) {
+      return NextResponse.json(
+        {
+          error:
+            "CRON_SECRET is not configured.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    const authorization =
+      request.headers.get("authorization");
+
+    if (authorization !== `Bearer ${cronSecret}`) {
+      return NextResponse.json(
+        {
+          error:
+            "Unauthorized cron request.",
+        },
+        {
+          status: 401,
+        }
+      );
+    }
+
+    const supabaseUrl =
+      process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+    const serviceRoleKey =
+      process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      return NextResponse.json(
+        {
+          error:
+            "Supabase service-role configuration is incomplete.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    const organizationId =
+      process.env.TRACCAR_SYNC_ORGANIZATION_ID?.trim();
+
+    if (!organizationId) {
+      return NextResponse.json(
+        {
+          error:
+            "TRACCAR_SYNC_ORGANIZATION_ID is not configured.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    const supabase = createClient(
+      supabaseUrl,
+      serviceRoleKey,
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      }
+    );
+
+    const {
+      data: organization,
+      error: organizationError,
+    } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("id", organizationId)
+      .maybeSingle();
+
+    if (organizationError) {
+      throw organizationError;
+    }
+
+    if (!organization) {
+      return NextResponse.json(
+        {
+          error:
+            "TRACCAR_SYNC_ORGANIZATION_ID does not match an organization.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    const result =
+      await runTraccarPositionSync({
+        supabase,
+        organizationId,
+      });
+
+    return NextResponse.json(result);
+  }
+  catch (error: unknown) {
+    console.error(
+      "[traccar position cron]",
+      error
+    );
+
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : typeof error === "object" &&
+            error !== null
+          ? JSON.stringify(error)
+          : String(
+              error ||
+                "Traccar position sync failed."
+            );
+
+    return NextResponse.json(
+      {
+        error: errorMessage,
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+}
