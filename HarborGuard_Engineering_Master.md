@@ -6415,3 +6415,40 @@ Pushed it to feature/expanded-incident-taxonomy.
 - The implementation was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Local and remote heads were verified identical at `7ab2e2f`.
 - Next step: audit the exact application-side insertion point for a TypeScript receipt claim/finalization helper before wiring normalized Traccar positions into the existing vehicle-location processing pipeline.
+## 2026-08-08 - Telematics message finalization boundary
+
+- Continued the external-telematics ingestion roadmap from verified baseline `e9d5fa5`.
+- Audited the application-side receipt boundary before implementation.
+- Confirmed that receipt finalization must preserve claim ownership and must not rely on an unguarded application-level table update.
+- Added migration `20260808154500_add_telematics_message_finalization_functions.sql`.
+- Added `public.complete_telematics_message(...)`.
+- Added `public.fail_telematics_message(...)`.
+- Successful finalization requires the receipt to still have `processing_status = 'processing'`.
+- Successful finalization also requires the receipt `attempt_count` to equal the attempt being finalized.
+- Successful finalization changes the receipt to `processed`, records `processed_at` and clears failure state.
+- Failed finalization requires the same processing-state and attempt-count ownership checks.
+- Failed finalization changes the receipt to `failed`, records `last_failure_at` and stores the trimmed failure message.
+- Both functions return `false` when no receipt matching the active claim attempt can be finalized.
+- Both functions validate required arguments.
+- Both functions use `SECURITY INVOKER` with an explicit `public` search path.
+- This prevents a stale worker from finalizing a later retry attempt using only a receipt ID.
+- The application layer can now carry the `{ receiptId, attemptCount }` claim identity through processing and use it for guarded completion or failure.
+- No TypeScript receipt helper was added in this work item.
+- No Traccar polling or ingestion route was added.
+- No live Traccar API request was made.
+- No Traccar token was used.
+- No call to `processVehicleLocationUpdate()` was added.
+- No vehicle mapping behavior was changed.
+- No telemetry thresholds, alert behavior, trip lifecycle or fleet-risk behavior was changed.
+- Validation completed before commit:
+  - `npx tsc --noEmit` passed;
+  - `npm run build` passed;
+  - production compilation succeeded;
+  - all 121/121 static pages were generated successfully;
+  - exactly one migration was staged;
+  - staged diff validation passed.
+- Implementation commit: `d3cc203` (`Add telematics message finalization`).
+- The implementation commit contains exactly one migration with 76 insertions.
+- The implementation was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote heads were verified identical at `d3cc203`.
+- Next step: implement the smallest TypeScript receipt lifecycle helper around the atomic claim, completion and failure RPC boundaries before wiring Traccar positions into vehicle-location processing.
