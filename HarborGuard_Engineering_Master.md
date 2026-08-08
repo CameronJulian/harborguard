@@ -5178,3 +5178,49 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote branch hashes were verified identical at `0016d8fa29502dfa9b07f7c4d4b960567de78a9b`.
 - HarborGuard operators can now explicitly choose `Safest`, `Balanced`, or `Fastest` when requesting a safer route while existing callers and automatic critical-risk behavior retain the established safety-first default.
 - Next step: audit the broader HarborGuard engineering roadmap for the next highest-value incomplete capability using the standard audit-first workflow rather than extending route-profile behavior without a specific operational requirement.
+## 2026-08-08 - Recency-aware operational road-risk segments
+
+- Completed an audit-first review of the broader HarborGuard engineering roadmap after closing the configurable route-profile sequence.
+- Audited the canonical aggregated-risk visualization roadmap item before implementation.
+- Confirmed aggregated `road_risk_segments` visualization was already substantially implemented and did not need to be rebuilt:
+  - `/api/route-safety/segments` already exposed organization-scoped aggregated road-risk evidence;
+  - `RoadRiskSegmentsLayer` already rendered geographic segment circles on the Command Center live fleet map;
+  - operators already had road-risk visibility and minimum-risk controls;
+  - segment popups already exposed detailed supporting incident, traffic, weather, verification and recency evidence.
+- Audited segment lifecycle and decay behavior next.
+- Confirmed persisted `road_risk_segments.risk_score` remains a cumulative historical aggregate and is not destructively decayed in storage.
+- Confirmed HarborGuard already had a canonical shared runtime historical-recency model in `historicalRoadRiskRecencyWeight()`.
+- Confirmed that shared recency model was already used by HERE route ranking and Route Safety prediction.
+- Identified the precise remaining consistency gap: the operational road-risk segment API and Command Center map still filtered, ranked and styled segments using the raw persisted historical `risk_score`.
+- Updated `app/api/route-safety/segments/route.ts` to:
+  - preserve the raw persisted `risk_score`;
+  - calculate `effective_risk_score` from the raw score and the existing shared `historicalRoadRiskRecencyWeight(segment.last_event_at)`;
+  - clamp the effective score to the existing `0-100` operational range;
+  - apply `minimumRisk` filtering to effective risk rather than raw historical risk;
+  - sort returned segments by effective risk;
+  - preserve the requested response `limit` after effective-risk filtering and sorting.
+- No new decay formula was introduced.
+- No persisted historical road-risk evidence was mutated or deleted.
+- No database migration or scheduled decay job was added.
+- Updated `components/command-center/RoadRiskSegmentsLayer.tsx` so:
+  - map color uses `effective_risk_score`;
+  - map stroke emphasis uses `effective_risk_score`;
+  - the popup labels the operational value as `Effective risk`;
+  - the popup separately exposes the underlying `Historical risk`.
+- This keeps operator visualization aligned with HarborGuard's established runtime historical-recency semantics while preserving accumulated historical evidence for diagnostics and learning.
+- Existing Route Safety prediction behavior was not changed.
+- Existing HERE route-ranking behavior was not changed.
+- Existing shared historical-recency bands were not changed.
+- Validation completed before the implementation commit:
+  - `git diff --check` passed;
+  - `npx tsc --noEmit` passed with exit code `0`;
+  - `npm run build` passed with exit code `0`;
+  - Next.js production build generated all `121/121` static pages successfully;
+  - `/api/route-safety/segments` remained registered as a dynamic route;
+  - only the intended segment API and Command Center road-risk layer were included in the implementation change;
+  - `git diff --cached --check` passed before the implementation commit.
+- Implementation commit: `74d03a8` (`Apply recency weighting to road risk segments`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote branch hashes were verified identical at `74d03a87a4029abddf040cd4843664ebbb0cf545`.
+- Known scalability follow-up: effective-risk filtering currently requires the segment API to retrieve the organization's candidate segment set before applying runtime recency weighting, effective-risk filtering, sorting and the requested response limit in application memory. This preserves correct semantics but should be revisited if organization segment volume becomes large enough to require bounded/database-assisted candidate retrieval.
+- Next step: return to the broader HarborGuard engineering roadmap and audit the next highest-value incomplete capability. Do not extend road-risk decay or mutate persisted historical segment scores without a specific operational or performance requirement.
