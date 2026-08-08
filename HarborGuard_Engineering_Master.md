@@ -5382,3 +5382,42 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote branch hashes were verified identical at `6ebb9b3045c73d36e358527764c2d4258cd1bc01`.
 - Performance principle reinforced by this work: preserve realtime freshness and polling fallbacks when they serve distinct reliability purposes, while coalescing burst triggers before they multiply expensive aggregate reads.
 - Next step: continue performance stabilization with another read-only ranking audit of the remaining recurring workloads and select one demonstrated bottleneck before changing code.
+
+## 2026-08-08 - Risk Dashboard refresh coalescing
+
+- Continued the audit-first performance-stabilization roadmap after the Executive Operations Dashboard refresh-coalescing work.
+- Ran another read-only ranking audit of remaining recurring frontend workloads before selecting the next optimization target.
+- Selected `app/risk-dashboard/page.tsx` as the next focused candidate rather than performing a broad application polling rewrite.
+- Audited the Risk Dashboard refresh lifecycle, API usage, realtime subscriptions, polling behavior, visibility handling and exact effect boundaries before implementation.
+- Confirmed the Risk Dashboard already combined multiple refresh triggers around the same dashboard data load.
+- Confirmed the existing visible-page polling cadence remained operationally useful and should not be removed merely because realtime refresh paths exist.
+- Identified the precise performance gap as overlapping and burst-triggered refresh work rather than the existence of the polling fallback itself.
+- Updated only `app/risk-dashboard/page.tsx`.
+- Preserved the existing initial Risk Dashboard load.
+- Preserved the existing Supabase realtime behavior.
+- Preserved the existing 15-second visible-page refresh cadence.
+- Preserved the existing page-visibility behavior so recurring refresh work remains tied to the visible dashboard state.
+- Added refresh coalescing so overlapping refresh triggers do not multiply concurrent dashboard request work.
+- Added in-flight protection around Risk Dashboard loading.
+- Added queued-refresh behavior so a refresh requested while work is active is collapsed into a subsequent refresh rather than spawning overlapping work or being silently discarded.
+- Added short realtime refresh scheduling/coalescing so bursts of realtime activity collapse before invoking the dashboard loader repeatedly.
+- Preserved cleanup behavior for timers/subscriptions associated with the page lifecycle.
+- No API route was changed.
+- No backend helper or service implementation was changed.
+- No database schema or migration change was required.
+- No realtime subscription was removed.
+- No broad application polling rewrite was introduced.
+- Validation completed before the implementation commit:
+  - the exact Risk Dashboard effect boundaries and refresh paths were audited before editing;
+  - only `app/risk-dashboard/page.tsx` was included in the implementation change;
+  - `git diff --check` passed;
+  - `npx tsc --noEmit` passed;
+  - `npm run build` passed;
+  - the production build completed successfully;
+  - the implementation diff contained `63` insertions and `12` deletions;
+  - staged diff validation passed before commit.
+- Implementation commit: `f9801df` (`Coalesce risk dashboard refreshes`).
+- Implementation pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote branch hashes were verified identical at `f9801dfc188d20a799360294c287ac6b11790d2d`.
+- Performance principle reinforced by this work: preserve useful operational freshness mechanisms while routing competing refresh triggers through one guarded, coalesced execution path instead of allowing polling and realtime activity to create overlapping request work.
+- Next step: continue the audit-first performance-stabilization roadmap by ranking the remaining recurring workloads and selecting one demonstrated request, query or write bottleneck before making another focused change.
