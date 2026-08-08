@@ -5989,3 +5989,42 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Performance principle reinforced by this work: when realtime invalidation, mount loading and fallback polling converge on one shared automatic refresh executor, document visibility should be enforced at that shared boundary so all automatic callers inherit hidden-tab suppression without duplicating lifecycle logic across dashboards.
 - This closes the identified shared-hook visibility gap discovered by the post-Insurance fresh ranking audit.
 - Next step: perform one final read-only post-implementation ranking audit from the documented shared-hook baseline; if no remaining material recurring-network coordination gap ranks above diminishing returns, formally close the performance-stabilization sequence and move to the next HarborGuard roadmap area.
+
+## 2026-08-08 - Performance stabilization sequence closure
+
+- Completed the final audit-first performance ranking pass after shared realtime-refresh visibility coordination.
+- Final audit baseline: `e210133` (`Document shared realtime visibility coordination`).
+- Verified local and remote `feature/expanded-incident-taxonomy` heads matched before the audit.
+- Verified the tracked tree and staging area were clean before and after the audit.
+- Re-audited the final `lib/realtime/useRealtimeRefresh.ts` lifecycle.
+- Confirmed the shared refresh executor now exits while `document.visibilityState !== "visible"`.
+- Confirmed the shared hook performs one reconciliation refresh when the document becomes visible again.
+- Confirmed visibility listener cleanup, debounce timeout cleanup, polling interval cleanup and realtime unsubscribe cleanup are all present.
+- Re-audited explicit `setInterval` usage across application, component and realtime-library surfaces.
+- Confirmed Fleet Time Machine's 50 ms interval is local playback-progress work rather than recurring network polling.
+- Confirmed Route Replay's interval is local replay-playback progression rather than recurring network polling.
+- Confirmed Risk Dashboard recurring network refresh is visibility coordinated.
+- Confirmed Route Safety recurring network refresh is visibility coordinated.
+- Confirmed AI Shift Summary recurring network refresh is visibility coordinated.
+- Confirmed CCTV Monitoring recurring network refresh is visibility coordinated.
+- Confirmed Dashcam Monitoring recurring network refresh is visibility coordinated.
+- Confirmed Dispatcher Recommendations recurring/realtime refresh is visibility coordinated.
+- Confirmed Executive Operations recurring/realtime refresh is visibility coordinated.
+- Confirmed Incident Assignment recurring/realtime refresh remains part of the completed coordination set.
+- Confirmed Incident Command recurring/realtime refresh is visibility coordinated.
+- Confirmed Insurance Response Center recurring/realtime refresh is visibility coordinated.
+- Confirmed shared `useRealtimeRefresh` polling callers now inherit hidden-document suppression centrally.
+- Confirmed the shared-hook polling callers retain their existing 15-second, 30-second, 60-second and 5-minute fallback cadences.
+- Confirmed no material recurring-network coordination gap remains that ranks above diminishing returns.
+- No source file was changed during this final audit.
+- No API route was changed.
+- No database query was changed.
+- No database schema or migration was changed.
+- No polling frequency was changed.
+- No realtime subscription dependency was changed.
+- The final audit remained read-only.
+- Existing untracked audit, backup and repair-temp artifacts were deliberately left outside tracked history.
+- Performance-stabilization decision: formally close this sequence rather than continue optimizing local playback timers, isolated manual actions or already-coordinated automatic refresh paths.
+- Stabilization principle established by the completed sequence: prefer realtime invalidation where appropriate, retain conservative fallback polling where operationally useful, coalesce bursty refresh triggers, protect expensive refresh executors from overlap, suppress automatic network work while documents are hidden, and reconcile once when visibility returns.
+- Completed implementation/documentation milestones include coordinated refresh, polling and visibility work across the major Command Center and operational dashboard surfaces, culminating in shared `useRealtimeRefresh` visibility coordination.
+- Next step: leave performance stabilization closed unless new measured evidence exposes a regression or material recurring-network hotspot, and continue with the next HarborGuard roadmap area using the same audit-first workflow.
