@@ -1,0 +1,210 @@
+import {
+  processVehicleLocationUpdate,
+  type ProcessVehicleLocationUpdateResult,
+} from "@/lib/fleet/processVehicleLocationUpdate";
+
+import {
+  claimTelematicsMessage,
+  completeTelematicsMessage,
+  failTelematicsMessage,
+} from "@/lib/telematics/messageReceiptLifecycle";
+
+import {
+  resolveVehicleForProviderDevice,
+} from "@/lib/telematics/resolveVehicleForProviderDevice";
+
+export type NormalizedTelematicsPosition = {
+  providerMessageId: string;
+  providerDeviceId: string;
+  latitude: number;
+  longitude: number;
+  speedKmh: number;
+  heading: number;
+  recordedAt: string;
+};
+
+export type ProcessTelematicsPositionInput = {
+  supabase: any;
+  organizationId: string;
+  provider: string;
+  stream: string;
+  position: NormalizedTelematicsPosition;
+};
+
+export type ProcessTelematicsPositionResult =
+  | {
+      ok: false;
+      errorType:
+        | "vehicle_not_found"
+        | "ambiguous_device"
+        | "location_processing";
+      error: string;
+    }
+  | {
+      ok: true;
+      skipped: "duplicate" | "processing";
+      receiptId: string;
+    }
+  | {
+      ok: true;
+      skipped: "jitter" | "gps_spike" | null;
+      receiptId: string;
+      vehicleId: string;
+      processingResult: ProcessVehicleLocationUpdateResult;
+    };
+
+function errorMessage(error: unknown): string {
+  if (
+    error instanceof Error &&
+    error.message.trim()
+  ) {
+    return error.message;
+  }
+
+  return "Telematics location processing failed.";
+}
+
+export async function processTelematicsPosition({
+  supabase,
+  organizationId,
+  provider,
+  stream,
+  position,
+}: ProcessTelematicsPositionInput): Promise<ProcessTelematicsPositionResult> {
+  const resolved =
+    await resolveVehicleForProviderDevice({
+      supabase,
+      organizationId,
+      providerDeviceId:
+        position.providerDeviceId,
+    });
+
+  if (!resolved.ok) {
+    return {
+      ok: false,
+      errorType: resolved.errorType,
+      error: resolved.error,
+    };
+  }
+
+  const claim =
+    await claimTelematicsMessage({
+      supabase,
+      organizationId,
+      provider,
+      stream,
+      providerMessageId:
+        position.providerMessageId,
+      metadata: {
+        providerDeviceId:
+          position.providerDeviceId,
+        vehicleId:
+          resolved.vehicle.id,
+        recordedAt:
+          position.recordedAt,
+      },
+    });
+
+  if (!claim.claimed) {
+    return {
+      ok: true,
+      skipped:
+        claim.processingStatus === "processed"
+          ? "duplicate"
+          : "processing",
+      receiptId:
+        claim.receiptId,
+    };
+  }
+
+  try {
+    const result =
+      await processVehicleLocationUpdate({
+        supabase,
+        organizationId,
+        location: {
+          vehicleId:
+            resolved.vehicle.id,
+          tripId: null,
+          latitude:
+            position.latitude,
+          longitude:
+            position.longitude,
+          speedKmh:
+            position.speedKmh,
+          heading:
+            position.heading,
+          source: "hardware",
+          recordedAt:
+            position.recordedAt,
+        },
+      });
+
+    if (!result.ok) {
+      await failTelematicsMessage({
+        supabase,
+        receiptId:
+          claim.receiptId,
+        attemptCount:
+          claim.attemptCount,
+        failureMessage:
+          result.error,
+      });
+
+      return {
+        ok: false,
+        errorType:
+          "location_processing",
+        error:
+          result.error,
+      };
+    }
+
+    await completeTelematicsMessage({
+      supabase,
+      receiptId:
+        claim.receiptId,
+      attemptCount:
+        claim.attemptCount,
+    });
+
+    return {
+      ok: true,
+      skipped:
+        result.skipped,
+      receiptId:
+        claim.receiptId,
+      vehicleId:
+        resolved.vehicle.id,
+      processingResult:
+        result,
+    };
+  }
+  catch (error) {
+    const message =
+      errorMessage(error);
+
+    try {
+      await failTelematicsMessage({
+        supabase,
+        receiptId:
+          claim.receiptId,
+        attemptCount:
+          claim.attemptCount,
+        failureMessage:
+          message,
+      });
+    }
+    catch (finalizationError) {
+      throw new AggregateError(
+        [
+          error,
+          finalizationError,
+        ],
+        "Telematics processing failed and the receipt could not be marked failed."
+      );
+    }
+
+    throw error;
+  }
+}
