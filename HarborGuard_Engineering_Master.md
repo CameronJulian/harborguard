@@ -6572,3 +6572,35 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote heads were verified identical at `5056b88`.
 - The external-telematics path now has an internal Traccar synchronization cycle from provider loading through normalized/idempotent HarborGuard processing and organization/provider sync-state recording.
 - Next step: audit the smallest protected server execution boundary for invoking `runTraccarPositionSync(...)`, including existing HarborGuard cron/machine-authentication conventions and organization-selection semantics, before exposing the sync cycle through an API route or scheduler.
+## 2026-08-08 - Protected Traccar sync execution route
+
+- Continued the external-telematics roadmap from verified baseline `40e083f`.
+- Audited existing HarborGuard cron authentication, service-role Supabase client creation, organization-selection patterns and Vercel cron configuration before implementation.
+- Added `app/api/telematics/cron/traccar/route.ts`.
+- Added a protected dynamic `GET /api/telematics/cron/traccar` server execution boundary.
+- The route requires `CRON_SECRET` to be configured.
+- Requests must provide the configured secret as an `Authorization: Bearer ...` header.
+- Unauthorized requests return HTTP 401 before telematics synchronization begins.
+- The route requires `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+- The route creates a non-persistent service-role Supabase client for machine execution.
+- The route requires an explicit `TRACCAR_SYNC_ORGANIZATION_ID`.
+- The configured organization ID is verified against the `organizations` table before synchronization begins.
+- Organization selection is server-controlled rather than accepted from request query parameters or request bodies.
+- After validation, the route delegates the actual synchronization cycle to the existing `runTraccarPositionSync(...)` boundary.
+- Provider loading, Traccar normalization, idempotent message processing, vehicle resolution and telematics sync-state recording remain owned by the existing telematics layers.
+- The route is configured as dynamic and currently has a 60-second maximum duration.
+- Route failures are logged server-side and returned as HTTP 500 JSON responses.
+- No Traccar provider token is hard-coded or committed in the route.
+- No database schema or migration was changed.
+- No telemetry processing thresholds or fleet-risk behavior was changed.
+- `vercel.json` was intentionally not modified in this work item.
+- No scheduler or automatic invocation was added in this work item.
+- TypeScript validation passed before commit.
+- The full production build passed before commit.
+- Next.js production compilation discovered `/api/telematics/cron/traccar` as a dynamic server route.
+- Implementation commit: `78719b0` (`Add protected Traccar sync route`).
+- The implementation commit contains exactly one new route file with 145 insertions.
+- The implementation was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote heads were verified identical at `78719b0`.
+- HarborGuard now has a protected machine-execution boundary capable of invoking the internal Traccar position synchronization cycle for one explicitly configured organization.
+- Next step: audit deployment configuration and the existing Vercel cron cadence conventions before deciding whether and how `/api/telematics/cron/traccar` should be scheduled; separately verify the required Traccar runtime environment variables before any live provider invocation.
