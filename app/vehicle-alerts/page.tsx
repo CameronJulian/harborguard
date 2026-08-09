@@ -18,6 +18,12 @@ type VehicleAlert = {
   resolved_at?: string | null;
   resolution_notes?: string | null;
   review_outcome?: "confirmed" | "false_positive" | "inconclusive" | null;
+  reviewed_by?: string | null;
+  reviewer?: {
+    id: string;
+    full_name: string;
+    email?: string | null;
+  } | null;
   telemetry_evidence?: Record<string, unknown> | null;
   timeline?: {
     event_type: string;
@@ -627,6 +633,11 @@ export default function VehicleAlertsPage() {
                     </div>
                     <div style={{ color: "#166534" }}>
                       Review outcome: {alert.review_outcome || "Not recorded"}
+                      <br />
+                      Reviewed by:{" "}
+                      {alert.reviewer?.full_name ||
+                        alert.reviewer?.email ||
+                        (alert.reviewed_by ? "Unknown reviewer" : "Not recorded")}
                       <br />
                       {alert.resolution_notes || "No notes provided."}
                     </div>

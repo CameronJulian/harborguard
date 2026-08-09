@@ -146,6 +146,7 @@ export async function GET() {
         resolved_at,
         resolution_notes,
         review_outcome,
+        reviewed_by,
         telemetry_evidence,
         organization_id,
         vehicle:vehicles (
@@ -167,6 +168,34 @@ export async function GET() {
 
     const alertIds = (data || []).map((alert: any) => alert.id);
 
+    const reviewerIds = Array.from(
+      new Set(
+        (data || [])
+          .map((alert: any) => alert.reviewed_by)
+          .filter((id: unknown): id is string => typeof id === "string")
+      )
+    );
+    const { data: reviewerProfiles, error: reviewerProfilesError } =
+      reviewerIds.length
+        ? await supabase
+            .from("profiles")
+            .select("id, full_name, email")
+            .eq("organization_id", organizationId)
+            .in("id", reviewerIds)
+        : { data: [], error: null };
+    if (reviewerProfilesError) {
+      return NextResponse.json(
+        { error: reviewerProfilesError.message },
+        { status: 500 }
+      );
+    }
+    const reviewerById = new Map(
+      (reviewerProfiles || []).map((profile: any) => [
+        profile.id,
+        profile,
+      ])
+    );
+
     const { data: emergencyEvents } = alertIds.length
       ? await supabase
           .from("emergency_response_events")
@@ -183,6 +212,10 @@ export async function GET() {
     const alerts = (data || []).map(
       (alert: any) => ({
         ...alert,
+        reviewer:
+          alert.reviewed_by
+            ? reviewerById.get(alert.reviewed_by) || null
+            : null,
         intelligence:
           generateNarrative(alert),
         timeline: (emergencyEvents || []).filter(
