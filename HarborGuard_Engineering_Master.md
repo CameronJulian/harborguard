@@ -7076,3 +7076,27 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Implementation committed as `9879991` with message `Expose telemetry review performance by vehicle`.
 - Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Next step: begin a fresh audit-first roadmap assessment before selecting another telemetry, fleet or road-intelligence milestone.
+## 2026-08-09 - Vehicle alert telemetry evidence persistence added
+
+- Completed a focused audit-first persistence milestone for telemetry-derived vehicle alerts.
+- Added nullable `telemetry_evidence jsonb` storage to `vehicle_alerts`.
+- Added the corresponding `telemetry_evidence` Row, Insert, and Update contracts to the generated Supabase database typing surface.
+- Harsh-braking alerts now persist the detector candidate as telemetry evidence.
+- Rapid-acceleration alerts now persist the detector candidate as telemetry evidence.
+- Harsh-cornering alerts now persist the detector candidate as telemetry evidence.
+- Sustained-speeding alerts now persist the detector candidate as telemetry evidence.
+- The persisted evidence preserves the telemetry context that caused each alert to be created for later review, analytics, and detector-quality assessment.
+- No detector thresholds were changed.
+- No detector candidate semantics were changed.
+- No location-update lifecycle behavior was changed.
+- No road-intelligence promotion behavior was changed.
+- No automatic threshold tuning was introduced.
+- Added migration `20260809130000_add_vehicle_alert_telemetry_evidence.sql`.
+- The migration has been committed but has not yet been pushed to the remote Supabase database.
+- `git diff --check` passed.
+- TypeScript validation passed.
+- Full Next.js production build passed.
+- All 122/122 static pages were generated successfully.
+- Implementation committed as `00045f9` with message `Persist telemetry evidence with vehicle alerts`.
+- Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Next step: inspect migration history and perform a guarded Supabase dry run before deploying the telemetry-evidence migration.
