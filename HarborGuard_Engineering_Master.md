@@ -6962,3 +6962,50 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Deployed feature branch HEAD is `36401af`.
 - Vehicle-alert review outcomes are now implemented and deployed end-to-end.
 - Next step: begin a fresh audit-first roadmap assessment before selecting another fleet or road-intelligence milestone.
+## 2026-08-09 - Telemetry alert review performance analytics
+
+- Completed the next audit-first telemetry evidence-quality milestone.
+- Confirmed that vehicle-alert review outcomes were persisted and exposed operationally but were not yet consumed for detector-quality analysis.
+- Added `lib/fleet/calculateTelemetryAlertReviewPerformance.ts`.
+- Added `/api/fleet/telemetry-review-performance`.
+- Added a new Telemetry Alert Review Performance section to the Analytics page.
+- The analysis is limited to HarborGuard-generated telemetry alert types:
+  - `harsh_braking`;
+  - `rapid_acceleration`;
+  - `harsh_cornering`;
+  - `speeding`.
+- Review evidence uses the deployed `vehicle_alerts.review_outcome` values:
+  - `confirmed`;
+  - `false_positive`;
+  - `inconclusive`.
+- The performance helper reports:
+  - reviewed alerts;
+  - evaluated alerts;
+  - confirmed alerts;
+  - false positives;
+  - inconclusive reviews;
+  - confirmation rate.
+- `reviewedAlerts` includes confirmed, false-positive and inconclusive reviews.
+- `evaluatedAlerts` includes only confirmed and false-positive reviews.
+- Confirmation rate is calculated as `confirmed / (confirmed + false_positive)`.
+- Inconclusive reviews are intentionally excluded from the confirmation-rate denominator.
+- The metric is named confirmation rate rather than precision because the available review evidence does not identify false negatives.
+- The API is organization-scoped.
+- Analytics date filtering is applied to `resolved_at`, reflecting when the human review disposition was recorded.
+- The API supports optional vehicle filtering and therefore follows the existing Analytics vehicle selector.
+- Analytics displays overall review-performance metrics plus separate breakdowns for harsh braking, rapid acceleration, harsh cornering and speeding.
+- The Analytics UI explicitly explains that the analysis is descriptive only.
+- No telemetry detector thresholds were changed.
+- No alert-generation logic was changed.
+- No automatic calibration or threshold mutation was introduced.
+- No telemetry-to-road-intelligence promotion behavior was changed.
+- No database migration or schema change was required.
+- `git diff --check` passed.
+- New-file whitespace validation passed.
+- TypeScript validation passed.
+- Full Next.js production build passed.
+- All 122/122 static pages were generated successfully.
+- The production route manifest includes `/api/fleet/telemetry-review-performance`.
+- Implementation committed as `200e442` with message `Add telemetry alert review performance analytics`.
+- Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Next step: begin a fresh audit-first roadmap assessment before selecting another telemetry, fleet or road-intelligence implementation.
