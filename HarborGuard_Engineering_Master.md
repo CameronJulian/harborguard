@@ -6641,3 +6641,47 @@ Pushed it to feature/expanded-incident-taxonomy.
 - No Traccar token, Supabase service-role key, cron secret or Vercel automation bypass secret was committed to Git.
 - No recurring Traccar scheduler has been enabled yet.
 - Next step: audit the appropriate Traccar polling cadence and Vercel scheduling constraints before adding any automatic invocation of `/api/telematics/cron/traccar`.
+## 2026-08-09 - Automated production Traccar synchronization
+
+- Completed the production scheduling milestone for external Traccar vehicle telemetry.
+- Promoted the validated HarborGuard development history from `feature/expanded-incident-taxonomy` to production `main` through a fast-forward-only promotion.
+- Confirmed `main` and the feature branch were non-divergent before promotion.
+- Confirmed production `main` reached commit `709d210`.
+- TypeScript validation passed before production promotion.
+- The full Next.js production build passed before promotion.
+- All 121/121 static pages were generated successfully.
+- Confirmed the production build includes dynamic route `/api/telematics/cron/traccar`.
+- Confirmed the production Vercel deployment for commit `709d210` reached Ready state.
+- Confirmed the production Traccar execution route accepts the configured `CRON_SECRET` Bearer authentication.
+- Confirmed a direct production execution returned `ok = true`.
+- The direct production execution reported:
+  - `received = 1`;
+  - `processed = 0`;
+  - `duplicates = 1`;
+  - `alreadyProcessing = 0`;
+  - `jitterSkipped = 0`;
+  - `gpsSpikeSkipped = 0`.
+- Confirmed the duplicate result reflects the existing processed Traccar provider message rather than duplicate HarborGuard location processing.
+- Created QStash schedule `harborguard-traccar-10m` in the EU region.
+- Configured the schedule with cron expression `*/10 * * * *`.
+- Configured QStash to invoke `GET https://harborguard.vercel.app/api/telematics/cron/traccar`.
+- QStash forwards the existing HarborGuard `Authorization: Bearer <CRON_SECRET>` contract without weakening the machine-authentication boundary.
+- Confirmed the schedule is active and not paused.
+- Confirmed three consecutive automated production deliveries:
+  - 09:00 local time - delivered;
+  - 09:10 local time - delivered;
+  - 09:20 local time - delivered.
+- Confirmed the 09:20 automated cycle updated `telematics_sync_state` at `2026-08-09T07:20:04.391Z`.
+- Confirmed the sync state contains no `last_failure_at` or `last_failure_message`.
+- Confirmed the automated cycle metadata recorded:
+  - `received = 1`;
+  - `processed = 0`;
+  - `duplicates = 1`;
+  - `alreadyProcessing = 0`;
+  - `jitterSkipped = 0`;
+  - `gpsSpikeSkipped = 0`.
+- Confirmed provider message `116208899` remains `processed` with `attempt_count = 1`.
+- No QStash token, HarborGuard cron secret, Traccar token or Supabase service-role key was committed to source.
+- The external telematics path is now automatically invoked in production every ten minutes through an external scheduler compatible with the current Vercel Hobby plan.
+- This closes the initial Traccar external-telemetry ingestion and production-scheduling milestone.
+- Next step: perform an audit-first investigation of how normalized external telematics currently propagates into HarborGuard road intelligence, fleet-risk, telemetry alerts and corroboration so the smallest remaining telematics-intelligence-fusion gap can be identified before adding new behavior.
