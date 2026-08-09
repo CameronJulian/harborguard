@@ -6881,3 +6881,25 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Pre-deployment milestone documentation remains committed as `cedc7cd` with message `Document persisted road speed evidence`.
 - Persisted per-sample road-speed evidence is now available end-to-end in code and in the deployed database schema.
 - Next step: begin a fresh audit-first roadmap assessment before choosing any further speeding tolerance, evidence-policy or road-intelligence promotion work.
+## 2026-08-09 - Speeding alert road-context semantics corrected
+
+- Completed a focused audit-first semantic correction in the sustained-speeding alert path.
+- Confirmed the speeding alert text still described detection as using a fixed threshold and stated that road-specific speed limits were not yet used.
+- Those statements had become stale after HERE road-speed context and persisted per-sample road-speed evidence were introduced.
+- Updated the speeding alert message to describe the active threshold as the effective threshold rather than a fixed threshold.
+- Updated the intelligence narrative to state that speeding analysis uses available road-speed context and falls back to the configured threshold when road-speed context is unavailable.
+- Replaced the phrase `Corroborated fleet telemetry candidate` with `Sustained fleet telemetry candidate`.
+- The wording now reflects temporal evidence from consecutive samples without implying the multi-vehicle corroboration contract used by harsh-braking road-intelligence promotion.
+- No speeding detector logic was changed.
+- No road-speed thresholds were changed.
+- No sustained-duration or minimum-sample policy was changed.
+- No database schema or migration changes were required.
+- No speeding promotion into `route_intelligence` was introduced.
+- No call to `aggregate_road_risk_intelligence` was introduced.
+- `git diff --check` passed.
+- TypeScript validation passed.
+- Full Next.js production build passed.
+- All 121/121 static pages were generated successfully.
+- Implementation committed as `2019192` with message `Correct speeding alert road context semantics`.
+- Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Next step: begin a fresh audit-first assessment of the next fleet/road-intelligence gap rather than automatically promoting speeding.
