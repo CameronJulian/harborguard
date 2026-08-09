@@ -19,12 +19,20 @@ export async function GET() {
     const { supabase, organizationId } = await requireOrganization();
 
     const [
+      integrationResult,
       syncStateResult,
       processingReceiptsResult,
       failedReceiptsResult,
       oldestProcessingResult,
       recentFailuresResult,
     ] = await Promise.all([
+      supabase
+        .from("telematics_integrations")
+        .select("id, enabled")
+        .eq("organization_id", organizationId)
+        .eq("provider", TRACCAR_PROVIDER)
+        .maybeSingle(),
+
       supabase
         .from("telematics_sync_state")
         .select(
@@ -71,18 +79,29 @@ export async function GET() {
         .limit(RECENT_FAILURE_LIMIT),
     ]);
 
+    if (integrationResult.error) throw integrationResult.error;
     if (syncStateResult.error) throw syncStateResult.error;
     if (processingReceiptsResult.error) throw processingReceiptsResult.error;
     if (failedReceiptsResult.error) throw failedReceiptsResult.error;
     if (oldestProcessingResult.error) throw oldestProcessingResult.error;
     if (recentFailuresResult.error) throw recentFailuresResult.error;
 
+    const integration = integrationResult.data;
+    const configured = Boolean(integration);
+    const enabled = integration?.enabled ?? false;
     const syncState = syncStateResult.data;
     const lastFailureMessage = syncState?.last_failure_message ?? null;
 
-    let status: "healthy" | "warning" | "failed" | "never_synced";
+    let status:
+      | "healthy"
+      | "warning"
+      | "failed"
+      | "never_synced"
+      | "disabled";
 
-    if (!syncState?.last_successful_sync_at && !syncState?.last_failure_at) {
+    if (configured && !enabled) {
+      status = "disabled";
+    } else if (!syncState?.last_successful_sync_at && !syncState?.last_failure_at) {
       status = "never_synced";
     } else if (
       syncState?.last_failure_at &&
@@ -107,6 +126,8 @@ export async function GET() {
       integration: {
         provider: TRACCAR_PROVIDER,
         stream: TRACCAR_POSITION_STREAM,
+        configured,
+        enabled,
         status,
         lastSuccessfulSyncAt: syncState?.last_successful_sync_at ?? null,
         lastFailureAt: syncState?.last_failure_at ?? null,

@@ -90,13 +90,16 @@ type TelematicsHealthStatus =
   | "healthy"
   | "warning"
   | "failed"
-  | "never_synced";
+  | "never_synced"
+  | "disabled";
 
 type TelematicsHealthResponse = {
   success: boolean;
   integration: {
     provider: string;
     stream: string;
+    configured: boolean;
+    enabled: boolean;
     status: TelematicsHealthStatus;
     lastSuccessfulSyncAt: string | null;
     lastFailureAt: string | null;
@@ -170,6 +173,8 @@ function telematicsHealthLabel(status: TelematicsHealthStatus) {
       return "Failed";
     case "never_synced":
       return "Never synced";
+    case "disabled":
+      return "Disabled";
   }
 }
 
@@ -182,6 +187,8 @@ function telematicsHealthColor(status: TelematicsHealthStatus) {
     case "failed":
       return "#dc2626";
     case "never_synced":
+      return "#64748b";
+    case "disabled":
       return "#64748b";
   }
 }
@@ -535,6 +542,22 @@ export default function FleetDashboardPage() {
             <p style={mutedTextStyle}>
               Operational visibility for external hardware telemetry ingestion.
             </p>
+            {telematicsHealth ? (
+              <p
+                style={{
+                  ...mutedTextStyle,
+                  marginTop: 6,
+                  fontSize: 13,
+                }}
+              >
+                Registry:{" "}
+                {telematicsHealth.configured
+                  ? telematicsHealth.enabled
+                    ? "Configured and enabled"
+                    : "Configured but disabled"
+                  : "Not configured"}
+              </p>
+            ) : null}
           </div>
 
           {telematicsHealth ? (
