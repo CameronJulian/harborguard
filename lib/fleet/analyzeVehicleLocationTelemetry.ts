@@ -108,6 +108,7 @@ type AnalyzeVehicleLocationTelemetryResult = {
   rapidAccelerationCandidate: RapidAccelerationCandidate | null;
   harshCorneringCandidate: HarshCorneringCandidate | null;
   speedingCandidate: SpeedingCandidate | null;
+  roadSpeedLimitKmh: number | null;
 };
 
 export async function analyzeVehicleLocationTelemetry({
@@ -146,6 +147,7 @@ export async function analyzeVehicleLocationTelemetry({
   let rapidAccelerationCandidate: RapidAccelerationCandidate | null = null;
   let harshCorneringCandidate: HarshCorneringCandidate | null = null;
   let speedingCandidate: SpeedingCandidate | null = null;
+  let roadSpeedLimitKmh: number | null = null;
 
   if (!lastPoint) {
     return {
@@ -154,6 +156,7 @@ export async function analyzeVehicleLocationTelemetry({
       rapidAccelerationCandidate,
       harshCorneringCandidate,
       speedingCandidate,
+      roadSpeedLimitKmh,
     };
   }
 
@@ -174,6 +177,7 @@ export async function analyzeVehicleLocationTelemetry({
       rapidAccelerationCandidate,
       harshCorneringCandidate,
       speedingCandidate,
+      roadSpeedLimitKmh,
     };
   }
 
@@ -215,6 +219,7 @@ export async function analyzeVehicleLocationTelemetry({
       rapidAccelerationCandidate,
       harshCorneringCandidate,
       speedingCandidate,
+      roadSpeedLimitKmh,
     };
   }
 
@@ -243,23 +248,27 @@ export async function analyzeVehicleLocationTelemetry({
       rapidAccelerationCandidate,
       harshCorneringCandidate,
       speedingCandidate,
+      roadSpeedLimitKmh,
     };
   }
 
   if (source !== "manual") {
-    const roadSpeedLimitKmh =
+    const resolvedRoadSpeedLimitKmh =
       await resolveHereRoadSpeedLimit({
         latitude,
         longitude,
         heading,
       });
 
+    roadSpeedLimitKmh =
+      resolvedRoadSpeedLimitKmh !== null &&
+      Number.isFinite(resolvedRoadSpeedLimitKmh) &&
+      resolvedRoadSpeedLimitKmh > 0
+        ? resolvedRoadSpeedLimitKmh
+        : null;
+
     const effectiveSpeedingMinimumKmh =
-      roadSpeedLimitKmh !== null &&
-      Number.isFinite(roadSpeedLimitKmh) &&
-      roadSpeedLimitKmh > 0
-        ? roadSpeedLimitKmh
-        : speedingMinimumSpeedKmh;
+      roadSpeedLimitKmh ?? speedingMinimumSpeedKmh;
 
     speedingCandidate =
       await detectSustainedSpeedingCandidate({
@@ -339,5 +348,6 @@ export async function analyzeVehicleLocationTelemetry({
     rapidAccelerationCandidate,
     harshCorneringCandidate,
     speedingCandidate,
+    roadSpeedLimitKmh,
   };
 }

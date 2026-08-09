@@ -2049,6 +2049,7 @@ export type Database = {
           organization_id: string | null
           recorded_at: string
           source: string
+          road_speed_limit_kmh: number | null
           speed_kmh: number | null
           trip_id: string | null
           vehicle_id: string | null
@@ -2061,6 +2062,7 @@ export type Database = {
           organization_id?: string | null
           recorded_at?: string
           source?: string
+          road_speed_limit_kmh?: number | null
           speed_kmh?: number | null
           trip_id?: string | null
           vehicle_id?: string | null
@@ -2073,6 +2075,7 @@ export type Database = {
           organization_id?: string | null
           recorded_at?: string
           source?: string
+          road_speed_limit_kmh?: number | null
           speed_kmh?: number | null
           trip_id?: string | null
           vehicle_id?: string | null

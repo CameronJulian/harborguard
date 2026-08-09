@@ -51,7 +51,7 @@ export async function detectSustainedSpeedingCandidate(
     error: recentSpeedingPointsError,
   } = await supabase
     .from("vehicle_locations")
-    .select("speed_kmh, recorded_at")
+    .select("speed_kmh, road_speed_limit_kmh, recorded_at")
     .eq("organization_id", organizationId)
     .eq("vehicle_id", vehicleId)
     .gte("recorded_at", lookbackSince)
@@ -80,9 +80,18 @@ export async function detectSustainedSpeedingCandidate(
     const historicalSpeedKmh =
       parseNumber(point.speed_kmh);
 
+    const historicalRoadSpeedLimitKmh =
+      parseNumber(point.road_speed_limit_kmh);
+
+    const historicalMinimumSpeedKmh =
+      Number.isFinite(historicalRoadSpeedLimitKmh) &&
+      historicalRoadSpeedLimitKmh > 0
+        ? historicalRoadSpeedLimitKmh
+        : minimumSpeedKmh;
+
     if (
       !Number.isFinite(historicalSpeedKmh) ||
-      historicalSpeedKmh < minimumSpeedKmh
+      historicalSpeedKmh < historicalMinimumSpeedKmh
     ) {
       break;
     }

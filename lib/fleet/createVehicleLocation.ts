@@ -9,6 +9,7 @@ export type CreateVehicleLocationInput = {
   heading: number;
   recordedAt: string;
   source: "mobile" | "hardware" | "manual";
+  roadSpeedLimitKmh: number | null;
 };
 
 export type CreateVehicleLocationResult = {
@@ -29,6 +30,7 @@ export async function createVehicleLocation(
     heading,
     recordedAt,
     source,
+    roadSpeedLimitKmh,
   } = input;
 
   const { error } = await supabase
@@ -43,6 +45,7 @@ export async function createVehicleLocation(
       heading,
       recorded_at: recordedAt,
       source,
+      road_speed_limit_kmh: roadSpeedLimitKmh,
     });
 
   return {

@@ -196,6 +196,7 @@ export async function processVehicleLocationUpdate({
     rapidAccelerationCandidate,
     harshCorneringCandidate,
     speedingCandidate,
+    roadSpeedLimitKmh,
   } = telemetryAnalysis;
 
   const {
@@ -211,6 +212,7 @@ export async function processVehicleLocationUpdate({
     heading,
     recordedAt: occurredAt,
     source,
+    roadSpeedLimitKmh,
   });
 
   if (locationError) {
