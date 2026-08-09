@@ -6754,3 +6754,31 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Implementation committed as `5e460ed` with message `Add rapid acceleration corroboration diagnostics`.
 - Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Next step: gather or audit sufficient evidence before deciding whether rapid acceleration should ever become verified road intelligence; otherwise continue the audit-first roadmap to the next higher-value telemetry/intelligence gap rather than automatically promoting another behaviour.
+## 2026-08-09 - Harsh-cornering corroboration diagnostics
+
+- Completed the next audit-first fleet-telemetry evidence milestone.
+- Confirmed harsh cornering remained a low-confidence fleet telemetry candidate that explicitly required corroboration before any verified road-intelligence treatment.
+- Added `lib/fleet/harshCorneringCorroboration.ts`.
+- Harsh-cornering corroboration currently uses an evidence-gathering baseline of:
+  - 15-minute observation window;
+  - 150-metre geographic radius;
+  - minimum two distinct vehicles.
+- The harsh-cornering corroborator queries only organization-scoped `vehicle_alerts` with `alert_type = harsh_cornering`.
+- Nearby alerts are filtered geographically using the existing `getDistanceMeters()` helper.
+- Distinct vehicle IDs are calculated so repeated alerts from one vehicle cannot independently satisfy the multi-vehicle corroboration threshold.
+- Wired harsh-cornering corroboration into `createHarshCorneringAlert.ts` after successful vehicle-alert insertion.
+- Corroboration failures are isolated from the primary harsh-cornering alert lifecycle and are logged diagnostically.
+- Successful corroboration checks emit threshold, distinct-vehicle, nearby-alert, radius and observation-window diagnostic information.
+- This milestone is diagnostic/evidence-gathering only.
+- Harsh cornering is NOT promoted into `route_intelligence` by this work item.
+- Harsh cornering does NOT invoke `aggregate_road_risk_intelligence`.
+- Harsh cornering does NOT modify `road_risk_segments`.
+- No Supabase migration was required.
+- Existing harsh-braking promotion and rapid-acceleration diagnostic behaviour were left unchanged.
+- `git diff --check` passed.
+- TypeScript validation passed.
+- Full Next.js production build passed.
+- All 121/121 static pages were generated successfully.
+- Implementation committed as `4478b79` with message `Add harsh cornering corroboration diagnostics`.
+- Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Next step: continue the audit-first roadmap without automatically promoting harsh cornering; compare remaining telemetry/intelligence gaps, especially road-specific speeding context and evidence-policy maturity, before choosing the next focused change.
