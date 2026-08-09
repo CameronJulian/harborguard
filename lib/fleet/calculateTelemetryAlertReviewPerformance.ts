@@ -27,9 +27,15 @@ export type TelemetryAlertReviewSummary = {
   evidenceCoverageRate: number | null;
 };
 
+export type TelemetryEvidenceOutcomeDiagnostic = {
+  confirmedAverage: number | null;
+  falsePositiveAverage: number | null;
+};
+
 export type TelemetryAlertReviewBreakdown =
   TelemetryAlertReviewSummary & {
     alertType: TelemetryAlertType;
+    evidenceStrength: TelemetryEvidenceOutcomeDiagnostic;
   };
 
 export type TelemetryAlertReviewVehicleBreakdown =
@@ -50,6 +56,111 @@ export const TELEMETRY_ALERT_TYPES: TelemetryAlertType[] = [
   "speeding",
 ];
 
+function average(
+  values: number[]
+): number | null {
+  if (values.length === 0) {
+    return null;
+  }
+
+  return (
+    values.reduce(
+      (sum, value) => sum + value,
+      0
+    ) / values.length
+  );
+}
+
+function evidenceStrength(
+  evaluation: TelemetryAlertReviewEvaluation
+): number | null {
+  const evidence =
+    evaluation.telemetry_evidence;
+
+  if (
+    evidence === null ||
+    typeof evidence !== "object"
+  ) {
+    return null;
+  }
+
+  switch (evaluation.alert_type) {
+    case "harsh_braking": {
+      const value =
+        evidence.decelerationMps2;
+
+      return typeof value === "number"
+        ? value
+        : null;
+    }
+
+    case "rapid_acceleration": {
+      const value =
+        evidence.accelerationMps2;
+
+      return typeof value === "number"
+        ? value
+        : null;
+    }
+
+    case "harsh_cornering": {
+      const value =
+        evidence.headingChangeDegrees;
+
+      return typeof value === "number"
+        ? value
+        : null;
+    }
+
+    case "speeding": {
+      const speed =
+        evidence.speedKmh;
+
+      const threshold =
+        evidence.thresholdKmh;
+
+      if (
+        typeof speed !== "number" ||
+        typeof threshold !== "number"
+      ) {
+        return null;
+      }
+
+      return speed - threshold;
+    }
+  }
+}
+
+function evidenceOutcomeDiagnostic(
+  evaluations: TelemetryAlertReviewEvaluation[]
+): TelemetryEvidenceOutcomeDiagnostic {
+  return {
+    confirmedAverage: average(
+      evaluations
+        .filter(
+          (evaluation) =>
+            evaluation.review_outcome === "confirmed"
+        )
+        .map(evidenceStrength)
+        .filter(
+          (value): value is number =>
+            value !== null
+        )
+    ),
+    falsePositiveAverage: average(
+      evaluations
+        .filter(
+          (evaluation) =>
+            evaluation.review_outcome === "false_positive"
+        )
+        .map(evidenceStrength)
+        .filter(
+          (value): value is number =>
+            value !== null
+        )
+    ),
+  };
+}
 function ratio(
   numerator: number,
   denominator: number
@@ -130,15 +241,24 @@ export function calculateTelemetryAlertReviewPerformance(
     overall: summarize(evaluations),
 
     byAlertType: TELEMETRY_ALERT_TYPES.map(
-      (alertType) => ({
-        alertType,
-        ...summarize(
+      (alertType) => {
+        const alertTypeEvaluations =
           evaluations.filter(
             (evaluation) =>
               evaluation.alert_type === alertType
-          )
-        ),
-      })
+          );
+
+        return {
+          alertType,
+          ...summarize(
+            alertTypeEvaluations
+          ),
+          evidenceStrength:
+            evidenceOutcomeDiagnostic(
+              alertTypeEvaluations
+            ),
+        };
+      }
     ),
 
     byVehicle: Array.from(
