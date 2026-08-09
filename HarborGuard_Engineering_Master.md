@@ -6937,3 +6937,28 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Database migration has NOT yet been applied at this documentation step.
 - Next step: audit local/remote Supabase migration state, dry-run the single pending review-outcome migration, then apply and verify it separately before starting another implementation item.
+## 2026-08-09 - Vehicle alert review outcomes deployed
+
+- Completed deployment of the vehicle-alert review-outcome milestone.
+- Implementation introduced explicit review outcomes for resolved vehicle alerts while preserving the existing resolved/acknowledged lifecycle.
+- Supported review outcomes are `confirmed`, `false_positive`, and `inconclusive`.
+- Review outcome data is exposed through the fleet alerts API and command-center alert data contract.
+- The vehicle-alert review interface now allows an operator to classify the outcome while resolving an alert.
+- Added Supabase migration `20260809110000_add_vehicle_alert_review_outcome.sql`.
+- The migration adds nullable `review_outcome` evidence to `public.vehicle_alerts`.
+- The database check constraint restricts persisted non-null review outcomes to the supported review-outcome contract.
+- Legacy vehicle-alert rows intentionally remain nullable.
+- Pre-deployment migration audit confirmed `20260809110000` was local-only and pending.
+- `supabase db push --dry-run` confirmed that exactly `20260809110000_add_vehicle_alert_review_outcome.sql` would be applied.
+- The dry run did not modify the remote database.
+- The migration was subsequently applied successfully with `supabase db push`.
+- Post-deployment migration history confirmed `20260809110000` is recorded in both local and remote migration histories.
+- Runtime verification queried the remote PostgREST endpoint for `vehicle_alerts.review_outcome`.
+- The runtime query succeeded, confirming that the new column is exposed through the deployed API schema.
+- The verification response returned `review_outcome: null` for an existing alert, which is expected for legacy data created before review-outcome persistence.
+- No synthetic production alert was inserted solely to exercise the database constraint.
+- Git HEAD remained unchanged during migration deployment and runtime verification.
+- The tracked working tree remained clean throughout deployment.
+- Deployed feature branch HEAD is `36401af`.
+- Vehicle-alert review outcomes are now implemented and deployed end-to-end.
+- Next step: begin a fresh audit-first roadmap assessment before selecting another fleet or road-intelligence milestone.
