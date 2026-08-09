@@ -7717,3 +7717,34 @@ Pushed it to feature/expanded-incident-taxonomy.
 - No multi-tenant scheduling was introduced.
 - No Webfleet work was introduced.
 - Next step: perform an audit-first implementation of a narrow Traccar cron registry gate that requires an enabled `provider = "traccar"` integration for `TRACCAR_SYNC_ORGANIZATION_ID`, while leaving current environment-based credential resolution unchanged.
+## 2026-08-09 - Traccar cron registry gate
+
+- Completed the audit-first Traccar cron registry-gate milestone.
+- Preserved the existing single-organization scheduler contract using `TRACCAR_SYNC_ORGANIZATION_ID`.
+- Preserved the existing organization-existence validation.
+- Added an organization-scoped lookup against `telematics_integrations`.
+- Traccar synchronization now requires an integration row matching:
+  - the configured organization ID
+  - provider `traccar`
+  - enabled `true`
+- The registry validation executes before `runTraccarPositionSync()`.
+- If no enabled Traccar integration exists for the configured organization, the cron returns a controlled server error instead of running synchronization.
+- Registry lookup failures propagate through the existing cron error handling.
+- Existing `TRACCAR_API_TOKEN` credential resolution remains environment-based.
+- Existing `TRACCAR_API_BASE_URL` configuration remains environment-based.
+- No provider credentials were moved into Supabase.
+- No changes were made to `runTraccarPositionSync`.
+- No changes were made to the Traccar provider adapter.
+- No changes were made to scheduling cadence.
+- No multi-tenant organization enumeration was introduced.
+- No Webfleet implementation was introduced.
+- The live HarborGuard Demo Traccar registry row had already been bootstrapped and enabled before enforcement was added.
+- `git diff --check` passed.
+- TypeScript validation passed.
+- Full Next.js production build passed.
+- Production build generated all 123/123 static pages successfully.
+- Cron registry gate committed as `c7f5878` with message `Gate Traccar cron on integration registry`.
+- Commit `c7f5878` was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote feature heads matched after push.
+- Tracked working tree was clean after push.
+- Next step: perform a fresh audit-first roadmap assessment before changing Traccar configuration further or beginning Webfleet work.
