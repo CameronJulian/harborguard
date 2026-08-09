@@ -95,7 +95,9 @@ type TelemetryAlertReviewBreakdown =
       | "speeding";
     evidenceStrength: {
       confirmedAverage: number | null;
+      confirmedSamples: number;
       falsePositiveAverage: number | null;
+      falsePositiveSamples: number;
     };
   };
 
@@ -1556,14 +1558,16 @@ if (subscriptionLoaded && !premiumAllowed) {
                       {formatTelemetryEvidenceStrength(
                         entry.alertType,
                         entry.evidenceStrength.confirmedAverage
-                      )}
+                      )}{" "}
+                      (n={entry.evidenceStrength.confirmedSamples})
                     </div>
                     <div>
                       False-positive evidence avg:{" "}
                       {formatTelemetryEvidenceStrength(
                         entry.alertType,
                         entry.evidenceStrength.falsePositiveAverage
-                      )}
+                      )}{" "}
+                      (n={entry.evidenceStrength.falsePositiveSamples})
                     </div>
                   </div>
                 </div>

@@ -29,7 +29,9 @@ export type TelemetryAlertReviewSummary = {
 
 export type TelemetryEvidenceOutcomeDiagnostic = {
   confirmedAverage: number | null;
+  confirmedSamples: number;
   falsePositiveAverage: number | null;
+  falsePositiveSamples: number;
 };
 
 export type TelemetryAlertReviewBreakdown =
@@ -134,31 +136,41 @@ function evidenceStrength(
 function evidenceOutcomeDiagnostic(
   evaluations: TelemetryAlertReviewEvaluation[]
 ): TelemetryEvidenceOutcomeDiagnostic {
+  const confirmedEvidenceStrengths =
+    evaluations
+      .filter(
+        (evaluation) =>
+          evaluation.review_outcome === "confirmed"
+      )
+      .map(evidenceStrength)
+      .filter(
+        (value): value is number =>
+          value !== null
+      );
+
+  const falsePositiveEvidenceStrengths =
+    evaluations
+      .filter(
+        (evaluation) =>
+          evaluation.review_outcome === "false_positive"
+      )
+      .map(evidenceStrength)
+      .filter(
+        (value): value is number =>
+          value !== null
+      );
+
   return {
     confirmedAverage: average(
-      evaluations
-        .filter(
-          (evaluation) =>
-            evaluation.review_outcome === "confirmed"
-        )
-        .map(evidenceStrength)
-        .filter(
-          (value): value is number =>
-            value !== null
-        )
+      confirmedEvidenceStrengths
     ),
+    confirmedSamples:
+      confirmedEvidenceStrengths.length,
     falsePositiveAverage: average(
-      evaluations
-        .filter(
-          (evaluation) =>
-            evaluation.review_outcome === "false_positive"
-        )
-        .map(evidenceStrength)
-        .filter(
-          (value): value is number =>
-            value !== null
-        )
+      falsePositiveEvidenceStrengths
     ),
+    falsePositiveSamples:
+      falsePositiveEvidenceStrengths.length,
   };
 }
 function ratio(
