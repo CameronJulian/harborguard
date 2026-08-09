@@ -29,8 +29,10 @@ export type TelemetryAlertReviewSummary = {
 
 export type TelemetryEvidenceOutcomeDiagnostic = {
   confirmedAverage: number | null;
+  confirmedMedian: number | null;
   confirmedSamples: number;
   falsePositiveAverage: number | null;
+  falsePositiveMedian: number | null;
   falsePositiveSamples: number;
 };
 
@@ -71,6 +73,29 @@ function average(
       0
     ) / values.length
   );
+}
+
+function median(
+  values: number[]
+): number | null {
+  if (values.length === 0) {
+    return null;
+  }
+
+  const sorted = [...values].sort(
+    (left, right) => left - right
+  );
+
+  const middle = Math.floor(sorted.length / 2);
+
+  if (sorted.length % 2 === 1) {
+    return sorted[middle];
+  }
+
+  return (
+    sorted[middle - 1] +
+    sorted[middle]
+  ) / 2;
 }
 
 function evidenceStrength(
@@ -164,9 +189,15 @@ function evidenceOutcomeDiagnostic(
     confirmedAverage: average(
       confirmedEvidenceStrengths
     ),
+    confirmedMedian: median(
+      confirmedEvidenceStrengths
+    ),
     confirmedSamples:
       confirmedEvidenceStrengths.length,
     falsePositiveAverage: average(
+      falsePositiveEvidenceStrengths
+    ),
+    falsePositiveMedian: median(
       falsePositiveEvidenceStrengths
     ),
     falsePositiveSamples:
