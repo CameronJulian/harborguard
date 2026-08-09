@@ -7782,3 +7782,52 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote feature heads matched after push.
 - Tracked working tree was clean after push.
 - Next step: perform a fresh audit-first roadmap assessment before starting another implementation.
+## 2026-08-09 - Traccar integration admin control
+
+- Completed the audit-first Traccar integration administration milestone.
+- Updated `app/api/fleet/telematics-health/route.ts`.
+- Updated `app/fleet/page.tsx`.
+- Extended the telematics health response with `canManage`.
+- `canManage` is true only for organization roles:
+  - `owner`
+  - `admin`
+- Added `PATCH /api/fleet/telematics-health`.
+- PATCH accepts only the desired final state:
+  - `{ enabled: boolean }`
+- PATCH requires an authenticated organization context.
+- PATCH requires `owner` or `admin` via `requireRole`.
+- Registry mutation uses the existing server-side `supabaseAdmin` service-role client.
+- Registry mutation is scoped by both:
+  - the authenticated `organization_id`
+  - provider `traccar`
+- PATCH updates only the `enabled` field.
+- PATCH does not create a missing registry record.
+- Missing Traccar registry configuration returns a 404 response.
+- No token mutation was introduced.
+- No `TRACCAR_API_TOKEN` handling was changed.
+- No `TRACCAR_API_BASE_URL` handling was changed.
+- No `credential_source` editing was introduced.
+- No `base_url` editing was introduced.
+- No arbitrary metadata editing was introduced.
+- No integration deletion was introduced.
+- Fleet UI now exposes an Enable/Disable Traccar control only when:
+  - the integration is configured
+  - the authenticated user can manage the integration
+- The control submits the desired final `enabled` state.
+- After a successful PATCH, the Fleet page reloads telematics health from the server as the source of truth.
+- Existing Traccar health visibility remains intact.
+- Existing cron registry enforcement remains intact.
+- Existing environment-based credential resolution remains intact.
+- No Webfleet implementation was introduced.
+- Existing Fleet page mixed worktree newline state was preserved.
+- Git index representation for both modified files remained canonical LF.
+- `git diff --check` passed.
+- TypeScript validation passed.
+- Full Next.js production build passed.
+- Production build generated all 123/123 static pages successfully.
+- Implementation committed as `5ebfc2a` with message `Add Traccar integration admin control`.
+- Commit `5ebfc2a` was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote feature heads matched after push.
+- Tracked working tree was clean after push.
+- Live enable/disable behavior has not yet been exercised against the production Traccar registry record.
+- Next step: perform a separately guarded live admin-control validation before changing any further telematics behavior.
