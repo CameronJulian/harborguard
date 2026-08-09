@@ -86,6 +86,43 @@ type FleetResponse = {
   };
 };
 
+type TelematicsHealthStatus =
+  | "healthy"
+  | "warning"
+  | "failed"
+  | "never_synced";
+
+type TelematicsHealthResponse = {
+  success: boolean;
+  integration: {
+    provider: string;
+    stream: string;
+    status: TelematicsHealthStatus;
+    lastSuccessfulSyncAt: string | null;
+    lastFailureAt: string | null;
+    lastFailureMessage: string | null;
+    mappingFailure: boolean;
+    lastRun: Record<string, unknown> | null;
+    receipts: {
+      processing: number;
+      failed: number;
+      oldestProcessing: {
+        providerMessageId: string;
+        providerDeviceId: string | null;
+        claimedAt: string | null;
+        attemptCount: number;
+      } | null;
+      recentFailures: Array<{
+        providerMessageId: string;
+        providerDeviceId: string | null;
+        failedAt: string | null;
+        failureMessage: string | null;
+        attemptCount: number;
+      }>;
+    };
+  };
+};
+
 type VehicleLocationInsert = {
   id: string;
   vehicle_id: string;
@@ -121,6 +158,40 @@ const mutedTextStyle: CSSProperties = {
 function formatDateTime(value: string | null) {
   if (!value) return "-";
   return new Date(value).toLocaleString();
+}
+
+function telematicsHealthLabel(status: TelematicsHealthStatus) {
+  switch (status) {
+    case "healthy":
+      return "Healthy";
+    case "warning":
+      return "Warning";
+    case "failed":
+      return "Failed";
+    case "never_synced":
+      return "Never synced";
+  }
+}
+
+function telematicsHealthColor(status: TelematicsHealthStatus) {
+  switch (status) {
+    case "healthy":
+      return "#16a34a";
+    case "warning":
+      return "#d97706";
+    case "failed":
+      return "#dc2626";
+    case "never_synced":
+      return "#64748b";
+  }
+}
+
+function metadataNumber(
+  metadata: Record<string, unknown> | null,
+  key: string
+) {
+  const value = metadata?.[key];
+  return typeof value === "number" ? value : 0;
 }
 
 function isValidLatLng(latitude: unknown, longitude: unknown) {
@@ -179,6 +250,9 @@ export default function FleetDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [message, setMessage] = useState("");
+  const [telematicsHealth, setTelematicsHealth] =
+    useState<TelematicsHealthResponse["integration"] | null>(null);
+  const [telematicsHealthError, setTelematicsHealthError] = useState("");
   const [vehicleIcons, setVehicleIcons] = useState<Record<string, any>>({});
   const subscribedRef = useRef(false);
 
@@ -208,8 +282,42 @@ export default function FleetDashboardPage() {
     }
   }
 
+  async function loadTelematicsHealth() {
+    try {
+      const response = await fetch("/api/fleet/telematics-health", {
+        cache: "no-store",
+      });
+
+      const result =
+        (await response.json()) as
+          | TelematicsHealthResponse
+          | { error: string };
+
+      if (!response.ok) {
+        setTelematicsHealthError(
+          "error" in result
+            ? result.error
+            : "Failed to load telematics integration health."
+        );
+        return;
+      }
+
+      setTelematicsHealth(
+        (result as TelematicsHealthResponse).integration
+      );
+      setTelematicsHealthError("");
+    } catch (err: unknown) {
+      setTelematicsHealthError(
+        err instanceof Error
+          ? err.message
+          : "Failed to load telematics integration health."
+      );
+    }
+  }
+
   useEffect(() => {
     loadFleet();
+    loadTelematicsHealth();
   }, []);
 
   const mapVehicles = useMemo(
@@ -371,7 +479,10 @@ export default function FleetDashboardPage() {
 
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <button
-            onClick={() => loadFleet(true)}
+            onClick={() => {
+              loadFleet(true);
+              loadTelematicsHealth();
+            }}
             style={{
               padding: "12px 16px",
               borderRadius: 12,
@@ -404,6 +515,226 @@ export default function FleetDashboardPage() {
             {message}
           </div>
         ) : null}
+      </div>
+
+      <div style={{ ...cardStyle, padding: 24, marginBottom: 24 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            gap: 16,
+            flexWrap: "wrap",
+            marginBottom: 18,
+          }}
+        >
+          <div>
+            <h2 style={{ ...sectionTitleStyle, marginBottom: 6 }}>
+              Traccar Integration Health
+            </h2>
+            <p style={mutedTextStyle}>
+              Operational visibility for external hardware telemetry ingestion.
+            </p>
+          </div>
+
+          {telematicsHealth ? (
+            <div
+              style={{
+                color: telematicsHealthColor(telematicsHealth.status),
+                fontWeight: 800,
+                fontSize: 16,
+              }}
+            >
+              {telematicsHealthLabel(telematicsHealth.status)}
+            </div>
+          ) : null}
+        </div>
+
+        {telematicsHealthError ? (
+          <div
+            style={{
+              padding: 12,
+              borderRadius: 12,
+              background: "#fef2f2",
+              border: "1px solid #fecaca",
+              color: "#b91c1c",
+            }}
+          >
+            {telematicsHealthError}
+          </div>
+        ) : telematicsHealth ? (
+          <>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                gap: 12,
+                marginBottom: 18,
+              }}
+            >
+              {[
+                {
+                  label: "Received",
+                  value: metadataNumber(telematicsHealth.lastRun, "received"),
+                },
+                {
+                  label: "Processed",
+                  value: metadataNumber(telematicsHealth.lastRun, "processed"),
+                },
+                {
+                  label: "Duplicates",
+                  value: metadataNumber(telematicsHealth.lastRun, "duplicates"),
+                },
+                {
+                  label: "Failed receipts",
+                  value: telematicsHealth.receipts.failed,
+                },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  style={{
+                    padding: 14,
+                    borderRadius: 14,
+                    background: "#f8fafc",
+                    border: "1px solid #e5e7eb",
+                  }}
+                >
+                  <div
+                    style={{
+                      color: "#64748b",
+                      fontSize: 13,
+                      marginBottom: 6,
+                    }}
+                  >
+                    {item.label}
+                  </div>
+                  <div style={{ fontSize: 24, fontWeight: 800 }}>
+                    {item.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                gap: 12,
+                fontSize: 14,
+                color: "#334155",
+              }}
+            >
+              <div>
+                <strong>Last successful sync:</strong>{" "}
+                {formatDateTime(telematicsHealth.lastSuccessfulSyncAt)}
+              </div>
+              <div>
+                <strong>Processing receipts:</strong>{" "}
+                {telematicsHealth.receipts.processing}
+              </div>
+              <div>
+                <strong>Jitter skipped:</strong>{" "}
+                {metadataNumber(telematicsHealth.lastRun, "jitterSkipped")}
+              </div>
+              <div>
+                <strong>GPS spikes skipped:</strong>{" "}
+                {metadataNumber(telematicsHealth.lastRun, "gpsSpikeSkipped")}
+              </div>
+              <div>
+                <strong>Already processing:</strong>{" "}
+                {metadataNumber(telematicsHealth.lastRun, "alreadyProcessing")}
+              </div>
+              <div>
+                <strong>Last failure:</strong>{" "}
+                {formatDateTime(telematicsHealth.lastFailureAt)}
+              </div>
+            </div>
+
+            {telematicsHealth.lastFailureMessage ? (
+              <div
+                style={{
+                  marginTop: 16,
+                  padding: 12,
+                  borderRadius: 12,
+                  background: telematicsHealth.mappingFailure
+                    ? "#fff7ed"
+                    : "#fef2f2",
+                  border: telematicsHealth.mappingFailure
+                    ? "1px solid #fed7aa"
+                    : "1px solid #fecaca",
+                  color: telematicsHealth.mappingFailure
+                    ? "#9a3412"
+                    : "#991b1b",
+                }}
+              >
+                <strong>
+                  {telematicsHealth.mappingFailure
+                    ? "Device mapping issue: "
+                    : "Latest failure: "}
+                </strong>
+                {telematicsHealth.lastFailureMessage}
+              </div>
+            ) : null}
+
+            {telematicsHealth.receipts.oldestProcessing ? (
+              <div
+                style={{
+                  marginTop: 16,
+                  color: "#475569",
+                  fontSize: 13,
+                }}
+              >
+                Oldest processing message:{" "}
+                {telematicsHealth.receipts.oldestProcessing.providerMessageId}
+                {" · "}claimed{" "}
+                {formatDateTime(
+                  telematicsHealth.receipts.oldestProcessing.claimedAt
+                )}
+                {" · "}attempt{" "}
+                {telematicsHealth.receipts.oldestProcessing.attemptCount}
+              </div>
+            ) : null}
+
+            {telematicsHealth.receipts.recentFailures.length > 0 ? (
+              <div style={{ marginTop: 18 }}>
+                <div style={{ fontWeight: 800, marginBottom: 10 }}>
+                  Recent failed receipts
+                </div>
+                <div style={{ display: "grid", gap: 8 }}>
+                  {telematicsHealth.receipts.recentFailures.map((failure) => (
+                    <div
+                      key={`${failure.providerMessageId}-${failure.attemptCount}`}
+                      style={{
+                        padding: 10,
+                        borderRadius: 10,
+                        background: "#f8fafc",
+                        border: "1px solid #e5e7eb",
+                        fontSize: 13,
+                        color: "#475569",
+                      }}
+                    >
+                      <strong>{failure.providerMessageId}</strong>
+                      {failure.providerDeviceId
+                        ? ` · device ${failure.providerDeviceId}`
+                        : ""}
+                      {` · attempt ${failure.attemptCount}`}
+                      {failure.failedAt
+                        ? ` · ${formatDateTime(failure.failedAt)}`
+                        : ""}
+                      {failure.failureMessage
+                        ? ` · ${failure.failureMessage}`
+                        : ""}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <div style={{ color: "#64748b" }}>
+            Loading integration health...
+          </div>
+        )}
       </div>
 
       <div
