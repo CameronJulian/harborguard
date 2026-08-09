@@ -7277,3 +7277,38 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Implementation committed as `e567701` with message `Add telemetry evidence outcome diagnostics`.
 - Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Next step: begin a fresh audit-first assessment before deciding whether to expose these per-alert-type evidence-strength diagnostics in Analytics or pursue another telemetry, fleet, or road-intelligence milestone.
+## 2026-08-09 - Telemetry evidence outcome diagnostics exposed in Analytics
+
+- Completed a focused audit-first Analytics presentation milestone for telemetry evidence outcome diagnostics.
+- Extended the Analytics-side `TelemetryAlertReviewBreakdown` contract with per-alert-type `evidenceStrength` values.
+- Added:
+  - `confirmedAverage`;
+  - `falsePositiveAverage`.
+- Added a unit-aware `formatTelemetryEvidenceStrength` formatter.
+- Harsh-braking evidence averages are displayed in `m/s²`.
+- Rapid-acceleration evidence averages are displayed in `m/s²`.
+- Harsh-cornering evidence averages are displayed in degrees.
+- Sustained-speeding evidence averages are displayed as `km/h above threshold`.
+- Added `Confirmed evidence avg` to each per-alert-type telemetry review card.
+- Added `False-positive evidence avg` to each per-alert-type telemetry review card.
+- Evidence-strength diagnostics remain limited to per-alert-type summaries so incompatible units are never mixed in overall or per-vehicle views.
+- Existing overall telemetry review metrics remain unchanged.
+- Existing per-vehicle telemetry review metrics remain unchanged.
+- Existing confirmation-rate semantics remain unchanged.
+- Existing evidence-coverage semantics remain unchanged.
+- No detector thresholds were changed.
+- No detector candidate semantics were changed.
+- No alert-generation behavior was changed.
+- No database schema changes were required.
+- No new migration was required.
+- No road-intelligence promotion behavior was changed.
+- No automatic detector calibration or threshold tuning was introduced.
+- Preserved the existing no-BOM CRLF encoding state of `app/analytics/page.tsx`.
+- `git diff --check` passed.
+- TypeScript validation passed.
+- Full Next.js production build passed.
+- All 122/122 static pages were generated successfully.
+- The production route manifest continues to include `/api/fleet/telemetry-review-performance`.
+- Implementation committed as `59ad3eb` with message `Expose telemetry evidence outcome diagnostics in analytics`.
+- Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Next step: begin a fresh audit-first roadmap assessment before selecting another telemetry, fleet, analytics, or road-intelligence milestone.
