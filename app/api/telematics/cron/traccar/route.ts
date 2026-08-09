@@ -108,6 +108,32 @@ export async function GET(request: Request) {
       );
     }
 
+    const {
+      data: integration,
+      error: integrationError,
+    } = await supabase
+      .from("telematics_integrations")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .eq("provider", "traccar")
+      .eq("enabled", true)
+      .maybeSingle();
+
+    if (integrationError) {
+      throw integrationError;
+    }
+
+    if (!integration) {
+      return NextResponse.json(
+        {
+          error:
+            "Enabled Traccar integration is not configured for this organization.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
     const result =
       await runTraccarPositionSync({
         supabase,
