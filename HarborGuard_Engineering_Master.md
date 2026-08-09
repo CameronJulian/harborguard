@@ -7042,3 +7042,37 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Implementation committed as `76f6322` with message `Segment telemetry review performance by vehicle`.
 - Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Next step: begin a fresh audit-first assessment before deciding whether to expose the new `byVehicle` evidence in Analytics or pursue another telemetry evidence-maturity gap.
+## 2026-08-09 - Telemetry review performance exposed by vehicle
+
+- Completed the next audit-first telemetry review analytics milestone.
+- Exposed the existing backend `byVehicle` telemetry review-performance evidence in the Analytics page.
+- Extended the Analytics telemetry review response contract with `TelemetryAlertReviewVehicleBreakdown`.
+- Added `byVehicle` to the Analytics-side `TelemetryAlertReviewPerformance` type.
+- Added a vehicle-label helper that resolves vehicle IDs against the already-loaded Analytics vehicle list.
+- Vehicle labels prefer `nickname (registration_number)` when both are available.
+- Vehicle labels fall back to nickname, registration number or the raw vehicle ID when needed.
+- Added a `Review Performance by Vehicle` section to Telemetry Alert Review Performance.
+- The vehicle breakdown is displayed only when Analytics is scoped to `All vehicles`.
+- Vehicle-filtered Analytics requests continue to rely on the existing `selectedVehicleId` API filter and do not render a redundant fleet comparison.
+- Each vehicle breakdown displays:
+  - reviewed alerts;
+  - confirmed alerts;
+  - false positives;
+  - inconclusive reviews;
+  - confirmation rate.
+- Existing overall telemetry review metrics remain unchanged.
+- Existing per-alert-type review metrics remain unchanged.
+- Existing confirmation-rate semantics remain unchanged.
+- No backend API changes were required in this milestone because `byVehicle` was already returned by `/api/fleet/telemetry-review-performance`.
+- No database schema or migration changes were required.
+- No detector thresholds were changed.
+- No telemetry alert-generation behavior was changed.
+- No telemetry-to-road-intelligence promotion behavior was changed.
+- `git diff --check` passed.
+- TypeScript validation passed.
+- Full Next.js production build passed.
+- All 122/122 static pages were generated successfully.
+- `/api/fleet/telemetry-review-performance` remained present in the production route manifest.
+- Implementation committed as `9879991` with message `Expose telemetry review performance by vehicle`.
+- Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Next step: begin a fresh audit-first roadmap assessment before selecting another telemetry, fleet or road-intelligence milestone.
