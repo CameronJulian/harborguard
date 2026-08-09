@@ -51,23 +51,23 @@ export async function GET() {
 
       supabase
         .from("telematics_message_receipts")
-        .select("provider_message_id, processing_started_at, attempt_count")
+        .select("provider_message_id, claimed_at, attempt_count, metadata")
         .eq("organization_id", organizationId)
         .eq("provider", TRACCAR_PROVIDER)
         .eq("processing_status", "processing")
-        .order("processing_started_at", { ascending: true })
+        .order("claimed_at", { ascending: true })
         .limit(1)
         .maybeSingle(),
 
       supabase
         .from("telematics_message_receipts")
         .select(
-          "provider_message_id, provider_device_id, failed_at, failure_message, attempt_count, metadata"
+          "provider_message_id, last_failure_at, last_failure_message, attempt_count, metadata"
         )
         .eq("organization_id", organizationId)
         .eq("provider", TRACCAR_PROVIDER)
         .eq("processing_status", "failed")
-        .order("failed_at", { ascending: false })
+        .order("last_failure_at", { ascending: false })
         .limit(RECENT_FAILURE_LIMIT),
     ]);
 
@@ -116,8 +116,30 @@ export async function GET() {
         receipts: {
           processing: processingReceiptsResult.count ?? 0,
           failed: failedReceiptsResult.count ?? 0,
-          oldestProcessing: oldestProcessingResult.data ?? null,
-          recentFailures: recentFailuresResult.data ?? [],
+          oldestProcessing: oldestProcessingResult.data
+            ? {
+                providerMessageId:
+                  oldestProcessingResult.data.provider_message_id,
+                providerDeviceId:
+                  typeof oldestProcessingResult.data.metadata?.providerDeviceId === "string"
+                    ? oldestProcessingResult.data.metadata.providerDeviceId
+                    : null,
+                claimedAt: oldestProcessingResult.data.claimed_at,
+                attemptCount: oldestProcessingResult.data.attempt_count,
+              }
+            : null,
+          recentFailures: (recentFailuresResult.data ?? []).map(
+            (receipt) => ({
+              providerMessageId: receipt.provider_message_id,
+              providerDeviceId:
+                typeof receipt.metadata?.providerDeviceId === "string"
+                  ? receipt.metadata.providerDeviceId
+                  : null,
+              failedAt: receipt.last_failure_at,
+              failureMessage: receipt.last_failure_message,
+              attemptCount: receipt.attempt_count,
+            })
+          ),
         },
       },
     });
