@@ -12,6 +12,7 @@ export type CreateSpeedingAlertInput = {
   tripId: string | null;
   latitude: number;
   longitude: number;
+  source: "mobile" | "hardware" | "manual";
   candidate: SpeedingCandidate;
 };
 
@@ -34,6 +35,7 @@ export async function createSpeedingAlert(
     tripId,
     latitude,
     longitude,
+    source,
     candidate,
   } = input;
 
@@ -114,7 +116,10 @@ export async function createSpeedingAlert(
             SPEEDING_INTELLIGENCE_SCORE,
           behavioral_risk: "medium",
           intelligence_narrative: narrative,
-          telemetry_evidence: candidate,
+          telemetry_evidence: {
+            ...candidate,
+            source,
+          },
         });
 
     if (insertError) {

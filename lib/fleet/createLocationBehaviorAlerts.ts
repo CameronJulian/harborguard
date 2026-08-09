@@ -31,6 +31,7 @@ export type CreateLocationBehaviorAlertsInput = {
   activeTripId: string | null;
   latitude: number;
   longitude: number;
+  source: "mobile" | "hardware" | "manual";
   harshBrakingCandidate: HarshBrakingCandidate | null;
   rapidAccelerationCandidate:
     RapidAccelerationCandidate | null;
@@ -50,6 +51,7 @@ export async function createLocationBehaviorAlerts(
     activeTripId,
     latitude,
     longitude,
+    source,
     harshBrakingCandidate,
     rapidAccelerationCandidate,
     harshCorneringCandidate,
@@ -68,6 +70,7 @@ export async function createLocationBehaviorAlerts(
       latitude,
       longitude,
       candidate: harshBrakingCandidate,
+      source,
     });
   }
 
@@ -80,6 +83,7 @@ export async function createLocationBehaviorAlerts(
       latitude,
       longitude,
       candidate: rapidAccelerationCandidate,
+      source,
     });
   }
 
@@ -92,6 +96,7 @@ export async function createLocationBehaviorAlerts(
       latitude,
       longitude,
       candidate: harshCorneringCandidate,
+      source,
     });
   }
 
@@ -104,6 +109,7 @@ export async function createLocationBehaviorAlerts(
       latitude,
       longitude,
       candidate: speedingCandidate,
+      source,
     });
   }
 }

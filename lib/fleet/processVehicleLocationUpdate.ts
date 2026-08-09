@@ -244,6 +244,7 @@ export async function processVehicleLocationUpdate({
     latitude,
     longitude,
     speedKmh,
+    source,
     occurredAt,
     stopSpeedKmh: STOP_SPEED_KMH,
     stopMinutes: STOP_MINUTES,

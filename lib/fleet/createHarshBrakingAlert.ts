@@ -23,6 +23,7 @@ export type CreateHarshBrakingAlertInput = {
   tripId: string | null;
   latitude: number;
   longitude: number;
+  source: "mobile" | "hardware" | "manual";
   candidate: HarshBrakingCandidate;
 };
 
@@ -46,6 +47,7 @@ export async function createHarshBrakingAlert(
     tripId,
     latitude,
     longitude,
+    source,
     candidate,
   } = input;
 
@@ -132,7 +134,10 @@ export async function createHarshBrakingAlert(
             HARSH_BRAKING_INTELLIGENCE_SCORE,
           behavioral_risk: "medium",
           intelligence_narrative: narrative,
-          telemetry_evidence: candidate,
+          telemetry_evidence: {
+            ...candidate,
+            source,
+          },
         })
         .select("id")
         .single();

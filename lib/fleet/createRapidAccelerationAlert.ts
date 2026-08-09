@@ -17,6 +17,7 @@ export type CreateRapidAccelerationAlertInput = {
   tripId: string | null;
   latitude: number;
   longitude: number;
+  source: "mobile" | "hardware" | "manual";
   candidate: RapidAccelerationCandidate;
 };
 
@@ -39,6 +40,7 @@ export async function createRapidAccelerationAlert(
     tripId,
     latitude,
     longitude,
+    source,
     candidate,
   } = input;
 
@@ -118,7 +120,10 @@ export async function createRapidAccelerationAlert(
             RAPID_ACCELERATION_INTELLIGENCE_SCORE,
           behavioral_risk: "medium",
           intelligence_narrative: narrative,
-          telemetry_evidence: candidate,
+          telemetry_evidence: {
+            ...candidate,
+            source,
+          },
         });
 
     if (insertError) {

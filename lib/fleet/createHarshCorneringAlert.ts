@@ -17,6 +17,7 @@ export type CreateHarshCorneringAlertInput = {
   tripId: string | null;
   latitude: number;
   longitude: number;
+  source: "mobile" | "hardware" | "manual";
   candidate: HarshCorneringCandidate;
 };
 
@@ -39,6 +40,7 @@ export async function createHarshCorneringAlert(
     tripId,
     latitude,
     longitude,
+    source,
     candidate,
   } = input;
 
@@ -119,7 +121,10 @@ export async function createHarshCorneringAlert(
             HARSH_CORNERING_INTELLIGENCE_SCORE,
           behavioral_risk: "medium",
           intelligence_narrative: narrative,
-          telemetry_evidence: candidate,
+          telemetry_evidence: {
+            ...candidate,
+            source,
+          },
         });
 
     if (insertError) {

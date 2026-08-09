@@ -28,6 +28,7 @@ export type RunPostLocationUpdateLifecycleInput = {
   latitude: number;
   longitude: number;
   speedKmh: number;
+  source: "mobile" | "hardware" | "manual";
   occurredAt: string;
   stopSpeedKmh: number;
   stopMinutes: number;
@@ -56,6 +57,7 @@ export async function runPostLocationUpdateLifecycle(
     latitude,
     longitude,
     speedKmh,
+    source,
     occurredAt,
     stopSpeedKmh,
     stopMinutes,
@@ -74,6 +76,7 @@ export async function runPostLocationUpdateLifecycle(
     activeTripId,
     latitude,
     longitude,
+    source,
     harshBrakingCandidate,
     rapidAccelerationCandidate,
     harshCorneringCandidate,
