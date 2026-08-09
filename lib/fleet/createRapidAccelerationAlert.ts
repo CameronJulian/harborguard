@@ -1,3 +1,7 @@
+import {
+  findRapidAccelerationCorroboration,
+} from "@/lib/fleet/rapidAccelerationCorroboration";
+
 export type RapidAccelerationCandidate = {
   previousSpeedKmh: number;
   currentSpeedKmh: number;
@@ -129,6 +133,50 @@ export async function createRapidAccelerationAlert(
       };
     }
 
+    try {
+      const corroboration =
+        await findRapidAccelerationCorroboration({
+          supabase,
+          organizationId,
+          currentVehicleId: vehicleId,
+          latitude,
+          longitude,
+        });
+
+      console.info(
+        "[rapid-acceleration corroboration diagnostic]",
+        {
+          organizationId,
+          vehicleId,
+          latitude,
+          longitude,
+          thresholdMet:
+            corroboration.thresholdMet,
+          distinctVehicleCount:
+            corroboration.distinctVehicleCount,
+          distinctVehicleIds:
+            corroboration.distinctVehicleIds,
+          otherVehicleIds:
+            corroboration.otherVehicleIds,
+          nearbyAlertCount:
+            corroboration.nearbyAlertCount,
+          radiusMeters:
+            corroboration.radiusMeters,
+          timeWindowMinutes:
+            corroboration.timeWindowMinutes,
+          windowStartedAt:
+            corroboration.windowStartedAt,
+          windowEndedAt:
+            corroboration.windowEndedAt,
+        }
+      );
+    }
+    catch (corroborationError) {
+      console.error(
+        "[rapid-acceleration corroboration diagnostic failed]",
+        corroborationError
+      );
+    }
     return {
       created: true,
       skippedByCooldown: false,
