@@ -108,9 +108,15 @@ type TelemetryAlertReviewVehicleBreakdown =
     vehicleId: string;
   };
 
+type TelemetryAlertReviewSourceBreakdown =
+  TelemetryAlertReviewSummary & {
+    source: "hardware" | "mobile" | "manual" | "unknown";
+  };
+
 type TelemetryAlertReviewPerformance = {
   overall: TelemetryAlertReviewSummary;
   byAlertType: TelemetryAlertReviewBreakdown[];
+  bySource: TelemetryAlertReviewSourceBreakdown[];
   byVehicle: TelemetryAlertReviewVehicleBreakdown[];
 };
 
@@ -1590,6 +1596,81 @@ if (subscriptionLoaded && !premiumAllowed) {
               ))}
             </div>
 
+            <div style={{ marginBottom: 18 }}>
+              <div
+                style={{
+                  fontWeight: 700,
+                  color: "#0f172a",
+                  marginBottom: 10,
+                }}
+              >
+                Review Performance by Telemetry Source
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: isMobile
+                    ? "1fr"
+                    : "repeat(2, minmax(0, 1fr))",
+                  gap: 12,
+                }}
+              >
+                {telemetryReviewPerformance.bySource.map((entry) => (
+                  <div
+                    key={entry.source}
+                    style={{
+                      border: "1px solid #e5e7eb",
+                      borderRadius: 14,
+                      padding: 16,
+                      background: "#f8fafc",
+                    }}
+                  >
+                    <strong style={{ color: "#0f172a" }}>
+                      {entry.source === "hardware"
+                        ? "Hardware"
+                        : entry.source === "mobile"
+                          ? "Mobile"
+                          : entry.source === "manual"
+                            ? "Manual"
+                            : "Unknown"}
+                    </strong>
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gap: 5,
+                        marginTop: 10,
+                        fontSize: 13,
+                        color: "#475569",
+                      }}
+                    >
+                      <div>
+                        Reviewed: {formatNumber(entry.reviewedAlerts)}
+                      </div>
+                      <div>
+                        Confirmed: {formatNumber(entry.confirmed)}
+                      </div>
+                      <div>
+                        False positives: {formatNumber(entry.falsePositive)}
+                      </div>
+                      <div>
+                        Inconclusive: {formatNumber(entry.inconclusive)}
+                      </div>
+                      <div>
+                        Confirmation rate:{" "}
+                        {formatPerformancePercent(entry.confirmationRate)}
+                      </div>
+                      <div>
+                        Evidence coverage:{" "}
+                        {formatPerformancePercent(entry.evidenceCoverageRate)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {!selectedVehicleId &&
             telemetryReviewPerformance.byVehicle.length > 0 ? (
               <div style={{ marginBottom: 18 }}>
@@ -1674,7 +1755,8 @@ if (subscriptionLoaded && !premiumAllowed) {
               reviewed alerts with persisted structured telemetry evidence. Coverage
               is descriptive and does not by itself indicate detector quality. This
               analysis does not identify false negatives and does not automatically
-              change detector thresholds.
+              change detector thresholds. Unknown telemetry source includes reviewed
+              alerts without a recognized persisted telemetry source.
             </p>
           </>
         )}

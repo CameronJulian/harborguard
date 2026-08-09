@@ -9,6 +9,12 @@ export type TelemetryReviewOutcome =
   | "false_positive"
   | "inconclusive";
 
+export type TelemetrySource =
+  | "hardware"
+  | "mobile"
+  | "manual"
+  | "unknown";
+
 export type TelemetryAlertReviewEvaluation = {
   alert_type: TelemetryAlertType;
   review_outcome: TelemetryReviewOutcome;
@@ -47,9 +53,15 @@ export type TelemetryAlertReviewVehicleBreakdown =
     vehicleId: string;
   };
 
+export type TelemetryAlertReviewSourceBreakdown =
+  TelemetryAlertReviewSummary & {
+    source: TelemetrySource;
+  };
+
 export type TelemetryAlertReviewPerformance = {
   overall: TelemetryAlertReviewSummary;
   byAlertType: TelemetryAlertReviewBreakdown[];
+  bySource: TelemetryAlertReviewSourceBreakdown[];
   byVehicle: TelemetryAlertReviewVehicleBreakdown[];
 };
 
@@ -59,6 +71,35 @@ export const TELEMETRY_ALERT_TYPES: TelemetryAlertType[] = [
   "harsh_cornering",
   "speeding",
 ];
+
+const TELEMETRY_SOURCES: TelemetrySource[] = [
+  "hardware",
+  "mobile",
+  "manual",
+  "unknown",
+];
+
+function telemetrySource(
+  evaluation: TelemetryAlertReviewEvaluation
+): TelemetrySource {
+  const evidence = evaluation.telemetry_evidence;
+
+  if (evidence === null) {
+    return "unknown";
+  }
+
+  const source = evidence.source;
+
+  if (
+    source === "hardware" ||
+    source === "mobile" ||
+    source === "manual"
+  ) {
+    return source;
+  }
+
+  return "unknown";
+}
 
 function average(
   values: number[]
@@ -302,6 +343,18 @@ export function calculateTelemetryAlertReviewPerformance(
             ),
         };
       }
+    ),
+
+    bySource: TELEMETRY_SOURCES.map(
+      (source) => ({
+        source,
+        ...summarize(
+          evaluations.filter(
+            (evaluation) =>
+              telemetrySource(evaluation) === source
+          )
+        ),
+      })
     ),
 
     byVehicle: Array.from(
