@@ -75,6 +75,34 @@ type RoutePredictionThresholdAnalysisResponse = {
   analysis: RoutePredictionThresholdAnalysis[];
 };
 
+type TelemetryAlertReviewSummary = {
+  reviewedAlerts: number;
+  evaluatedAlerts: number;
+  confirmed: number;
+  falsePositive: number;
+  inconclusive: number;
+  confirmationRate: number | null;
+};
+
+type TelemetryAlertReviewBreakdown =
+  TelemetryAlertReviewSummary & {
+    alertType:
+      | "harsh_braking"
+      | "rapid_acceleration"
+      | "harsh_cornering"
+      | "speeding";
+  };
+
+type TelemetryAlertReviewPerformance = {
+  overall: TelemetryAlertReviewSummary;
+  byAlertType: TelemetryAlertReviewBreakdown[];
+};
+
+type TelemetryAlertReviewPerformanceResponse = {
+  success: boolean;
+  performance: TelemetryAlertReviewPerformance;
+};
+
 const cardStyle: CSSProperties = {
   background: "#ffffff",
   borderRadius: 20,
@@ -170,6 +198,12 @@ export default function AnalyticsPage() {
   const [routePredictionThresholdAnalysisLoading, setRoutePredictionThresholdAnalysisLoading] =
     useState(false);
   const [routePredictionThresholdAnalysisError, setRoutePredictionThresholdAnalysisError] =
+    useState("");
+  const [telemetryReviewPerformance, setTelemetryReviewPerformance] =
+    useState<TelemetryAlertReviewPerformance | null>(null);
+  const [telemetryReviewPerformanceLoading, setTelemetryReviewPerformanceLoading] =
+    useState(false);
+  const [telemetryReviewPerformanceError, setTelemetryReviewPerformanceError] =
     useState("");
   const [exportingPdf, setExportingPdf] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
@@ -306,6 +340,60 @@ export default function AnalyticsPage() {
       setRoutePredictionThresholdAnalysisLoading(false);
     }
   }
+  async function loadTelemetryReviewPerformance() {
+    setTelemetryReviewPerformanceLoading(true);
+    setTelemetryReviewPerformanceError("");
+
+    try {
+      const start = new Date(`${startDate}T00:00:00`);
+      const end = new Date(`${endDate}T23:59:59.999`);
+
+      const params = new URLSearchParams({
+        start: start.toISOString(),
+        end: end.toISOString(),
+      });
+
+      if (selectedVehicleId) {
+        params.set("vehicleId", selectedVehicleId);
+      }
+
+      const response = await fetchWithAuth(
+        `/api/fleet/telemetry-review-performance?${params.toString()}`,
+        {
+          cache: "no-store",
+        }
+      );
+
+      const result =
+        (await response.json()) as
+          | TelemetryAlertReviewPerformanceResponse
+          | { error?: string };
+
+      if (!response.ok) {
+        setTelemetryReviewPerformance(null);
+        setTelemetryReviewPerformanceError(
+          "error" in result && result.error
+            ? result.error
+            : "Failed to load telemetry review performance."
+        );
+        return;
+      }
+
+      setTelemetryReviewPerformance(
+        (result as TelemetryAlertReviewPerformanceResponse).performance
+      );
+    } catch (error: unknown) {
+      setTelemetryReviewPerformance(null);
+      setTelemetryReviewPerformanceError(
+        error instanceof Error
+          ? error.message
+          : "Failed to load telemetry review performance."
+      );
+    } finally {
+      setTelemetryReviewPerformanceLoading(false);
+    }
+  }
+
   async function loadRoutePredictionPerformance() {
     setRoutePredictionPerformanceLoading(true);
     setRoutePredictionPerformanceError("");
@@ -431,7 +519,18 @@ const { data: incidentData } = await supabase
   useEffect(() => {
     loadRoutePredictionPerformance();
     loadRoutePredictionThresholdAnalysis();
+    loadTelemetryReviewPerformance();
   }, [startDate, endDate, selectedVehicleId]);
+
+  const telemetryAlertTypeLabels: Record<
+    TelemetryAlertReviewBreakdown["alertType"],
+    string
+  > = {
+    harsh_braking: "Harsh Braking",
+    rapid_acceleration: "Rapid Acceleration",
+    harsh_cornering: "Harsh Cornering",
+    speeding: "Speeding",
+  };
 
   const selectedVehicleLabel = useMemo(() => {
     const vehicle = vehicles.find(
@@ -1244,6 +1343,172 @@ if (subscriptionLoaded && !premiumAllowed) {
           </>
         )}
       </div>
+      <div style={{ ...cardStyle, padding: 26, marginBottom: 24 }}>
+        <div style={{ marginBottom: 18 }}>
+          <h2 style={sectionTitleStyle}>Telemetry Alert Review Performance</h2>
+          <p style={{ ...mutedTextStyle, marginBottom: 0 }}>
+            Human-reviewed telemetry alert outcomes for the selected reporting period.
+            Confirmation rate excludes inconclusive reviews and is descriptive only.
+          </p>
+        </div>
+
+        {telemetryReviewPerformanceLoading ? (
+          <div style={{ color: "#64748b" }}>
+            Loading telemetry review performance...
+          </div>
+        ) : telemetryReviewPerformanceError ? (
+          <div
+            style={{
+              padding: 14,
+              borderRadius: 12,
+              background: "#fef2f2",
+              border: "1px solid #fecaca",
+              color: "#b91c1c",
+            }}
+          >
+            {telemetryReviewPerformanceError}
+          </div>
+        ) : !telemetryReviewPerformance ||
+          telemetryReviewPerformance.overall.reviewedAlerts === 0 ? (
+          <div style={{ color: "#64748b" }}>
+            No reviewed telemetry alerts exist for this period yet.
+          </div>
+        ) : (
+          <>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: isMobile
+                  ? "1fr"
+                  : "repeat(4, minmax(0, 1fr))",
+                gap: 16,
+                marginBottom: 16,
+              }}
+            >
+              {[
+                {
+                  label: "Reviewed Alerts",
+                  value: formatNumber(
+                    telemetryReviewPerformance.overall.reviewedAlerts
+                  ),
+                },
+                {
+                  label: "Confirmed",
+                  value: formatNumber(
+                    telemetryReviewPerformance.overall.confirmed
+                  ),
+                },
+                {
+                  label: "False Positives",
+                  value: formatNumber(
+                    telemetryReviewPerformance.overall.falsePositive
+                  ),
+                },
+                {
+                  label: "Confirmation Rate",
+                  value: formatPerformancePercent(
+                    telemetryReviewPerformance.overall.confirmationRate
+                  ),
+                },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  style={{
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 16,
+                    padding: 20,
+                    background: "#fff",
+                  }}
+                >
+                  <div
+                    style={{
+                      color: "#64748b",
+                      fontSize: 14,
+                      marginBottom: 8,
+                    }}
+                  >
+                    {item.label}
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: 30,
+                      fontWeight: 800,
+                      lineHeight: 1.1,
+                    }}
+                  >
+                    {item.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: isMobile
+                  ? "1fr"
+                  : "repeat(4, minmax(0, 1fr))",
+                gap: 12,
+                marginBottom: 14,
+              }}
+            >
+              {telemetryReviewPerformance.byAlertType.map((entry) => (
+                <div
+                  key={entry.alertType}
+                  style={{
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 14,
+                    padding: 16,
+                    background: "#f8fafc",
+                  }}
+                >
+                  <strong style={{ color: "#0f172a" }}>
+                    {telemetryAlertTypeLabels[entry.alertType]}
+                  </strong>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: 5,
+                      marginTop: 10,
+                      fontSize: 13,
+                      color: "#475569",
+                    }}
+                  >
+                    <div>Reviewed: {formatNumber(entry.reviewedAlerts)}</div>
+                    <div>Confirmed: {formatNumber(entry.confirmed)}</div>
+                    <div>
+                      False positives: {formatNumber(entry.falsePositive)}
+                    </div>
+                    <div>
+                      Inconclusive: {formatNumber(entry.inconclusive)}
+                    </div>
+                    <div>
+                      Confirmation rate:{" "}
+                      {formatPerformancePercent(entry.confirmationRate)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <p
+              style={{
+                ...mutedTextStyle,
+                margin: 0,
+                fontSize: 13,
+              }}
+            >
+              Evaluated alerts include only confirmed and false-positive reviews.
+              Inconclusive reviews are counted as reviewed evidence but excluded from
+              the confirmation-rate denominator. This analysis does not identify
+              false negatives and does not automatically change detector thresholds.
+            </p>
+          </>
+        )}
+      </div>
+
       <div style={{ ...cardStyle, padding: 26, marginBottom: 24 }}>
         <div
           style={{
