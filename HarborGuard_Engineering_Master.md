@@ -7100,3 +7100,25 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Implementation committed as `00045f9` with message `Persist telemetry evidence with vehicle alerts`.
 - Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Next step: inspect migration history and perform a guarded Supabase dry run before deploying the telemetry-evidence migration.
+## 2026-08-09 - Telemetry evidence migration encoding corrected
+
+- Completed a focused recovery after the first deployment attempt for `20260809130000_add_vehicle_alert_telemetry_evidence.sql`.
+- The pre-deployment migration audit and Supabase dry run confirmed that `20260809130000` was the only pending migration.
+- The initial real `supabase db push` did not apply the migration because PostgreSQL rejected the first SQL token as `﻿alter`.
+- The failure was traced to a UTF-8 byte-order mark written at the start of the migration file.
+- The database migration did not become recorded remotely during the failed deployment attempt.
+- The migration remained local-only after the failure.
+- Rewrote the migration as UTF-8 without BOM while preserving its two SQL statements exactly.
+- Verified the corrected migration begins with bytes `61 6C 74 65 72 20 74 61`, corresponding directly to `alter ta`.
+- Verified the migration still contains only:
+  - `alter table public.vehicle_alerts`
+  - `add column if not exists telemetry_evidence jsonb;`
+- Verified the encoding correction changed only `20260809130000_add_vehicle_alert_telemetry_evidence.sql`.
+- `git diff --check` passed.
+- TypeScript validation passed after the encoding correction.
+- Full Next.js production build passed after the correction.
+- All 122/122 static pages were generated successfully.
+- Encoding correction committed as `9400715` with message `Remove BOM from telemetry evidence migration`.
+- Encoding-correction commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Migration `20260809130000` remains NOT deployed at this documentation step.
+- Next step: perform a fresh guarded dry run from the corrected migration file, verify it remains the sole pending migration, then retry deployment separately.
