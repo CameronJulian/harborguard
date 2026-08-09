@@ -20,7 +20,8 @@ type ResolveAlertBody = {
 
 export async function POST(req: Request) {
   try {
-    const { supabase, organizationId, role } = await requireOrganization();
+    const { supabase, organizationId, user, role } =
+      await requireOrganization();
 
     requireRole(role, ["owner", "admin", "operator", "manager"]);
 
@@ -79,6 +80,7 @@ export async function POST(req: Request) {
         resolved_at: new Date().toISOString(),
         resolution_notes: resolutionNotes,
         review_outcome: reviewOutcome,
+        reviewed_by: user.id,
       })
       .eq("id", alertId)
       .eq("organization_id", organizationId);
