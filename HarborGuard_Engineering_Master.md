@@ -7590,3 +7590,57 @@ Pushed it to feature/expanded-incident-taxonomy.
 - All three implementation commits were pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Tracked working tree was clean after the final push.
 - Next step: begin a fresh audit-first assessment of the next telemetry data-quality, fleet-intelligence, or multi-tenant telematics scheduling gap before implementing anything else.
+## 2026-08-09 - Organization-scoped telematics integration registry
+
+- Completed an audit-first telematics configuration-model milestone.
+- Confirmed the existing `intelligence_sources` registry is not appropriate for organization-owned telematics integrations because it is a global provider catalog rather than an organization-scoped integration store.
+- Confirmed the current Traccar implementation still uses deployment-level environment credentials:
+  - `TRACCAR_API_TOKEN`
+  - `TRACCAR_API_BASE_URL`
+- Confirmed the current Traccar cron remains intentionally single-organization through `TRACCAR_SYNC_ORGANIZATION_ID`.
+- Confirmed HarborGuard does not yet have a secure organization-specific telematics credential store.
+- Deliberately did not make the Traccar cron multi-tenant yet.
+- Deliberately did not store Traccar or future Webfleet API secrets in the database.
+- Added migration `20260809150000_create_telematics_integrations.sql`.
+- Added organization-scoped `public.telematics_integrations`.
+- Registry fields include:
+  - `organization_id`
+  - `provider`
+  - `enabled`
+  - `base_url`
+  - `credential_source`
+  - `metadata`
+  - creation/update timestamps
+- Added unique integration ownership boundary:
+  - `(organization_id, provider)`
+- Added provider non-blank validation.
+- Added optional base-URL non-blank validation.
+- Added credential-source non-blank validation.
+- `credential_source` defaults to `environment`.
+- `metadata` is explicitly intended for non-secret provider configuration only.
+- Migration comments explicitly prohibit storing:
+  - API tokens
+  - API keys
+  - passwords
+  - secret keys
+  - other provider credentials
+  in metadata or plaintext configuration columns.
+- Added organization/enabled index for future integration enumeration.
+- Enabled row-level security.
+- Authenticated users receive read-only visibility for integrations belonging to their own organization.
+- Service-role access is retained for future controlled configuration and scheduler operations.
+- No Traccar ingestion behavior was changed.
+- No Traccar cron behavior was changed.
+- No telematics synchronization behavior was changed.
+- No Webfleet implementation was introduced.
+- No provider secrets were migrated into the database.
+- Migration contract validation passed.
+- Plaintext-secret-column safety validation passed.
+- `git diff --check` passed.
+- TypeScript validation passed.
+- Full Next.js production build passed.
+- All 123/123 static pages were generated successfully.
+- Registry migration committed as `262dedb` with message `Add telematics integration registry`.
+- Registry migration commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Migration has not yet been deployed to Supabase.
+- Next step: perform a guarded Supabase migration-history and dry-run audit for `20260809150000_create_telematics_integrations.sql` before any database deployment.
