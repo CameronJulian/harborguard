@@ -119,6 +119,7 @@ export async function createHarshCorneringAlert(
             HARSH_CORNERING_INTELLIGENCE_SCORE,
           behavioral_risk: "medium",
           intelligence_narrative: narrative,
+          telemetry_evidence: candidate,
         });
 
     if (insertError) {

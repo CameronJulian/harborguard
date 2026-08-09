@@ -132,6 +132,7 @@ export async function createHarshBrakingAlert(
             HARSH_BRAKING_INTELLIGENCE_SCORE,
           behavioral_risk: "medium",
           intelligence_narrative: narrative,
+          telemetry_evidence: candidate,
         })
         .select("id")
         .single();

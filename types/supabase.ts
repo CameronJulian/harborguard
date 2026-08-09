@@ -1966,6 +1966,7 @@ export type Database = {
           organization_id: string | null
           resolution_notes: string | null
           review_outcome: string | null
+          telemetry_evidence: Json | null
           resolved_at: string | null
           route_safety_alert_id: string | null
           severity: string
@@ -1986,6 +1987,7 @@ export type Database = {
           organization_id?: string | null
           resolution_notes?: string | null
           review_outcome?: string | null
+          telemetry_evidence?: Json | null
           resolved_at?: string | null
           route_safety_alert_id?: string | null
           severity?: string
@@ -2006,6 +2008,7 @@ export type Database = {
           organization_id?: string | null
           resolution_notes?: string | null
           review_outcome?: string | null
+          telemetry_evidence?: Json | null
           resolved_at?: string | null
           route_safety_alert_id?: string | null
           severity?: string
