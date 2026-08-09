@@ -7456,3 +7456,34 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Implementation committed as `a2191ce` with message `Expose vehicle alert reviewer identity`.
 - Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Next step: begin a fresh audit-first assessment before selecting another reviewer-workflow, telemetry, fleet, or road-intelligence milestone.
+## 2026-08-09 - Telemetry source provenance preserved in behavior alerts
+
+- Completed a focused audit-first telemetry provenance improvement.
+- Confirmed normalized vehicle-location updates already carry `source` as `mobile`, `hardware`, or `manual`.
+- Confirmed normalized source is already used during telemetry detection and persisted on vehicle-location records.
+- Identified the precise provenance gap at the transition from `processVehicleLocationUpdate()` into `runPostLocationUpdateLifecycle()`.
+- Extended the post-location lifecycle input contract to carry normalized telemetry source.
+- Extended `createLocationBehaviorAlerts()` to carry normalized telemetry source.
+- Passed normalized source into harsh-braking alert creation.
+- Passed normalized source into rapid-acceleration alert creation.
+- Passed normalized source into harsh-cornering alert creation.
+- Passed normalized source into speeding alert creation.
+- Persisted normalized source inside each telemetry alert's existing `telemetry_evidence` JSON object.
+- Existing detector candidate shapes were intentionally left unchanged.
+- Existing detector thresholds were unchanged.
+- Existing detector candidate semantics were unchanged.
+- Existing alert classifications were unchanged.
+- Existing review analytics behavior was unchanged.
+- Existing road-intelligence promotion behavior was unchanged.
+- No database schema change was required.
+- No migration was required.
+- No provider-specific Traccar field was introduced into the shared behavior-alert contract.
+- The change preserves the provider-neutral normalized telemetry architecture for future Webfleet support.
+- Existing BOM states were preserved across all modified files.
+- `git diff --check` passed.
+- TypeScript validation passed.
+- Full Next.js production build passed.
+- All 122/122 static pages were generated successfully.
+- Implementation committed as `01d8103` with message `Preserve telemetry source in behavior alerts`.
+- Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Next step: begin a fresh audit-first assessment of whether normalized telemetry source should now be surfaced in telemetry review analytics or whether another telemetry-data-quality gap has higher value.
