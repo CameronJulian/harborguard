@@ -7210,3 +7210,36 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Implementation committed as `c2ea003` with message `Add telemetry evidence coverage diagnostics`.
 - Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Next step: begin a fresh audit-first assessment before deciding whether to expose evidence coverage in Analytics or pursue another telemetry, fleet, or road-intelligence milestone.
+## 2026-08-09 - Telemetry evidence coverage exposed in Analytics
+
+- Completed a focused audit-first analytics presentation milestone.
+- Extended the Analytics-side `TelemetryAlertReviewSummary` contract with:
+  - `evidenceAvailable`;
+  - `evidenceCoverageRate`.
+- Added an overall `Evidence Coverage` metric to the Telemetry Alert Review Performance section.
+- Added evidence coverage to each per-alert-type review-performance breakdown.
+- Added evidence coverage to each per-vehicle review-performance breakdown.
+- Evidence coverage is displayed with the existing performance-percentage formatter.
+- Extended the Analytics explanatory copy to define evidence coverage as the share of reviewed alerts with persisted structured telemetry evidence.
+- The Analytics copy explicitly states that evidence coverage is descriptive and does not by itself indicate detector quality.
+- Existing confirmation-rate semantics remain unchanged.
+- Existing confirmed, false-positive and inconclusive review counts remain unchanged.
+- Inconclusive reviews remain excluded from the confirmation-rate denominator.
+- The analysis still does not identify false negatives.
+- No backend API changes were required because `/api/fleet/telemetry-review-performance` already returned `evidenceAvailable` and `evidenceCoverageRate`.
+- No detector thresholds were changed.
+- No telemetry detector candidate semantics were changed.
+- No alert-generation behavior was changed.
+- No database schema changes were required.
+- No new migration was required.
+- No road-intelligence promotion behavior was changed.
+- No automatic detector calibration or threshold tuning was introduced.
+- Preserved the existing no-BOM CRLF encoding state of `app/analytics/page.tsx`.
+- `git diff --check` passed.
+- TypeScript validation passed.
+- Full Next.js production build passed.
+- All 122/122 static pages were generated successfully.
+- The production route manifest continues to include `/api/fleet/telemetry-review-performance`.
+- Implementation committed as `e4c1c25` with message `Expose telemetry evidence coverage in analytics`.
+- Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Next step: begin a fresh audit-first roadmap assessment before choosing another telemetry, fleet, analytics, or road-intelligence milestone.
