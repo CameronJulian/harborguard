@@ -77,7 +77,7 @@ export async function GET(req: Request) {
     let query = supabase
       .from("vehicle_alerts")
       .select(
-        "alert_type, review_outcome"
+        "alert_type, review_outcome, vehicle_id"
       )
       .eq(
         "organization_id",

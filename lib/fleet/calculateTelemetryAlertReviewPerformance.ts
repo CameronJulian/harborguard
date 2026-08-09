@@ -12,6 +12,7 @@ export type TelemetryReviewOutcome =
 export type TelemetryAlertReviewEvaluation = {
   alert_type: TelemetryAlertType;
   review_outcome: TelemetryReviewOutcome;
+  vehicle_id: string | null;
 };
 
 export type TelemetryAlertReviewSummary = {
@@ -28,9 +29,15 @@ export type TelemetryAlertReviewBreakdown =
     alertType: TelemetryAlertType;
   };
 
+export type TelemetryAlertReviewVehicleBreakdown =
+  TelemetryAlertReviewSummary & {
+    vehicleId: string;
+  };
+
 export type TelemetryAlertReviewPerformance = {
   overall: TelemetryAlertReviewSummary;
   byAlertType: TelemetryAlertReviewBreakdown[];
+  byVehicle: TelemetryAlertReviewVehicleBreakdown[];
 };
 
 export const TELEMETRY_ALERT_TYPES: TelemetryAlertType[] = [
@@ -117,5 +124,28 @@ export function calculateTelemetryAlertReviewPerformance(
         ),
       })
     ),
+
+    byVehicle: Array.from(
+      new Set(
+        evaluations
+          .map((evaluation) => evaluation.vehicle_id)
+          .filter(
+            (vehicleId): vehicleId is string =>
+              Boolean(vehicleId)
+          )
+      )
+    )
+      .sort((left, right) =>
+        left.localeCompare(right)
+      )
+      .map((vehicleId) => ({
+        vehicleId,
+        ...summarize(
+          evaluations.filter(
+            (evaluation) =>
+              evaluation.vehicle_id === vehicleId
+          )
+        ),
+      })),
   };
 }
