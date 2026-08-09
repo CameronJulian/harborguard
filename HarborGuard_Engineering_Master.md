@@ -6782,3 +6782,23 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Implementation committed as `4478b79` with message `Add harsh cornering corroboration diagnostics`.
 - Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Next step: continue the audit-first roadmap without automatically promoting harsh cornering; compare remaining telemetry/intelligence gaps, especially road-specific speeding context and evidence-policy maturity, before choosing the next focused change.
+## 2026-08-09 - Driver GPS heading propagation fix
+
+- Completed an audit-first mobile telemetry propagation fix discovered while preparing road-specific speeding context.
+- Confirmed the driver page already calculated GPS heading from `position.coords.heading`.
+- Confirmed `sendLocation()` already accepted a heading argument and included it in the `/api/fleet/update-location` payload.
+- Identified the precise gap: the live GPS loop called `sendLocation(lat, lng, speedKmh)` without forwarding the calculated heading, causing the default heading value of `0` to be transmitted.
+- Changed the live GPS call to `sendLocation(lat, lng, speedKmh, heading)`.
+- Left the separate delivered-trip completion call unchanged because its explicit heading value is part of a different lifecycle action.
+- Preserved the existing UTF-8 BOM on `app/driver/page.tsx`.
+- No database schema or migration changes were required.
+- No HERE routing logic was changed.
+- No speeding threshold or sustained-speeding policy was changed.
+- This fix improves mobile heading fidelity for the normalized fleet telemetry pipeline and removes an upstream blocker for direction-aware road-speed context.
+- `git diff --check` passed.
+- TypeScript validation passed.
+- Full Next.js production build passed.
+- All 121/121 static pages were generated successfully.
+- Implementation committed as `c44b6c5` with message `Propagate driver GPS heading`.
+- Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Next step: resume the audit-first HERE road-speed context work using trustworthy mobile heading data before changing the speeding detector.
