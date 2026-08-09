@@ -6722,3 +6722,35 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Implementation committed as `96fbce9` with message `Promote corroborated harsh braking to road intelligence`.
 - The implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Next step: continue the audit-first telematics-intelligence roadmap by determining whether rapid acceleration, harsh cornering, speeding or other accepted hardware telemetry should have similarly evidence-gated intelligence promotion, or whether the next higher-value roadmap gap lies elsewhere.
+## 2026-08-09 - Rapid-acceleration corroboration diagnostics
+
+- Completed the next audit-first fleet-telemetry evidence milestone.
+- Audited rapid acceleration, harsh cornering and speeding after completion of the corroborated harsh-braking road-intelligence bridge.
+- Confirmed rapid acceleration and harsh cornering remained low-confidence fleet telemetry candidates requiring corroboration.
+- Confirmed speeding has a different evidence model because it is already temporally corroborated through consecutive samples but still uses a fixed 120 km/h threshold rather than a road-specific legal speed limit.
+- Audited the existing telemetry corroboration architecture and confirmed it is deliberately harsh-braking-specific rather than a generic reusable telemetry evidence abstraction.
+- Chose not to generalize harsh-braking corroboration because doing so would implicitly impose the same spatial radius, time window and distinct-vehicle evidence policy on unrelated driving behaviours without sufficient evidence.
+- Added `lib/fleet/rapidAccelerationCorroboration.ts`.
+- Rapid-acceleration corroboration currently uses an evidence-gathering baseline of:
+  - 15-minute observation window;
+  - 150-metre geographic radius;
+  - minimum two distinct vehicles.
+- The rapid-acceleration corroborator queries only organization-scoped `vehicle_alerts` with `alert_type = rapid_acceleration`.
+- Nearby alerts are filtered geographically using the existing `getDistanceMeters()` helper.
+- Distinct vehicle IDs are calculated so repeated alerts from one vehicle cannot independently satisfy the multi-vehicle corroboration threshold.
+- Wired rapid-acceleration corroboration into `createRapidAccelerationAlert.ts` after successful vehicle-alert insertion.
+- Corroboration failures are isolated from the primary rapid-acceleration alert lifecycle and are logged diagnostically.
+- Successful corroboration checks emit threshold, distinct-vehicle, nearby-alert, radius and observation-window diagnostic information.
+- This milestone is diagnostic/evidence-gathering only.
+- Rapid acceleration is NOT promoted into `route_intelligence` by this work item.
+- Rapid acceleration does NOT invoke `aggregate_road_risk_intelligence`.
+- Rapid acceleration does NOT modify `road_risk_segments`.
+- No Supabase migration was required.
+- Existing harsh-braking corroboration and promotion behaviour was left unchanged.
+- `git diff --check` passed.
+- TypeScript validation passed.
+- Full Next.js production build passed.
+- All 121/121 static pages were generated successfully.
+- Implementation committed as `5e460ed` with message `Add rapid acceleration corroboration diagnostics`.
+- Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Next step: gather or audit sufficient evidence before deciding whether rapid acceleration should ever become verified road intelligence; otherwise continue the audit-first roadmap to the next higher-value telemetry/intelligence gap rather than automatically promoting another behaviour.
