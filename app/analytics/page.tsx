@@ -82,6 +82,8 @@ type TelemetryAlertReviewSummary = {
   falsePositive: number;
   inconclusive: number;
   confirmationRate: number | null;
+  evidenceAvailable: number;
+  evidenceCoverageRate: number | null;
 };
 
 type TelemetryAlertReviewBreakdown =
@@ -1436,6 +1438,12 @@ if (subscriptionLoaded && !premiumAllowed) {
                     telemetryReviewPerformance.overall.confirmationRate
                   ),
                 },
+                {
+                  label: "Evidence Coverage",
+                  value: formatPerformancePercent(
+                    telemetryReviewPerformance.overall.evidenceCoverageRate
+                  ),
+                },
               ].map((item) => (
                 <div
                   key={item.label}
@@ -1514,6 +1522,10 @@ if (subscriptionLoaded && !premiumAllowed) {
                       Confirmation rate:{" "}
                       {formatPerformancePercent(entry.confirmationRate)}
                     </div>
+                    <div>
+                      Evidence coverage:{" "}
+                      {formatPerformancePercent(entry.evidenceCoverageRate)}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -1580,6 +1592,10 @@ if (subscriptionLoaded && !premiumAllowed) {
                           Confirmation rate:{" "}
                           {formatPerformancePercent(entry.confirmationRate)}
                         </div>
+                        <div>
+                          Evidence coverage:{" "}
+                          {formatPerformancePercent(entry.evidenceCoverageRate)}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1595,8 +1611,11 @@ if (subscriptionLoaded && !premiumAllowed) {
             >
               Evaluated alerts include only confirmed and false-positive reviews.
               Inconclusive reviews are counted as reviewed evidence but excluded from
-              the confirmation-rate denominator. This analysis does not identify
-              false negatives and does not automatically change detector thresholds.
+              the confirmation-rate denominator. Evidence coverage is the share of
+              reviewed alerts with persisted structured telemetry evidence. Coverage
+              is descriptive and does not by itself indicate detector quality. This
+              analysis does not identify false negatives and does not automatically
+              change detector thresholds.
             </p>
           </>
         )}
