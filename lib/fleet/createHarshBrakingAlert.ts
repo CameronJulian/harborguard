@@ -4,6 +4,9 @@ import {
 import {
   createTelemetryObservation,
 } from "@/lib/route-safety/createTelemetryObservation";
+import {
+  promoteHarshBrakingTelemetry,
+} from "@/lib/route-safety/promoteHarshBrakingTelemetry";
 
 export type HarshBrakingCandidate = {
   previousSpeedKmh: number;
@@ -109,7 +112,10 @@ export async function createHarshBrakingAlert(
       "This event requires corroboration and has not " +
       "been classified as a verified road incident.";
 
-    const { error: insertError } =
+    const {
+      data: insertedAlert,
+      error: insertError,
+    } =
       await supabase
         .from("vehicle_alerts")
         .insert({
@@ -126,7 +132,9 @@ export async function createHarshBrakingAlert(
             HARSH_BRAKING_INTELLIGENCE_SCORE,
           behavioral_risk: "medium",
           intelligence_narrative: narrative,
-        });
+        })
+        .select("id")
+        .single();
 
     if (insertError) {
       console.error(
@@ -156,17 +164,45 @@ export async function createHarshBrakingAlert(
           longitude,
         });
 
+      const occurredAt =
+        new Date().toISOString();
+
       const telemetryObservation =
         await createTelemetryObservation({
           organizationId,
           latitude,
           longitude,
           corroboration,
-          occurredAt: new Date().toISOString(),
+          occurredAt,
           sourceVehicleId: vehicleId,
         });
 
       telemetryObservationCreated = true;
+
+      if (
+        corroboration.thresholdMet &&
+        insertedAlert?.id
+      ) {
+        const promotion =
+          await promoteHarshBrakingTelemetry({
+            supabase,
+            organizationId,
+            vehicleAlertId:
+              String(insertedAlert.id),
+            vehicleId,
+            tripId,
+            latitude,
+            longitude,
+            occurredAt,
+            candidate,
+            corroboration,
+          });
+
+        console.info(
+          "[harsh-braking road intelligence promotion]",
+          promotion
+        );
+      }
 
       console.info(
         "[harsh-braking telemetry observation]",
