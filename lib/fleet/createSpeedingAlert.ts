@@ -86,13 +86,13 @@ export async function createSpeedingAlert(
     const message =
       "Sustained speeding detected: " +
       `${candidate.speedKmh} km/h, ` +
-      `above the fixed ${candidate.thresholdKmh} km/h threshold ` +
+      `above the effective ${candidate.thresholdKmh} km/h threshold ` +
       `for ${candidate.durationSeconds} seconds across ` +
       `${candidate.consecutiveSamples} consecutive samples.`;
 
     const narrative =
-      "Corroborated fleet telemetry candidate based on consecutive samples. " +
-      "This fixed threshold is not yet based on the road-specific speed limit. " +
+      "Sustained fleet telemetry candidate based on consecutive samples. " +
+      "Speeding analysis uses available road-speed context and falls back to the configured threshold when road-speed context is unavailable. " +
       `Coordinates: ${latitude}, ${longitude}. ` +
       "The sequence requires contextual review and has not " +
       "been classified as a verified road incident.";
