@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireOrganization } from "@/lib/server-auth";
+import {
+  requireOrganization,
+  requireRole,
+} from "@/lib/server-auth";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 const TRACCAR_PROVIDER = "traccar";
 const TRACCAR_POSITION_STREAM = "positions";
@@ -16,7 +20,15 @@ function isMappingFailure(message: string | null) {
 
 export async function GET() {
   try {
-    const { supabase, organizationId } = await requireOrganization();
+    const {
+      supabase,
+      organizationId,
+      role,
+    } = await requireOrganization();
+
+    const canManage =
+      role === "owner" ||
+      role === "admin";
 
     const [
       integrationResult,
@@ -128,6 +140,7 @@ export async function GET() {
         stream: TRACCAR_POSITION_STREAM,
         configured,
         enabled,
+        canManage,
         status,
         lastSuccessfulSyncAt: syncState?.last_successful_sync_at ?? null,
         lastFailureAt: syncState?.last_failure_at ?? null,
@@ -173,6 +186,102 @@ export async function GET() {
     return NextResponse.json(
       { error: message },
       { status: 500 }
+    );
+  }
+}
+export async function PATCH(req: Request) {
+  try {
+    const {
+      organizationId,
+      role,
+    } = await requireOrganization();
+
+    requireRole(
+      role,
+      ["owner", "admin"]
+    );
+
+    const body = await req.json();
+
+    if (
+      !body ||
+      typeof body.enabled !== "boolean"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "enabled must be a boolean.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    const {
+      data: integration,
+      error,
+    } = await supabaseAdmin
+      .from("telematics_integrations")
+      .update({
+        enabled: body.enabled,
+      })
+      .eq(
+        "organization_id",
+        organizationId
+      )
+      .eq(
+        "provider",
+        TRACCAR_PROVIDER
+      )
+      .select(
+        "id, enabled"
+      )
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!integration) {
+      return NextResponse.json(
+        {
+          error:
+            "Traccar integration is not configured for this organization.",
+        },
+        {
+          status: 404,
+        }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      integration: {
+        enabled:
+          integration.enabled,
+      },
+    });
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Failed to update Traccar integration.";
+
+    const status =
+      message === "Unauthorized"
+        ? 401
+        : message === "Permission denied"
+          ? 403
+          : 500;
+
+    return NextResponse.json(
+      {
+        error: message,
+      },
+      {
+        status,
+      }
     );
   }
 }

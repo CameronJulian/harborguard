@@ -100,6 +100,7 @@ type TelematicsHealthResponse = {
     stream: string;
     configured: boolean;
     enabled: boolean;
+    canManage: boolean;
     status: TelematicsHealthStatus;
     lastSuccessfulSyncAt: string | null;
     lastFailureAt: string | null;
@@ -260,6 +261,8 @@ export default function FleetDashboardPage() {
   const [telematicsHealth, setTelematicsHealth] =
     useState<TelematicsHealthResponse["integration"] | null>(null);
   const [telematicsHealthError, setTelematicsHealthError] = useState("");
+  const [telematicsHealthUpdating, setTelematicsHealthUpdating] =
+    useState(false);
   const [vehicleIcons, setVehicleIcons] = useState<Record<string, any>>({});
   const subscribedRef = useRef(false);
 
@@ -322,6 +325,51 @@ export default function FleetDashboardPage() {
     }
   }
 
+  async function updateTelematicsEnabled(
+    enabled: boolean
+  ) {
+    setTelematicsHealthUpdating(true);
+
+    try {
+      const response = await fetch(
+        "/api/fleet/telematics-health",
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            enabled,
+          }),
+        }
+      );
+
+      const result =
+        (await response.json()) as {
+          error?: string;
+        };
+
+      if (!response.ok) {
+        setTelematicsHealthError(
+          result.error ||
+            "Failed to update Traccar integration."
+        );
+
+        return;
+      }
+
+      await loadTelematicsHealth();
+    } catch (err: unknown) {
+      setTelematicsHealthError(
+        err instanceof Error
+          ? err.message
+          : "Failed to update Traccar integration."
+      );
+    } finally {
+      setTelematicsHealthUpdating(false);
+    }
+  }
   useEffect(() => {
     loadFleet();
     loadTelematicsHealth();
@@ -563,12 +611,56 @@ export default function FleetDashboardPage() {
           {telematicsHealth ? (
             <div
               style={{
-                color: telematicsHealthColor(telematicsHealth.status),
-                fontWeight: 800,
-                fontSize: 16,
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                flexWrap: "wrap",
               }}
             >
-              {telematicsHealthLabel(telematicsHealth.status)}
+              <div
+                style={{
+                  color: telematicsHealthColor(telematicsHealth.status),
+                  fontWeight: 800,
+                  fontSize: 16,
+                }}
+              >
+                {telematicsHealthLabel(telematicsHealth.status)}
+              </div>
+
+              {telematicsHealth.configured &&
+              telematicsHealth.canManage ? (
+                <button
+                  type="button"
+                  disabled={telematicsHealthUpdating}
+                  onClick={() => {
+                    void updateTelematicsEnabled(
+                      !telematicsHealth.enabled
+                    );
+                  }}
+                  style={{
+                    padding: "9px 12px",
+                    borderRadius: 10,
+                    border: "1px solid #cbd5e1",
+                    background: telematicsHealthUpdating
+                      ? "#f1f5f9"
+                      : "#ffffff",
+                    color: "#334155",
+                    fontWeight: 700,
+                    cursor: telematicsHealthUpdating
+                      ? "not-allowed"
+                      : "pointer",
+                    opacity: telematicsHealthUpdating
+                      ? 0.7
+                      : 1,
+                  }}
+                >
+                  {telematicsHealthUpdating
+                    ? "Updating..."
+                    : telematicsHealth.enabled
+                      ? "Disable Traccar"
+                      : "Enable Traccar"}
+                </button>
+              ) : null}
             </div>
           ) : null}
         </div>
