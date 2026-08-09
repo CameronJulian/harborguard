@@ -93,9 +93,15 @@ type TelemetryAlertReviewBreakdown =
       | "speeding";
   };
 
+type TelemetryAlertReviewVehicleBreakdown =
+  TelemetryAlertReviewSummary & {
+    vehicleId: string;
+  };
+
 type TelemetryAlertReviewPerformance = {
   overall: TelemetryAlertReviewSummary;
   byAlertType: TelemetryAlertReviewBreakdown[];
+  byVehicle: TelemetryAlertReviewVehicleBreakdown[];
 };
 
 type TelemetryAlertReviewPerformanceResponse = {
@@ -530,6 +536,26 @@ const { data: incidentData } = await supabase
     rapid_acceleration: "Rapid Acceleration",
     harsh_cornering: "Harsh Cornering",
     speeding: "Speeding",
+  };
+
+  const telemetryVehicleLabel = (vehicleId: string) => {
+    const vehicle = vehicles.find(
+      (entry) => entry.id === vehicleId
+    );
+
+    if (!vehicle) {
+      return vehicleId;
+    }
+
+    if (vehicle.nickname && vehicle.registration_number) {
+      return `${vehicle.nickname} (${vehicle.registration_number})`;
+    }
+
+    return (
+      vehicle.nickname ||
+      vehicle.registration_number ||
+      vehicleId
+    );
   };
 
   const selectedVehicleLabel = useMemo(() => {
@@ -1493,6 +1519,73 @@ if (subscriptionLoaded && !premiumAllowed) {
               ))}
             </div>
 
+            {!selectedVehicleId &&
+            telemetryReviewPerformance.byVehicle.length > 0 ? (
+              <div style={{ marginBottom: 18 }}>
+                <div
+                  style={{
+                    fontWeight: 700,
+                    color: "#0f172a",
+                    marginBottom: 10,
+                  }}
+                >
+                  Review Performance by Vehicle
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: isMobile
+                      ? "1fr"
+                      : "repeat(2, minmax(0, 1fr))",
+                    gap: 12,
+                  }}
+                >
+                  {telemetryReviewPerformance.byVehicle.map((entry) => (
+                    <div
+                      key={entry.vehicleId}
+                      style={{
+                        border: "1px solid #e5e7eb",
+                        borderRadius: 14,
+                        padding: 16,
+                        background: "#f8fafc",
+                      }}
+                    >
+                      <strong style={{ color: "#0f172a" }}>
+                        {telemetryVehicleLabel(entry.vehicleId)}
+                      </strong>
+
+                      <div
+                        style={{
+                          display: "grid",
+                          gap: 5,
+                          marginTop: 10,
+                          fontSize: 13,
+                          color: "#475569",
+                        }}
+                      >
+                        <div>
+                          Reviewed: {formatNumber(entry.reviewedAlerts)}
+                        </div>
+                        <div>
+                          Confirmed: {formatNumber(entry.confirmed)}
+                        </div>
+                        <div>
+                          False positives: {formatNumber(entry.falsePositive)}
+                        </div>
+                        <div>
+                          Inconclusive: {formatNumber(entry.inconclusive)}
+                        </div>
+                        <div>
+                          Confirmation rate:{" "}
+                          {formatPerformancePercent(entry.confirmationRate)}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <p
               style={{
                 ...mutedTextStyle,
