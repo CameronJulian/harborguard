@@ -7150,3 +7150,32 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Encoding-correction documentation remains committed as `921766f` with message `Document telemetry migration encoding correction`.
 - Persisted structured telemetry evidence is now available end-to-end in application code and the deployed database schema.
 - Next step: begin a fresh audit-first roadmap assessment before choosing another telemetry, fleet or road-intelligence milestone.
+## 2026-08-09 - Vehicle alert telemetry evidence exposed to reviewers
+
+- Completed a focused audit-first reviewer workflow improvement for telemetry-derived vehicle alerts.
+- Extended `/api/fleet/alerts` to return the persisted `telemetry_evidence` field.
+- Extended the Vehicle Alerts client contract with nullable structured telemetry evidence.
+- Added human-readable telemetry evidence formatting helpers.
+- Added a dedicated `Telemetry Evidence` panel to vehicle-alert cards when structured evidence is present.
+- The evidence panel is rendered before the existing resolved/review-control branch so reviewers can inspect detector evidence before selecting a review outcome.
+- Evidence labels are converted from stored field names into readable labels.
+- Speed values are displayed in km/h.
+- Acceleration and deceleration values are displayed in m/s².
+- Durations are displayed in seconds.
+- Heading values and heading-change values are displayed in degrees.
+- Existing alerts without telemetry evidence remain unaffected and do not render the panel.
+- No detector thresholds were changed.
+- No detector candidate semantics were changed.
+- No database schema changes were required.
+- No new migration was required.
+- No telemetry review analytics were changed.
+- No road-intelligence promotion behavior was changed.
+- No automatic threshold tuning was introduced.
+- Preserved the existing UTF-8 BOM state of `app/vehicle-alerts/page.tsx`.
+- `git diff --check` passed.
+- TypeScript validation passed.
+- Full Next.js production build passed.
+- All 122/122 static pages were generated successfully.
+- Implementation committed as `c2ae223` with message `Expose telemetry evidence on vehicle alerts`.
+- Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Next step: begin a fresh audit-first assessment before choosing another telemetry, analytics, fleet, or road-intelligence milestone.
