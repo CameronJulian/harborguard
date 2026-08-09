@@ -6685,3 +6685,40 @@ Pushed it to feature/expanded-incident-taxonomy.
 - The external telematics path is now automatically invoked in production every ten minutes through an external scheduler compatible with the current Vercel Hobby plan.
 - This closes the initial Traccar external-telemetry ingestion and production-scheduling milestone.
 - Next step: perform an audit-first investigation of how normalized external telematics currently propagates into HarborGuard road intelligence, fleet-risk, telemetry alerts and corroboration so the smallest remaining telematics-intelligence-fusion gap can be identified before adding new behavior.
+## 2026-08-09 - Corroborated harsh-braking road-intelligence promotion
+
+- Completed the first telemetry-to-road-intelligence promotion bridge for HarborGuard.
+- Confirmed through audit that external Traccar hardware telemetry already enters the shared `processVehicleLocationUpdate()` pipeline rather than a separate integration silo.
+- Confirmed the shared location lifecycle already performs harsh-braking detection, behavior-alert creation, active-trip updates, stop lifecycle updates and fleet-risk evaluation.
+- Confirmed the existing harsh-braking corroboration model uses:
+  - a 15-minute observation window;
+  - a 150-metre geographic radius;
+  - at least two distinct vehicles before the corroboration threshold is met.
+- Confirmed `createTelemetryObservation()` previously created only an in-memory telemetry observation and did not persist/promote corroborated telemetry into shared road intelligence.
+- Added `lib/route-safety/promoteHarshBrakingTelemetry.ts`.
+- Single-vehicle harsh-braking candidates remain fleet telemetry alerts only and do not affect shared road-risk intelligence.
+- Corroborated harsh-braking events now upsert a verified `route_intelligence` record.
+- The route-intelligence source is `fleet_telemetry`.
+- The source record ID is the originating `vehicle_alerts.id`, giving the promotion a stable provider-local idempotency key.
+- The existing unique `(organization_id, source, source_record_id)` route-intelligence index is reused rather than creating a parallel deduplication mechanism.
+- Corroborated telemetry records preserve vehicle, trip, harsh-braking candidate and corroboration details in route-intelligence metadata.
+- Verified telemetry promotion calls the existing `aggregate_road_risk_intelligence` RPC.
+- The existing road-risk aggregation idempotency boundary remains in place through the unique route-intelligence-to-road-risk event relationship.
+- `harsh_braking` currently falls through the existing road-risk aggregation taxonomy to `other_event_count`; no new risk weighting was invented in this work item.
+- Added migration `20260809090000_allow_service_role_road_risk_aggregation.sql`.
+- The migration preserves the existing authenticated-user organization isolation check.
+- Trusted HarborGuard service-role execution now bypasses only the authenticated-user `current_user_org_id()` comparison so machine-authenticated telemetry ingestion can aggregate intelligence for its explicitly validated organization.
+- Execution permission for `aggregate_road_risk_intelligence` now includes both `authenticated` and `service_role`.
+- The migration was verified to differ from the previous taxonomy-v2 aggregation RPC only by the audited service-role authorization and grant changes.
+- Supabase migration dry-run confirmed that `20260809090000_allow_service_role_road_risk_aggregation.sql` was the only pending migration.
+- Migration `20260809090000` was applied successfully to the linked HarborGuard Supabase project and is recorded in both local and remote migration history.
+- Service-role RPC execution was verified against production Supabase with an intentionally null `route_intelligence_id`.
+- The service-role request passed the authorization boundary and reached the function's own `route_intelligence_id is required` validation.
+- That authorization test stopped before the road-risk write path and therefore did not create test risk data.
+- `git diff --check` passed.
+- TypeScript validation passed.
+- The full Next.js production build passed.
+- All 121/121 static pages were generated successfully.
+- Implementation committed as `96fbce9` with message `Promote corroborated harsh braking to road intelligence`.
+- The implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Next step: continue the audit-first telematics-intelligence roadmap by determining whether rapid acceleration, harsh cornering, speeding or other accepted hardware telemetry should have similarly evidence-gated intelligence promotion, or whether the next higher-value roadmap gap lies elsewhere.
