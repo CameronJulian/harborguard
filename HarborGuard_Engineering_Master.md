@@ -6835,3 +6835,29 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Implementation committed as `06aae32` with message `Use HERE road speed context for speeding`.
 - Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Next step: audit speeding evidence maturity before adding any tolerance policy, persisted per-sample road-speed context, or road-intelligence promotion.
+## 2026-08-09 - Persisted road-speed evidence for sustained speeding
+
+- Completed the next audit-first speeding evidence-maturity milestone.
+- Added nullable `road_speed_limit_kmh` persistence to `vehicle_locations`.
+- Added migration `20260809103000_add_vehicle_location_road_speed_limit.sql`.
+- Extended the generated Supabase `vehicle_locations` Row, Insert and Update types with `road_speed_limit_kmh`.
+- Extended `AnalyzeVehicleLocationTelemetryResult` with `roadSpeedLimitKmh`.
+- The already-resolved HERE road speed is now propagated out of telemetry analysis rather than being trapped inside the speeding-analysis branch.
+- `processVehicleLocationUpdate.ts` now passes the resolved road-speed value into `createVehicleLocation.ts`.
+- `createVehicleLocation.ts` persists the value as `road_speed_limit_kmh`.
+- Sustained-speeding history now selects `speed_kmh`, `road_speed_limit_kmh` and `recorded_at`.
+- Each historical sample is evaluated against its own persisted road-speed limit when that value is finite and positive.
+- Historical samples with `NULL` or invalid road-speed context continue to fall back to the existing `minimumSpeedKmh`, preserving compatibility with legacy telemetry.
+- The existing 90-second lookback, minimum three consecutive samples and minimum 30-second sustained-duration policy remain unchanged.
+- No speeding tolerance or legal-margin policy was introduced.
+- No road-intelligence promotion logic was added.
+- No duplicate HERE request was introduced for persistence; the existing resolved value is propagated through the telemetry result.
+- `git diff --check` passed.
+- Migration whitespace validation passed.
+- TypeScript validation passed.
+- Full Next.js production build passed.
+- All 121/121 static pages were generated successfully.
+- Implementation committed as `828ea57` with message `Persist road speed evidence for speeding`.
+- Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Database migration has NOT yet been applied at this milestone-documentation step.
+- Next step: audit local/remote Supabase migration state, dry-run the single pending migration, then apply and verify it separately before beginning another implementation item.
