@@ -1951,6 +1951,156 @@ export type Database = {
         }
         Relationships: []
       }
+      telematics_integrations: {
+        Row: {
+          base_url: string | null
+          created_at: string
+          credential_source: string
+          enabled: boolean
+          id: string
+          metadata: Json
+          organization_id: string
+          provider: string
+          updated_at: string
+        }
+        Insert: {
+          base_url?: string | null
+          created_at?: string
+          credential_source?: string
+          enabled?: boolean
+          id?: string
+          metadata?: Json
+          organization_id: string
+          provider: string
+          updated_at?: string
+        }
+        Update: {
+          base_url?: string | null
+          created_at?: string
+          credential_source?: string
+          enabled?: boolean
+          id?: string
+          metadata?: Json
+          organization_id?: string
+          provider?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telematics_integrations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      telematics_message_receipts: {
+        Row: {
+          attempt_count: number
+          claimed_at: string | null
+          id: string
+          last_failure_at: string | null
+          last_failure_message: string | null
+          metadata: Json
+          organization_id: string
+          processed_at: string | null
+          processing_status: string
+          provider: string
+          provider_message_id: string
+          received_at: string
+          stream: string
+        }
+        Insert: {
+          attempt_count?: number
+          claimed_at?: string | null
+          id?: string
+          last_failure_at?: string | null
+          last_failure_message?: string | null
+          metadata?: Json
+          organization_id: string
+          processed_at?: string | null
+          processing_status?: string
+          provider: string
+          provider_message_id: string
+          received_at?: string
+          stream: string
+        }
+        Update: {
+          attempt_count?: number
+          claimed_at?: string | null
+          id?: string
+          last_failure_at?: string | null
+          last_failure_message?: string | null
+          metadata?: Json
+          organization_id?: string
+          processed_at?: string | null
+          processing_status?: string
+          provider?: string
+          provider_message_id?: string
+          received_at?: string
+          stream?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telematics_message_receipts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      telematics_sync_state: {
+        Row: {
+          created_at: string
+          cursor: string | null
+          id: string
+          last_failure_at: string | null
+          last_failure_message: string | null
+          last_successful_sync_at: string | null
+          metadata: Json
+          organization_id: string
+          provider: string
+          stream: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          cursor?: string | null
+          id?: string
+          last_failure_at?: string | null
+          last_failure_message?: string | null
+          last_successful_sync_at?: string | null
+          metadata?: Json
+          organization_id: string
+          provider: string
+          stream: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          cursor?: string | null
+          id?: string
+          last_failure_at?: string | null
+          last_failure_message?: string | null
+          last_successful_sync_at?: string | null
+          metadata?: Json
+          organization_id?: string
+          provider?: string
+          stream?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telematics_sync_state_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicle_alerts: {
         Row: {
           alert_type: string
