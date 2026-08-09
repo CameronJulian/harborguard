@@ -17,6 +17,7 @@ type VehicleAlert = {
   created_at: string | null;
   resolved_at?: string | null;
   resolution_notes?: string | null;
+  review_outcome?: "confirmed" | "false_positive" | "inconclusive" | null;
   timeline?: {
     event_type: string;
     note?: string | null;
@@ -83,6 +84,8 @@ export default function VehicleAlertsPage() {
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null);
   const [notesById, setNotesById] = useState<Record<string, string>>({});
+  const [reviewOutcomeById, setReviewOutcomeById] =
+    useState<Record<string, "confirmed" | "false_positive" | "inconclusive" | "">>({});
   const [message, setMessage] = useState("");
 
   async function loadAlerts() {
@@ -112,6 +115,13 @@ export default function VehicleAlertsPage() {
   }, []);
 
   async function resolveAlert(alertId: string) {
+    const reviewOutcome = reviewOutcomeById[alertId];
+
+    if (!reviewOutcome) {
+      setMessage("Select a review outcome before resolving the alert.");
+      return;
+    }
+
     setResolvingId(alertId);
     setMessage("");
 
@@ -124,6 +134,7 @@ export default function VehicleAlertsPage() {
         body: JSON.stringify({
           alertId,
           resolutionNotes: notesById[alertId] || "Resolved from vehicle alerts page.",
+          reviewOutcome,
         }),
       });
 
@@ -136,6 +147,7 @@ export default function VehicleAlertsPage() {
 
       await loadAlerts();
       setNotesById((current) => ({ ...current, [alertId]: "" }));
+      setReviewOutcomeById((current) => ({ ...current, [alertId]: "" }));
       setMessage("Alert resolved successfully.");
     } catch (err: any) {
       setMessage(err.message || "Failed to resolve alert.");
@@ -513,14 +525,36 @@ export default function VehicleAlertsPage() {
                       Resolved: {formatDateTime(alert.resolved_at)}
                     </div>
                     <div style={{ color: "#166534" }}>
+                      Review outcome: {alert.review_outcome || "Not recorded"}
+                      <br />
                       {alert.resolution_notes || "No notes provided."}
                     </div>
                   </div>
                 ) : (
                   <div
-                    style={{ display: "grid", gridTemplateColumns: "1fr 160px 180px", gap: 12 }}
+                    style={{ display: "grid", gridTemplateColumns: "1fr 180px 160px 180px", gap: 12 }}
                     onClick={(e) => e.stopPropagation()}
                   >
+                    <select
+                      value={reviewOutcomeById[alert.id] || ""}
+                      onChange={(e) =>
+                        setReviewOutcomeById((current) => ({
+                          ...current,
+                          [alert.id]: e.target.value as
+                            | "confirmed"
+                            | "false_positive"
+                            | "inconclusive"
+                            | "",
+                        }))
+                      }
+                      style={inputStyle}
+                    >
+                      <option value="">Select outcome...</option>
+                      <option value="confirmed">Confirmed</option>
+                      <option value="false_positive">False positive</option>
+                      <option value="inconclusive">Inconclusive</option>
+                    </select>
+
                     <input
                       value={notesById[alert.id] || ""}
                       onChange={(e) =>

@@ -187,6 +187,7 @@ export function useCommandCenterData() {
             body: JSON.stringify({
               alertId: alert.id,
               resolutionNotes: "Resolved from Command Center.",
+              reviewOutcome: "inconclusive",
             }),
           }
         );

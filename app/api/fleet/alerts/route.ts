@@ -145,6 +145,7 @@ export async function GET() {
         created_at,
         resolved_at,
         resolution_notes,
+        review_outcome,
         organization_id,
         vehicle:vehicles (
           nickname,
