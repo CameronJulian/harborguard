@@ -6802,3 +6802,36 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Implementation committed as `c44b6c5` with message `Propagate driver GPS heading`.
 - Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Next step: resume the audit-first HERE road-speed context work using trustworthy mobile heading data before changing the speeding detector.
+## 2026-08-09 - HERE road-specific speeding context
+
+- Completed the next audit-first fleet telemetry speeding milestone.
+- Confirmed the existing sustained-speeding detector previously used a fixed 120 km/h threshold.
+- Confirmed HERE Routing v8 can return road `maxSpeed` span data using the existing HarborGuard HERE API key.
+- Added `lib/routing/resolveHereRoadSpeedLimit.ts`.
+- The HERE road-speed resolver:
+  - accepts live latitude, longitude and heading;
+  - projects a short forward destination along the vehicle heading;
+  - calls HERE Routing v8 with `spans=length,maxSpeed`;
+  - extracts a finite positive `maxSpeed`;
+  - converts HERE metres-per-second values to km/h;
+  - returns `null` when trustworthy road-speed context is unavailable.
+- Runtime experiments around Johannesburg returned approximately 60 km/h road-speed context for northbound, eastbound and westbound probes.
+- Wired the resolver into `analyzeVehicleLocationTelemetry.ts` after GPS jitter/spike validation and before sustained-speeding detection.
+- HERE road-speed resolution is performed only for non-manual telemetry.
+- When HERE returns a finite positive road speed, that value is used as the effective sustained-speeding threshold.
+- When HERE road-speed context is unavailable, the existing static `speedingMinimumSpeedKmh` fallback remains in effect.
+- The existing sustained-speeding evidence policy remains unchanged:
+  - 90-second lookback;
+  - minimum three consecutive samples;
+  - minimum 30 seconds sustained duration.
+- No speeding tolerance or legal-margin policy was introduced in this milestone.
+- Historical samples are still evaluated using the current invocation's effective threshold; per-sample persisted road-speed context was intentionally left for a future evidence-maturity milestone.
+- Manual telemetry behavior remains unchanged.
+- No Supabase migration was required.
+- `git diff --check` and resolver whitespace validation passed.
+- TypeScript validation passed.
+- Full Next.js production build passed.
+- All 121/121 static pages were generated successfully.
+- Implementation committed as `06aae32` with message `Use HERE road speed context for speeding`.
+- Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Next step: audit speeding evidence maturity before adding any tolerance policy, persisted per-sample road-speed context, or road-intelligence promotion.
