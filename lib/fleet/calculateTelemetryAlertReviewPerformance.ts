@@ -13,6 +13,7 @@ export type TelemetryAlertReviewEvaluation = {
   alert_type: TelemetryAlertType;
   review_outcome: TelemetryReviewOutcome;
   vehicle_id: string | null;
+  telemetry_evidence: Record<string, unknown> | null;
 };
 
 export type TelemetryAlertReviewSummary = {
@@ -22,6 +23,8 @@ export type TelemetryAlertReviewSummary = {
   falsePositive: number;
   inconclusive: number;
   confirmationRate: number | null;
+  evidenceAvailable: number;
+  evidenceCoverageRate: number | null;
 };
 
 export type TelemetryAlertReviewBreakdown =
@@ -94,6 +97,14 @@ function summarize(
     evaluatedAlerts +
     counts.inconclusive;
 
+  const evidenceAvailable =
+    evaluations.filter(
+      (evaluation) =>
+        evaluation.telemetry_evidence !== null &&
+        typeof evaluation.telemetry_evidence === "object" &&
+        Object.keys(evaluation.telemetry_evidence).length > 0
+    ).length;
+
   return {
     reviewedAlerts,
     evaluatedAlerts,
@@ -103,6 +114,11 @@ function summarize(
     confirmationRate: ratio(
       counts.confirmed,
       evaluatedAlerts
+    ),
+    evidenceAvailable,
+    evidenceCoverageRate: ratio(
+      evidenceAvailable,
+      reviewedAlerts
     ),
   };
 }
