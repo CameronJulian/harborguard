@@ -7748,3 +7748,37 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Local and remote feature heads matched after push.
 - Tracked working tree was clean after push.
 - Next step: perform a fresh audit-first roadmap assessment before changing Traccar configuration further or beginning Webfleet work.
+## 2026-08-09 - Registry-aware telematics health
+
+- Completed the audit-first registry-aware telematics health milestone.
+- Updated `app/api/fleet/telematics-health/route.ts`.
+- Updated `app/fleet/page.tsx`.
+- The telematics health API now reads the organization-scoped `telematics_integrations` record for provider `traccar`.
+- The health response now exposes:
+  - `configured`
+  - `enabled`
+- Added explicit telematics health status:
+  - `disabled`
+- A configured but disabled Traccar integration now reports `disabled` instead of appearing healthy from historical sync state.
+- A missing integration remains distinguishable through `configured: false`.
+- Existing sync-state, failure, and receipt health logic remains intact.
+- Fleet UI now shows registry state as:
+  - `Configured and enabled`
+  - `Configured but disabled`
+  - `Not configured`
+- Existing environment-based Traccar credential handling remains unchanged.
+- No Traccar provider credential values were moved into Supabase.
+- No scheduling behavior was changed.
+- No sync orchestrator behavior was changed.
+- No Webfleet implementation was introduced.
+- Preserved the existing mixed worktree newline state in `app/fleet/page.tsx`.
+- Git index representation for both modified files remained canonical LF.
+- `git diff --check` passed.
+- TypeScript validation passed.
+- Full Next.js production build passed.
+- Production build generated all 123/123 static pages successfully.
+- Implementation committed as `96bbec8` with message `Make telematics health registry aware`.
+- Commit `96bbec8` was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote feature heads matched after push.
+- Tracked working tree was clean after push.
+- Next step: perform a fresh audit-first roadmap assessment before starting another implementation.
