@@ -7524,3 +7524,69 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Implementation committed as `99ed9cf` with message `Add telemetry source review analytics`.
 - Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Next step: begin a fresh audit-first assessment of the next telemetry-data-quality or fleet-intelligence gap before implementing anything else.
+## 2026-08-09 - Traccar integration health visibility
+
+- Completed an audit-first operational-observability milestone for Traccar telemetry ingestion.
+- Confirmed HarborGuard already persists Traccar sync state and message receipt lifecycle state, but previously had no useful fleet-facing health surface.
+- Added organization-scoped `GET /api/fleet/telematics-health`.
+- Reused the existing `requireOrganization()` authorization boundary.
+- Added read-only Traccar integration health derived from:
+  - `telematics_sync_state`
+  - `telematics_message_receipts`
+- Added integration status states:
+  - `healthy`
+  - `warning`
+  - `failed`
+  - `never_synced`
+- Added last successful sync visibility.
+- Added latest failed sync time and failure message visibility.
+- Added explicit device-mapping failure classification for:
+  - missing tracker/device mapping
+  - ambiguous tracker/device mapping
+- Added current receipt counts for:
+  - processing
+  - failed
+- Added oldest currently-processing receipt visibility.
+- Added recent failed receipt visibility including:
+  - provider message ID
+  - provider device ID when available in metadata
+  - last failure time
+  - last failure message
+  - attempt count
+- Corrected the initial health endpoint to the actual receipt schema before exposing it in the UI:
+  - `claimed_at`
+  - `last_failure_at`
+  - `last_failure_message`
+  - `metadata.providerDeviceId`
+- No database migration was required.
+- No telematics ingestion behavior was changed.
+- No automatic retry behavior was changed.
+- No Traccar synchronization semantics were changed.
+- No Webfleet integration was introduced; Webfleet remains pending provider access.
+- Added a read-only `Traccar Integration Health` card to `/fleet`.
+- Fleet health visibility now includes:
+  - health status
+  - received count
+  - processed count
+  - duplicate count
+  - failed receipt count
+  - processing receipt count
+  - jitter-skipped count
+  - GPS-spike-skipped count
+  - already-processing count
+  - last successful sync
+  - last failure
+  - latest failure message
+  - device-mapping issue indication
+  - oldest processing message
+  - recent failed receipts
+- Existing Fleet reload behavior now also refreshes telematics integration health.
+- Health endpoint implementation committed as `bc9598b` with message `Expose Traccar integration health`.
+- Receipt-schema correction committed as `48912cd` with message `Correct telematics health receipt fields`.
+- Fleet UI implementation committed as `7366866` with message `Add Traccar integration health to fleet`.
+- TypeScript validation passed for the endpoint and Fleet UI.
+- Full Next.js production builds passed.
+- Build generated 123/123 static pages successfully with `/api/fleet/telematics-health` registered.
+- All three implementation commits were pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Tracked working tree was clean after the final push.
+- Next step: begin a fresh audit-first assessment of the next telemetry data-quality, fleet-intelligence, or multi-tenant telematics scheduling gap before implementing anything else.
