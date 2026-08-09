@@ -26,6 +26,9 @@ import {
 import {
   getDistanceMeters,
 } from "@/lib/geo/getDistanceMeters";
+import {
+  resolveHereRoadSpeedLimit,
+} from "@/lib/routing/resolveHereRoadSpeedLimit";
 
 type LatestVehicleLocation = {
   latitude: unknown;
@@ -244,6 +247,20 @@ export async function analyzeVehicleLocationTelemetry({
   }
 
   if (source !== "manual") {
+    const roadSpeedLimitKmh =
+      await resolveHereRoadSpeedLimit({
+        latitude,
+        longitude,
+        heading,
+      });
+
+    const effectiveSpeedingMinimumKmh =
+      roadSpeedLimitKmh !== null &&
+      Number.isFinite(roadSpeedLimitKmh) &&
+      roadSpeedLimitKmh > 0
+        ? roadSpeedLimitKmh
+        : speedingMinimumSpeedKmh;
+
     speedingCandidate =
       await detectSustainedSpeedingCandidate({
         supabase,
@@ -253,7 +270,8 @@ export async function analyzeVehicleLocationTelemetry({
         occurredAt,
         parseNumber: parseFleetTelemetryNumber,
         lookbackSeconds: speedingLookbackSeconds,
-        minimumSpeedKmh: speedingMinimumSpeedKmh,
+        minimumSpeedKmh:
+          effectiveSpeedingMinimumKmh,
         minimumSamples: speedingMinimumSamples,
         minimumDurationSeconds:
           speedingMinimumDurationSeconds,
