@@ -6903,3 +6903,37 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Implementation committed as `2019192` with message `Correct speeding alert road context semantics`.
 - Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Next step: begin a fresh audit-first assessment of the next fleet/road-intelligence gap rather than automatically promoting speeding.
+## 2026-08-09 - Vehicle alert review outcomes
+
+- Completed the next audit-first telemetry evidence-maturity milestone.
+- Identified that `vehicle_alerts` already had a durable resolution lifecycle through `is_resolved`, `resolved_at` and `resolution_notes`, but did not record structured ground-truth meaning for the resolution.
+- Added nullable `review_outcome` persistence to `vehicle_alerts`.
+- Added migration `20260809110000_add_vehicle_alert_review_outcome.sql`.
+- The migration constrains non-null review outcomes to:
+  - `confirmed`;
+  - `false_positive`;
+  - `inconclusive`.
+- Extended generated Supabase `vehicle_alerts` Row, Insert and Update types with `review_outcome`.
+- Extended `/api/fleet/resolve-alert` with a typed review-outcome contract.
+- The fleet alert resolver now validates review outcomes before resolution persistence.
+- Valid review outcomes are stored atomically with the existing resolved state, timestamp and resolution notes.
+- `/api/fleet/alerts` now returns `review_outcome` so resolved-alert consumers can display the recorded disposition.
+- The dedicated Vehicle Alerts screen now requires the operator to explicitly select Confirmed, False positive or Inconclusive before resolving an alert.
+- Resolved alerts now display the recorded review outcome alongside the existing resolution notes.
+- Command Center quick resolution now supplies `inconclusive` because that workflow does not currently provide a dedicated ground-truth review decision.
+- Incident-linked alert resolution was intentionally left unchanged and does not assign `review_outcome`; ordinary incident closure is not automatically treated as detector ground truth.
+- Existing alert acknowledgement behavior was left unchanged.
+- No telemetry detector thresholds were changed.
+- No harsh-braking, rapid-acceleration, harsh-cornering or speeding detection behavior was changed.
+- No telemetry-to-road-intelligence promotion behavior was changed.
+- No automatic detector calibration was introduced.
+- This milestone creates durable operator-labeled evidence that can support future telemetry precision/false-positive analysis without automatically mutating production thresholds.
+- `git diff --check` passed.
+- Migration whitespace validation passed.
+- TypeScript validation passed.
+- Full Next.js production build passed.
+- All 121/121 static pages were generated successfully.
+- Implementation committed as `f8e4d65` with message `Add vehicle alert review outcomes`.
+- Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Database migration has NOT yet been applied at this documentation step.
+- Next step: audit local/remote Supabase migration state, dry-run the single pending review-outcome migration, then apply and verify it separately before starting another implementation item.
