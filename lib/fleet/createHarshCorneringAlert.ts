@@ -1,3 +1,7 @@
+import {
+  findHarshCorneringCorroboration,
+} from "@/lib/fleet/harshCorneringCorroboration";
+
 export type HarshCorneringCandidate = {
   previousHeading: number;
   currentHeading: number;
@@ -132,6 +136,50 @@ export async function createHarshCorneringAlert(
       };
     }
 
+    try {
+      const corroboration =
+        await findHarshCorneringCorroboration({
+          supabase,
+          organizationId,
+          currentVehicleId: vehicleId,
+          latitude,
+          longitude,
+        });
+
+      console.info(
+        "[harsh-cornering corroboration diagnostic]",
+        {
+          organizationId,
+          vehicleId,
+          latitude,
+          longitude,
+          thresholdMet:
+            corroboration.thresholdMet,
+          distinctVehicleCount:
+            corroboration.distinctVehicleCount,
+          distinctVehicleIds:
+            corroboration.distinctVehicleIds,
+          otherVehicleIds:
+            corroboration.otherVehicleIds,
+          nearbyAlertCount:
+            corroboration.nearbyAlertCount,
+          radiusMeters:
+            corroboration.radiusMeters,
+          timeWindowMinutes:
+            corroboration.timeWindowMinutes,
+          windowStartedAt:
+            corroboration.windowStartedAt,
+          windowEndedAt:
+            corroboration.windowEndedAt,
+        }
+      );
+    }
+    catch (corroborationError) {
+      console.error(
+        "[harsh-cornering corroboration diagnostic failed]",
+        corroborationError
+      );
+    }
     return {
       created: true,
       skippedByCooldown: false,
