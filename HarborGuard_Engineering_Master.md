@@ -7831,3 +7831,56 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Tracked working tree was clean after push.
 - Live enable/disable behavior has not yet been exercised against the production Traccar registry record.
 - Next step: perform a separately guarded live admin-control validation before changing any further telematics behavior.
+## 2026-08-09 - Live Traccar admin-control validation
+
+- Completed a guarded live validation of the organization-admin Traccar enable/disable control.
+- Validation was performed against the existing HarborGuard Demo Traccar registry record.
+- Preflight confirmed:
+  - the registry record existed
+  - provider was `traccar`
+  - registry state was `enabled = true`
+  - credential source remained `environment`
+  - registry base URL remained null
+  - Traccar sync state existed
+  - the cron registry gate would allow execution
+- The Fleet UI initially reported:
+  - health `Healthy`
+  - registry `Configured and enabled`
+  - `Disable Traccar` control available
+- The authorized Fleet UI control was used once to disable Traccar.
+- Independent service-role database verification confirmed:
+  - `enabled = false`
+  - credential source remained `environment`
+  - base URL remained null
+  - cron registry gate would not allow Traccar execution
+- The Fleet UI correctly reported:
+  - health `Disabled`
+  - registry `Configured but disabled`
+  - `Enable Traccar` control available
+- The authorized Fleet UI control was then used once to re-enable Traccar.
+- Independent database verification confirmed:
+  - `enabled = true`
+  - credential source remained `environment`
+  - base URL remained null
+  - cron registry gate would allow Traccar execution
+- Fleet UI returned to:
+  - health `Healthy`
+  - registry `Configured and enabled`
+  - `Disable Traccar` control available
+- Final Traccar sync state showed:
+  - last successful sync at `2026-08-09T16:00:26.723+00:00`
+  - no recorded last failure
+  - no recorded failure message
+- Production registry was restored to `enabled = true` before validation ended.
+- No source files were modified during live validation.
+- No credentials were changed.
+- No registry row was created or deleted.
+- No Webfleet behavior was introduced.
+- Live Traccar administration is now validated end to end:
+  - owner/admin UI authorization
+  - server PATCH authorization
+  - organization-scoped registry mutation
+  - disabled health-state visibility
+  - cron-gate enforcement
+  - successful restoration to enabled state
+- Next step: perform a fresh audit-first roadmap assessment before starting another implementation.
