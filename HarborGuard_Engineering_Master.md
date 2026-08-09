@@ -7644,3 +7644,50 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Registry migration commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Migration has not yet been deployed to Supabase.
 - Next step: perform a guarded Supabase migration-history and dry-run audit for `20260809150000_create_telematics_integrations.sql` before any database deployment.
+## 2026-08-09 - Telematics registry deployment and type synchronization
+
+- Completed guarded deployment of `20260809150000_create_telematics_integrations.sql`.
+- Pre-deployment migration history confirmed the registry migration was local-only.
+- Final `supabase db push --dry-run` confirmed exactly one pending migration:
+  - `20260809150000_create_telematics_integrations.sql`
+- Applied the migration successfully to the linked remote Supabase database.
+- Post-deployment migration history confirmed:
+  - local version `20260809150000`
+  - remote version `20260809150000`
+- Post-deployment `supabase db push --dry-run` reported:
+  - `Remote database is up to date.`
+- No additional migrations remained pending after deployment.
+- Git HEAD and tracked working tree remained unchanged by the database deployment.
+- Audited the repository's Supabase type workflow.
+- Confirmed there is currently no automated `supabase gen types` script checked into the repository.
+- Audited the exact telematics schema and migration evolution before editing `types/supabase.ts`.
+- Added checked-in Supabase table types for:
+  - `telematics_integrations`
+  - `telematics_message_receipts`
+  - `telematics_sync_state`
+- Added `Row`, `Insert`, `Update`, and `Relationships` contracts for all three telematics tables.
+- Preserved the organization foreign-key relationships to `organizations(id)`.
+- Included the full current receipt-processing schema introduced by later migrations:
+  - `processing_status`
+  - `claimed_at`
+  - `processed_at`
+  - `last_failure_at`
+  - `last_failure_message`
+  - `attempt_count`
+- Did not add nonexistent receipt fields such as `claimed_by` or `provider_device_id`.
+- Preserved the existing `types/supabase.ts` encoding contract:
+  - UTF-8 without BOM
+  - CRLF line endings
+- `git diff --check` passed.
+- TypeScript validation passed.
+- Full Next.js production build passed.
+- Production build generated all 123/123 static pages successfully.
+- Telematics Supabase type synchronization committed as `db0e9b1` with message `Add telematics Supabase types`.
+- Commit `db0e9b1` was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote feature heads matched after the push.
+- Tracked working tree was clean after the push.
+- Organization-scoped telematics integration registry is now deployed and represented in checked-in Supabase types.
+- Current Traccar scheduling remains intentionally single-organization.
+- Current Traccar provider credentials remain deployment-level environment credentials.
+- No Webfleet implementation has been introduced while provider access remains pending.
+- Next step: perform a fresh audit-first assessment of how the deployed `telematics_integrations` registry should be consumed by the current single-organization Traccar configuration before changing cron or provider behavior.
