@@ -402,7 +402,7 @@ const heading =
         setCurrentLng(lng);
         setCurrentSpeed(speedKmh);
 
-        await sendLocation(lat, lng, speedKmh);
+        await sendLocation(lat, lng, speedKmh, heading);
           await checkNearbyThreats(lat, lng);
         setStatusMessage("Live location sharing is active.");
       },
