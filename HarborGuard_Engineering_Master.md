@@ -7487,3 +7487,40 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Implementation committed as `01d8103` with message `Preserve telemetry source in behavior alerts`.
 - Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Next step: begin a fresh audit-first assessment of whether normalized telemetry source should now be surfaced in telemetry review analytics or whether another telemetry-data-quality gap has higher value.
+## 2026-08-09 - Telemetry review analytics segmented by source
+
+- Completed a focused audit-first telemetry review analytics improvement.
+- Confirmed `telemetry_evidence.source` is now persisted for new behavior alerts.
+- Added a normalized telemetry analytics source taxonomy:
+  - `hardware`
+  - `mobile`
+  - `manual`
+  - `unknown`
+- Added explicit legacy/malformed-source handling through the `unknown` category.
+- Added `TelemetryAlertReviewSourceBreakdown`.
+- Extended `TelemetryAlertReviewPerformance` with a stable `bySource` breakdown.
+- Reused the existing review-summary calculations for source segmentation rather than introducing new scoring semantics.
+- Source breakdowns include reviewed-alert count, evaluated-alert count, confirmed count, false-positive count, inconclusive count, confirmation rate, evidence availability, and evidence coverage.
+- Source categories are returned in a stable order:
+  - hardware
+  - mobile
+  - manual
+  - unknown
+- Existing telemetry review API query shape was reused because `telemetry_evidence` is already selected.
+- No database schema change was required.
+- No migration was required.
+- No detector thresholds were changed.
+- No detector candidate semantics were changed.
+- No alert-generation behavior was changed.
+- No road-intelligence promotion behavior was changed.
+- Added `Review Performance by Telemetry Source` to the Analytics page.
+- Analytics now displays reviewed, confirmed, false-positive, inconclusive, confirmation-rate, and evidence-coverage metrics for each source category.
+- Added explanatory copy stating that `Unknown` includes reviewed alerts without a recognized persisted telemetry source.
+- Preserved no-BOM CRLF encoding for both modified files.
+- `git diff --check` passed.
+- TypeScript validation passed.
+- Full Next.js production build passed.
+- All 122/122 static pages were generated successfully.
+- Implementation committed as `99ed9cf` with message `Add telemetry source review analytics`.
+- Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Next step: begin a fresh audit-first assessment of the next telemetry-data-quality or fleet-intelligence gap before implementing anything else.
