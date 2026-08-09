@@ -7346,3 +7346,43 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Implementation committed as `c73f540` with message `Expose telemetry evidence sample counts`.
 - Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Next step: begin a fresh audit-first roadmap assessment before selecting another telemetry, analytics, fleet, or road-intelligence milestone.
+## 2026-08-09 - Telemetry evidence median diagnostics added
+
+- Completed a focused audit-first telemetry evidence distribution milestone.
+- Extended `TelemetryEvidenceOutcomeDiagnostic` with:
+  - `confirmedMedian`;
+  - `falsePositiveMedian`.
+- Added a local median helper beside the existing average helper.
+- Median calculation returns `null` for an empty sample.
+- Median calculation sorts a copied array so the original evidence-strength arrays are not mutated.
+- Odd-sized samples return the middle sorted value.
+- Even-sized samples return the arithmetic mean of the two middle sorted values.
+- Confirmed medians are calculated from the same filtered `confirmedEvidenceStrengths` array already used for the confirmed average and confirmed sample count.
+- False-positive medians are calculated from the same filtered `falsePositiveEvidenceStrengths` array already used for the false-positive average and false-positive sample count.
+- Reviews with missing or non-numeric detector-specific evidence remain excluded from these evidence-strength diagnostics.
+- Extended the Analytics-side evidence-strength contract with both median fields.
+- Added `Confirmed evidence median` to each per-alert-type telemetry review card.
+- Added `False-positive evidence median` to each per-alert-type telemetry review card.
+- Median values reuse the existing alert-type-aware evidence formatter and therefore preserve the correct detector-specific units.
+- Existing sample-count semantics remain unchanged.
+- Existing average semantics remain unchanged.
+- Existing overall telemetry review semantics remain unchanged.
+- Existing per-vehicle telemetry review semantics remain unchanged.
+- Existing evidence-coverage semantics remain unchanged.
+- Existing confirmation-rate semantics remain unchanged.
+- No detector thresholds were changed.
+- No detector candidate semantics were changed.
+- No alert-generation behavior was changed.
+- No database schema changes were required.
+- No new migration was required.
+- No road-intelligence promotion behavior was changed.
+- No automatic calibration or threshold tuning was introduced.
+- Both modified files preserved their existing UTF-8 no-BOM CRLF encoding state.
+- `git diff --check` passed.
+- TypeScript validation passed.
+- Targeted ESLint surfaced pre-existing Analytics lint failures outside the median patch; the median patch itself did not touch those reported locations.
+- Full Next.js production build passed.
+- All 122/122 static pages were generated successfully.
+- Implementation committed as `cb02596` with message `Add telemetry evidence median diagnostics`.
+- Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Next step: begin a fresh audit-first roadmap assessment before selecting another telemetry, analytics, fleet, or road-intelligence milestone.
