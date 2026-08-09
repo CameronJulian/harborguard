@@ -7386,3 +7386,38 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Implementation committed as `cb02596` with message `Add telemetry evidence median diagnostics`.
 - Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Next step: begin a fresh audit-first roadmap assessment before selecting another telemetry, analytics, fleet, or road-intelligence milestone.
+## 2026-08-09 - Vehicle alert reviewer attribution persisted
+
+- Completed a focused audit-first reviewer-attribution milestone for vehicle-alert review outcomes.
+- Added nullable `reviewed_by uuid` storage to `vehicle_alerts`.
+- Added a foreign key from `vehicle_alerts.reviewed_by` to `auth.users(id)`.
+- The reviewer foreign key uses `ON DELETE SET NULL`, matching HarborGuard's established actor-attribution pattern.
+- Extended the generated Supabase `vehicle_alerts` Row, Insert, and Update contracts with nullable `reviewed_by`.
+- Updated `/api/fleet/resolve-alert` to destructure the authenticated `user` from the existing `requireOrganization()` result.
+- When a valid vehicle-alert review outcome is persisted, the route now also stores `reviewed_by: user.id`.
+- Existing role enforcement remains unchanged.
+- Existing organization scoping remains unchanged.
+- Existing review-outcome validation remains unchanged.
+- Existing resolution-note behavior remains unchanged.
+- Existing `resolved_at` behavior remains unchanged.
+- No separate `reviewed_at` field was added because the current review and resolution action is atomic and `resolved_at` already records the event time.
+- No Vehicle Alerts reviewer-name UI was added in this milestone.
+- No telemetry review analytics were changed.
+- No detector thresholds were changed.
+- No detector candidate semantics were changed.
+- No alert-generation behavior was changed.
+- No road-intelligence promotion behavior was changed.
+- Added migration `20260809140000_add_vehicle_alert_reviewer_attribution.sql`.
+- Verified the migration file is UTF-8 without BOM.
+- Guarded Supabase dry run confirmed that `20260809140000` was the only pending migration before deployment.
+- Migration `20260809140000` was deployed successfully to the remote Supabase database.
+- Post-deployment migration history confirmed local/remote synchronization for `20260809140000`.
+- Remote PostgREST verification successfully selected `id`, `review_outcome`, and `reviewed_by` from `vehicle_alerts`.
+- The remote verification confirmed that `reviewed_by` is available through the live API schema.
+- `git diff --check` passed.
+- TypeScript validation passed.
+- Full Next.js production build passed.
+- All 122/122 static pages were generated successfully.
+- Implementation committed as `777084c` with message `Persist vehicle alert reviewer attribution`.
+- Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Next step: begin a fresh audit-first assessment before deciding whether reviewer attribution should be exposed in the Vehicle Alerts UI or whether another reviewer-workflow gap has higher value.
