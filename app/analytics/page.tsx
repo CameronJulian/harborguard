@@ -93,6 +93,10 @@ type TelemetryAlertReviewBreakdown =
       | "rapid_acceleration"
       | "harsh_cornering"
       | "speeding";
+    evidenceStrength: {
+      confirmedAverage: number | null;
+      falsePositiveAverage: number | null;
+    };
   };
 
 type TelemetryAlertReviewVehicleBreakdown =
@@ -170,6 +174,27 @@ function formatOneDecimal(value: number) {
 function formatPerformancePercent(value: number | null) {
   if (value === null) return "-";
   return `${(value * 100).toFixed(1)}%`;
+}
+
+function formatTelemetryEvidenceStrength(
+  alertType: TelemetryAlertReviewBreakdown["alertType"],
+  value: number | null
+) {
+  if (value === null) return "-";
+
+  const formattedValue = value.toFixed(1);
+
+  switch (alertType) {
+    case "harsh_braking":
+    case "rapid_acceleration":
+      return `${formattedValue} m/s²`;
+
+    case "harsh_cornering":
+      return `${formattedValue}°`;
+
+    case "speeding":
+      return `${formattedValue} km/h above threshold`;
+  }
 }
 
 function toDateInputValue(date: Date) {
@@ -1525,6 +1550,20 @@ if (subscriptionLoaded && !premiumAllowed) {
                     <div>
                       Evidence coverage:{" "}
                       {formatPerformancePercent(entry.evidenceCoverageRate)}
+                    </div>
+                    <div>
+                      Confirmed evidence avg:{" "}
+                      {formatTelemetryEvidenceStrength(
+                        entry.alertType,
+                        entry.evidenceStrength.confirmedAverage
+                      )}
+                    </div>
+                    <div>
+                      False-positive evidence avg:{" "}
+                      {formatTelemetryEvidenceStrength(
+                        entry.alertType,
+                        entry.evidenceStrength.falsePositiveAverage
+                      )}
                     </div>
                   </div>
                 </div>
