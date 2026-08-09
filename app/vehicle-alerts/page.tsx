@@ -18,6 +18,7 @@ type VehicleAlert = {
   resolved_at?: string | null;
   resolution_notes?: string | null;
   review_outcome?: "confirmed" | "false_positive" | "inconclusive" | null;
+  telemetry_evidence?: Record<string, unknown> | null;
   timeline?: {
     event_type: string;
     note?: string | null;
@@ -62,6 +63,40 @@ function formatDateTime(value: string | null | undefined) {
   return new Date(value).toLocaleString();
 }
 
+function formatEvidenceLabel(key: string) {
+  return key
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function formatEvidenceValue(key: string, value: unknown) {
+  if (typeof value !== "number") {
+    return String(value);
+  }
+
+  if (key.endsWith("Kmh")) {
+    return `${value} km/h`;
+  }
+
+  if (key.endsWith("Mps2")) {
+    return `${value} m/s²`;
+  }
+
+  if (key.endsWith("Seconds")) {
+    return `${value} s`;
+  }
+
+  if (
+    key === "previousHeading" ||
+    key === "currentHeading" ||
+    key === "headingChangeDegrees"
+  ) {
+    return `${value}°`;
+  }
+
+  return String(value);
+}
 function severityColor(severity: string) {
   if (severity === "critical") return "#b91c1c";
   if (severity === "high") return "#dc2626";
@@ -511,6 +546,72 @@ export default function VehicleAlertsPage() {
                   </div>
                 ) : null}
 
+                {alert.telemetry_evidence &&
+                Object.keys(alert.telemetry_evidence).length > 0 ? (
+                  <div
+                    style={{
+                      marginBottom: 18,
+                      padding: 18,
+                      borderRadius: 14,
+                      background: "#f8fafc",
+                      border: "1px solid #cbd5e1",
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div
+                      style={{
+                        fontWeight: 800,
+                        marginBottom: 10,
+                        color: "#334155",
+                      }}
+                    >
+                      Telemetry Evidence
+                    </div>
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns:
+                          "repeat(auto-fit, minmax(180px, 1fr))",
+                        gap: 10,
+                      }}
+                    >
+                      {Object.entries(alert.telemetry_evidence).map(
+                        ([key, value]) => (
+                          <div
+                            key={key}
+                            style={{
+                              padding: 10,
+                              borderRadius: 10,
+                              background: "#ffffff",
+                              border: "1px solid #e2e8f0",
+                            }}
+                          >
+                            <div
+                              style={{
+                                color: "#64748b",
+                                fontSize: 12,
+                                fontWeight: 700,
+                                marginBottom: 4,
+                              }}
+                            >
+                              {formatEvidenceLabel(key)}
+                            </div>
+
+                            <div
+                              style={{
+                                color: "#0f172a",
+                                fontWeight: 700,
+                              }}
+                            >
+                              {formatEvidenceValue(key, value)}
+                            </div>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </div>
+                ) : null}
                 {alert.is_resolved ? (
                   <div
                     style={{
