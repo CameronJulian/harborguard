@@ -7312,3 +7312,37 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Implementation committed as `59ad3eb` with message `Expose telemetry evidence outcome diagnostics in analytics`.
 - Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Next step: begin a fresh audit-first roadmap assessment before selecting another telemetry, fleet, analytics, or road-intelligence milestone.
+## 2026-08-09 - Telemetry evidence sample counts exposed
+
+- Completed a focused audit-first telemetry evidence diagnostic maturity milestone.
+- Extended `TelemetryEvidenceOutcomeDiagnostic` with:
+  - `confirmedSamples`;
+  - `falsePositiveSamples`.
+- Evidence sample counts are derived from the exact filtered evidence-strength arrays used to calculate each corresponding average.
+- Confirmed sample counts therefore represent only confirmed reviews with usable detector-specific evidence strength.
+- False-positive sample counts therefore represent only false-positive reviews with usable detector-specific evidence strength.
+- Reviews with missing or non-numeric detector-specific evidence remain excluded from the corresponding average and sample count.
+- Refactored the evidence outcome diagnostic calculation so each usable evidence-strength array is derived once and reused for both its average and sample count.
+- Extended the Analytics-side telemetry review contract with the same two sample-count fields.
+- Analytics now displays each per-alert-type confirmed evidence average with its sample size.
+- Analytics now displays each per-alert-type false-positive evidence average with its sample size.
+- A missing average remains displayed as `-` while its sample count remains explicit, including `n=0`.
+- Evidence-strength diagnostics remain limited to per-alert-type summaries so incompatible detector units are never mixed.
+- Existing overall telemetry review semantics remain unchanged.
+- Existing per-vehicle telemetry review semantics remain unchanged.
+- Existing confirmation-rate semantics remain unchanged.
+- Existing evidence-coverage semantics remain unchanged.
+- No detector thresholds were changed.
+- No detector candidate semantics were changed.
+- No alert-generation behavior was changed.
+- No database schema changes were required.
+- No new migration was required.
+- No road-intelligence promotion behavior was changed.
+- No automatic detector calibration or threshold tuning was introduced.
+- `git diff --check` passed.
+- TypeScript validation passed.
+- Full Next.js production build passed.
+- All 122/122 static pages were generated successfully.
+- Implementation committed as `c73f540` with message `Expose telemetry evidence sample counts`.
+- Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Next step: begin a fresh audit-first roadmap assessment before selecting another telemetry, analytics, fleet, or road-intelligence milestone.
