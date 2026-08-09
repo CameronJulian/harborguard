@@ -7122,3 +7122,31 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Encoding-correction commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Migration `20260809130000` remains NOT deployed at this documentation step.
 - Next step: perform a fresh guarded dry run from the corrected migration file, verify it remains the sole pending migration, then retry deployment separately.
+## 2026-08-09 - Telemetry evidence migration deployed
+
+- Completed database deployment for the vehicle-alert telemetry-evidence persistence milestone.
+- Applied Supabase migration `20260809130000_add_vehicle_alert_telemetry_evidence.sql`.
+- The migration adds nullable `telemetry_evidence jsonb` to `public.vehicle_alerts`.
+- Pre-deployment migration history confirmed `20260809130000` was local-only and pending.
+- A fresh post-encoding-fix `supabase db push --dry-run` confirmed that only `20260809130000_add_vehicle_alert_telemetry_evidence.sql` would be applied.
+- The dry run did not modify the remote database.
+- The corrected migration file was verified to be UTF-8 without BOM before deployment.
+- The migration was then applied successfully with `supabase db push`.
+- Post-deployment migration history confirmed `20260809130000` is recorded on both local and remote migration histories.
+- Runtime verification queried the remote PostgREST endpoint for `vehicle_alerts.telemetry_evidence`.
+- The remote query succeeded, confirming that the new column is available through the runtime API.
+- The verification response returned `telemetry_evidence: null` for an existing alert, which is expected for legacy alerts created before structured telemetry-evidence persistence.
+- No historical backfill was performed.
+- New harsh-braking, rapid-acceleration, harsh-cornering and sustained-speeding alerts can now persist their detector candidate as structured telemetry evidence.
+- No detector thresholds were changed.
+- No detector candidate semantics were changed.
+- No location-update lifecycle behavior was changed.
+- No road-intelligence promotion behavior was changed.
+- No automatic threshold tuning was introduced.
+- Git HEAD remained unchanged during deployment and runtime verification.
+- The tracked working tree remained clean throughout deployment.
+- Implementation remains committed as `00045f9` with message `Persist telemetry evidence with vehicle alerts`.
+- Migration encoding correction remains committed as `9400715` with message `Remove BOM from telemetry evidence migration`.
+- Encoding-correction documentation remains committed as `921766f` with message `Document telemetry migration encoding correction`.
+- Persisted structured telemetry evidence is now available end-to-end in application code and the deployed database schema.
+- Next step: begin a fresh audit-first roadmap assessment before choosing another telemetry, fleet or road-intelligence milestone.
