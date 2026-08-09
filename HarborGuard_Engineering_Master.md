@@ -6861,3 +6861,23 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Database migration has NOT yet been applied at this milestone-documentation step.
 - Next step: audit local/remote Supabase migration state, dry-run the single pending migration, then apply and verify it separately before beginning another implementation item.
+## 2026-08-09 - Road-speed evidence migration deployed
+
+- Completed database deployment for the persisted road-speed evidence milestone.
+- Applied Supabase migration `20260809103000_add_vehicle_location_road_speed_limit.sql`.
+- The migration added nullable `road_speed_limit_kmh double precision` to `public.vehicle_locations`.
+- Pre-deployment migration audit confirmed `20260809103000` was local-only and pending.
+- `supabase db push --dry-run` confirmed that only `20260809103000_add_vehicle_location_road_speed_limit.sql` would be applied.
+- The dry run did not modify the remote database.
+- The migration was then applied successfully with `supabase db push`.
+- Post-deployment migration history confirmed `20260809103000` is recorded on both local and remote migration histories.
+- Runtime verification queried the remote PostgREST endpoint for `vehicle_locations.road_speed_limit_kmh`.
+- The remote query succeeded and returned the new field, confirming that the column is available through the runtime API.
+- The verification response returned `road_speed_limit_kmh: null` for an existing telemetry row, which is expected for legacy data recorded before road-speed persistence.
+- No backfill was performed; legacy rows intentionally remain nullable and continue to use the existing speeding-threshold fallback.
+- Git HEAD remained unchanged during migration application and runtime verification.
+- The tracked working tree remained clean throughout the deployment.
+- Implementation remains committed as `828ea57` with message `Persist road speed evidence for speeding`.
+- Pre-deployment milestone documentation remains committed as `cedc7cd` with message `Document persisted road speed evidence`.
+- Persisted per-sample road-speed evidence is now available end-to-end in code and in the deployed database schema.
+- Next step: begin a fresh audit-first roadmap assessment before choosing any further speeding tolerance, evidence-policy or road-intelligence promotion work.
