@@ -7421,3 +7421,38 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Implementation committed as `777084c` with message `Persist vehicle alert reviewer attribution`.
 - Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
 - Next step: begin a fresh audit-first assessment before deciding whether reviewer attribution should be exposed in the Vehicle Alerts UI or whether another reviewer-workflow gap has higher value.
+## 2026-08-09 - Vehicle alert reviewer identity exposed in the review UI
+
+- Completed a focused audit-first reviewer-workflow improvement for resolved vehicle alerts.
+- Extended `/api/fleet/alerts` to return the persisted `reviewed_by` field.
+- Added a single batched lookup against `profiles` for all unique reviewer IDs in the current alert result set.
+- Reviewer profile lookup is explicitly scoped to the current `organizationId`.
+- Reviewer profile lookup selects only `id`, `full_name`, and `email`.
+- Attached a nullable reviewer object to each returned alert.
+- Existing alerts without reviewer attribution remain valid.
+- Extended the Vehicle Alerts client contract with nullable `reviewed_by` and reviewer profile data.
+- Resolved vehicle-alert cards now display `Reviewed by`.
+- Reviewer display prefers `full_name`.
+- Reviewer display falls back to the reviewer email when no display name is available.
+- Alerts with a reviewer ID but no resolvable organization-scoped profile display `Unknown reviewer`.
+- Older alerts without reviewer attribution display `Not recorded`.
+- Existing review-outcome display remains unchanged.
+- Existing resolution-note display remains unchanged.
+- Existing resolution timestamp display remains unchanged.
+- No database schema changes were required.
+- No new migration was required.
+- No reviewer persistence behavior was changed.
+- No telemetry review analytics were changed.
+- No detector thresholds were changed.
+- No detector candidate semantics were changed.
+- No alert-generation behavior was changed.
+- No road-intelligence promotion behavior was changed.
+- Preserved the existing UTF-8 BOM state of both modified files.
+- Preserved the existing mixed line-ending state of `app/api/fleet/alerts/route.ts` rather than normalizing unrelated content.
+- `git diff --check` passed.
+- TypeScript validation passed.
+- Full Next.js production build passed.
+- All 122/122 static pages were generated successfully.
+- Implementation committed as `a2191ce` with message `Expose vehicle alert reviewer identity`.
+- Implementation commit was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Next step: begin a fresh audit-first assessment before selecting another reviewer-workflow, telemetry, fleet, or road-intelligence milestone.
