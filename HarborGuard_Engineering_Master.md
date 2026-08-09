@@ -7691,3 +7691,29 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Current Traccar provider credentials remain deployment-level environment credentials.
 - No Webfleet implementation has been introduced while provider access remains pending.
 - Next step: perform a fresh audit-first assessment of how the deployed `telematics_integrations` registry should be consumed by the current single-organization Traccar configuration before changing cron or provider behavior.
+## 2026-08-09 - Traccar registry bootstrap
+
+- Completed a guarded live bootstrap of the deployed organization-scoped telematics integration registry.
+- Confirmed the configured `TRACCAR_SYNC_ORGANIZATION_ID` resolves to the existing HarborGuard Demo organization.
+- Confirmed the Traccar registry initially contained zero rows for the configured organization/provider.
+- Inserted exactly one organization-scoped Traccar integration record.
+- Bootstrapped integration contract:
+  - provider: `traccar`
+  - enabled: `true`
+  - credential source: `environment`
+  - base URL: `null`
+  - metadata: empty object
+- No provider credential values were written to Supabase.
+- `TRACCAR_API_TOKEN` remains an environment-managed secret.
+- `TRACCAR_API_BASE_URL` remains environment-managed configuration.
+- The inserted row passed the registry contract verification.
+- Post-insert registry count was exactly one.
+- Migration history remained synchronized at `20260809150000` locally and remotely.
+- Git HEAD remained unchanged at `907c7d7`.
+- Tracked working tree remained clean.
+- No application code was modified.
+- No cron behavior was modified.
+- No provider behavior was modified.
+- No multi-tenant scheduling was introduced.
+- No Webfleet work was introduced.
+- Next step: perform an audit-first implementation of a narrow Traccar cron registry gate that requires an enabled `provider = "traccar"` integration for `TRACCAR_SYNC_ORGANIZATION_ID`, while leaving current environment-based credential resolution unchanged.
