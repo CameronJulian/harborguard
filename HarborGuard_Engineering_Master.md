@@ -8377,3 +8377,47 @@ Pushed it to feature/expanded-incident-taxonomy.
 - The existing `harborguard-traccar-10m` schedule remained untouched.
 - No `vercel.json` changes were made.
 - Next step: verify the new traffic-flow endpoint in production before creating a separate QStash schedule for it.
+
+
+## 2026-08-10 - Stable HERE TMC traffic-flow identity
+
+- Completed the audit-first HERE TMC traffic-flow identity milestone.
+- Implementation commit: `2339a7a`.
+- Updated:
+  - `lib/here/traffic.ts`
+- Production HERE response-shape audits proved that:
+  - `locationReferencing=shape` returns geometry but no stable `location.id`, `linkId`, or other provider-issued segment identifier;
+  - `locationReferencing=tmc` returns structured TMC location identity;
+  - `locationReferencing=tmc,shape` returns both the TMC identity and existing shape geometry.
+- HarborGuard now requests HERE traffic flow using:
+  - `locationReferencing=tmc,shape`
+- Added a stable provider segment identity helper based on:
+  - extended country code;
+  - EBU country code;
+  - TMC table ID;
+  - TMC location ID;
+  - queuing direction;
+  - extent.
+- Stable TMC identities are serialized with the `tmc:` prefix into a composite provider segment identifier.
+- `affectedLength` is intentionally not part of the persisted identity.
+- `primaryOffset` is intentionally not part of the persisted identity.
+- Existing legacy provider identity fallbacks remain available when HERE exposes them:
+  - `location.id`;
+  - first shape-link `linkId`;
+  - otherwise `null`.
+- Existing runtime/display fallback IDs such as `here-flow-${index + 1}` remain unchanged.
+- Positional runtime IDs are still not accepted as stable persisted provider identities.
+- Existing shape geometry remains available to HarborGuard.
+- Existing traffic calculations were not changed.
+- The traffic-flow persistence writer was not changed.
+- The traffic-flow database schema was not changed.
+- The authenticated traffic-flow endpoint was not changed.
+- No QStash schedule was created or modified.
+- TypeScript validation passed.
+- Production build passed.
+- Implementation commit contained exactly one tracked file.
+- Commit `2339a7a` was pushed successfully to `origin/main`.
+- Local and remote `main` both ended at `2339a7a`.
+- Tracked working tree was clean after push.
+- Nothing remained staged.
+- Next step: verify the authenticated production traffic-flow endpoint again and confirm that HERE observations now persist with stable TMC provider identities before creating any QStash schedule.
