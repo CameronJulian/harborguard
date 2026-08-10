@@ -8760,3 +8760,27 @@ the 14 currently skipped HERE observations.
 - No traffic-flow QStash schedule was created or changed.
 - The production endpoint has not yet been invoked to verify receipt lifecycle behavior.
 - Next step: commit this documentation milestone, then perform a controlled production keyed-request verification before creating or changing any recurring QStash schedule.
+
+## Production traffic-flow receipt idempotency verified - 2026-08-10
+
+- Production receipt lifecycle verification completed successfully against `https://harborguard.vercel.app`.
+- Repository baseline remained `4832c76`.
+- Verification collection key: `harborguard-receipt-test-51e3f62cfb3945d7ae636612015940ae`.
+- Production receipt ID: `62235569-6520-4300-8677-55cbe0f4e668`.
+- The initial keyed request created exactly one receipt.
+- The receipt completed with `processing_status = processed`.
+- The receipt remained at `attempt_count = 1`.
+- The initial request resolved no traffic scope and therefore persisted zero traffic-flow observations.
+- A second production request using the exact same `Upstash-Message-Id` returned `skipped: "duplicate"`.
+- The duplicate response returned the same receipt ID.
+- Receipt count remained exactly one after duplicate delivery.
+- Receipt status remained `processed` after duplicate delivery.
+- Receipt attempt count remained `1` after duplicate delivery.
+- Observation count remained unchanged at zero.
+- Observation identities remained unchanged.
+- The duplicate delivery therefore did not re-run traffic collection or create duplicate persistence.
+- Production message-level idempotency for already-processed traffic-flow deliveries is verified.
+- No source code changed during production verification.
+- No database schema changed during production verification.
+- No recurring traffic-flow QStash schedule was created or changed.
+- Next step: commit and push this documentation milestone before deciding whether the traffic-flow recurring QStash schedule is ready to be enabled.
