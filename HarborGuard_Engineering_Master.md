@@ -8604,3 +8604,19 @@ the 14 currently skipped HERE observations.
 - Existing Traccar scheduling remained untouched.
 - No traffic-flow QStash schedule was created or changed.
 - Next step: wire the optional collection key through the traffic-flow persistence path using conflict-safe persistence before enabling recurring QStash collection.
+
+## 2026-08-10 - Production traffic-flow collection identity migration deployed
+
+- Production migration `20260810160000_add_traffic_flow_collection_key.sql` was applied successfully.
+- Supabase db push completed with exit code `0`.
+- Remote migration history now records `20260810160000`.
+- No pending migrations remain.
+- Repository baseline remained `521d7d1` during deployment.
+- Local and remote `main` remained synchronized.
+- No tracked source files changed during deployment.
+- No traffic-flow writer code changed.
+- No traffic-flow endpoint code changed.
+- Existing Traccar scheduling remained untouched.
+- No traffic-flow QStash schedule was created or changed.
+- Production now has the nullable `collection_key` schema required for the next retry/idempotency implementation step.
+- Next step: audit and implement the smallest collection-key propagation path from the traffic-flow endpoint through the orchestrator to conflict-safe persistence.
