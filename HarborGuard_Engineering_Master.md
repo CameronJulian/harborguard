@@ -8473,3 +8473,80 @@ that would be pushed.
 
 Do not create the QStash traffic-flow collection schedule until production
 traffic-flow persistence has been successfully verified.
+
+## 2026-08-10 - Production traffic-flow persistence verified
+
+### Status
+
+Production traffic-flow collection and persistence are now functioning end to end.
+
+### Production database deployment
+
+Migration:
+
+`20260810113000_create_traffic_flow_observations.sql`
+
+was successfully applied to the production Supabase database.
+
+Supabase migration history confirmed:
+
+- local migration: `20260810113000`
+- remote migration: `20260810113000`
+- no pending migrations remained after deployment
+
+Repository main remained unchanged during database deployment.
+
+### Production traffic-flow verification
+
+The authenticated production endpoint:
+
+`/api/traffic-flow/cron`
+
+was executed successfully using the existing `CRON_SECRET`.
+
+Production response:
+
+- `success`: true
+- `scopeResolved`: true
+- HERE observations received: 20
+- observations persisted: 6
+- observations skipped without stable provider identity: 14
+- persistence counts reconciled: 6 + 14 = 20
+
+The production request therefore proved the complete collection path:
+
+authenticated traffic-flow endpoint
+-> organization-scoped vehicle-derived collection scope
+-> HERE traffic flow
+-> stable provider segment identity
+-> traffic_flow_observations persistence
+
+### Stable identity behavior
+
+The persisted observations used stable provider identity.
+
+HarborGuard continues to reject observations without an acceptable stable
+provider segment identifier rather than persisting positional runtime IDs.
+
+The 14 skipped HERE observations are not considered persistence failures.
+They require a separate audit before any broader provider identity fallback
+is introduced.
+
+### Repository state
+
+- repository baseline: `8cf1d95`
+- local and remote main remained synchronized
+- no tracked source files changed during production verification
+- no Git commit was created by the production verification
+- no QStash schedule was created or changed
+
+### Next controlled step
+
+Before enabling recurring traffic-flow collection, perform an audit-first
+assessment of production scheduling requirements and existing QStash
+configuration.
+
+Do not modify the existing Traccar schedule.
+
+Do not weaken the stable provider identity requirement merely to persist
+the 14 currently skipped HERE observations.
