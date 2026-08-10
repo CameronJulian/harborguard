@@ -8114,3 +8114,35 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Tracked working tree was clean after push.
 - Nothing remained staged.
 - Next step: perform a fresh audit-first roadmap assessment before starting another HarborGuard implementation.
+
+## 2026-08-10 - Stable HERE traffic-flow segment identity
+
+- Completed the audit-first stable identity milestone for future historical traffic-flow persistence.
+- Implementation commit: `aa044de`.
+- Updated `lib/here/traffic.ts`.
+- Added nullable `providerSegmentId` to normalized HERE Traffic Flow results.
+- Stable provider identity resolution now prefers:
+  - HERE `location.id`;
+  - otherwise the first HERE shape-link `linkId`;
+  - otherwise `null`.
+- The existing runtime/display `id` behavior remains unchanged and may still use the positional `here-flow-${index + 1}` fallback.
+- Positional fallback identifiers are therefore not treated as stable provider segment identities.
+- Existing HERE traffic calculations were not changed:
+  - current speed;
+  - free-flow speed;
+  - congestion;
+  - delay;
+  - confidence;
+  - jam factor;
+  - risk level.
+- No database migration was introduced.
+- No traffic-flow history table was created yet.
+- No provider cron behavior was changed.
+- No forecasting logic was introduced.
+- No production risk thresholds were changed.
+- TypeScript validation passed.
+- Production build passed.
+- Implementation changed exactly one tracked file.
+- Commit `aa044de` was pushed successfully to `origin/main`.
+- Local and remote `main` both ended at `aa044de`.
+- Next step: audit and implement the smallest organization-scoped historical traffic-flow observation schema using `providerSegmentId` as the provider-issued identity boundary.
