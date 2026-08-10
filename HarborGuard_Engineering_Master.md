@@ -8649,3 +8649,41 @@ the 14 currently skipped HERE observations.
 - Existing Traccar scheduling remained untouched.
 - No traffic-flow QStash schedule was created or changed.
 - Next step: verify keyed production behavior and retry idempotency before enabling recurring QStash collection.
+
+## 2026-08-10 - Traffic-flow collection receipt boundary
+
+- Completed the audit-first message-level traffic-flow idempotency schema foundation.
+- Implementation commit: `8799a58`.
+- Added migration `supabase/migrations/20260810174500_add_traffic_flow_collection_receipts.sql`.
+- Added `public.traffic_flow_collection_receipts` as the delivery-level receipt boundary for scheduled traffic-flow collection.
+- Receipt identity is unique across organization ID and collection key.
+- Receipt processing states are:
+  - `processing`;
+  - `processed`;
+  - `failed`.
+- Added atomic `public.claim_traffic_flow_collection(...)`.
+- New collection keys are claimed in `processing` state with attempt count `1`.
+- Duplicate collection keys are serialized through the database claim boundary.
+- Already processed or currently processing receipts are not reclaimed.
+- Failed receipts can be atomically reclaimed.
+- Reclaiming a failed receipt increments `attempt_count` and resets prior failure/finalization state.
+- Added guarded `public.complete_traffic_flow_collection(...)` finalization.
+- Added guarded `public.fail_traffic_flow_collection(...)` finalization.
+- Completion and failure require both active `processing` state and matching attempt count.
+- This mirrors HarborGuard's proven telematics receipt claim/finalization architecture.
+- TypeScript validation passed.
+- Production build passed.
+- Build generated all 123/123 static pages successfully.
+- The migration implementation changed exactly one tracked file.
+- Commit `8799a58` was pushed successfully to `origin/main`.
+- Local and remote `main` both ended at `8799a58`.
+- Tracked working tree was clean after push.
+- Nothing remained staged.
+- Unrelated untracked audit and backup files were not modified.
+- The production database migration has not yet been applied.
+- No traffic-flow endpoint code changed.
+- No traffic-flow orchestrator code changed.
+- No traffic-flow writer code changed.
+- Existing Traccar scheduling remained untouched.
+- No traffic-flow QStash schedule was created or changed.
+- Next step: commit this documentation milestone, then separately verify and deploy the receipt migration before wiring the claim/finalization lifecycle into the traffic-flow endpoint.
