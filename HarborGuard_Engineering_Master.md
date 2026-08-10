@@ -8879,3 +8879,85 @@ No source-code change was required for this production scheduling/remediation st
 No database schema change was required.
 
 Traffic-flow scheduling is no longer a pending deployment item.
+
+---
+
+## 2026-08-10 - Per-threat congestion score diagnostics
+
+### Implementation
+
+Commit: `56a82f4`
+
+File changed:
+
+- `app/api/route-safety/predict/route.ts`
+
+The Route Safety prediction endpoint now exposes congestion-aware diagnostic scoring on each individual route threat.
+
+A shared helper was introduced:
+
+- `trafficCongestionMultiplierForRiskLevel`
+
+The existing congestion multiplier behavior remains:
+
+- LOW -> `1.0`
+- MEDIUM -> `1.1`
+- HIGH -> `1.25`
+- CRITICAL -> `1.5`
+
+Each individual route threat now exposes:
+
+- `averageCongestion`
+- `trafficCongestionMultiplier`
+- `scoreBeforeTrafficWeighting`
+- `scoreAfterTrafficWeighting`
+
+`scoreBeforeTrafficWeighting` is the existing production threat score after intelligence, historical recency, and provider-geometry weighting.
+
+`scoreAfterTrafficWeighting` is diagnostic only and is calculated by multiplying the existing production threat score by the traffic congestion multiplier, clamped to the `0..100` range.
+
+### Production behavior preserved
+
+The existing production `score` field was not replaced.
+
+Route-threat sorting continues to use the existing production `score`.
+
+Aggregate `threatRiskScore` continues to sum the existing production threat scores.
+
+Automatic escalation continues to use:
+
+`threatRiskScore >= 80`
+
+Automatic rerouting continues to use:
+
+`threatRiskScore >= 80`
+
+Production overall risk continues to use:
+
+`threatRiskScore + weatherContribution + trafficContribution`
+
+The diagnostic congestion-weighted score does not currently alter warnings, escalations, rerouting, or production risk.
+
+### Shared diagnostic behavior
+
+The existing aggregate traffic diagnostic now reuses the same congestion-multiplier helper, avoiding duplicate multiplier formulas.
+
+### Validation
+
+Validation completed successfully before commit:
+
+- `git diff --check`
+- `npx tsc --noEmit`
+- `npm run build`
+- Next.js production build compiled successfully
+- `123/123` static pages generated
+- exactly one source file changed
+- production score/action contracts verified unchanged
+
+### Result
+
+HarborGuard can now compare the existing production threat score with a congestion-weighted diagnostic score at the individual-threat level.
+
+This closes the diagnostic-only congestion multiplier implementation gap while keeping congestion weighting out of production threat decisions.
+
+The next step should be real-route validation of these per-threat diagnostics before considering any production weighting change.
