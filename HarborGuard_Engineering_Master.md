@@ -8550,3 +8550,34 @@ Do not modify the existing Traccar schedule.
 
 Do not weaken the stable provider identity requirement merely to persist
 the 14 currently skipped HERE observations.
+
+## 2026-08-10 - Traffic-flow collection freshness guard
+
+- Completed the audit-first traffic-flow collection freshness milestone.
+- Implementation commit: `13dd393`.
+- Updated `lib/traffic/resolveTrafficFlowCollectionScope.ts` only.
+- Added `MAX_TRAFFIC_FLOW_LOCATION_AGE_MINUTES = 15`.
+- The 15-minute threshold matches existing HarborGuard vehicle offline/freshness conventions.
+- Traffic-flow scope candidates now require:
+  - valid latitude;
+  - valid longitude;
+  - vehicle ID;
+  - recorded timestamp;
+  - parseable recorded timestamp;
+  - location age no greater than 15 minutes.
+- Stale vehicle locations now resolve to no traffic-flow collection scope.
+- The existing orchestrator therefore safely returns `scopeResolved: false` without calling HERE or persisting traffic-flow observations when no fresh scope exists.
+- No HERE traffic implementation changed.
+- No observation persistence implementation changed.
+- No traffic-flow endpoint changed.
+- No database schema changed.
+- Existing Traccar scheduling remained untouched.
+- No QStash traffic-flow schedule was created or changed.
+- TypeScript validation passed.
+- Production build passed.
+- Implementation changed exactly one tracked source file.
+- Commit `13dd393` was pushed successfully to `origin/main`.
+- Local and remote `main` both ended at `13dd393`.
+- Tracked working tree was clean after push.
+- Nothing remained staged.
+- Next step: perform an audit-first assessment of traffic-flow retry/idempotency behavior before enabling recurring QStash traffic-flow collection.
