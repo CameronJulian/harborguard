@@ -8196,3 +8196,57 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Tracked working tree was clean after push.
 - Nothing remained staged.
 - Next step: audit the smallest server-side traffic-flow observation writer and determine the exact existing provider-cycle insertion point before changing ingestion behavior.
+
+
+## 2026-08-10 - Traffic-flow observation writer foundation
+
+- Completed the audit-first traffic-flow observation writer milestone.
+- Implementation commit: `4204f80`.
+- Added:
+  - `lib/traffic/persistTrafficFlowObservations.ts`
+- Added a reusable server-side persistence boundary for historical HERE traffic-flow observations.
+- The writer accepts:
+  - an existing Supabase client;
+  - organization ID;
+  - normalized traffic-flow observations;
+  - an explicit observation timestamp.
+- The writer does not perform a HERE API request.
+- The writer does not make any latitude, longitude, or radius assumptions.
+- Each persisted row writes factual traffic-flow fields only:
+  - organization ID;
+  - provider (`here`);
+  - stable provider segment ID;
+  - road name;
+  - current speed;
+  - free-flow speed;
+  - congestion percentage;
+  - delay minutes;
+  - confidence;
+  - jam factor;
+  - observation timestamp.
+- Observations without a stable `providerSegmentId` are skipped rather than persisting positional runtime fallback identities.
+- The writer reports:
+  - received observation count;
+  - persisted observation count;
+  - count skipped because no stable provider segment ID was available.
+- The writer validates that:
+  - organization ID is non-empty;
+  - the supplied observation timestamp is valid.
+- Database errors are propagated to the caller.
+- No retry policy was introduced.
+- No upsert or deduplication policy was introduced.
+- No HERE request was added.
+- No provider-cycle integration was added.
+- No provider cron behavior was changed.
+- No collection geography was chosen.
+- No forecasting logic was added.
+- UTF-8 BOM was removed before commit.
+- Final newline was present.
+- TypeScript validation passed.
+- Production build passed.
+- Implementation commit contained exactly one new file.
+- Commit `4204f80` was pushed successfully to `origin/main`.
+- Local and remote `main` both ended at `4204f80`.
+- Tracked working tree was clean after push.
+- Nothing remained staged.
+- Next step: audit the organization-specific traffic-flow collection geography and cadence before integrating the writer into the existing provider cycle.
