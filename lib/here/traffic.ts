@@ -1,4 +1,4 @@
-﻿function toKmh(value: any) {
+function toKmh(value: any) {
   const speed = Number(value || 0);
   if (!Number.isFinite(speed) || speed <= 0) return 0;
   return Math.round(speed * 3.6);
@@ -24,6 +24,52 @@ function riskLevel(congestion: number) {
   return "low";
 }
 
+function providerSegmentIdentity(item: any) {
+  const tmc = item?.location?.tmc;
+
+  const extendedCountryCode =
+    String(tmc?.extendedCountryCode ?? "").trim();
+
+  const ebuCountryCode =
+    String(tmc?.ebuCountryCode ?? "").trim();
+
+  const tableId =
+    String(tmc?.tableId ?? "").trim();
+
+  const locationId =
+    String(tmc?.locationId ?? "").trim();
+
+  const queuingDirection =
+    String(tmc?.queuingDirection ?? "").trim();
+
+  const extent =
+    String(tmc?.extent ?? "").trim();
+
+  if (
+    extendedCountryCode &&
+    ebuCountryCode &&
+    tableId &&
+    locationId &&
+    queuingDirection &&
+    extent
+  ) {
+    return [
+      "tmc",
+      extendedCountryCode,
+      ebuCountryCode,
+      tableId,
+      locationId,
+      queuingDirection,
+      extent,
+    ].join(":");
+  }
+
+  return (
+    item?.location?.id ||
+    item?.location?.shape?.links?.[0]?.linkId ||
+    null
+  );
+}
 function roadName(item: any, index: number) {
   return (
     item?.location?.description ||
@@ -56,7 +102,7 @@ export async function getHereTrafficFlow(options: {
   const url =
     "https://data.traffic.hereapi.com/v7/flow" +
     `?in=circle:${latitude},${longitude};r=${radiusMeters}` +
-    "&locationReferencing=shape" +
+    "&locationReferencing=tmc,shape" +
     `&apikey=${process.env.HERE_API_KEY}`;
 
   const response = await fetch(url, { cache: "no-store" });
@@ -80,9 +126,7 @@ export async function getHereTrafficFlow(options: {
       const congestion = congestionPercent(currentSpeed, freeFlowSpeed);
 
       const providerSegmentId =
-        item.location?.id ||
-        item.location?.shape?.links?.[0]?.linkId ||
-        null;
+        providerSegmentIdentity(item);
 
       return {
         id: item.location?.id || `here-flow-${index + 1}`,
