@@ -7884,3 +7884,42 @@ Pushed it to feature/expanded-incident-taxonomy.
   - cron-gate enforcement
   - successful restoration to enabled state
 - Next step: perform a fresh audit-first roadmap assessment before starting another implementation.
+## 2026-08-10 - Multi-tenant Traccar scheduler
+
+- Completed the audit-first multi-tenant Traccar scheduler milestone.
+- Updated `app/api/telematics/cron/traccar/route.ts`.
+- Removed the scheduler dependency on `TRACCAR_SYNC_ORGANIZATION_ID`.
+- Removed the single configured-organization lookup from the Traccar cron route.
+- The cron now queries `telematics_integrations` for all rows matching:
+  - `provider = "traccar"`
+  - `enabled = true`
+- Each enabled integration contributes its `organization_id` to the sync cycle.
+- Enabled organizations are processed sequentially.
+- The existing `runTraccarPositionSync({ supabase, organizationId })` pipeline is reused unchanged.
+- Existing environment-based Traccar credential resolution remains unchanged.
+- No per-organization credential storage was introduced.
+- No provider adapter code was modified.
+- No telematics receipt or sync-state schema was modified.
+- No migration was added.
+- No Vercel or QStash scheduling configuration was changed.
+- Per-organization failure isolation was added:
+  - one organization failure does not stop later enabled organizations from being attempted
+  - successful and failed organizations are recorded separately in the cron response
+- Aggregate response now includes:
+  - `integrations`
+  - `succeeded`
+  - `failed`
+  - per-organization results
+- Aggregate `success` is true only when `failed === 0`.
+- Partial per-organization failures intentionally remain a non-throwing aggregate HTTP response.
+- This matches the existing HarborGuard scheduled-report pattern where item-level failures are accumulated without failing the entire cron delivery.
+- Scheduler-level failures still propagate through the outer error handler and return HTTP 500.
+- `git diff --check` passed.
+- TypeScript validation passed.
+- Full Next.js production build passed.
+- Production build generated all 123/123 static pages.
+- Implementation committed as `f80ab47` with message `Run Traccar sync for enabled organizations`.
+- Commit `f80ab47` was pushed successfully to `origin/feature/expanded-incident-taxonomy`.
+- Local and remote feature heads matched after push.
+- Tracked working tree was clean after push.
+- Next step: perform a guarded production validation of the existing QStash Traccar schedule against the new registry-driven scheduler before starting another telematics implementation.
