@@ -8036,3 +8036,24 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Production build passed.
 - This establishes organization-specific Traccar credential selection without storing provider secrets in the database.
 - Next step: perform a fresh audit-first assessment of migration deployment and production compatibility before configuring any organization-specific credential reference.
+## 2026-08-10 - Traccar credential reference migration deployed
+
+- Deployed migration `20260810100000_add_telematics_credential_reference.sql` to the linked production Supabase database.
+- Application baseline remained at `f909cbf` during database deployment.
+- Pre-deployment migration history showed `20260810100000` as local-only and pending remotely.
+- A guarded `supabase db push --dry-run` confirmed that `20260810100000_add_telematics_credential_reference.sql` was the only pending migration.
+- A final pre-push dry run again confirmed exactly one pending migration.
+- Applied the migration successfully with `supabase db push`.
+- Supabase reported database push exit code `0`.
+- Post-deployment migration history confirmed `20260810100000` exists in both local and remote migration histories.
+- A post-deployment `supabase db push --dry-run` reported that the remote database is up to date.
+- No migrations remain pending.
+- The production `telematics_integrations` schema now includes nullable `credential_reference`.
+- Existing Traccar integrations remain backward compatible when `credential_reference` is null.
+- No provider secret values were written to Supabase.
+- No production environment variables were changed.
+- No organization-specific credential reference was configured during this deployment.
+- Git HEAD remained unchanged during database deployment and verification.
+- Tracked working tree remained clean.
+- Nothing was staged.
+- Next step: perform a fresh audit-first production compatibility check before configuring the first organization-specific credential reference.
