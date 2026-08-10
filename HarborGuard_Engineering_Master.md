@@ -8081,3 +8081,36 @@ Pushed it to feature/expanded-incident-taxonomy.
 - The legacy `TRACCAR_API_TOKEN` remains in place as a rollback/backward-compatibility safeguard and must not be removed yet.
 - Organization-specific Traccar credential resolution is now validated in production for the currently enabled organization.
 - Next step: perform a fresh audit-first roadmap assessment before removing any legacy credential fallback or starting another telematics implementation.
+
+
+## 2026-08-10 - Traccar referenced credential decoupling
+
+- Completed the audit-first Traccar credential-decoupling milestone.
+- Implementation commit: `566c4c6`.
+- Updated `lib/telematics/resolveTraccarIntegrationConfiguration.ts`.
+- Removed the requirement to resolve the shared environment-backed Traccar token before evaluating an organization-specific `credential_reference`.
+- When `credential_reference` is present, the resolver now:
+  - validates the reference;
+  - resolves the referenced server-side environment variable;
+  - uses that referenced token directly;
+  - resolves the configured organization-specific base URL when present;
+  - otherwise falls back only to the environment Traccar base URL.
+- The organization-specific referenced credential path therefore no longer depends on `TRACCAR_API_TOKEN` being populated.
+- When no `credential_reference` is configured, the existing legacy environment-backed path remains unchanged through `getEnvironmentTraccarConfiguration()`.
+- Legacy `TRACCAR_API_TOKEN` fallback remains implemented for backward compatibility and rollback safety.
+- No database migration was introduced.
+- No Supabase schema changes were introduced.
+- No credential values were written to Supabase.
+- No Vercel environment variables were removed or changed.
+- No scheduler logic was changed.
+- No QStash configuration was changed.
+- TypeScript validation passed.
+- Production build passed.
+- Staged resolver contract was verified directly from the Git index before commit.
+- Implementation commit contained exactly one file:
+  - `lib/telematics/resolveTraccarIntegrationConfiguration.ts`
+- Commit `566c4c6` was pushed successfully to `origin/main`.
+- Local and remote `main` both ended at `566c4c6`.
+- Tracked working tree was clean after push.
+- Nothing remained staged.
+- Next step: perform a fresh audit-first roadmap assessment before starting another HarborGuard implementation.
