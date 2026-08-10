@@ -8331,3 +8331,49 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Tracked working tree was clean after push.
 - Nothing remained staged.
 - Next step: audit and implement the smallest authenticated server-side traffic-flow collection endpoint before creating any separate QStash schedule.
+
+## 2026-08-10 - Authenticated traffic-flow collection endpoint
+
+- Completed the audit-first authenticated traffic-flow collection endpoint milestone.
+- Implementation commit: `82ec21d`.
+- Added:
+  - `app/api/traffic-flow/cron/route.ts`
+- Added a dedicated server-side `GET` endpoint for traffic-flow collection.
+- The endpoint follows HarborGuard's existing cron security conventions:
+  - requires `CRON_SECRET`;
+  - reads the `Authorization` header;
+  - requires `Bearer ${CRON_SECRET}`;
+  - returns HTTP 401 for unauthorized requests.
+- The endpoint follows HarborGuard's existing service-role Supabase conventions:
+  - reads `NEXT_PUBLIC_SUPABASE_URL`;
+  - reads `SUPABASE_SERVICE_ROLE_KEY`;
+  - creates a non-persistent server-side Supabase client;
+  - disables session persistence and token auto-refresh.
+- The endpoint reuses `TRAFFIC_IMPORT_ORGANIZATION_ID`.
+- The configured traffic organization is validated against the `organizations` table before collection begins.
+- Traffic-flow collection is delegated to `collectTrafficFlowObservations()`.
+- HERE API retrieval logic is not duplicated in the endpoint.
+- Collection-scope logic is not duplicated in the endpoint.
+- Persistence logic is not duplicated in the endpoint.
+- Successful responses include:
+  - `success: true`;
+  - organization ID;
+  - collection scope status;
+  - source vehicle metadata;
+  - received observation count;
+  - persisted observation count;
+  - skipped observation count.
+- Server-side failures return HTTP 500 with the normalized error message.
+- The route is configured as dynamic with a 60-second maximum duration.
+- The production build confirmed `/api/traffic-flow/cron` exists in the Next.js route tree.
+- TypeScript validation passed.
+- Production build passed.
+- Implementation commit contained exactly one new route file.
+- Commit `82ec21d` was pushed successfully to `origin/main`.
+- Local and remote `main` both ended at `82ec21d`.
+- Tracked working tree was clean after push.
+- Nothing remained staged.
+- No QStash schedule was created or modified.
+- The existing `harborguard-traccar-10m` schedule remained untouched.
+- No `vercel.json` changes were made.
+- Next step: verify the new traffic-flow endpoint in production before creating a separate QStash schedule for it.
