@@ -108,10 +108,16 @@ export async function GET(request: Request) {
       );
     }
 
+    const collectionKey =
+      request.headers
+        .get("Upstash-Message-Id")
+        ?.trim() || null;
+
     const result =
       await collectTrafficFlowObservations(
         supabase,
-        trafficOrganizationId
+        trafficOrganizationId,
+        collectionKey
       );
 
     return NextResponse.json({

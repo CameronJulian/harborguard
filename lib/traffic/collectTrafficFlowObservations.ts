@@ -19,7 +19,8 @@ export type CollectTrafficFlowObservationsResult = {
 
 export async function collectTrafficFlowObservations(
   supabase: any,
-  organizationId: string
+  organizationId: string,
+  collectionKey: string | null = null
 ): Promise<CollectTrafficFlowObservationsResult> {
   const normalizedOrganizationId =
     organizationId.trim();
@@ -62,7 +63,8 @@ export async function collectTrafficFlowObservations(
       supabase,
       normalizedOrganizationId,
       trafficFlow.flow,
-      observedAt
+      observedAt,
+      collectionKey
     );
 
   return {

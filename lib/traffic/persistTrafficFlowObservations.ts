@@ -19,7 +19,8 @@ export async function persistTrafficFlowObservations(
   supabase: any,
   organizationId: string,
   observations: TrafficFlowObservationInput[],
-  observedAt: string
+  observedAt: string,
+  collectionKey: string | null = null
 ): Promise<PersistTrafficFlowObservationsResult> {
   const normalizedOrganizationId =
     organizationId.trim();
@@ -42,6 +43,9 @@ export async function persistTrafficFlowObservations(
     );
   }
 
+  const normalizedCollectionKey =
+    collectionKey?.trim() || null;
+
   const rows = observations.flatMap((observation) => {
     const providerSegmentId =
       observation.providerSegmentId?.trim() || null;
@@ -63,6 +67,7 @@ export async function persistTrafficFlowObservations(
         confidence: observation.confidence,
         jam_factor: observation.jamFactor,
         observed_at: normalizedObservedAt,
+        collection_key: normalizedCollectionKey,
       },
     ];
   });
@@ -76,9 +81,16 @@ export async function persistTrafficFlowObservations(
     };
   }
 
-  const { error } = await supabase
-    .from("traffic_flow_observations")
-    .insert(rows);
+  const query =
+    supabase.from("traffic_flow_observations");
+
+  const { error } =
+    normalizedCollectionKey
+      ? await query.upsert(rows, {
+          onConflict:
+            "organization_id,provider,provider_segment_id,collection_key",
+        })
+      : await query.insert(rows);
 
   if (error) {
     throw error;
