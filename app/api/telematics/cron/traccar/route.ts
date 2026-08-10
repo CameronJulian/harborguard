@@ -3,6 +3,9 @@ import { createClient } from "@supabase/supabase-js";
 import {
   runTraccarPositionSync,
 } from "@/lib/telematics/runTraccarPositionSync";
+import {
+  resolveTraccarIntegrationConfiguration,
+} from "@/lib/telematics/resolveTraccarIntegrationConfiguration";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -73,7 +76,7 @@ export async function GET(request: Request) {
       error: integrationError,
     } = await supabase
       .from("telematics_integrations")
-      .select("organization_id")
+      .select("organization_id, credential_source, base_url")
       .eq("provider", "traccar")
       .eq("enabled", true)
       .order("organization_id", {
@@ -99,10 +102,20 @@ export async function GET(request: Request) {
         integration.organization_id;
 
       try {
+        const configuration =
+          resolveTraccarIntegrationConfiguration({
+            organizationId,
+            credentialSource:
+              integration.credential_source,
+            baseUrl:
+              integration.base_url,
+          });
+
         const result =
           await runTraccarPositionSync({
             supabase,
             organizationId,
+            configuration,
           });
 
         organizationResults.push({
