@@ -8421,3 +8421,55 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Tracked working tree was clean after push.
 - Nothing remained staged.
 - Next step: verify the authenticated production traffic-flow endpoint again and confirm that HERE observations now persist with stable TMC provider identities before creating any QStash schedule.
+
+## 2026-08-10 - Traffic-flow production migration BOM correction
+
+### Status
+
+The production traffic-flow persistence migration remains pending.
+
+### Audit finding
+
+Production execution of `20260810113000_create_traffic_flow_observations.sql`
+was blocked because the migration file contained a UTF-8 byte-order mark
+before its opening SQL statement.
+
+The migration began with bytes:
+
+`EF BB BF`
+
+The BOM was removed without changing the SQL contract.
+
+After correction, the file begins directly with:
+
+`create table if not exists public.traffic_flow_observations`
+
+### Verification
+
+- exactly one tracked implementation file changed
+- changed file:
+  `supabase/migrations/20260810113000_create_traffic_flow_observations.sql`
+- Git diff showed one first-line replacement only
+- diff numstat was one insertion and one deletion
+- SQL text was otherwise unchanged
+- TypeScript validation passed
+- production build passed
+- migration remained pending remotely after the correction
+- no database migration was applied during the correction
+- no QStash schedule was created or changed
+
+### Implementation commit
+
+`442d0a9` - `Remove BOM from traffic flow migration`
+
+### Next controlled step
+
+Re-run a production Supabase migration dry-run from committed main
+`442d0a9`.
+
+Do not apply the production migration until that dry-run confirms that
+`20260810113000_create_traffic_flow_observations.sql` is the only migration
+that would be pushed.
+
+Do not create the QStash traffic-flow collection schedule until production
+traffic-flow persistence has been successfully verified.
