@@ -8293,3 +8293,41 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Tracked working tree was clean after push.
 - Nothing remained staged.
 - Next step: audit and choose the smallest safe traffic-flow collection cadence before wiring collection scope, HERE flow retrieval, and observation persistence into the provider cycle.
+
+## 2026-08-10 - Traffic-flow observation collection orchestrator
+
+- Completed the audit-first traffic-flow collection orchestrator milestone.
+- Implementation commit: `2af1755`.
+- Added:
+  - `lib/traffic/collectTrafficFlowObservations.ts`
+- Added a reusable orchestration layer that connects:
+  - organization-scoped traffic-flow collection scope resolution;
+  - HERE traffic-flow retrieval;
+  - historical traffic-flow observation persistence.
+- The orchestrator:
+  - validates the organization ID;
+  - resolves the organization traffic-flow collection scope first;
+  - returns a no-op result when no valid collection scope exists;
+  - records a single observation timestamp for the collection cycle;
+  - calls `getHereTrafficFlow()` using the resolved latitude, longitude, and radius;
+  - correctly reads the HERE result envelope and passes only `trafficFlow.flow` to persistence;
+  - persists observations through `persistTrafficFlowObservations()`;
+  - returns source vehicle metadata and persistence counts.
+- No hard-coded Cape Town fallback coordinates were introduced.
+- No Supabase client creation was added to the orchestrator.
+- No API endpoint was added.
+- No provider-cycle integration was added.
+- No Vercel cron schedule was changed.
+- No QStash schedule was created or modified.
+- The existing Traccar QStash schedule remained untouched.
+- No forecasting logic was added.
+- Initial TypeScript validation identified that `getHereTrafficFlow()` returns an envelope containing `rawCount` and `flow`.
+- The orchestrator was corrected to persist only `trafficFlow.flow`.
+- TypeScript validation then passed.
+- Production build passed.
+- Implementation commit contained exactly one new file.
+- Commit `2af1755` was pushed successfully to `origin/main`.
+- Local and remote `main` both ended at `2af1755`.
+- Tracked working tree was clean after push.
+- Nothing remained staged.
+- Next step: audit and implement the smallest authenticated server-side traffic-flow collection endpoint before creating any separate QStash schedule.
