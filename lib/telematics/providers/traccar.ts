@@ -36,7 +36,12 @@ export type NormalizedTraccarPosition = {
 const TRACCAR_TIMEOUT_MS = 10000;
 const KNOTS_TO_KMH = 1.852;
 
-function getTraccarConfiguration() {
+export type TraccarConfiguration = {
+  token: string;
+  baseUrl: string;
+};
+
+export function getEnvironmentTraccarConfiguration(): TraccarConfiguration {
   const token =
     process.env.TRACCAR_API_TOKEN?.trim();
 
@@ -58,12 +63,13 @@ function getTraccarConfiguration() {
 }
 
 async function traccarFetch(
-  path: string
+  path: string,
+  configuration: TraccarConfiguration
 ): Promise<Response> {
   const {
     token,
     baseUrl,
-  } = getTraccarConfiguration();
+  } = configuration;
 
   const controller = new AbortController();
 
@@ -90,11 +96,17 @@ async function traccarFetch(
   }
 }
 
-export async function loadTraccarDevices(): Promise<
+export async function loadTraccarDevices(
+  configuration: TraccarConfiguration =
+    getEnvironmentTraccarConfiguration()
+): Promise<
   TraccarDevice[]
 > {
   const response =
-    await traccarFetch("/api/devices");
+    await traccarFetch(
+      "/api/devices",
+      configuration
+    );
 
   if (!response.ok) {
     const body = await response.text();
@@ -114,11 +126,17 @@ export async function loadTraccarDevices(): Promise<
     : [];
 }
 
-export async function loadTraccarLatestPositions(): Promise<
+export async function loadTraccarLatestPositions(
+  configuration: TraccarConfiguration =
+    getEnvironmentTraccarConfiguration()
+): Promise<
   TraccarPosition[]
 > {
   const response =
-    await traccarFetch("/api/positions");
+    await traccarFetch(
+      "/api/positions",
+      configuration
+    );
 
   if (!response.ok) {
     const body = await response.text();
