@@ -8731,3 +8731,32 @@ the 14 currently skipped HERE observations.
 - No traffic-flow QStash schedule was created or changed.
 - The production traffic-flow endpoint has not yet been wired to the receipt lifecycle.
 - Next step: perform an audit-first review of the traffic-flow endpoint insertion points before wiring claim, completion, and failure handling.
+
+## Traffic-flow receipt lifecycle endpoint wiring — 2026-08-10
+
+- Implementation commit: `515f5f1` (`Wire traffic flow receipt lifecycle`).
+- Parent baseline: `80512ba`.
+- Updated exactly one implementation file: `app/api/traffic-flow/cron/route.ts`.
+- Keyed traffic-flow requests now claim the delivery through `claimTrafficFlowCollection` before collection begins.
+- Receipt identity continues to use the normalized `Upstash-Message-Id` as the collection key.
+- Requests without a collection key retain the existing unkeyed/manual collection path.
+- Already processed keyed deliveries return success with `skipped: "duplicate"` without invoking traffic collection.
+- Currently processing keyed deliveries return success with `skipped: "processing"` without invoking traffic collection.
+- Successfully claimed deliveries run `collectTrafficFlowObservations` using the claimed collection key.
+- Successful claimed deliveries finalize through `completeTrafficFlowCollection` using the exact receipt ID and attempt count.
+- Failed claimed deliveries finalize through `failTrafficFlowCollection` before the original error is rethrown.
+- If failure finalization also fails, both errors are preserved through `AggregateError`.
+- The receipt claim therefore surrounds scope resolution, the HERE traffic-flow request, and persistence.
+- TypeScript validation passed with `npx tsc --noEmit`.
+- Production validation passed with `npm run build`.
+- Production build generated all 123/123 static pages successfully.
+- Commit `515f5f1` was pushed successfully to `origin/main`.
+- Local and remote `main` both ended at `515f5f1`.
+- Tracked working tree was clean after push.
+- Nothing remained staged.
+- No traffic-flow orchestrator code changed.
+- No traffic-flow writer code changed.
+- No database changes were made in this implementation.
+- No traffic-flow QStash schedule was created or changed.
+- The production endpoint has not yet been invoked to verify receipt lifecycle behavior.
+- Next step: commit this documentation milestone, then perform a controlled production keyed-request verification before creating or changing any recurring QStash schedule.
