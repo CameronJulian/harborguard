@@ -38,6 +38,20 @@ if (
   );
 }
 
+function trafficCongestionMultiplierForRiskLevel(
+  riskLevel: unknown
+) {
+  const normalizedRiskLevel =
+    String(riskLevel ?? "LOW").toUpperCase();
+
+  return normalizedRiskLevel === "CRITICAL"
+    ? 1.5
+    : normalizedRiskLevel === "HIGH"
+      ? 1.25
+      : normalizedRiskLevel === "MEDIUM"
+        ? 1.1
+        : 1;
+}
 function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
   const earthRadius = 6371000;
   const toRad = (value: number) => (value * Math.PI) / 180;
@@ -1269,6 +1283,32 @@ if (roadRiskSegmentsError) {
             )
           )
         );
+        const averageCongestion =
+          Number(
+            trafficResult?.summary.averageCongestion ??
+              0
+          );
+
+        const trafficCongestionMultiplier =
+          trafficCongestionMultiplierForRiskLevel(
+            trafficResult?.summary.riskLevel ??
+              "LOW"
+          );
+
+        const scoreBeforeTrafficWeighting =
+          score;
+
+        const scoreAfterTrafficWeighting =
+          Math.min(
+            100,
+            Math.max(
+              0,
+              Math.round(
+                scoreBeforeTrafficWeighting *
+                  trafficCongestionMultiplier
+              )
+            )
+          );
 
         return {
           id: alert.id,
@@ -1289,6 +1329,10 @@ if (roadRiskSegmentsError) {
           unweightedScore,
           historicalRecencyWeight,
           geometryScoreMultiplier,
+          averageCongestion,
+          trafficCongestionMultiplier,
+          scoreBeforeTrafficWeighting,
+          scoreAfterTrafficWeighting,
           score,
           freshness: normalizedFreshness,
           confidence: normalizedConfidence,
@@ -1376,13 +1420,9 @@ if (roadRiskSegmentsError) {
       String(trafficRiskLevel).toUpperCase();
 
     const trafficCongestionMultiplier =
-      normalizedTrafficRiskLevel === "CRITICAL"
-        ? 1.5
-        : normalizedTrafficRiskLevel === "HIGH"
-          ? 1.25
-          : normalizedTrafficRiskLevel === "MEDIUM"
-            ? 1.1
-            : 1;
+      trafficCongestionMultiplierForRiskLevel(
+        normalizedTrafficRiskLevel
+      );
 
     const diagnosticTrafficWeightedThreatRisk =
       Math.min(
