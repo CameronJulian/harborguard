@@ -7947,3 +7947,23 @@ Pushed it to feature/expanded-incident-taxonomy.
 - No application source code was changed during production validation.
 - No Webfleet implementation was introduced.
 - Next step: perform a fresh audit-first roadmap assessment before starting the next telematics implementation.
+## 2026-08-10 - Traccar provider configuration boundary
+
+- Added an explicit Traccar provider configuration boundary.
+- Implementation commit: `6304f5c`.
+- Added exported `TraccarConfiguration` containing `token` and `baseUrl`.
+- Added exported `getEnvironmentTraccarConfiguration()` as the current environment-backed resolver.
+- Updated the internal Traccar fetch path to receive explicit configuration instead of resolving environment state internally.
+- Updated `loadTraccarDevices()` to accept optional explicit Traccar configuration.
+- Updated `loadTraccarLatestPositions()` to accept optional explicit Traccar configuration.
+- Preserved backward compatibility by keeping environment configuration as the default when no explicit configuration is supplied.
+- Existing production Traccar behavior therefore remains unchanged.
+- No database schema changes were introduced.
+- No telematics integration registry changes were introduced.
+- No provider secrets were written to Supabase.
+- No scheduler logic was changed.
+- No QStash configuration was changed.
+- TypeScript validation passed.
+- Production build passed.
+- This establishes the provider-side insertion point required for future secure per-organization Traccar credential resolution.
+- Next step: audit the smallest secure server-only credential resolver design before implementing tenant-specific secret storage.
