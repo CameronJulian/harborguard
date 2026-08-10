@@ -3,9 +3,26 @@ import { createClient } from "@supabase/supabase-js";
 import {
   collectTrafficFlowObservations,
 } from "@/lib/traffic/collectTrafficFlowObservations";
+import {
+  claimTrafficFlowCollection,
+  completeTrafficFlowCollection,
+  failTrafficFlowCollection,
+} from "@/lib/traffic/collectionReceiptLifecycle";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error
+    ? error.message
+    : typeof error === "object" &&
+        error !== null
+      ? JSON.stringify(error)
+      : String(
+          error ||
+            "Traffic-flow collection failed."
+        );
+}
 
 export async function GET(request: Request) {
   try {
@@ -113,38 +130,119 @@ export async function GET(request: Request) {
         .get("Upstash-Message-Id")
         ?.trim() || null;
 
-    const result =
-      await collectTrafficFlowObservations(
-        supabase,
-        trafficOrganizationId,
-        collectionKey
-      );
+    if (!collectionKey) {
+      const result =
+        await collectTrafficFlowObservations(
+          supabase,
+          trafficOrganizationId,
+          null
+        );
 
-    return NextResponse.json({
-      success: true,
-      organizationId: trafficOrganizationId,
-      ...result,
-    });
-  } catch (error: unknown) {
+      return NextResponse.json({
+        success: true,
+        organizationId:
+          trafficOrganizationId,
+        ...result,
+      });
+    }
+
+    const claim =
+      await claimTrafficFlowCollection({
+        supabase,
+        organizationId:
+          trafficOrganizationId,
+        collectionKey,
+        metadata: {
+          source: "qstash",
+          endpoint:
+            "/api/traffic-flow/cron",
+        },
+      });
+
+    if (!claim.claimed) {
+      return NextResponse.json({
+        success: true,
+        organizationId:
+          trafficOrganizationId,
+        collectionKey,
+        skipped:
+          claim.processingStatus ===
+          "processed"
+            ? "duplicate"
+            : "processing",
+        receiptId:
+          claim.receiptId,
+        attemptCount:
+          claim.attemptCount,
+      });
+    }
+
+    try {
+      const result =
+        await collectTrafficFlowObservations(
+          supabase,
+          trafficOrganizationId,
+          collectionKey
+        );
+
+      await completeTrafficFlowCollection({
+        supabase,
+        receiptId:
+          claim.receiptId,
+        attemptCount:
+          claim.attemptCount,
+      });
+
+      return NextResponse.json({
+        success: true,
+        organizationId:
+          trafficOrganizationId,
+        collectionKey,
+        receiptId:
+          claim.receiptId,
+        attemptCount:
+          claim.attemptCount,
+        ...result,
+      });
+    }
+    catch (error: unknown) {
+      const message =
+        errorMessage(error);
+
+      try {
+        await failTrafficFlowCollection({
+          supabase,
+          receiptId:
+            claim.receiptId,
+          attemptCount:
+            claim.attemptCount,
+          failureMessage:
+            message,
+        });
+      }
+      catch (finalizationError) {
+        throw new AggregateError(
+          [
+            error,
+            finalizationError,
+          ],
+          "Traffic-flow collection failed and the receipt could not be marked failed."
+        );
+      }
+
+      throw error;
+    }
+  }
+  catch (error: unknown) {
     console.error(
       "[traffic-flow collection cron]",
       error
     );
 
-    const errorMessage =
-      error instanceof Error
-        ? error.message
-        : typeof error === "object" &&
-            error !== null
-          ? JSON.stringify(error)
-          : String(
-              error ||
-                "Traffic-flow collection failed."
-            );
-
     return NextResponse.json(
       {
-        error: errorMessage,
+        error:
+          errorMessage(error),
       },
       {
         status: 500,
