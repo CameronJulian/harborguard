@@ -8712,3 +8712,22 @@ the 14 currently skipped HERE observations.
 - No traffic-flow QStash schedule was created or changed.
 - Production receipt infrastructure is now deployed, but the traffic-flow endpoint has not yet been wired to the receipt lifecycle.
 - Next step: perform an audit-first review of the exact endpoint and orchestration insertion points for `claim_traffic_flow_collection`, `complete_traffic_flow_collection`, and `fail_traffic_flow_collection` before changing source code.
+
+## Traffic-flow receipt lifecycle application helper — 2026-08-10
+
+- Implementation commit: `11d0d7e` (`Add traffic flow receipt lifecycle helper`).
+- Parent baseline: `c663775`.
+- Added `lib/traffic/collectionReceiptLifecycle.ts` as the application boundary for the deployed traffic-flow collection receipt lifecycle.
+- `claimTrafficFlowCollection` wraps `claim_traffic_flow_collection` and returns the receipt ID, attempt count, and claim state while validating the RPC result.
+- `completeTrafficFlowCollection` wraps `complete_traffic_flow_collection` and requires the active receipt ID and attempt count.
+- `failTrafficFlowCollection` wraps `fail_traffic_flow_collection` and records a non-blank failure message for the active attempt.
+- The helper rejects malformed claim responses and rejected/stale completion or failure finalization rather than silently continuing.
+- TypeScript validation passed with `npx tsc --noEmit`.
+- Production validation passed with `npm run build`.
+- The implementation commit contains exactly one new helper file.
+- No traffic-flow endpoint code changed in this work item.
+- No traffic-flow orchestrator or writer code changed.
+- No database changes were made in this work item; the receipt migration was already deployed separately.
+- No traffic-flow QStash schedule was created or changed.
+- The production traffic-flow endpoint has not yet been wired to the receipt lifecycle.
+- Next step: perform an audit-first review of the traffic-flow endpoint insertion points before wiring claim, completion, and failure handling.
