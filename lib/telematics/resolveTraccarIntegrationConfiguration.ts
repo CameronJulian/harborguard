@@ -24,14 +24,11 @@ export function resolveTraccarIntegrationConfiguration({
     );
   }
 
-  const environmentConfiguration =
-    getEnvironmentTraccarConfiguration();
-
   const normalizedCredentialReference =
     credentialReference?.trim() || null;
 
-  let token =
-    environmentConfiguration.token;
+  const configuredBaseUrl =
+    baseUrl?.trim();
 
   if (normalizedCredentialReference) {
     if (
@@ -55,14 +52,24 @@ export function resolveTraccarIntegrationConfiguration({
       );
     }
 
-    token = referencedToken;
+    const environmentBaseUrl = (
+      process.env.TRACCAR_API_BASE_URL ||
+      "https://demo3.traccar.org"
+    ).replace(/\/+$/, "");
+
+    return {
+      token: referencedToken,
+      baseUrl: configuredBaseUrl
+        ? configuredBaseUrl.replace(/\/+$/, "")
+        : environmentBaseUrl,
+    };
   }
 
-  const configuredBaseUrl =
-    baseUrl?.trim();
+  const environmentConfiguration =
+    getEnvironmentTraccarConfiguration();
 
   return {
-    token,
+    token: environmentConfiguration.token,
     baseUrl: configuredBaseUrl
       ? configuredBaseUrl.replace(/\/+$/, "")
       : environmentConfiguration.baseUrl,
