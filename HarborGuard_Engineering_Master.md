@@ -8809,3 +8809,73 @@ the 14 currently skipped HERE observations.
 - No database schema changed during production verification.
 - No recurring traffic-flow QStash schedule was created or changed.
 - Next step: commit and push this documentation milestone, then audit the existing QStash/cron scheduling architecture before deciding whether to enable recurring production traffic-flow collection.
+
+---
+
+## 2026-08-10 - Recurring production traffic-flow QStash scheduling verified
+
+### Status
+
+Recurring production traffic-flow collection is now scheduled through QStash.
+
+Production schedules:
+
+- Traccar collection: every 10 minutes
+- Traffic-flow collection: every 10 minutes
+- Traffic-flow destination: `/api/traffic-flow/cron`
+- Traffic-flow QStash schedule ID: `harborguard-traffic-flow-10m`
+- Traffic-flow method: `GET`
+- Cron authentication is forwarded through the `Authorization` header.
+
+### Production verification
+
+The recurring traffic-flow schedule was created after the scheduling-readiness audit.
+
+The first scheduled traffic-flow delivery returned HTTP `401` with:
+
+`Unauthorized cron request.`
+
+Investigation confirmed that the QStash schedule was not initially forwarding the correct production cron authorization value.
+
+The QStash traffic-flow schedule Authorization forwarding configuration was corrected.
+
+A subsequent genuine scheduled QStash traffic-flow delivery succeeded with HTTP `200`.
+
+HarborGuard database verification confirmed that the genuine automated QStash delivery created a message-backed traffic-flow collection receipt and that the receipt reached:
+
+- `processing_status = processed`
+- `attempt_count = 1`
+- no processing failure
+- no processing failure timestamp
+
+This verifies the recurring production path:
+
+`QStash schedule -> authenticated GET /api/traffic-flow/cron -> HarborGuard traffic collection -> receipt processing`
+
+The successful automated verification run persisted `0` traffic observations. This does not invalidate scheduler/authentication verification: the collection receipt itself completed successfully. Observation yield remains dependent on the resolved collection scope and provider result for an individual collection cycle.
+
+### Cron-secret security remediation
+
+During QStash configuration, the previous production cron secret became visible during operator verification.
+
+That secret has now been rotated.
+
+The QStash recurring schedules were updated to use the rotated cron authorization value and were confirmed working after the rotation.
+
+The cron secret value itself is intentionally not recorded in repository documentation.
+
+### Result
+
+Recurring production traffic-flow QStash scheduling is operational.
+
+The earlier HTTP `401` authorization failure is resolved.
+
+The production cron secret has been rotated.
+
+The recurring schedules are using the replacement authorization value.
+
+No source-code change was required for this production scheduling/remediation step.
+
+No database schema change was required.
+
+Traffic-flow scheduling is no longer a pending deployment item.
