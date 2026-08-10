@@ -79,8 +79,14 @@ export async function getHereTrafficFlow(options: {
       const freeFlowSpeed = toKmh(currentFlow.freeFlow);
       const congestion = congestionPercent(currentSpeed, freeFlowSpeed);
 
+      const providerSegmentId =
+        item.location?.id ||
+        item.location?.shape?.links?.[0]?.linkId ||
+        null;
+
       return {
         id: item.location?.id || `here-flow-${index + 1}`,
+        providerSegmentId,
         road: roadName(item, index),
         currentSpeed,
         freeFlowSpeed,
