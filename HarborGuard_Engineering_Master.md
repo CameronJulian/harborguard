@@ -8620,3 +8620,32 @@ the 14 currently skipped HERE observations.
 - No traffic-flow QStash schedule was created or changed.
 - Production now has the nullable `collection_key` schema required for the next retry/idempotency implementation step.
 - Next step: audit and implement the smallest collection-key propagation path from the traffic-flow endpoint through the orchestrator to conflict-safe persistence.
+
+## 2026-08-10 - Traffic-flow collection key propagation
+
+- Completed the retry-safe traffic-flow collection identity propagation milestone.
+- Implementation commit: `b82330b`.
+- Updated exactly three implementation files:
+  - `app/api/traffic-flow/cron/route.ts`;
+  - `lib/traffic/collectTrafficFlowObservations.ts`;
+  - `lib/traffic/persistTrafficFlowObservations.ts`.
+- The traffic-flow cron endpoint now reads optional `Upstash-Message-Id` from the request headers.
+- Blank or missing message IDs normalize to `null`.
+- The optional collection key is propagated through the traffic-flow orchestrator.
+- The writer persists the normalized key to `collection_key`.
+- Keyed writes use conflict-targeted Supabase upsert against:
+  - organization ID;
+  - provider;
+  - provider segment ID;
+  - collection key.
+- Unkeyed/manual writes retain the existing plain insert behavior.
+- Production already contains migration `20260810160000_add_traffic_flow_collection_key.sql`.
+- TypeScript validation passed.
+- Production build passed.
+- Local and remote `main` both ended at `b82330b`.
+- Tracked working tree was clean after push.
+- Nothing remained staged.
+- No database schema changed in this implementation.
+- Existing Traccar scheduling remained untouched.
+- No traffic-flow QStash schedule was created or changed.
+- Next step: verify keyed production behavior and retry idempotency before enabling recurring QStash collection.
