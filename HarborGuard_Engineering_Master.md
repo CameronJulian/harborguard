@@ -8146,3 +8146,53 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Commit `aa044de` was pushed successfully to `origin/main`.
 - Local and remote `main` both ended at `aa044de`.
 - Next step: audit and implement the smallest organization-scoped historical traffic-flow observation schema using `providerSegmentId` as the provider-issued identity boundary.
+
+
+## 2026-08-10 - Historical traffic-flow observation schema foundation
+
+- Completed the audit-first historical traffic-flow schema milestone.
+- Implementation commit: `71a7311`.
+- Added migration:
+  - `supabase/migrations/20260810113000_create_traffic_flow_observations.sql`
+- Added organization-scoped `traffic_flow_observations` storage for factual traffic-flow history.
+- Each observation requires a stable provider-issued `provider_segment_id`.
+- Positional runtime fallback identifiers such as `here-flow-${index + 1}` are not valid persistence identities.
+- Persisted factual fields are:
+  - provider;
+  - provider segment ID;
+  - road name;
+  - current speed in km/h;
+  - free-flow speed in km/h;
+  - congestion percentage;
+  - delay minutes;
+  - confidence;
+  - jam factor;
+  - observation timestamp;
+  - persistence timestamp.
+- Added organization/time index:
+  - `traffic_flow_observations_org_observed_idx`
+- Added organization/provider/segment/time index:
+  - `traffic_flow_observations_org_segment_observed_idx`
+- Row Level Security is enabled.
+- Authenticated users have organization-scoped read access through `public.current_user_org_id()`.
+- Authenticated access is read-only.
+- `service_role` has server-side access for future ingestion.
+- Added validation constraints for:
+  - non-blank provider;
+  - non-blank provider segment ID;
+  - non-negative current speed;
+  - non-negative free-flow speed;
+  - congestion range 0-100;
+  - non-negative delay.
+- No traffic-flow writer was implemented.
+- No provider cron behavior was changed.
+- No forecasting logic was introduced.
+- No production traffic-risk logic was changed.
+- TypeScript validation passed.
+- Production build passed.
+- Implementation commit contained exactly one migration.
+- Commit `71a7311` was pushed successfully to `origin/main`.
+- Local and remote `main` both ended at `71a7311`.
+- Tracked working tree was clean after push.
+- Nothing remained staged.
+- Next step: audit the smallest server-side traffic-flow observation writer and determine the exact existing provider-cycle insertion point before changing ingestion behavior.
