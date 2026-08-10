@@ -1,6 +1,7 @@
 import {
   loadTraccarLatestPositions,
   normalizeTraccarPosition,
+  type TraccarConfiguration,
 } from "@/lib/telematics/providers/traccar";
 
 import {
@@ -14,6 +15,7 @@ const TRACCAR_POSITION_STREAM = "positions";
 export type RunTraccarPositionSyncInput = {
   supabase: any;
   organizationId: string;
+  configuration?: TraccarConfiguration;
 };
 
 export type TraccarPositionSyncSummary = {
@@ -185,6 +187,7 @@ async function recordFailedSync({
 export async function runTraccarPositionSync({
   supabase,
   organizationId,
+  configuration,
 }: RunTraccarPositionSyncInput): Promise<RunTraccarPositionSyncResult> {
   const normalizedOrganizationId =
     organizationId.trim();
@@ -200,7 +203,9 @@ export async function runTraccarPositionSync({
 
   try {
     const positions =
-      await loadTraccarLatestPositions();
+      await loadTraccarLatestPositions(
+        configuration
+      );
 
     summary.received =
       positions.length;
