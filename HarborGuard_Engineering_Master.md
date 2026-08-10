@@ -8687,3 +8687,28 @@ the 14 currently skipped HERE observations.
 - Existing Traccar scheduling remained untouched.
 - No traffic-flow QStash schedule was created or changed.
 - Next step: commit this documentation milestone, then separately verify and deploy the receipt migration before wiring the claim/finalization lifecycle into the traffic-flow endpoint.
+
+## 2026-08-10 - Production traffic-flow collection receipt migration deployed
+
+- Deployed and verified the production traffic-flow collection receipt migration.
+- Repository HEAD remained at documentation commit `0767441` throughout the database deployment.
+- Applied migration `20260810174500_add_traffic_flow_collection_receipts.sql` to the linked production Supabase database.
+- Supabase reported the migration application completed successfully.
+- Remote migration history now records `20260810174500`.
+- Local and remote migration versions for `20260810174500` match.
+- No pending migrations remain after deployment.
+- Production now contains the `traffic_flow_collection_receipts` receipt boundary introduced by implementation commit `8799a58`.
+- Production now contains the receipt lifecycle RPCs:
+  - `claim_traffic_flow_collection`;
+  - `complete_traffic_flow_collection`;
+  - `fail_traffic_flow_collection`.
+- The receipt boundary includes retry-attempt tracking through `attempt_count`.
+- The repository remained unchanged during the production database deployment.
+- Local and remote `main` remained at `0767441`.
+- No source code changed during deployment.
+- No traffic-flow endpoint code changed.
+- No traffic-flow orchestrator code changed.
+- No traffic-flow writer code changed.
+- No traffic-flow QStash schedule was created or changed.
+- Production receipt infrastructure is now deployed, but the traffic-flow endpoint has not yet been wired to the receipt lifecycle.
+- Next step: perform an audit-first review of the exact endpoint and orchestration insertion points for `claim_traffic_flow_collection`, `complete_traffic_flow_collection`, and `fail_traffic_flow_collection` before changing source code.
