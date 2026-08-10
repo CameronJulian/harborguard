@@ -57,21 +57,6 @@ export async function GET(request: Request) {
       );
     }
 
-    const organizationId =
-      process.env.TRACCAR_SYNC_ORGANIZATION_ID?.trim();
-
-    if (!organizationId) {
-      return NextResponse.json(
-        {
-          error:
-            "TRACCAR_SYNC_ORGANIZATION_ID is not configured.",
-        },
-        {
-          status: 500,
-        }
-      );
-    }
-
     const supabase = createClient(
       supabaseUrl,
       serviceRoleKey,
@@ -84,63 +69,92 @@ export async function GET(request: Request) {
     );
 
     const {
-      data: organization,
-      error: organizationError,
-    } = await supabase
-      .from("organizations")
-      .select("id")
-      .eq("id", organizationId)
-      .maybeSingle();
-
-    if (organizationError) {
-      throw organizationError;
-    }
-
-    if (!organization) {
-      return NextResponse.json(
-        {
-          error:
-            "TRACCAR_SYNC_ORGANIZATION_ID does not match an organization.",
-        },
-        {
-          status: 500,
-        }
-      );
-    }
-
-    const {
-      data: integration,
+      data: integrations,
       error: integrationError,
     } = await supabase
       .from("telematics_integrations")
-      .select("id")
-      .eq("organization_id", organizationId)
+      .select("organization_id")
       .eq("provider", "traccar")
       .eq("enabled", true)
-      .maybeSingle();
+      .order("organization_id", {
+        ascending: true,
+      });
 
     if (integrationError) {
       throw integrationError;
     }
 
-    if (!integration) {
-      return NextResponse.json(
-        {
-          error:
-            "Enabled Traccar integration is not configured for this organization.",
-        },
-        {
-          status: 500,
-        }
-      );
-    }
-    const result =
-      await runTraccarPositionSync({
-        supabase,
-        organizationId,
-      });
+    const enabledIntegrations =
+      integrations ?? [];
 
-    return NextResponse.json(result);
+    const organizationResults: Array<{
+      organizationId: string;
+      success: boolean;
+      result?: unknown;
+      error?: string;
+    }> = [];
+
+    for (const integration of enabledIntegrations) {
+      const organizationId =
+        integration.organization_id;
+
+      try {
+        const result =
+          await runTraccarPositionSync({
+            supabase,
+            organizationId,
+          });
+
+        organizationResults.push({
+          organizationId,
+          success: true,
+          result,
+        });
+      } catch (error: unknown) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : typeof error === "object" &&
+                error !== null
+              ? JSON.stringify(error)
+              : String(
+                  error ||
+                    "Traccar position sync failed."
+                );
+
+        console.error(
+          "[traccar position cron organization]",
+          {
+            organizationId,
+            error,
+          }
+        );
+
+        organizationResults.push({
+          organizationId,
+          success: false,
+          error: message,
+        });
+      }
+    }
+
+    const succeeded =
+      organizationResults.filter(
+        (entry) => entry.success
+      ).length;
+
+    const failed =
+      organizationResults.length -
+      succeeded;
+
+    return NextResponse.json({
+      success: failed === 0,
+      provider: "traccar",
+      integrations: enabledIntegrations.length,
+      succeeded,
+      failed,
+      organizations: organizationResults,
+    });
   }
   catch (error: unknown) {
     console.error(
