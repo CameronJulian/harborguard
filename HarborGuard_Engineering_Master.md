@@ -8961,3 +8961,74 @@ HarborGuard can now compare the existing production threat score with a congesti
 This closes the diagnostic-only congestion multiplier implementation gap while keeping congestion weighting out of production threat decisions.
 
 The next step should be real-route validation of these per-threat diagnostics before considering any production weighting change.
+
+---
+
+## 2026-08-10 - Real-route per-threat congestion diagnostics verified
+
+### Production validation
+
+Implementation under validation:
+
+- `56a82f4` - Add congestion threat score diagnostics
+- documentation baseline before validation: `efe6e88`
+
+A controlled authenticated production request was sent to:
+
+`POST /api/route-safety/predict`
+
+The request deliberately omitted both `vehicleId` and `tripId`.
+
+This prevented eligibility for the vehicle-specific automatic escalation and automatic rerouting branches and prevented trip-linked route prediction snapshot persistence.
+
+### HTTP result
+
+- HTTP status: `200`
+- request succeeded: `true`
+- returned threat count: `7`
+- `riskScore = 100`
+- `riskLevel = CRITICAL`
+- `threatRiskScore = 100`
+- `threatRiskLevel = CRITICAL`
+- `trafficRiskScore = 100`
+- `trafficRiskLevel = critical`
+- aggregate `trafficCongestionMultiplier = 1.5`
+- aggregate `diagnosticTrafficWeightedThreatRisk = 100`
+
+### Per-threat diagnostic verification
+
+All seven returned threats exposed:
+
+- `averageCongestion`
+- `trafficCongestionMultiplier`
+- `scoreBeforeTrafficWeighting`
+- `scoreAfterTrafficWeighting`
+
+For all seven threats:
+
+- `averageCongestion = 75`
+- `trafficCongestionMultiplier = 1.5`
+- `scoreBeforeTrafficWeighting` matched the existing production `score`
+- `scoreAfterTrafficWeighting` matched the expected rounded and clamped congestion-weighted score
+
+Representative validated results:
+
+- critical road closure: production `69` -> diagnostic `100`
+- critical smash-and-grab hotspot: production `48` -> diagnostic `72`
+- high roadblock: production `36` -> diagnostic `54`
+- aggregated road-risk collision segment: production `35` -> diagnostic `53`
+- Stock Road roadworks: production `30` -> diagnostic `45`
+- New Eisleben Road roadworks: production `30` -> diagnostic `45`
+- traffic-light outage: production `22` -> diagnostic `33`
+
+### Result
+
+`PASS: REAL-ROUTE PER-THREAT CONGESTION DIAGNOSTICS VERIFIED.`
+
+The real production route confirms that the congestion diagnostics behave correctly while the existing production threat scores remain unchanged.
+
+No production congestion weighting has been enabled.
+
+Production warnings, escalation thresholds, rerouting thresholds, threat sorting, and production risk calculation remain based on the existing production score path.
+
+The next step is to evaluate the diagnostic evidence before considering any production congestion weighting.
