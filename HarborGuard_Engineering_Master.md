@@ -8581,3 +8581,26 @@ the 14 currently skipped HERE observations.
 - Tracked working tree was clean after push.
 - Nothing remained staged.
 - Next step: perform an audit-first assessment of traffic-flow retry/idempotency behavior before enabling recurring QStash traffic-flow collection.
+
+## 2026-08-10 - Traffic-flow collection identity schema
+
+- Completed the audit-first traffic-flow retry/idempotency schema foundation.
+- Implementation commit: `29b3b83`.
+- Added migration `supabase/migrations/20260810160000_add_traffic_flow_collection_key.sql`.
+- Added nullable `collection_key` to `public.traffic_flow_observations`.
+- Non-null collection keys must be nonblank.
+- Added database-level unique collection identity across:
+  - organization ID;
+  - provider;
+  - provider segment ID;
+  - collection key.
+- Existing observations remain compatible because `collection_key` is nullable.
+- Existing unkeyed/manual persistence remains structurally supported.
+- The migration was committed and pushed to `origin/main`.
+- Local and remote `main` both ended at `29b3b83`.
+- The production database migration has not yet been applied.
+- No traffic-flow writer behavior changed.
+- No traffic-flow endpoint behavior changed.
+- Existing Traccar scheduling remained untouched.
+- No traffic-flow QStash schedule was created or changed.
+- Next step: wire the optional collection key through the traffic-flow persistence path using conflict-safe persistence before enabling recurring QStash collection.
