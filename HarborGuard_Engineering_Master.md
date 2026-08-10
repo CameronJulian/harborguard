@@ -8784,3 +8784,28 @@ the 14 currently skipped HERE observations.
 - No database schema changed during production verification.
 - No recurring traffic-flow QStash schedule was created or changed.
 - Next step: commit and push this documentation milestone before deciding whether the traffic-flow recurring QStash schedule is ready to be enabled.
+
+## Live production traffic-flow collection verified - 2026-08-10
+
+- Production verification completed against `https://harborguard.vercel.app`.
+- Repository baseline remained `c70e6ad`.
+- Verification collection key: `harborguard-live-traffic-test-549982d376f54c4bb9c1b3ffe9a3485b`.
+- Source vehicle ID: `152119a0-6497-4692-a40f-4ced454d722e`.
+- Source vehicle location timestamp: `2026-08-10T16:39:29+00:00`.
+- Source location age at invocation was approximately `2.59` minutes.
+- Traffic scope resolved successfully with `scopeResolved = true`.
+- HERE returned `20` traffic-flow records.
+- HarborGuard persisted `6` valid traffic-flow observations.
+- `14` provider records were skipped because they did not contain a usable provider segment ID.
+- Database verification confirmed exactly `6` observations for the collection key.
+- Production receipt ID: `8326ca72-aa12-45d5-9d26-20d58b009cd9`.
+- Receipt completed with `processing_status = processed`.
+- Receipt completed on `attempt_count = 1`.
+- Persisted observations included live HERE traffic data for roads including Vanguard Drive, Klipfontein Road, Lansdowne Road and the N1.
+- Endpoint persisted count matched the independently queried database observation count.
+- This verifies the production path from fresh normalized Traccar vehicle location -> traffic scope resolution -> HERE traffic retrieval -> normalized HarborGuard persistence -> receipt completion.
+- Production message-level retry idempotency had already been verified separately before this live-scope test.
+- No source code changed during production verification.
+- No database schema changed during production verification.
+- No recurring traffic-flow QStash schedule was created or changed.
+- Next step: commit and push this documentation milestone, then audit the existing QStash/cron scheduling architecture before deciding whether to enable recurring production traffic-flow collection.
