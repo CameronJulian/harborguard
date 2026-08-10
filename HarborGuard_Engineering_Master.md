@@ -7967,3 +7967,23 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Production build passed.
 - This establishes the provider-side insertion point required for future secure per-organization Traccar credential resolution.
 - Next step: audit the smallest secure server-only credential resolver design before implementing tenant-specific secret storage.
+## 2026-08-10 - Traccar sync configuration injection
+
+- Extended the Traccar position-sync boundary to accept explicit provider configuration.
+- Implementation commit: `49ab9c0`.
+- Imported the existing `TraccarConfiguration` provider contract into `runTraccarPositionSync.ts`.
+- Added optional `configuration?: TraccarConfiguration` to `RunTraccarPositionSyncInput`.
+- Updated `runTraccarPositionSync()` to receive the optional configuration.
+- Passed the configuration through to `loadTraccarLatestPositions(configuration)`.
+- Preserved existing production behavior because configuration remains optional.
+- Existing cron callers that provide only `supabase` and `organizationId` remain valid.
+- Environment-backed Traccar configuration therefore remains the active production fallback.
+- No cron scheduler logic was changed.
+- No telematics integration registry schema was changed.
+- No provider credentials were stored or migrated.
+- No production environment variables were changed.
+- No Supabase secret storage was introduced.
+- TypeScript validation passed.
+- Production build passed.
+- This completes the provider-to-sync configuration injection path required for a future organization-specific credential resolver.
+- Next step: audit the exact cron-side insertion point for resolving configuration from each enabled integration before implementing any new secret storage.
