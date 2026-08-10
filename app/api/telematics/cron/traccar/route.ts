@@ -76,7 +76,7 @@ export async function GET(request: Request) {
       error: integrationError,
     } = await supabase
       .from("telematics_integrations")
-      .select("organization_id, credential_source, base_url")
+      .select("organization_id, credential_source, credential_reference, base_url")
       .eq("provider", "traccar")
       .eq("enabled", true)
       .order("organization_id", {
@@ -107,6 +107,8 @@ export async function GET(request: Request) {
             organizationId,
             credentialSource:
               integration.credential_source,
+            credentialReference:
+              integration.credential_reference,
             baseUrl:
               integration.base_url,
           });

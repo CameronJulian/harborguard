@@ -8,12 +8,14 @@ import {
 export type ResolveTraccarIntegrationConfigurationInput = {
   organizationId: string;
   credentialSource: string;
+  credentialReference: string | null;
   baseUrl: string | null;
 };
 
 export function resolveTraccarIntegrationConfiguration({
   organizationId,
   credentialSource,
+  credentialReference,
   baseUrl,
 }: ResolveTraccarIntegrationConfigurationInput): TraccarConfiguration {
   if (credentialSource !== "environment") {
@@ -25,11 +27,42 @@ export function resolveTraccarIntegrationConfiguration({
   const environmentConfiguration =
     getEnvironmentTraccarConfiguration();
 
+  const normalizedCredentialReference =
+    credentialReference?.trim() || null;
+
+  let token =
+    environmentConfiguration.token;
+
+  if (normalizedCredentialReference) {
+    if (
+      !/^[A-Z][A-Z0-9_]{1,127}$/.test(
+        normalizedCredentialReference
+      )
+    ) {
+      throw new Error(
+        `Invalid Traccar credential reference for organization ${organizationId}.`
+      );
+    }
+
+    const referencedToken =
+      process.env[
+        normalizedCredentialReference
+      ]?.trim();
+
+    if (!referencedToken) {
+      throw new Error(
+        `Traccar credential reference "${normalizedCredentialReference}" is not configured for organization ${organizationId}.`
+      );
+    }
+
+    token = referencedToken;
+  }
+
   const configuredBaseUrl =
     baseUrl?.trim();
 
   return {
-    token: environmentConfiguration.token,
+    token,
     baseUrl: configuredBaseUrl
       ? configuredBaseUrl.replace(/\/+$/, "")
       : environmentConfiguration.baseUrl,

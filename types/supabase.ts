@@ -1955,6 +1955,7 @@ export type Database = {
         Row: {
           base_url: string | null
           created_at: string
+          credential_reference: string | null
           credential_source: string
           enabled: boolean
           id: string
@@ -1966,6 +1967,7 @@ export type Database = {
         Insert: {
           base_url?: string | null
           created_at?: string
+          credential_reference?: string | null
           credential_source?: string
           enabled?: boolean
           id?: string
@@ -1977,6 +1979,7 @@ export type Database = {
         Update: {
           base_url?: string | null
           created_at?: string
+          credential_reference?: string | null
           credential_source?: string
           enabled?: boolean
           id?: string
