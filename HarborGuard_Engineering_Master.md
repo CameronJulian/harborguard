@@ -8250,3 +8250,46 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Tracked working tree was clean after push.
 - Nothing remained staged.
 - Next step: audit the organization-specific traffic-flow collection geography and cadence before integrating the writer into the existing provider cycle.
+
+
+## 2026-08-10 - Traffic-flow collection scope resolver
+
+- Completed the audit-first traffic-flow collection geography milestone.
+- Implementation commit: `c0a5b96`.
+- Added:
+  - `lib/traffic/resolveTrafficFlowCollectionScope.ts`
+- Added a reusable organization-scoped traffic-flow collection-scope resolver.
+- Collection geography is derived from HarborGuard vehicle-location data rather than a hard-coded city fallback.
+- The resolver:
+  - queries organization-scoped `vehicle_locations`;
+  - orders locations by `recorded_at` descending;
+  - inspects the newest records first;
+  - selects the first location with valid coordinates;
+  - validates latitude range `-90..90`;
+  - validates longitude range `-180..180`;
+  - requires a source vehicle ID;
+  - requires a source recorded timestamp;
+  - returns `null` when no valid organization vehicle location is available.
+- The collection radius reuses HarborGuard's existing 10 km traffic-intelligence precedent.
+- The resolved scope carries:
+  - latitude;
+  - longitude;
+  - radius meters;
+  - source vehicle ID;
+  - source location timestamp.
+- No Cape Town fallback coordinates were introduced.
+- No HERE API request was performed.
+- No traffic-flow observations were persisted.
+- No writer integration was added.
+- No provider-cycle behavior was changed.
+- No provider cron schedule was changed.
+- No location freshness cutoff was introduced yet.
+- No forecasting logic was added.
+- TypeScript validation passed.
+- Production build passed.
+- Implementation commit contained exactly one new file.
+- Commit `c0a5b96` was pushed successfully to `origin/main`.
+- Local and remote `main` both ended at `c0a5b96`.
+- Tracked working tree was clean after push.
+- Nothing remained staged.
+- Next step: audit and choose the smallest safe traffic-flow collection cadence before wiring collection scope, HERE flow retrieval, and observation persistence into the provider cycle.
