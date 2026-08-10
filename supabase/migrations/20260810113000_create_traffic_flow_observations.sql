@@ -1,4 +1,4 @@
-﻿create table if not exists public.traffic_flow_observations (
+create table if not exists public.traffic_flow_observations (
   id uuid primary key default gen_random_uuid(),
 
   organization_id uuid not null
