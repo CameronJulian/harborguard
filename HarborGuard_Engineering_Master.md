@@ -7987,3 +7987,26 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Production build passed.
 - This completes the provider-to-sync configuration injection path required for a future organization-specific credential resolver.
 - Next step: audit the exact cron-side insertion point for resolving configuration from each enabled integration before implementing any new secret storage.
+## 2026-08-10 - Traccar integration configuration resolver
+
+- Added a server-only Traccar integration configuration resolver.
+- Implementation commit: `3c9501a`.
+- Added `lib/telematics/resolveTraccarIntegrationConfiguration.ts`.
+- The resolver accepts `organizationId`, `credentialSource`, and optional `baseUrl`.
+- The resolver currently supports only `credential_source = "environment"`.
+- Unsupported credential sources fail explicitly rather than silently falling back to shared credentials.
+- The resolver reuses `getEnvironmentTraccarConfiguration()` for the provider token.
+- Organization-specific non-secret `base_url` now participates in runtime Traccar configuration when present.
+- The cron registry query now selects `organization_id`, `credential_source`, and `base_url`.
+- The cron resolves a `TraccarConfiguration` separately for each enabled integration.
+- The resolved configuration is passed into `runTraccarPositionSync()`.
+- Per-organization failure isolation remains intact because configuration resolution occurs inside the existing organization `try` block.
+- No provider secret values were written to `telematics_integrations`.
+- No provider secret values were written to Supabase metadata.
+- No database migration was introduced.
+- No production environment variables were changed.
+- Existing environment-backed credentials remain the active credential source.
+- TypeScript validation passed.
+- Production build passed.
+- This completes the registry-to-provider runtime configuration path for the current environment credential source.
+- Next step: perform a fresh audit-first assessment before introducing any tenant-specific secret-storage mechanism or additional telematics credential source.
