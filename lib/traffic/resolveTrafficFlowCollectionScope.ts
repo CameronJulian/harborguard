@@ -1,4 +1,5 @@
 const DEFAULT_TRAFFIC_FLOW_RADIUS_METERS = 10000;
+const MAX_TRAFFIC_FLOW_LOCATION_AGE_MINUTES = 15;
 
 export type TrafficFlowCollectionScope = {
   latitude: number;
@@ -42,6 +43,9 @@ export async function resolveTrafficFlowCollectionScope(
       const longitude =
         Number(location?.longitude);
 
+      const recordedAtMs =
+        new Date(location?.recorded_at).getTime();
+
       return (
         Number.isFinite(latitude) &&
         latitude >= -90 &&
@@ -50,7 +54,12 @@ export async function resolveTrafficFlowCollectionScope(
         longitude >= -180 &&
         longitude <= 180 &&
         Boolean(location?.vehicle_id) &&
-        Boolean(location?.recorded_at)
+        Boolean(location?.recorded_at) &&
+        Number.isFinite(recordedAtMs) &&
+        Date.now() - recordedAtMs <=
+          MAX_TRAFFIC_FLOW_LOCATION_AGE_MINUTES *
+            60 *
+            1000
       );
     });
 
