@@ -8010,3 +8010,29 @@ Pushed it to feature/expanded-incident-taxonomy.
 - Production build passed.
 - This completes the registry-to-provider runtime configuration path for the current environment credential source.
 - Next step: perform a fresh audit-first assessment before introducing any tenant-specific secret-storage mechanism or additional telematics credential source.
+## 2026-08-10 - Traccar credential reference boundary
+
+- Added a non-secret credential reference boundary for Traccar integrations.
+- Implementation commit: `3b621de`.
+- Added migration `20260810100000_add_telematics_credential_reference.sql`.
+- Added nullable `credential_reference` to `telematics_integrations`.
+- The migration explicitly documents that `credential_reference` must never contain an API token, password, secret key, or other credential value.
+- Added a non-blank constraint for non-null credential references.
+- Updated the generated Supabase type surface for Row, Insert, and Update.
+- Updated the Traccar cron query to select `credential_reference`.
+- The cron now passes `credential_reference` into `resolveTraccarIntegrationConfiguration()`.
+- The Traccar resolver now accepts optional organization-specific credential references.
+- Credential references are validated as uppercase environment-variable style names.
+- When `credential_reference` is null, the existing environment-backed `TRACCAR_API_TOKEN` behavior remains active.
+- When `credential_reference` is present, the resolver reads that named environment variable server-side.
+- A missing referenced environment variable causes that organization's sync to fail explicitly.
+- No provider secret values were written to Supabase.
+- No API token column was introduced.
+- No password or secret-key column was introduced.
+- No secret value was added to integration metadata.
+- No production environment variables were changed.
+- The migration was committed but was not manually applied during implementation.
+- TypeScript validation passed.
+- Production build passed.
+- This establishes organization-specific Traccar credential selection without storing provider secrets in the database.
+- Next step: perform a fresh audit-first assessment of migration deployment and production compatibility before configuring any organization-specific credential reference.
