@@ -11661,3 +11661,67 @@ After this documentation work item is committed and pushed:
 
 Do not complete the production trip until this documentation work item is
 committed and pushed.
+
+
+## Delivered-trip actual-departure integrity guard implemented
+
+**Implementation commit:** `5e847bd`
+
+**Parent baseline:** `c41e92f`
+
+### Production failure that triggered this work
+
+Controlled completed-trip validation exposed a lifecycle-integrity gap.
+
+Trip `41d58a40-90c9-46d1-a45b-85a5a4832a66` transitioned to `delivered` and received `actual_arrival`, but its existing `actual_departure` was null.
+
+Because completed-trip outcome generation requires both `actual_departure` and `actual_arrival`, `createCompletedTripOutcome` correctly skipped outcome creation. The completed-trip prediction evaluator consequently had no outcome to evaluate.
+
+No manual production database repair was performed.
+
+### Implemented guard
+
+`lib/fleet/updateActiveTripFromLocation.ts` now validates the persisted trip before allowing a requested `delivered` transition.
+
+For `requestedStatus === "delivered"`, HarborGuard reads the trip's persisted `actual_departure` using both:
+
+- `activeTrip.id`
+- `organizationId`
+
+If `actual_departure` is absent, the lifecycle throws:
+
+`Trip cannot be completed before actual departure is recorded.`
+
+The failure occurs before `updates.actual_arrival = occurredAt` and before the trip update is persisted.
+
+Therefore an incomplete trip can no longer be converted to `delivered` while simultaneously creating an invalid completed-trip observation window.
+
+### Preserved semantics
+
+- Normal scheduled-trip activation remains unchanged.
+- A trip beginning from `scheduled` still records `actual_departure: occurredAt`.
+- Completed-trip outcome semantics were not changed.
+- Completed-trip prediction evaluator semantics were not changed.
+- Route soft-cap production aggregation remains disabled.
+- No database migration was introduced.
+- No synthetic or inferred departure timestamp is created.
+
+### Verification
+
+- Exact implementation contract verification passed.
+- Existing scheduled-trip departure lifecycle verification passed.
+- `git diff --check` passed.
+- TypeScript validation passed with `npx tsc --noEmit`.
+- Production build passed with `npm run build`.
+- Implementation commit contains only `lib/fleet/updateActiveTripFromLocation.ts`.
+- Local and remote `main` both resolved to implementation commit `5e847bd` after push.
+
+### Remaining lifecycle work
+
+The production failure audit also established a separate observability/integrity gap in the post-location lifecycle: a newly delivered trip can currently receive a skipped completed-trip outcome result without that skipped result being explicitly surfaced by `runPostLocationUpdateLifecycle`.
+
+That behavior is intentionally not changed by implementation commit `5e847bd` and remains a separate focused work item.
+
+The already delivered controlled production trip must not be manually repaired until its recovery/replay semantics are separately audited.
+
+**Next:** document and close this implementation work item, then audit the post-location lifecycle's handling of skipped completed-trip outcome creation before performing another controlled production completion.
