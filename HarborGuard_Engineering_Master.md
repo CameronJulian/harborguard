@@ -9032,3 +9032,76 @@ No production congestion weighting has been enabled.
 Production warnings, escalation thresholds, rerouting thresholds, threat sorting, and production risk calculation remain based on the existing production score path.
 
 The next step is to evaluate the diagnostic evidence before considering any production congestion weighting.
+
+---
+
+## 2026-08-11 - Threat score saturation diagnostics
+
+### Implementation
+
+Commit: `2d11034`
+
+File changed:
+
+- `app/api/route-safety/predict/route.ts`
+
+HarborGuard now exposes diagnostic visibility into route threat score saturation without changing production scoring behavior.
+
+The following route-level diagnostics were added:
+
+- `candidateThreatCount`
+- `consolidatedThreatCount`
+- `duplicateThreatsRemoved`
+- `uncappedThreatRiskScore`
+- `saturationAmount`
+- `isThreatScoreSaturated`
+
+### Diagnostic meaning
+
+`candidateThreatCount` records the number of route threats before existing route-level duplicate consolidation.
+
+`consolidatedThreatCount` records the number of threats remaining after existing same-type spatial consolidation.
+
+`duplicateThreatsRemoved` records the difference between those two counts.
+
+`uncappedThreatRiskScore` records the sum of the retained production threat scores before the existing `100` cap is applied.
+
+`saturationAmount` records how much threat score was hidden by the production cap.
+
+`isThreatScoreSaturated` indicates whether the uncapped retained threat score exceeded the production `threatRiskScore`.
+
+### Production behavior preserved
+
+The existing production `threatRiskScore` calculation remains unchanged.
+
+Production threat sorting remains unchanged.
+
+Automatic escalation continues to use the existing production threshold.
+
+Automatic rerouting continues to use the existing production threshold.
+
+Route prediction snapshot persistence remains unchanged.
+
+Production congestion weighting remains disabled.
+
+The new saturation fields are diagnostic response fields only.
+
+### Validation
+
+Validation completed successfully before commit:
+
+- `git diff --check`
+- `npx tsc --noEmit`
+- `npm run build`
+- Next.js production build compiled successfully
+- `123/123` static pages generated
+- exactly one source file changed
+- production scoring and action contracts verified unchanged
+
+### Result
+
+HarborGuard can now distinguish a route whose production threat score is merely capped at `100` from the underlying uncapped threat burden that produced that cap.
+
+This creates the observability needed to evaluate future threat aggregation, overlap handling, diminishing returns, or other saturation-aware scoring approaches without changing production behavior prematurely.
+
+The next step should be real-route validation of these saturation diagnostics before considering any production threat aggregation change.
