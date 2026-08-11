@@ -10894,3 +10894,152 @@ That audit should determine:
 
 Do not enable route soft-cap production aggregation until that final
 decision audit is complete and documented.
+
+---
+
+## Route soft-cap shadow persistence implemented
+
+**Status:** Implemented and source-verified
+
+**Baseline commit:** `cd3a652`
+
+**Implementation commit:** `32ba4e8`
+
+### Purpose
+
+Continue route-level soft-cap evaluation in shadow-only mode by durably
+persisting the existing diagnostic evidence alongside trip-linked route
+prediction snapshots.
+
+This change does not replace or modify production threat scoring.
+
+### Implementation
+
+Updated:
+
+- `app/api/route-safety/predict/route.ts`
+
+Added a versioned diagnostic object under:
+
+`route_prediction_snapshots.metadata.routeSoftCapShadow`
+
+Current metadata version:
+
+`1`
+
+The object persists:
+
+- `diagnosticRouteSoftCapUncappedThreatRiskScore`
+- `diagnosticRouteSoftCapThreatRiskScore`
+- `diagnosticRouteSoftCapReduction`
+- `diagnosticRouteSoftCapExcess`
+- `diagnosticRouteSoftCapRiskLevel`
+- `diagnosticRouteSoftCapCriticalAgreement`
+- `diagnosticRouteSoftCapThreatRiskScoreDelta`
+- `diagnosticRouteSoftCapWouldChangeCriticalState`
+- `diagnosticRouteSoftCapOperationallyEquivalent`
+
+### Persistence contract
+
+The canonical production snapshot fields remain unchanged:
+
+- `overall_risk_score`
+- `overall_risk_level`
+- `threat_risk_score`
+- `threat_risk_level`
+- `weather_risk_score`
+- `traffic_risk_score`
+- `traffic_risk_level`
+
+The soft-cap candidate is persisted only inside additive diagnostic
+`metadata`.
+
+No database schema migration was required because
+`route_prediction_snapshots.metadata` is already `jsonb`.
+
+### Outcome Learning compatibility
+
+The existing completed-trip v1 evaluation pipeline remains unchanged.
+
+The evaluator continues to consume the existing production prediction
+contract and does not use `routeSoftCapShadow` to determine its current
+classification.
+
+This preserves historical and production evaluation semantics while
+allowing future analysis to compare the diagnostic soft-cap candidate with
+observed completed-trip outcomes.
+
+### Validation
+
+Implementation verification completed successfully:
+
+- exactly one source file changed
+- `12` lines were added
+- `git diff --check` passed
+- `npx tsc --noEmit` passed
+- `npm run build` passed
+- Next.js production build generated all `123/123` static pages
+- exactly one `routeSoftCapShadow` object exists
+- production snapshot score fields remain unchanged
+- production critical action gates remain unchanged
+
+Implementation commit:
+
+`32ba4e8`
+
+### Production safety
+
+Production `threatRiskScore` remains unchanged.
+
+Production `threatRiskLevel` remains unchanged.
+
+Persisted `threat_risk_score` semantics remain unchanged.
+
+Persisted `threat_risk_level` semantics remain unchanged.
+
+Completed-trip v1 evaluation remains unchanged.
+
+Automatic escalation and rerouting remain unchanged.
+
+Marginal-decay production aggregation remains disabled.
+
+Route soft-cap production aggregation remains disabled.
+
+Production congestion weighting remains disabled.
+
+### Current rollout status
+
+The route-level soft-cap remains a shadow-only diagnostic candidate.
+
+The new persistence provides durable evidence collection for trip-linked
+predictions without redefining production score semantics.
+
+This enables future calibration analysis against completed-trip outcomes,
+including evaluation of:
+
+- the soft-cap constant `40`
+- the production boundary at `80`
+- exact score deltas
+- critical-state agreement
+- operational equivalence
+- observed trip outcomes across a larger real-world distribution
+
+### Next engineering step
+
+Deploy implementation commit `32ba4e8` and validate shadow persistence
+using a legitimate trip-linked Route Safety prediction.
+
+Verify that:
+
+- the snapshot is created successfully
+- production `threat_risk_score` remains the existing production score
+- production `threat_risk_level` remains unchanged
+- `metadata.routeSoftCapShadow.version` equals `1`
+- all nine route soft-cap shadow fields are persisted
+- no production aggregation behavior changes
+- completed-trip v1 evaluation behavior remains unchanged
+
+After production shadow persistence is verified, continue collecting
+trip-linked evidence before reconsidering production rollout.
+
+Do not enable route soft-cap production aggregation.
