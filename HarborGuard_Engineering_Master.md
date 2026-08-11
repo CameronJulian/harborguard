@@ -9242,3 +9242,96 @@ The validation demonstrates a concrete saturated route where:
 This closes the real-route validation step for the diagnostic-only threat saturation instrumentation.
 
 The next engineering step should analyze the production threat aggregation model using these diagnostics before changing any production scoring behavior.
+
+---
+
+## Threat family diagnostics
+
+**Status:** Implemented, verified, committed, and pushed
+**Implementation commit:** `32dddf1`
+**Parent commit:** `30ab42f`
+
+### Purpose
+
+Added diagnostic-only threat-family visibility to the route safety prediction pipeline so HarborGuard can measure how different categories of threats contribute to route threat-score saturation before any production aggregation or diminishing-return weighting is introduced.
+
+### Threat family taxonomy
+
+The route prediction endpoint now classifies threats into the following diagnostic families:
+
+- `security`
+- `access_disruption`
+- `road_safety`
+- `weather_environment`
+- `other`
+
+Current mappings include:
+
+- `smash_grab_hotspot`, `protest` -> `security`
+- `roadblock`, `road_closure`, `roadworks`, `congestion`, `lane_closure`, `vehicle_breakdown` -> `access_disruption`
+- `collision`, `traffic_light_outage`, `road_hazard` -> `road_safety`
+- `weather_hazard`, `flooding` -> `weather_environment`
+- unclassified threat types -> `other`
+
+### Diagnostic response fields
+
+`POST /api/route-safety/predict` now exposes:
+
+- `threatFamilyCount`
+- `threatFamilyBreakdown`
+- `largestThreatFamily`
+- `largestThreatFamilyCount`
+- `largestThreatFamilyScore`
+
+`threatFamilyBreakdown` records both the number of threats and total production threat score contributed by each family.
+
+These fields provide visibility into whether route threat-score saturation is being driven by several independent threat families or repeated contributions from the same general family.
+
+### Verification
+
+Implementation verification confirmed:
+
+- exactly one production source file was modified:
+  - `app/api/route-safety/predict/route.ts`
+- TypeScript validation passed
+- production build passed
+- all `123/123` static pages generated successfully
+- production `threatRiskScore` calculation remains unchanged
+- production threat sorting remains unchanged
+- automatic escalation threshold remains unchanged
+- automatic rerouting threshold remains unchanged
+- route prediction snapshot persistence remains unchanged
+- no diminishing-return family weighting has been implemented
+- production congestion weighting remains disabled
+
+### Production behavior preserved
+
+This milestone is diagnostic only.
+
+Threat-family information does **not** currently modify:
+
+- individual production threat scores
+- `threatRiskScore`
+- `riskScore`
+- threat sorting
+- escalation eligibility
+- automatic rerouting eligibility
+- persisted route prediction scores
+
+No production threat aggregation change has been enabled.
+
+### Next validation
+
+Perform real-route validation of the new threat-family diagnostic fields.
+
+The validation should confirm that:
+
+1. `threatFamilyCount` matches the number of represented diagnostic families.
+2. `threatFamilyBreakdown` correctly groups returned threats.
+3. family counts equal the returned threat count when summed.
+4. family `totalScore` values equal the corresponding production threat scores when summed.
+5. `largestThreatFamily`, `largestThreatFamilyCount`, and `largestThreatFamilyScore` agree with the breakdown.
+6. existing saturation diagnostics remain correct.
+7. production `threatRiskScore` remains unchanged.
+
+Do not introduce diminishing-return weighting or production family aggregation until real-route behavior has been observed and documented.
