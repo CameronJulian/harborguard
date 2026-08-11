@@ -1656,6 +1656,30 @@ if (roadRiskSegmentsError) {
     const diagnosticRouteSoftCapReduction =
       uncappedThreatRiskScore -
       diagnosticRouteSoftCapUncappedThreatRiskScore;
+
+    const diagnosticRouteSoftCapRiskLevel =
+      diagnosticRouteSoftCapThreatRiskScore >= 80
+        ? "CRITICAL"
+        : diagnosticRouteSoftCapThreatRiskScore >= 60
+        ? "HIGH"
+        : diagnosticRouteSoftCapThreatRiskScore >= 35
+        ? "MEDIUM"
+        : "LOW";
+
+    const diagnosticRouteSoftCapCriticalAgreement =
+      (diagnosticRouteSoftCapThreatRiskScore >= 80) ===
+      (threatRiskScore >= 80);
+
+    const diagnosticRouteSoftCapThreatRiskScoreDelta =
+      threatRiskScore -
+      diagnosticRouteSoftCapThreatRiskScore;
+
+    const diagnosticRouteSoftCapWouldChangeCriticalState =
+      !diagnosticRouteSoftCapCriticalAgreement;
+
+    const diagnosticRouteSoftCapOperationallyEquivalent =
+      diagnosticRouteSoftCapCriticalAgreement;
+
     const weatherRiskScore =
       weatherResult?.weather.riskScore ?? 0;
 
@@ -2032,6 +2056,11 @@ if (roadRiskSegmentsError) {
       diagnosticRouteSoftCapThreatRiskScore,
       diagnosticRouteSoftCapReduction,
       diagnosticRouteSoftCapExcess,
+      diagnosticRouteSoftCapRiskLevel,
+      diagnosticRouteSoftCapCriticalAgreement,
+      diagnosticRouteSoftCapThreatRiskScoreDelta,
+      diagnosticRouteSoftCapWouldChangeCriticalState,
+      diagnosticRouteSoftCapOperationallyEquivalent,
       threatRiskLevel,
       weatherRiskScore,
       weatherContribution,
