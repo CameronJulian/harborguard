@@ -9512,3 +9512,247 @@ HarborGuard can now observe both total score saturation and the family-level str
 For this route, `access_disruption` was the largest contributing threat family with a score of `90`, followed by `road_safety` at `57` and `security` at `48`.
 
 The next engineering step should use these verified diagnostics to evaluate candidate diminishing-return or family-aware aggregation models diagnostically before any production threat-score formula is changed.
+
+---
+
+## 2026-08-11 - Marginal-decay threat diagnostics
+
+### Implementation
+
+Implementation commit: `3e593ad`
+
+Parent commit: `bfd8888`
+
+File changed:
+
+- `app/api/route-safety/predict/route.ts`
+
+HarborGuard now exposes a diagnostic-only marginal-decay threat aggregation model for evaluating repeated same-family threat contributions.
+
+The model does not replace or alter production `threatRiskScore`.
+
+### Marginal-decay model
+
+Within each diagnostic threat family, threats are ordered by their existing production score from highest to lowest.
+
+The model applies the following contribution weights:
+
+- first threat in the family -> `100%`
+- second threat -> `50%`
+- third threat -> `25%`
+- fourth threat -> `12.5%`
+- each subsequent threat halves again
+
+The weight is calculated with:
+
+`Math.pow(0.5, index)`
+
+The strongest threat in each family therefore remains fully represented, while additional same-family threats contribute progressively less.
+
+### Diagnostic response fields
+
+The Route Safety prediction response now exposes:
+
+- `diagnosticMarginalDecayFamilyBreakdown`
+- `diagnosticMarginalDecayUncappedThreatRiskScore`
+- `diagnosticMarginalDecayThreatRiskScore`
+- `diagnosticMarginalDecayReduction`
+
+Each family entry exposes:
+
+- threat count
+- raw total production score
+- marginal-decay score
+- reduction
+- individual threat contributions
+- contribution position
+- contribution weight
+- weighted contribution score
+
+### Local real-route validation
+
+The diagnostic implementation was validated locally against the same real route used for earlier threat-family and saturation validation.
+
+The local request completed successfully with HTTP `200`.
+
+The production threat scoring contract remained:
+
+- `uncappedThreatRiskScore = 195`
+- `threatRiskScore = 100`
+
+The marginal-decay diagnostic result was:
+
+- `diagnosticMarginalDecayUncappedThreatRiskScore = 150.25`
+- `diagnosticMarginalDecayThreatRiskScore = 100`
+- `diagnosticMarginalDecayReduction = 44.75`
+
+The diagnostic model therefore reduced the uncapped threat burden from `195` to `150.25`, a reduction of `44.75`, while production continued to expose the existing capped score of `100`.
+
+### Family validation
+
+#### security
+
+Raw score:
+
+`48`
+
+Marginal-decay score:
+
+`48`
+
+Reduction:
+
+`0`
+
+Contribution:
+
+- `smash_grab_hotspot`
+  - production score: `48`
+  - position: `1`
+  - weight: `1`
+  - weighted score: `48`
+
+#### access_disruption
+
+Raw score:
+
+`90`
+
+Marginal-decay score:
+
+`56.25`
+
+Reduction:
+
+`33.75`
+
+Contributions:
+
+- `roadblock`
+  - production score: `36`
+  - position: `1`
+  - weight: `1`
+  - weighted score: `36`
+
+- first `roadworks`
+  - production score: `27`
+  - position: `2`
+  - weight: `0.5`
+  - weighted score: `13.5`
+
+- second `roadworks`
+  - production score: `27`
+  - position: `3`
+  - weight: `0.25`
+  - weighted score: `6.75`
+
+The family calculation reconciles:
+
+`36 + 13.5 + 6.75 = 56.25`
+
+#### road_safety
+
+Raw score:
+
+`57`
+
+Marginal-decay score:
+
+`46`
+
+Reduction:
+
+`11`
+
+Contributions:
+
+- `collision`
+  - production score: `35`
+  - position: `1`
+  - weight: `1`
+  - weighted score: `35`
+
+- `traffic_light_outage`
+  - production score: `22`
+  - position: `2`
+  - weight: `0.5`
+  - weighted score: `11`
+
+The family calculation reconciles:
+
+`35 + 11 = 46`
+
+### Total reconciliation
+
+Raw family totals:
+
+`48 + 90 + 57 = 195`
+
+Marginal-decay family totals:
+
+`48 + 56.25 + 46 = 150.25`
+
+Reduction:
+
+`195 - 150.25 = 44.75`
+
+The local browser validation completed with:
+
+`PASS: LOCAL MARGINAL DECAY DIAGNOSTICS VERIFIED.`
+
+### Rejected square-root candidate
+
+An earlier diagnostic candidate using:
+
+`sqrt(100 * raw family score)`
+
+was tested locally and rejected because it increased the validated route's uncapped score from `195` to approximately `239`.
+
+That candidate was fully reverted before the marginal-decay implementation was created.
+
+The rejected square-root diagnostic identifiers are not present in the committed implementation.
+
+### Validation
+
+Before commit, the implementation passed:
+
+- `git diff --check`
+- `npx tsc --noEmit`
+- `npm run build`
+- Next.js production build compiled successfully
+- `123/123` static pages generated
+- exactly one tracked source file changed
+- production `threatRiskScore` calculation verified unchanged
+- production sorting verified unchanged
+- automatic escalation threshold verified unchanged
+- automatic rerouting threshold verified unchanged
+- route prediction snapshot persistence verified unchanged
+
+### Production behavior preserved
+
+This milestone remains diagnostic only.
+
+The marginal-decay result does not currently alter:
+
+- individual production threat scores
+- production `threatRiskScore`
+- overall production `riskScore`
+- threat sorting
+- automatic escalation
+- automatic rerouting
+- persisted production route prediction scores
+- congestion weighting
+
+Production congestion weighting remains disabled.
+
+No marginal-decay weighting has been enabled in the production threat aggregation formula.
+
+### Result
+
+HarborGuard now has a viable diagnostic model for measuring the effect of diminishing repeated same-family threat contributions.
+
+On the validated route, the model reduced the uncapped threat score from `195` to `150.25` while preserving the strongest threat in each represented family at full contribution.
+
+This provides a materially better diagnostic candidate than the rejected square-root model.
+
+The next step should be production runtime validation of these diagnostic response fields before any consideration of enabling marginal-decay aggregation in production.
