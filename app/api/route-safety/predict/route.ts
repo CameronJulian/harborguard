@@ -1627,6 +1627,35 @@ if (roadRiskSegmentsError) {
       uncappedThreatRiskScore -
       diagnosticMarginalDecayUncappedThreatRiskScore;
 
+
+    const diagnosticRouteSoftCapExcess =
+      Math.max(
+        0,
+        uncappedThreatRiskScore - 80
+      );
+
+    const diagnosticRouteSoftCapUncappedThreatRiskScore =
+      uncappedThreatRiskScore <= 80
+        ? uncappedThreatRiskScore
+        : 80 +
+          20 *
+            (
+              diagnosticRouteSoftCapExcess /
+              (
+                diagnosticRouteSoftCapExcess +
+                40
+              )
+            );
+
+    const diagnosticRouteSoftCapThreatRiskScore =
+      Math.min(
+        100,
+        diagnosticRouteSoftCapUncappedThreatRiskScore
+      );
+
+    const diagnosticRouteSoftCapReduction =
+      uncappedThreatRiskScore -
+      diagnosticRouteSoftCapUncappedThreatRiskScore;
     const weatherRiskScore =
       weatherResult?.weather.riskScore ?? 0;
 
@@ -1999,6 +2028,10 @@ if (roadRiskSegmentsError) {
       diagnosticMarginalDecayUncappedThreatRiskScore,
       diagnosticMarginalDecayThreatRiskScore,
       diagnosticMarginalDecayReduction,
+      diagnosticRouteSoftCapUncappedThreatRiskScore,
+      diagnosticRouteSoftCapThreatRiskScore,
+      diagnosticRouteSoftCapReduction,
+      diagnosticRouteSoftCapExcess,
       threatRiskLevel,
       weatherRiskScore,
       weatherContribution,
