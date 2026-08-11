@@ -10762,3 +10762,135 @@ Verify across the previously validated multi-route evidence set that:
 
 Do not enable route soft-cap production aggregation until the runtime
 decision-readiness evidence has been reviewed.
+
+---
+
+## Multi-route production decision-readiness diagnostics verified
+
+**Status:** Production runtime validation passed
+
+**Baseline commit:** `14b4487`
+
+**Decision-readiness implementation commit:** `87b7a8d`
+
+### Purpose
+
+Validate the five route soft-cap decision-readiness diagnostic fields in
+production across the same corrected five-route evidence set used for the
+route-level soft-cap investigation.
+
+All requests omitted both `vehicleId` and `tripId`.
+
+No production aggregation behavior was changed.
+
+### Routes validated
+
+1. Validated Khayelitsha Route
+2. Admin Test Route
+3. Driver Existing Route
+4. Admin Test Route Reverse
+5. Driver Existing Route Reverse
+
+### Production runtime results
+
+| Route | Production score | Production level | Soft-cap score | Soft-cap level | Critical agreement | Score delta | Would change critical state | Operationally equivalent |
+| --- | ---: | --- | ---: | --- | --- | ---: | --- | --- |
+| Validated Khayelitsha Route | 100 | CRITICAL | 94.83870967741936 | CRITICAL | true | 5.161290322580641 | false | true |
+| Admin Test Route | 100 | CRITICAL | 92.07920792079207 | CRITICAL | true | 7.920792079207928 | false | true |
+| Driver Existing Route | 27 | LOW | 27 | LOW | true | 0 | false | true |
+| Admin Test Route Reverse | 100 | CRITICAL | 92.07920792079207 | CRITICAL | true | 7.920792079207928 | false | true |
+| Driver Existing Route Reverse | 27 | LOW | 27 | LOW | true | 0 | false | true |
+
+### Aggregate results
+
+- Routes attempted: `5`
+- HTTP 200 routes: `5`
+- Formula PASS routes: `5`
+- Critical agreement routes: `5`
+- Would-change-critical-state routes: `0`
+- Operationally equivalent routes: `5`
+
+### Runtime conclusion
+
+The route-level soft-cap candidate preserved the current production
+critical/non-critical classification across all five tested routes.
+
+The three production CRITICAL routes remained CRITICAL under the
+diagnostic score:
+
+- `100 -> 94.83870967741936`
+- `100 -> 92.07920792079207`
+- `100 -> 92.07920792079207`
+
+The two LOW routes remained unchanged:
+
+- `27 -> 27`
+- `27 -> 27`
+
+No tested route crossed the production critical boundary.
+
+`diagnosticRouteSoftCapCriticalAgreement` was `true` for all five routes.
+
+`diagnosticRouteSoftCapWouldChangeCriticalState` was `false` for all five
+routes.
+
+`diagnosticRouteSoftCapOperationallyEquivalent` was `true` for all five
+routes under the current critical-threshold definition.
+
+### Validation result
+
+`PASS: MULTI-ROUTE PRODUCTION DECISION-READINESS DIAGNOSTICS VERIFIED.`
+
+### Production safety
+
+Production `threatRiskScore` was not changed.
+
+Production `threatRiskLevel` was not changed.
+
+All requests omitted `vehicleId`.
+
+All requests omitted `tripId`.
+
+Route soft-cap production aggregation remains disabled.
+
+Marginal-decay production aggregation remains disabled.
+
+Production congestion weighting remains disabled.
+
+No production threat aggregation change was enabled by this validation.
+
+### Current decision status
+
+The route-level soft-cap candidate has now demonstrated:
+
+- deterministic formula reconciliation
+- preservation of low-risk scores below the soft-cap threshold
+- compression of saturated production scores
+- forward/reverse consistency
+- production runtime availability
+- production critical-state agreement on all five tested routes
+- zero observed critical-state changes in the tested route set
+- operational equivalence under the current `>= 80` critical-action definition
+
+This is strong evidence for continued evaluation.
+
+It is not yet authorization to replace the production threat score.
+
+### Next engineering step
+
+Perform the final production-rollout decision audit.
+
+That audit should determine:
+
+- whether five-route evidence is sufficient for rollout consideration
+- whether more route distributions are required
+- whether the `80` threshold remains the correct operational boundary
+- whether the soft-cap constant `40` has sufficient calibration evidence
+- whether persisted `threat_risk_score` semantics would need versioning
+- whether dashboards or downstream consumers assume the current capped
+  production score semantics
+- whether rollout should be full replacement, shadow-only, feature-flagged,
+  or rejected
+
+Do not enable route soft-cap production aggregation until that final
+decision audit is complete and documented.
