@@ -11325,3 +11325,168 @@ comparison.
 
 Do not enable route soft-cap production aggregation during this
 validation.
+
+---
+
+## Trip-linked null-vehicle prediction snapshots made evaluation-eligible
+
+**Status:** Implemented, verified, committed, and pushed
+
+**Implementation commit:** `9237994`
+
+**Parent documentation baseline:** `98cb936`
+
+### Purpose
+
+Allow legitimate trip-linked prediction snapshots whose `vehicle_id` is
+`NULL` to participate in completed-trip prediction evaluation.
+
+This closes the eligibility gap discovered during production
+`routeSoftCapShadowEvaluation` runtime validation.
+
+### Audit finding
+
+The controlled production shadow snapshot:
+
+`4499c4f0-a66b-4159-8262-375d8b37b155`
+
+belongs to trip:
+
+`41d58a40-90c9-46d1-a45b-85a5a4832a66`
+
+and contains valid persisted `routeSoftCapShadow` metadata.
+
+The snapshot intentionally has:
+
+`vehicle_id = NULL`
+
+because the original controlled prediction omitted `vehicleId` to keep
+automatic vehicle escalation and rerouting ineligible.
+
+The completed-trip evaluator previously required all of:
+
+- matching `organization_id`
+- matching `vehicle_id`
+- matching `trip_id`
+
+That meant the legitimate trip-linked shadow snapshot could not be selected
+for completed-trip evaluation even though it was correctly linked by
+organization and trip.
+
+### Focused implementation
+
+`lib/fleet/evaluateCompletedTripPrediction.ts` now requires:
+
+- matching `organization_id`
+- matching `trip_id`
+- `vehicle_id` matching the trip vehicle OR `vehicle_id IS NULL`
+
+The snapshot eligibility filter is now:
+
+`.or(`vehicle_id.eq.${vehicleId},vehicle_id.is.null`)`
+
+The evaluator still selects only snapshots created at or before the completed
+outcome timestamp and still chooses the most recent eligible snapshot.
+
+### Vehicle safety preserved
+
+Outcome lookup continues to require the real trip vehicle ID.
+
+The existing outcome query still requires:
+
+`.eq("vehicle_id", vehicleId)`
+
+Therefore this change does not weaken completed-trip outcome ownership or
+vehicle association.
+
+Only prediction snapshot eligibility was broadened.
+
+### Canonical v1 semantics preserved
+
+The canonical completed-trip evaluation remains unchanged.
+
+Specifically:
+
+- canonical `predicted_risk_score` remains unchanged
+- canonical `predicted_risk_level` remains unchanged
+- prediction-positive threshold remains `35`
+- canonical predicted adverse-event semantics remain unchanged
+- canonical observed adverse-event semantics remain unchanged
+- canonical classification remains unchanged
+- `routeSoftCapShadowEvaluation` remains diagnostic metadata only
+- one evaluation row per trip semantics remain unchanged
+
+No database migration was introduced.
+
+Production Route Safety scoring was not changed.
+
+Route soft-cap production aggregation remains disabled.
+
+Marginal-decay production aggregation remains disabled.
+
+Production congestion weighting remains disabled.
+
+### Verification
+
+The focused implementation passed:
+
+- clean baseline verification at `98cb936`
+- exactly one source-file modification
+- exactly one snapshot-filter anchor replacement
+- organization filter retained
+- trip filter retained
+- outcome vehicle filter retained
+- snapshot vehicle eligibility expanded only to matching vehicle or `NULL`
+- canonical v1 evaluation contract verified unchanged
+- `git diff --check`
+- TypeScript validation
+- production build
+
+The source diff was:
+
+`1 insertion, 1 deletion`
+
+The implementation was committed as:
+
+`9237994 Allow trip-linked null-vehicle prediction snapshots`
+
+Local and remote `main` were verified at `9237994` after push.
+
+### Production validation status
+
+No production trip was completed during this implementation.
+
+No new vehicle-linked prediction was created.
+
+No database row was manually modified.
+
+The existing controlled shadow snapshot remains available for end-to-end
+runtime validation.
+
+Target trip:
+
+`41d58a40-90c9-46d1-a45b-85a5a4832a66`
+
+Target snapshot:
+
+`4499c4f0-a66b-4159-8262-375d8b37b155`
+
+### Next engineering step
+
+After this documentation update is committed and pushed, perform the
+controlled end-to-end completed-trip runtime validation using the normal
+HarborGuard trip-completion lifecycle.
+
+Verify that:
+
+- the trip completes through the normal application path
+- `route_prediction_outcomes` is created normally
+- `route_prediction_evaluations` is created normally
+- the existing `NULL`-vehicle shadow snapshot is selected
+- canonical v1 evaluation fields remain unchanged
+- evaluation metadata contains `routeSoftCapShadowEvaluation`
+- the persisted shadow recomposition reconciles with the expected formula
+- no route soft-cap production aggregation is enabled
+
+Do not complete the production trip until this documentation work item is
+committed and pushed.
