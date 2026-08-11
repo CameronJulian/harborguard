@@ -10288,3 +10288,168 @@ Verify that:
 Do not enable route-level soft-cap production aggregation yet.
 
 ---
+
+
+## Production route-level soft-cap diagnostics verified
+
+**Status:** Production runtime validation passed
+
+**Implementation commit:** `dbc741f`
+
+**Prior documentation commit:** `f179911`
+
+### Production validation purpose
+
+Validate the route-level soft-cap diagnostic fields against the deployed production HarborGuard runtime without changing production threat aggregation behavior.
+
+The validation request intentionally omitted both `vehicleId` and `tripId`.
+
+No production aggregation change was enabled by this validation.
+
+Production congestion weighting remains disabled.
+
+Marginal-decay weighting remains diagnostic only.
+
+Route-level soft-cap weighting remains diagnostic only.
+
+### Production endpoint result
+
+The production request returned:
+
+- HTTP status: `200`
+- HTTP OK: `true`
+- `threatRiskScore = 100`
+- `uncappedThreatRiskScore = 195`
+- `threatRiskLevel = CRITICAL`
+
+Production threat scoring remained unchanged.
+
+### Route-level soft-cap diagnostic fields
+
+All four expected diagnostic fields were present in the production response:
+
+- `diagnosticRouteSoftCapUncappedThreatRiskScore`
+- `diagnosticRouteSoftCapThreatRiskScore`
+- `diagnosticRouteSoftCapReduction`
+- `diagnosticRouteSoftCapExcess`
+
+Returned production diagnostic values:
+
+- `diagnosticRouteSoftCapUncappedThreatRiskScore = 94.83870967741936`
+- `diagnosticRouteSoftCapThreatRiskScore = 94.83870967741936`
+- `diagnosticRouteSoftCapReduction = 100.16129032258064`
+- `diagnosticRouteSoftCapExcess = 115`
+
+### Formula reconciliation
+
+For the production raw score:
+
+`uncappedThreatRiskScore = 195`
+
+The expected excess is:
+
+`195 - 80 = 115`
+
+The route-level soft-cap diagnostic formula is:
+
+`diagnostic = 80 + 20 * (excess / (excess + 40))`
+
+Therefore:
+
+`diagnostic = 80 + 20 * (115 / (115 + 40))`
+
+The expected diagnostic value was:
+
+`94.83870967741936`
+
+The production response returned:
+
+`94.83870967741936`
+
+The expected reduction was:
+
+`195 - 94.83870967741936 = 100.16129032258064`
+
+The production response returned:
+
+`diagnosticRouteSoftCapReduction = 100.16129032258064`
+
+The production runtime therefore exactly matched the diagnostic formula.
+
+### Existing marginal-decay diagnostics
+
+The following pre-existing marginal-decay fields remained present:
+
+- `diagnosticMarginalDecayFamilyBreakdown`
+- `diagnosticMarginalDecayUncappedThreatRiskScore`
+- `diagnosticMarginalDecayThreatRiskScore`
+- `diagnosticMarginalDecayReduction`
+
+The route-level soft-cap implementation did not remove or replace the marginal-decay diagnostics.
+
+### Production safety
+
+The production threat score remained:
+
+`threatRiskScore = 100`
+
+The production threat level remained:
+
+`threatRiskLevel = CRITICAL`
+
+The route-level soft-cap diagnostic did not replace the production score.
+
+Because `vehicleId` was omitted, vehicle-specific automatic escalation and automatic rerouting were not eligible during this validation request.
+
+Because `tripId` was omitted, the trip prediction snapshot path was not eligible during this validation request.
+
+No production threat aggregation change was enabled.
+
+Production congestion weighting remains disabled.
+
+Marginal-decay weighting remains diagnostic only.
+
+Route-level soft-cap weighting remains diagnostic only.
+
+### Validation result
+
+`PASS: PRODUCTION ROUTE SOFT-CAP DIAGNOSTICS VERIFIED.`
+
+### Current conclusion
+
+The route-level soft-cap diagnostic has now passed:
+
+- static source verification
+- TypeScript validation
+- production build validation
+- local runtime validation
+- production runtime validation
+
+For the validated production route:
+
+- production raw score: `195`
+- production capped score: `100`
+- route-level soft-cap diagnostic: `94.83870967741936`
+- diagnostic reduction: `100.16129032258064`
+
+This confirms that the deployed diagnostic behaves exactly as designed while leaving the production threat score unchanged.
+
+However, this remains diagnostic evidence only.
+
+No route-level soft-cap production aggregation has been enabled.
+
+### Next engineering step
+
+Collect multi-route production evidence for the route-level soft-cap diagnostic before considering any production aggregation change.
+
+Compare the route-level soft-cap candidate against:
+
+- production uncapped scoring
+- the existing marginal-decay candidate
+- low-risk routes below the `80` threshold
+- saturated routes above the `80` threshold
+- forward and reverse route variants
+
+Do not enable route-level soft-cap production aggregation yet.
+
+---
