@@ -9105,3 +9105,140 @@ HarborGuard can now distinguish a route whose production threat score is merely 
 This creates the observability needed to evaluate future threat aggregation, overlap handling, diminishing returns, or other saturation-aware scoring approaches without changing production behavior prematurely.
 
 The next step should be real-route validation of these saturation diagnostics before considering any production threat aggregation change.
+
+---
+
+## 2026-08-11 - Real-route threat saturation diagnostics verified
+
+### Validation target
+
+Implementation commit: `2d11034`
+
+Documentation commit before this validation record: `36133c1`
+
+The diagnostic-only threat saturation fields were validated against the production Route Safety prediction endpoint using a real route.
+
+The request intentionally omitted both `vehicleId` and `tripId` so that vehicle-specific automatic escalation/rerouting and trip prediction snapshot persistence were not eligible during the validation request.
+
+### HTTP result
+
+The production endpoint returned:
+
+- HTTP status: `200`
+- request successful: `true`
+
+### Production threat score
+
+The production scoring contract returned:
+
+- `threatRiskScore = 100`
+- `threatRiskLevel = CRITICAL`
+
+The existing production threat score therefore remained capped at `100`.
+
+### Saturation diagnostics
+
+The new diagnostic fields returned:
+
+- `candidateThreatCount = 6`
+- `consolidatedThreatCount = 6`
+- `duplicateThreatsRemoved = 0`
+- `uncappedThreatRiskScore = 201`
+- `saturationAmount = 101`
+- `isThreatScoreSaturated = true`
+
+The diagnostics therefore expose that the six retained threats had a combined pre-cap production score of `201`, while the existing production threat score remained capped at `100`.
+
+The hidden saturation amount for this route was therefore `101`.
+
+### Returned threat score breakdown
+
+The endpoint returned six retained threats with production scores:
+
+- Known smash-and-grab hotspot: `48`
+- Possible roadblock ahead: `36`
+- Aggregated road-risk segment: `35`
+- At Stock Road - Road construction: `30`
+- At New Eisleben Road - Road construction: `30`
+- Traffic lights not working: `22`
+
+The sum of the returned production threat scores was:
+
+`48 + 36 + 35 + 30 + 30 + 22 = 201`
+
+This exactly matched:
+
+`uncappedThreatRiskScore = 201`
+
+### Consolidation observation
+
+For this validation route:
+
+- candidate threats: `6`
+- consolidated threats: `6`
+- duplicates removed: `0`
+
+The observed score saturation was therefore not caused by threats being removed during the existing consolidation pass.
+
+All six candidate threats remained in the final route-threat set.
+
+This provides evidence that the observed saturation is an aggregation/capping issue for this route rather than a simple duplicate-removal issue.
+
+### Contract verification
+
+The real-route diagnostic validation passed.
+
+Observed result:
+
+`PASS: REAL-ROUTE THREAT SATURATION DIAGNOSTICS VERIFIED.`
+
+The diagnostic contract correctly exposed the relationship between:
+
+- candidate threat count
+- consolidated threat count
+- duplicate removal count
+- uncapped threat score
+- capped production threat score
+- saturation amount
+- saturation state
+
+### Production behavior preserved
+
+This validation did not change production scoring.
+
+The production `threatRiskScore` remains capped at `100`.
+
+Production threat sorting was not changed.
+
+Production escalation thresholds were not changed.
+
+Production rerouting thresholds were not changed.
+
+Production congestion weighting remains disabled.
+
+No production threat aggregation change has been enabled.
+
+### Side-effect safety
+
+The validation request omitted `vehicleId`.
+
+Therefore vehicle-specific automatic escalation and rerouting were not eligible.
+
+The validation request omitted `tripId`.
+
+Therefore the trip prediction snapshot path was not eligible.
+
+### Result
+
+Real-route threat saturation diagnostics are now verified in production.
+
+The validation demonstrates a concrete saturated route where:
+
+- six retained threats produced an uncapped score of `201`
+- the production threat score remained `100`
+- `101` points of threat-score magnitude were hidden by the production cap
+- no candidate threats were removed by the current consolidation pass
+
+This closes the real-route validation step for the diagnostic-only threat saturation instrumentation.
+
+The next engineering step should analyze the production threat aggregation model using these diagnostics before changing any production scoring behavior.
