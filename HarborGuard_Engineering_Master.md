@@ -10606,3 +10606,159 @@ Perform a focused decision audit comparing the route-level soft-cap candidate ag
 The audit should determine whether any production rollout is justified, what safeguards would be required, and whether the `80` threshold and `40` soft-cap constant should remain unchanged.
 
 No production aggregation change should be made until that decision audit is complete.
+
+---
+
+## Route soft-cap decision-readiness diagnostics implemented
+
+**Status:** Implemented and source-verified
+
+**Baseline commit:** `7c98b9b`
+
+**Implementation commit:** `87b7a8d`
+
+### Purpose
+
+Add explicit diagnostic decision-readiness fields for the route-level
+soft-cap candidate without enabling the candidate in production
+aggregation.
+
+The implementation converts the existing route soft-cap diagnostic score
+into fields that make production decision impact directly observable.
+
+### Implementation
+
+Updated:
+
+- `app/api/route-safety/predict/route.ts`
+
+Added the following diagnostic response fields:
+
+- `diagnosticRouteSoftCapRiskLevel`
+- `diagnosticRouteSoftCapCriticalAgreement`
+- `diagnosticRouteSoftCapThreatRiskScoreDelta`
+- `diagnosticRouteSoftCapWouldChangeCriticalState`
+- `diagnosticRouteSoftCapOperationallyEquivalent`
+
+### Diagnostic risk level
+
+`diagnosticRouteSoftCapRiskLevel` applies the existing threat-risk level
+boundaries to the route soft-cap diagnostic score:
+
+- score >= 80 -> `CRITICAL`
+- score >= 60 -> `HIGH`
+- score >= 35 -> `MEDIUM`
+- otherwise -> `LOW`
+
+This classification is diagnostic only.
+
+Production `threatRiskLevel` remains unchanged.
+
+### Critical-state agreement
+
+`diagnosticRouteSoftCapCriticalAgreement` compares whether the diagnostic
+route soft-cap score and the production threat score agree on the
+production critical boundary:
+
+`score >= 80`
+
+The field exposes whether replacing the production score with the route
+soft-cap candidate would preserve the current critical/non-critical state.
+
+### Threat-score delta
+
+`diagnosticRouteSoftCapThreatRiskScoreDelta` records:
+
+`production threatRiskScore - diagnostic route soft-cap threatRiskScore`
+
+This makes the magnitude of the candidate's score reduction directly
+observable without changing the production score.
+
+### Critical-state change indicator
+
+`diagnosticRouteSoftCapWouldChangeCriticalState` is the inverse of
+`diagnosticRouteSoftCapCriticalAgreement`.
+
+It identifies cases where the diagnostic candidate would cross the
+production critical-state boundary.
+
+### Operational-equivalence indicator
+
+`diagnosticRouteSoftCapOperationallyEquivalent` currently reflects
+critical-state agreement.
+
+This definition is intentionally narrow.
+
+It records equivalence against the currently verified production critical
+threshold used by the route-safety action gates and does not claim complete
+equivalence across future operational decisions.
+
+### Source verification
+
+The implementation audit verified:
+
+- exactly one source file was modified
+- the implementation added `29` lines
+- all five decision-readiness fields were added to the API response
+- the production critical action-gate count remained unchanged
+- production persistence fields remained unchanged
+- `npx tsc --noEmit` passed
+
+Implementation commit:
+
+`87b7a8d`
+
+### Production safety
+
+This change does not enable route soft-cap production aggregation.
+
+The following production behavior remains unchanged:
+
+- production `threatRiskScore`
+- production `threatRiskLevel`
+- production action thresholds
+- production persistence
+- production congestion weighting
+
+Marginal-decay remains diagnostic only.
+
+Route-level soft-cap weighting remains diagnostic only.
+
+Decision-readiness fields remain diagnostic only.
+
+### Decision status
+
+The corrected multi-route evidence demonstrated that the route soft-cap
+formula behaves consistently across saturated and unsaturated routes.
+
+The new decision-readiness diagnostics make the operational effect of that
+candidate measurable against the production critical threshold.
+
+This remains additional diagnostic evidence only.
+
+Do not enable route soft-cap production aggregation yet.
+
+### Next engineering step
+
+Deploy implementation commit `87b7a8d` and perform production runtime
+validation of the five new decision-readiness fields.
+
+Use requests that omit both `vehicleId` and `tripId`.
+
+Verify across the previously validated multi-route evidence set that:
+
+- `diagnosticRouteSoftCapRiskLevel` matches the diagnostic score
+- `diagnosticRouteSoftCapCriticalAgreement` reconciles against the
+  production `80` threshold
+- `diagnosticRouteSoftCapThreatRiskScoreDelta` reconciles numerically
+- `diagnosticRouteSoftCapWouldChangeCriticalState` is the inverse of
+  critical agreement
+- `diagnosticRouteSoftCapOperationallyEquivalent` matches the current
+  critical-state agreement definition
+- production `threatRiskScore` remains unchanged
+- production `threatRiskLevel` remains unchanged
+- requests remain ineligible for vehicle escalation/rerouting and trip
+  prediction side effects
+
+Do not enable route soft-cap production aggregation until the runtime
+decision-readiness evidence has been reviewed.
