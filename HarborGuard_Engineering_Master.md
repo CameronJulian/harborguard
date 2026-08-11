@@ -9756,3 +9756,169 @@ On the validated route, the model reduced the uncapped threat score from `195` t
 This provides a materially better diagnostic candidate than the rejected square-root model.
 
 The next step should be production runtime validation of these diagnostic response fields before any consideration of enabling marginal-decay aggregation in production.
+
+---
+
+## 2026-08-11 - Production marginal-decay diagnostics verified
+
+### Validation target
+
+Implementation commit: `3e593ad`
+
+Documentation baseline: `409aa10`
+
+The diagnostic-only marginal-decay threat aggregation fields were validated against the production Route Safety prediction endpoint.
+
+The validation request intentionally omitted both `vehicleId` and `tripId`.
+
+### Production result
+
+The production request completed successfully with HTTP `200`.
+
+The existing production scoring contract remained:
+
+- `uncappedThreatRiskScore = 195`
+- `threatRiskScore = 100`
+
+The production marginal-decay diagnostics returned:
+
+- `diagnosticMarginalDecayUncappedThreatRiskScore = 150.25`
+- `diagnosticMarginalDecayThreatRiskScore = 100`
+- `diagnosticMarginalDecayReduction = 44.75`
+
+The diagnostic model therefore reduced the uncapped threat burden from `195` to `150.25`, a reduction of `44.75`, while production continued to expose the existing capped `threatRiskScore = 100`.
+
+### Production family breakdown
+
+#### security
+
+- count: `1`
+- raw total score: `48`
+- marginal-decay score: `48`
+- reduction: `0`
+
+Contribution:
+
+- `smash_grab_hotspot`
+  - production score: `48`
+  - position: `1`
+  - weight: `1`
+  - weighted score: `48`
+
+#### access_disruption
+
+- count: `3`
+- raw total score: `90`
+- marginal-decay score: `56.25`
+- reduction: `33.75`
+
+Contributions:
+
+- `roadblock`
+  - production score: `36`
+  - position: `1`
+  - weight: `1`
+  - weighted score: `36`
+
+- first `roadworks`
+  - production score: `27`
+  - position: `2`
+  - weight: `0.5`
+  - weighted score: `13.5`
+
+- second `roadworks`
+  - production score: `27`
+  - position: `3`
+  - weight: `0.25`
+  - weighted score: `6.75`
+
+The family calculation reconciles:
+
+`36 + 13.5 + 6.75 = 56.25`
+
+#### road_safety
+
+- count: `2`
+- raw total score: `57`
+- marginal-decay score: `46`
+- reduction: `11`
+
+Contributions:
+
+- `collision`
+  - production score: `35`
+  - position: `1`
+  - weight: `1`
+  - weighted score: `35`
+
+- `traffic_light_outage`
+  - production score: `22`
+  - position: `2`
+  - weight: `0.5`
+  - weighted score: `11`
+
+The family calculation reconciles:
+
+`35 + 11 = 46`
+
+### Total reconciliation
+
+Raw family total:
+
+`48 + 90 + 57 = 195`
+
+Marginal-decay family total:
+
+`48 + 56.25 + 46 = 150.25`
+
+Reduction:
+
+`195 - 150.25 = 44.75`
+
+The production browser validation completed with:
+
+`PASS: PRODUCTION MARGINAL DECAY DIAGNOSTICS VERIFIED.`
+
+### Production safety
+
+The request omitted `vehicleId`.
+
+Therefore vehicle-specific automatic escalation and automatic rerouting were not eligible during the validation request.
+
+The request omitted `tripId`.
+
+Therefore the trip prediction snapshot path was not eligible.
+
+### Production behavior preserved
+
+The marginal-decay model remains diagnostic only.
+
+It does not currently alter:
+
+- individual production threat scores
+- production `threatRiskScore`
+- overall production `riskScore`
+- threat sorting
+- automatic escalation
+- automatic rerouting
+- production route-prediction persistence
+- congestion weighting
+
+Production congestion weighting remains disabled.
+
+No marginal-decay weighting has been enabled in the production threat aggregation formula.
+
+### Result
+
+Marginal-decay threat diagnostics are now verified in production.
+
+The same validated route produced the same diagnostic result observed locally:
+
+- raw uncapped threat score: `195`
+- diagnostic marginal-decay score: `150.25`
+- reduction: `44.75`
+- production capped threat score: `100`
+
+This confirms the diagnostic model behaves consistently across local and production runtime environments.
+
+The next engineering step should be an audit-first evaluation of whether this model has enough evidence across multiple routes and threat distributions before any production aggregation change is considered.
