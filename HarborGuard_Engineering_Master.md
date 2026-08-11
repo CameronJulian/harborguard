@@ -11194,3 +11194,134 @@ real trip-linked shadow evidence and define the evaluation method for
 comparing shadow scores against completed-trip outcomes.
 
 Do not enable route soft-cap production aggregation yet.
+
+---
+
+## Completed-trip route soft-cap shadow evaluation implemented
+
+**Status:** Implemented, verified, committed, and pushed
+
+**Implementation commit:** `89c4960`
+
+### Purpose
+
+Extend completed-trip prediction evaluation so persisted route soft-cap
+shadow diagnostics can be evaluated against actual trip outcomes without
+changing canonical production prediction semantics.
+
+### Implementation
+
+`lib/fleet/evaluateCompletedTripPrediction.ts` now reads snapshot metadata
+alongside the existing canonical prediction fields.
+
+When valid version-1 `routeSoftCapShadow` metadata is available, the
+completed-trip evaluator reads:
+
+- `diagnosticRouteSoftCapThreatRiskScore`
+- persisted weather contribution
+- persisted traffic contribution
+
+It then recomposes a shadow overall risk score using the diagnostic
+route soft-cap threat score plus the same persisted weather and traffic
+contributions.
+
+The shadow score is capped at `100`.
+
+The evaluator derives:
+
+- shadow overall risk score
+- shadow overall risk level
+- shadow predicted adverse-event state
+- shadow evaluation classification
+- production/shadow classification agreement
+- production-versus-shadow overall-risk-score delta
+
+These values are persisted inside evaluation metadata under:
+
+`routeSoftCapShadowEvaluation`
+
+The shadow evaluation metadata is versioned as `version: 1`.
+
+### Canonical production semantics preserved
+
+The canonical completed-trip evaluation remains unchanged.
+
+Specifically:
+
+- canonical `predicted_risk_score` remains the persisted production score
+- canonical `predicted_risk_level` remains unchanged
+- prediction-positive threshold remains `35`
+- canonical predicted adverse-event semantics remain unchanged
+- canonical observed adverse-event semantics remain unchanged
+- canonical evaluation classification remains unchanged
+- one evaluation row per trip semantics remain unchanged
+
+No database migration was required.
+
+Production Route Safety scoring was not changed.
+
+Route soft-cap production aggregation remains disabled.
+
+Marginal-decay production aggregation remains disabled.
+
+Production congestion weighting remains disabled.
+
+### Verification
+
+Implementation verification passed:
+
+- existing v1 evaluation contract verified before modification
+- snapshot metadata select insertion verified at exactly one anchor
+- shadow recomposition insertion verified at exactly one anchor
+- optional evaluation metadata insertion verified at exactly one anchor
+- exactly one tracked source file modified
+- shadow evaluation contract verified
+- canonical v1 evaluation contract verified unchanged
+- no database migration changed
+- production Route Safety scoring source unchanged
+- `git diff --check` passed
+- TypeScript validation passed
+- production build passed
+
+### Source change
+
+Implementation commit:
+
+`89c4960 feat: evaluate route soft-cap shadow outcomes`
+
+The implementation changed only:
+
+`lib/fleet/evaluateCompletedTripPrediction.ts`
+
+The source commit changed `99` lines by insertion and `1` line by
+replacement.
+
+Local `main` and `origin/main` were both verified at `89c4960` after push.
+
+### Safety status
+
+This implementation is shadow-only.
+
+It does not replace the production threat score.
+
+It does not replace the canonical completed-trip prediction score.
+
+It does not alter the production prediction-positive threshold.
+
+It does not alter production action thresholds.
+
+It does not enable route soft-cap production aggregation.
+
+### Next engineering step
+
+Perform focused end-to-end runtime validation of completed-trip
+`routeSoftCapShadowEvaluation` persistence.
+
+The validation should prove that a real trip-linked prediction snapshot
+containing valid route soft-cap shadow metadata can progress through trip
+completion and create a prediction evaluation whose metadata contains the
+expected shadow recomposition and production/shadow classification
+comparison.
+
+Do not enable route soft-cap production aggregation during this
+validation.
