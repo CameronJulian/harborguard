@@ -10453,3 +10453,156 @@ Compare the route-level soft-cap candidate against:
 Do not enable route-level soft-cap production aggregation yet.
 
 ---
+
+
+## Corrected multi-route production soft-cap evidence
+
+**Status:** Production evidence collection passed
+
+**Baseline commit:** `6670058`
+
+### Purpose
+
+Collect apples-to-apples production evidence for the route-level soft-cap diagnostic using the same route geometries previously used for marginal-decay validation.
+
+All five requests intentionally omitted `vehicleId` and `tripId`.
+
+Production `threatRiskScore` was not changed.
+
+Route soft-cap production aggregation remains disabled.
+
+Marginal-decay production aggregation remains disabled.
+
+Production congestion weighting remains disabled.
+
+### Corrected route set
+
+The corrected production route set was:
+
+1. Validated Khayelitsha Route
+2. Admin Test Route
+3. Driver Existing Route
+4. Admin Test Route Reverse
+5. Driver Existing Route Reverse
+
+The Admin and Driver routes used distinct route geometries, matching the earlier marginal-decay evidence set.
+
+### Per-route results
+
+| Route | Threats | Families | Production uncapped | Production capped | Marginal-decay uncapped | Route soft-cap uncapped | Soft-cap reduction | Reduction % |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Validated Khayelitsha Route | 6 | 3 | 195 | 100 | 150.25 | 94.83870967741936 | 100.16129032258064 | 51.36% |
+| Admin Test Route | 4 | 3 | 141 | 100 | 130 | 92.07920792079207 | 48.92079207920793 | 34.70% |
+| Driver Existing Route | 1 | 1 | 27 | 27 | 27 | 27 | 0 | 0% |
+| Admin Test Route Reverse | 4 | 3 | 141 | 100 | 130 | 92.07920792079207 | 48.92079207920793 | 34.70% |
+| Driver Existing Route Reverse | 1 | 1 | 27 | 27 | 27 | 27 | 0 | 0% |
+
+### Aggregate results
+
+- Routes attempted: `5`
+- HTTP 200 routes: `5`
+- Formula PASS routes: `5`
+- Production saturated routes: `3`
+- Low-risk routes <=80: `2`
+- Average production uncapped score: `106.20`
+- Average marginal-decay uncapped score: `92.85`
+- Average route soft-cap score: `66.60`
+
+### Forward and reverse consistency
+
+Admin Test Route:
+
+- forward production uncapped: `141`
+- reverse production uncapped: `141`
+- forward marginal-decay uncapped: `130`
+- reverse marginal-decay uncapped: `130`
+- forward route soft-cap: `92.07920792079207`
+- reverse route soft-cap: `92.07920792079207`
+
+Driver Existing Route:
+
+- forward production uncapped: `27`
+- reverse production uncapped: `27`
+- forward marginal-decay uncapped: `27`
+- reverse marginal-decay uncapped: `27`
+- forward route soft-cap: `27`
+- reverse route soft-cap: `27`
+
+The forward and reverse route pairs therefore produced matching aggregate evidence.
+
+### Saturation comparison
+
+The corrected route set reproduced the same historical production distribution used for the earlier marginal-decay evidence:
+
+- `195`
+- `141`
+- `27`
+- `141`
+- `27`
+
+The marginal-decay diagnostic reduced repeated-family contributions but remained above `100` on all three saturated routes:
+
+- `195 -> 150.25`
+- `141 -> 130`
+- `141 -> 130`
+
+The route-level soft-cap diagnostic instead mapped those saturated raw scores below `100`:
+
+- `195 -> 94.83870967741936`
+- `141 -> 92.07920792079207`
+- `141 -> 92.07920792079207`
+
+The two low-risk routes remained unchanged:
+
+- `27 -> 27`
+- `27 -> 27`
+
+This demonstrates that the route-level soft-cap diagnostic preserves scores at or below the `80` threshold while compressing scores above the threshold into the diagnostic range below `100`.
+
+### Validation result
+
+`PASS: CORRECTED MULTI-ROUTE PRODUCTION SOFT-CAP DIAGNOSTICS VERIFIED.`
+
+### Production safety
+
+All five requests omitted `vehicleId`.
+
+All five requests omitted `tripId`.
+
+Production `threatRiskScore` was not changed.
+
+Route soft-cap production aggregation remains disabled.
+
+Marginal-decay production aggregation remains disabled.
+
+Production congestion weighting remains disabled.
+
+No production threat aggregation change was enabled by this evidence collection.
+
+### Current conclusion
+
+The route-level soft-cap diagnostic has now passed:
+
+- static source verification
+- TypeScript validation
+- production build validation
+- local runtime validation
+- single-route production runtime validation
+- corrected five-route production validation
+- forward/reverse consistency checks
+- low-risk preservation checks
+- saturated-route formula reconciliation
+
+The candidate provides materially stronger de-saturation than the marginal-decay diagnostic on the tested saturated routes while leaving the two `27` routes unchanged.
+
+This remains diagnostic evidence only.
+
+Do not enable route-level soft-cap production aggregation yet.
+
+### Next engineering step
+
+Perform a focused decision audit comparing the route-level soft-cap candidate against the current production aggregation contract and operational action thresholds.
+
+The audit should determine whether any production rollout is justified, what safeguards would be required, and whether the `80` threshold and `40` soft-cap constant should remain unchanged.
+
+No production aggregation change should be made until that decision audit is complete.
