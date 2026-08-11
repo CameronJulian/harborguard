@@ -9922,3 +9922,184 @@ The same validated route produced the same diagnostic result observed locally:
 This confirms the diagnostic model behaves consistently across local and production runtime environments.
 
 The next engineering step should be an audit-first evaluation of whether this model has enough evidence across multiple routes and threat distributions before any production aggregation change is considered.
+
+---
+
+## Multi-route marginal-decay production evidence
+
+**Status:** Production diagnostic evidence collected and verified
+
+**Baseline commit:** `7539d6f`
+
+### Purpose
+
+Validate the diagnostic marginal-decay threat aggregation model across multiple real production routes and threat distributions before considering any production aggregation change.
+
+The marginal-decay model remains diagnostic only.
+
+Production `threatRiskScore` calculation was not changed.
+
+Production congestion weighting remains disabled.
+
+No marginal-decay weighting has been enabled in the production threat aggregation formula.
+
+### Diagnostic formula
+
+Within each threat family, threats are ordered by their existing production score and receive marginal contribution weights:
+
+- first threat: `1`
+- second threat: `0.5`
+- third threat: `0.25`
+- subsequent threats continue with `Math.pow(0.5, index)`
+
+Single-threat families therefore retain their complete production contribution.
+
+### Multi-route production validation
+
+Five production route requests were evaluated.
+
+All requests omitted `vehicleId` and `tripId`, preventing vehicle-specific automatic escalation/rerouting and trip prediction snapshot side effects during evidence collection.
+
+| Route | Threats | Families | Production uncapped | Production capped | Diagnostic uncapped | Diagnostic capped | Reduction | Reduction % |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Validated Khayelitsha Route | 6 | 3 | 195 | 100 | 150.25 | 100 | 44.75 | 22.95% |
+| Admin Test Route | 4 | 3 | 141 | 100 | 130 | 100 | 11 | 7.8% |
+| Driver Existing Route | 1 | 1 | 27 | 27 | 27 | 27 | 0 | 0% |
+| Admin Test Route Reverse | 4 | 3 | 141 | 100 | 130 | 100 | 11 | 7.8% |
+| Driver Existing Route Reverse | 1 | 1 | 27 | 27 | 27 | 27 | 0 | 0% |
+
+### Aggregate results
+
+- Routes attempted: `5`
+- HTTP 200 routes: `5`
+- Formula PASS routes: `5`
+- Production saturated routes: `3`
+- Diagnostic still >100 routes: `3`
+- Average production uncapped score: `106.20`
+- Average diagnostic uncapped score: `92.85`
+- Average score reduction: `7.71%`
+
+### Validated Khayelitsha route
+
+Production:
+
+`uncappedThreatRiskScore = 195`
+
+`threatRiskScore = 100`
+
+Diagnostic:
+
+`diagnosticMarginalDecayUncappedThreatRiskScore = 150.25`
+
+`diagnosticMarginalDecayThreatRiskScore = 100`
+
+`diagnosticMarginalDecayReduction = 44.75`
+
+Family diagnostic contributions:
+
+- security: `48`
+- access_disruption: `56.25`
+- road_safety: `46`
+
+Verification:
+
+`48 + 56.25 + 46 = 150.25`
+
+`195 - 150.25 = 44.75`
+
+Reduction: `22.95%`
+
+### Admin Test Route
+
+Production uncapped:
+
+`141`
+
+Diagnostic uncapped:
+
+`130`
+
+Reduction:
+
+`11`
+
+Reduction percentage:
+
+`7.8%`
+
+The route remained saturated after diagnostic marginal decay.
+
+### Driver Existing Route
+
+Production uncapped:
+
+`27`
+
+Diagnostic uncapped:
+
+`27`
+
+Reduction:
+
+`0`
+
+The single-threat route remained unchanged, confirming that the diagnostic model preserves the full contribution of the first threat in a family.
+
+### Reverse-route evidence
+
+Admin Test Route Reverse produced the same aggregate evidence as the forward route:
+
+- production uncapped: `141`
+- diagnostic uncapped: `130`
+- reduction: `11`
+- reduction percentage: `7.8%`
+
+Driver Existing Route Reverse also remained unchanged:
+
+- production uncapped: `27`
+- diagnostic uncapped: `27`
+- reduction: `0`
+
+### Validation result
+
+`PASS: MULTI-ROUTE MARGINAL DECAY DIAGNOSTICS VERIFIED.`
+
+All five production requests returned HTTP `200`.
+
+All five routes passed the diagnostic formula contract.
+
+The marginal-decay diagnostic correctly reduces repeated contributions within the same threat family while preserving single-threat family contributions.
+
+### Important saturation finding
+
+The diagnostic model reduced aggregate threat scores, but it did not eliminate saturation on the routes that were already saturated.
+
+Production saturated routes: `3`
+
+Diagnostic still >100 routes: `3`
+
+Examples:
+
+- `195 -> 150.25`
+- `141 -> 130`
+- `141 -> 130`
+
+Therefore the current marginal-decay candidate is mathematically valid and behaves consistently across the tested routes, but the available evidence does not justify enabling it as the production aggregation formula.
+
+### Production safety
+
+Production threat scoring remains unchanged.
+
+Production congestion weighting remains disabled.
+
+Marginal-decay weighting remains diagnostic only.
+
+No production threat aggregation change has been enabled.
+
+### Next engineering step
+
+Audit stronger diagnostic aggregation candidates using the existing multi-route evidence as the comparison baseline.
+
+Do not enable production marginal-decay aggregation yet.
+
+---
