@@ -2014,6 +2014,18 @@ if (roadRiskSegmentsError) {
               trafficContribution,
               trafficCongestionMultiplier,
               diagnosticTrafficWeightedThreatRisk,
+              routeSoftCapShadow: {
+                version: 1,
+                diagnosticRouteSoftCapUncappedThreatRiskScore,
+                diagnosticRouteSoftCapThreatRiskScore,
+                diagnosticRouteSoftCapReduction,
+                diagnosticRouteSoftCapExcess,
+                diagnosticRouteSoftCapRiskLevel,
+                diagnosticRouteSoftCapCriticalAgreement,
+                diagnosticRouteSoftCapThreatRiskScoreDelta,
+                diagnosticRouteSoftCapWouldChangeCriticalState,
+                diagnosticRouteSoftCapOperationallyEquivalent,
+              },
               threatCount: routeThreats.length,
             },
           });
