@@ -11043,3 +11043,154 @@ After production shadow persistence is verified, continue collecting
 trip-linked evidence before reconsidering production rollout.
 
 Do not enable route soft-cap production aggregation.
+
+---
+
+## Production trip-linked route soft-cap shadow persistence verified
+
+**Status:** Production persistence validation passed
+
+**Baseline commit:** `5daebda`
+
+**Shadow persistence implementation commit:** `32ba4e8`
+
+### Purpose
+
+Verify that the route-level soft-cap diagnostic shadow payload is persisted
+durably in production for a legitimate trip-linked route prediction without
+changing production threat scoring or activating automatic vehicle side
+effects.
+
+### Controlled production validation
+
+A legitimate active production trip was selected:
+
+`41d58a40-90c9-46d1-a45b-85a5a4832a66`
+
+The Route Safety prediction request supplied:
+
+- a valid `tripId`
+- no `vehicleId`
+- the previously validated Khayelitsha route coordinates
+
+The production request started at:
+
+`2026-08-11T17:45:42.321Z`
+
+`vehicleId` was deliberately omitted so that automatic vehicle escalation
+and automatic rerouting remained ineligible.
+
+### Production response validation
+
+The Route Safety response returned successfully.
+
+Production scoring remained:
+
+- `threatRiskScore = 100`
+- `threatRiskLevel = CRITICAL`
+- `uncappedThreatRiskScore = 195`
+
+All nine route soft-cap diagnostic response fields were present.
+
+Observed values:
+
+- `diagnosticRouteSoftCapUncappedThreatRiskScore = 94.83870967741936`
+- `diagnosticRouteSoftCapThreatRiskScore = 94.83870967741936`
+- `diagnosticRouteSoftCapReduction = 100.16129032258064`
+- `diagnosticRouteSoftCapExcess = 115`
+- `diagnosticRouteSoftCapRiskLevel = CRITICAL`
+- `diagnosticRouteSoftCapCriticalAgreement = true`
+- `diagnosticRouteSoftCapThreatRiskScoreDelta = 5.161290322580641`
+- `diagnosticRouteSoftCapWouldChangeCriticalState = false`
+- `diagnosticRouteSoftCapOperationallyEquivalent = true`
+
+Validation result:
+
+`PASS: TRIP-LINKED ROUTE SOFT-CAP RESPONSE VERIFIED.`
+
+### Production snapshot persistence verification
+
+A read-only Supabase query was then used to inspect
+`route_prediction_snapshots`.
+
+Exactly one matching snapshot was identified after the controlled request.
+
+Observed snapshot:
+
+- `created_at = 2026-08-11 17:45:43.952474+00`
+- `trip_id = 41d58a40-90c9-46d1-a45b-85a5a4832a66`
+- `vehicle_id = null`
+- `threat_risk_score = 100`
+- `threat_risk_level = CRITICAL`
+
+The persisted metadata contained:
+
+`metadata.routeSoftCapShadow.version = 1`
+
+Persisted route-soft-cap shadow values matched the production response:
+
+- `diagnosticRouteSoftCapUncappedThreatRiskScore = 94.83870967741936`
+- `diagnosticRouteSoftCapThreatRiskScore = 94.83870967741936`
+- `diagnosticRouteSoftCapReduction = 100.16129032258064`
+- `diagnosticRouteSoftCapExcess = 115`
+- `diagnosticRouteSoftCapRiskLevel = CRITICAL`
+- `diagnosticRouteSoftCapCriticalAgreement = true`
+- `diagnosticRouteSoftCapThreatRiskScoreDelta = 5.161290322580641`
+- `diagnosticRouteSoftCapWouldChangeCriticalState = false`
+- `diagnosticRouteSoftCapOperationallyEquivalent = true`
+
+### Persistence conclusion
+
+The complete production shadow path is now verified:
+
+1. a legitimate production `tripId` was supplied
+2. the Route Safety prediction completed successfully
+3. production threat scoring remained unchanged
+4. all route soft-cap diagnostic values were returned
+5. a real `route_prediction_snapshots` row was created
+6. canonical production `threat_risk_score` remained `100`
+7. canonical production `threat_risk_level` remained `CRITICAL`
+8. `vehicle_id` remained `null`
+9. `metadata.routeSoftCapShadow.version` persisted as `1`
+10. all nine route soft-cap shadow fields persisted correctly
+
+The production HTTP values and persisted database values reconciled exactly.
+
+### Production safety
+
+Production `threatRiskScore` remains unchanged.
+
+Production `threatRiskLevel` remains unchanged.
+
+Persisted `threat_risk_score` semantics remain unchanged.
+
+Persisted `threat_risk_level` semantics remain unchanged.
+
+No `vehicleId` was supplied during the controlled validation.
+
+Automatic vehicle escalation remained ineligible.
+
+Automatic rerouting remained ineligible.
+
+Completed-trip v1 evaluation remains unchanged.
+
+Marginal-decay production aggregation remains disabled.
+
+Route soft-cap production aggregation remains disabled.
+
+Production congestion weighting remains disabled.
+
+No production scoring replacement was enabled.
+
+### Current engineering status
+
+Route-level soft-cap shadow persistence is now verified end-to-end in
+production for a legitimate trip-linked prediction.
+
+The candidate remains shadow-only.
+
+The next engineering objective is to accumulate a larger distribution of
+real trip-linked shadow evidence and define the evaluation method for
+comparing shadow scores against completed-trip outcomes.
+
+Do not enable route soft-cap production aggregation yet.
