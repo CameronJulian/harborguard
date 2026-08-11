@@ -340,6 +340,37 @@ function decodePolyline(encoded: string) {
   return points;
 }
 
+function threatFamilyForType(type: unknown) {
+  const normalizedType =
+    String(type ?? "").toLowerCase();
+
+  switch (normalizedType) {
+    case "smash_grab_hotspot":
+    case "protest":
+      return "security";
+
+    case "roadblock":
+    case "road_closure":
+    case "roadworks":
+    case "congestion":
+    case "lane_closure":
+    case "vehicle_breakdown":
+      return "access_disruption";
+
+    case "collision":
+    case "traffic_light_outage":
+    case "road_hazard":
+      return "road_safety";
+
+    case "weather_hazard":
+    case "flooding":
+      return "weather_environment";
+
+    default:
+      return "other";
+  }
+}
+
 function recommendationFor(type: string | null, severity: string | null) {
   if (type === "smash_grab_hotspot") {
     return "Known high-risk area ahead. Keep valuables out of sight, remain alert, and avoid unnecessary stops where safe and legal.";
@@ -1433,6 +1464,60 @@ if (roadRiskSegmentsError) {
       uncappedThreatRiskScore >
       threatRiskScore;
 
+    const threatFamilyBreakdown =
+      routeThreats.reduce(
+        (
+          families: Record<
+            string,
+            { count: number; totalScore: number }
+          >,
+          threat: any
+        ) => {
+          const family =
+            threatFamilyForType(threat.type);
+
+          const existing =
+            families[family] ?? {
+              count: 0,
+              totalScore: 0,
+            };
+
+          families[family] = {
+            count: existing.count + 1,
+            totalScore:
+              existing.totalScore +
+              Number(threat.score || 0),
+          };
+
+          return families;
+        },
+        {}
+      );
+
+    const threatFamilyCount =
+      Object.keys(
+        threatFamilyBreakdown
+      ).length;
+
+    const largestThreatFamilyEntry =
+      Object.entries(
+        threatFamilyBreakdown
+      ).sort(
+        ([, left], [, right]) =>
+          right.totalScore -
+          left.totalScore
+      )[0] ?? null;
+
+    const largestThreatFamily =
+      largestThreatFamilyEntry?.[0] ?? null;
+
+    const largestThreatFamilyCount =
+      largestThreatFamilyEntry?.[1].count ?? 0;
+
+    const largestThreatFamilyScore =
+      largestThreatFamilyEntry?.[1].totalScore ??
+      0;
+
     const weatherRiskScore =
       weatherResult?.weather.riskScore ?? 0;
 
@@ -1796,6 +1881,11 @@ if (roadRiskSegmentsError) {
       uncappedThreatRiskScore,
       saturationAmount,
       isThreatScoreSaturated,
+      threatFamilyCount,
+      threatFamilyBreakdown,
+      largestThreatFamily,
+      largestThreatFamilyCount,
+      largestThreatFamilyScore,
       threatRiskLevel,
       weatherRiskScore,
       weatherContribution,
