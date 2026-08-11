@@ -79,8 +79,8 @@ export async function evaluateCompletedTripPrediction({
       "id, overall_risk_score, overall_risk_level, created_at, metadata"
     )
     .eq("organization_id", organizationId)
-    .eq("vehicle_id", vehicleId)
     .eq("trip_id", tripId)
+    .or(`vehicle_id.eq.${vehicleId},vehicle_id.is.null`)
     .lte("created_at", outcome.completed_at)
     .order("created_at", { ascending: false })
     .limit(1)
