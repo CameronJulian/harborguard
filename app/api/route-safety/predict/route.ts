@@ -1402,6 +1402,37 @@ if (roadRiskSegmentsError) {
       )
     );
 
+    const candidateThreatCount =
+      candidateRouteThreats.length;
+
+    const consolidatedThreatCount =
+      routeThreats.length;
+
+    const duplicateThreatsRemoved =
+      Math.max(
+        0,
+        candidateThreatCount -
+          consolidatedThreatCount
+      );
+
+    const uncappedThreatRiskScore =
+      routeThreats.reduce(
+        (total: number, alert: any) =>
+          total + alert.score,
+        0
+      );
+
+    const saturationAmount =
+      Math.max(
+        0,
+        uncappedThreatRiskScore -
+          threatRiskScore
+      );
+
+    const isThreatScoreSaturated =
+      uncappedThreatRiskScore >
+      threatRiskScore;
+
     const weatherRiskScore =
       weatherResult?.weather.riskScore ?? 0;
 
@@ -1759,6 +1790,12 @@ if (roadRiskSegmentsError) {
       riskScore,
       riskLevel,
       threatRiskScore,
+      candidateThreatCount,
+      consolidatedThreatCount,
+      duplicateThreatsRemoved,
+      uncappedThreatRiskScore,
+      saturationAmount,
+      isThreatScoreSaturated,
       threatRiskLevel,
       weatherRiskScore,
       weatherContribution,
