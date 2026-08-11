@@ -10103,3 +10103,188 @@ Audit stronger diagnostic aggregation candidates using the existing multi-route 
 Do not enable production marginal-decay aggregation yet.
 
 ---
+
+---
+
+## Route-level soft-cap threat diagnostics
+
+**Status:** Implemented locally, verified, committed, and pushed
+
+**Parent baseline:** `164fa0b`
+
+**Implementation commit:** `dbc741f`
+
+### Purpose
+
+Introduce a stronger diagnostic-only route-level saturation model for comparison against the existing marginal-decay candidate.
+
+The purpose of this diagnostic is to preserve the existing production threat score contract while evaluating whether a route-level soft saturation curve provides more useful differentiation above the production CRITICAL threshold.
+
+Production threat scoring remains unchanged.
+
+Production congestion weighting remains disabled.
+
+Marginal-decay weighting remains diagnostic only.
+
+Route-level soft-cap weighting remains diagnostic only.
+
+No production threat aggregation change has been enabled.
+
+### Diagnostic formula
+
+The route-level soft-cap diagnostic preserves the production threat score through the existing CRITICAL threshold of `80`.
+
+For an uncapped threat score less than or equal to `80`:
+
+`diagnostic = raw`
+
+For an uncapped threat score greater than `80`:
+
+`excess = raw - 80`
+
+`diagnostic = 80 + 20 * (excess / (excess + 40))`
+
+The soft-cap constant is therefore:
+
+`40`
+
+This design preserves the first `80` threat-risk points exactly and applies diminishing returns only to the excess above `80`.
+
+The diagnostic approaches `100` asymptotically without replacing the existing production hard cap.
+
+### Diagnostic response fields
+
+The prediction endpoint now exposes the following diagnostic-only fields:
+
+- `diagnosticRouteSoftCapUncappedThreatRiskScore`
+- `diagnosticRouteSoftCapThreatRiskScore`
+- `diagnosticRouteSoftCapReduction`
+- `diagnosticRouteSoftCapExcess`
+
+These fields are informational only.
+
+They do not currently alter:
+
+- production `threatRiskScore`
+- production `threatRiskLevel`
+- overall production `riskScore`
+- threat sorting
+- automatic escalation
+- automatic rerouting
+- route prediction persistence
+- traffic weighting
+- marginal-decay diagnostics
+
+### Reference formula verification
+
+The implementation was verified against the following reference values:
+
+- raw `27` -> diagnostic `27`
+- raw `80` -> diagnostic `80`
+- raw `81` -> diagnostic approximately `80.487805`
+- raw `100` -> diagnostic approximately `86.666667`
+- raw `141` -> diagnostic approximately `92.079208`
+- raw `195` -> diagnostic approximately `94.838710`
+- raw `300` -> diagnostic approximately `96.923077`
+
+Scores less than or equal to `80` remain unchanged.
+
+Scores greater than `80` remain greater than or equal to `80` and below `100`.
+
+### Static verification
+
+Before commit, the implementation passed:
+
+- `git diff --check`
+- TypeScript: `npx tsc --noEmit`
+- production build: `npm run build`
+- static generation: `123/123`
+
+The source change was limited to:
+
+`app/api/route-safety/predict/route.ts`
+
+The production `threatRiskScore` calculation remained unchanged.
+
+The two existing production `threatRiskScore >= 80 &&` action thresholds remained unchanged.
+
+Production route prediction persistence continued to store:
+
+- `threat_risk_score: threatRiskScore`
+- `overall_risk_score: riskScore`
+
+Existing marginal-decay diagnostics remained intact.
+
+### Local runtime validation
+
+A real route prediction request was executed against:
+
+`http://localhost:3000`
+
+The validation request intentionally omitted both `vehicleId` and `tripId`.
+
+The request returned HTTP `200`.
+
+Production score values:
+
+- `threatRiskScore = 100`
+- `uncappedThreatRiskScore = 195`
+
+Route-level soft-cap diagnostic values:
+
+- `diagnosticRouteSoftCapExcess = 115`
+- `diagnosticRouteSoftCapUncappedThreatRiskScore = 94.83870967741936`
+- `diagnosticRouteSoftCapThreatRiskScore = 94.83870967741936`
+- `diagnosticRouteSoftCapReduction = 100.16129032258064`
+
+The expected formula values exactly matched the returned runtime values.
+
+Validation result:
+
+`PASS: LOCAL ROUTE SOFT-CAP DIAGNOSTICS VERIFIED.`
+
+### Production safety
+
+The production threat score remained:
+
+`threatRiskScore = 100`
+
+The diagnostic score did not replace the production score.
+
+Because `vehicleId` was omitted, vehicle-specific automatic escalation and automatic rerouting were not eligible during the validation request.
+
+Because `tripId` was omitted, the trip prediction snapshot path was not eligible during the validation request.
+
+Production persistence remains based on the existing production score.
+
+Production congestion weighting remains disabled.
+
+### Current conclusion
+
+The route-level soft-cap diagnostic is implemented and locally verified.
+
+For the validated raw threat score of `195`, the diagnostic transformed the uncapped value to approximately `94.84` while the production `threatRiskScore` remained `100`.
+
+This demonstrates that the candidate can preserve the existing CRITICAL threshold while avoiding immediate hard saturation in the diagnostic output.
+
+However, this is still diagnostic evidence only.
+
+No production threat aggregation change has been enabled.
+
+### Next engineering step
+
+Perform production runtime validation of the route-level soft-cap diagnostic fields.
+
+Use a request that omits both `vehicleId` and `tripId`.
+
+Verify that:
+
+- production `threatRiskScore` remains unchanged
+- the four route-level soft-cap diagnostic fields are present
+- the route-level soft-cap formula reconciles correctly
+- production side-effect paths remain ineligible
+- marginal-decay diagnostics remain intact
+
+Do not enable route-level soft-cap production aggregation yet.
+
+---
