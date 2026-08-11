@@ -76,7 +76,7 @@ export async function evaluateCompletedTripPrediction({
   const { data: snapshot, error: snapshotError } = await supabase
     .from("route_prediction_snapshots")
     .select(
-      "id, overall_risk_score, overall_risk_level, created_at"
+      "id, overall_risk_score, overall_risk_level, created_at, metadata"
     )
     .eq("organization_id", organizationId)
     .eq("vehicle_id", vehicleId)
@@ -114,6 +114,99 @@ export async function evaluateCompletedTripPrediction({
     observedAdverseEvent
   );
 
+  const snapshotMetadata =
+    snapshot.metadata &&
+    typeof snapshot.metadata === "object"
+      ? snapshot.metadata
+      : {};
+
+  const routeSoftCapShadow =
+    snapshotMetadata.routeSoftCapShadow &&
+    typeof snapshotMetadata.routeSoftCapShadow === "object"
+      ? snapshotMetadata.routeSoftCapShadow
+      : null;
+
+  const shadowThreatRiskScore = Number(
+    routeSoftCapShadow?.diagnosticRouteSoftCapThreatRiskScore
+  );
+
+  const shadowWeatherContribution = Number(
+    snapshotMetadata.weatherContribution
+  );
+
+  const shadowTrafficContribution = Number(
+    snapshotMetadata.trafficContribution
+  );
+
+  let routeSoftCapShadowEvaluation:
+    | Record<string, unknown>
+    | undefined;
+
+  if (
+    routeSoftCapShadow?.version === 1 &&
+    Number.isFinite(shadowThreatRiskScore) &&
+    shadowThreatRiskScore >= 0 &&
+    shadowThreatRiskScore <= 100 &&
+    Number.isFinite(shadowWeatherContribution) &&
+    shadowWeatherContribution >= 0 &&
+    shadowWeatherContribution <= 20 &&
+    Number.isFinite(shadowTrafficContribution) &&
+    shadowTrafficContribution >= 0 &&
+    shadowTrafficContribution <= 20
+  ) {
+    const shadowOverallRiskScore =
+      Math.min(
+        100,
+        shadowThreatRiskScore +
+          shadowWeatherContribution +
+          shadowTrafficContribution
+      );
+
+    const shadowOverallRiskLevel =
+      shadowOverallRiskScore >= 80
+        ? "CRITICAL"
+        : shadowOverallRiskScore >= 60
+          ? "HIGH"
+          : shadowOverallRiskScore >= 35
+            ? "MEDIUM"
+            : "LOW";
+
+    const shadowPredictedAdverseEvent =
+      shadowOverallRiskScore >=
+      PREDICTION_POSITIVE_THRESHOLD;
+
+    const shadowClassification =
+      evaluationClassification(
+        shadowPredictedAdverseEvent,
+        observedAdverseEvent
+      );
+
+    routeSoftCapShadowEvaluation = {
+      version: 1,
+      productionOverallRiskScore:
+        predictedRiskScore,
+      shadowThreatRiskScore,
+      weatherContribution:
+        shadowWeatherContribution,
+      trafficContribution:
+        shadowTrafficContribution,
+      shadowOverallRiskScore,
+      shadowOverallRiskLevel,
+      predictionPositiveThreshold:
+        PREDICTION_POSITIVE_THRESHOLD,
+      shadowPredictedAdverseEvent,
+      observedAdverseEvent,
+      shadowClassification,
+      productionClassification:
+        classification,
+      classificationAgreement:
+        shadowClassification === classification,
+      overallRiskScoreDelta:
+        predictedRiskScore -
+        shadowOverallRiskScore,
+    };
+  }
+
   const { error: insertError } = await supabase
     .from("route_prediction_evaluations")
     .insert({
@@ -134,6 +227,11 @@ export async function evaluateCompletedTripPrediction({
       metadata: {
         snapshotSelection:
           "latest_trip_prediction_at_or_before_completion",
+        ...(routeSoftCapShadowEvaluation
+          ? {
+              routeSoftCapShadowEvaluation,
+            }
+          : {}),
       },
     });
 
