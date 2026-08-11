@@ -11490,3 +11490,174 @@ Verify that:
 
 Do not complete the production trip until this documentation work item is
 committed and pushed.
+
+---
+
+## Driver active-trip restoration implemented
+
+**Status:** Implemented, verified, committed, and pushed
+
+**Implementation commit:** `08d74c8`
+
+**Parent baseline:** `f3a8e6e`
+
+### Purpose
+
+Restore an already-active backend trip into the Driver page after a refresh,
+new browser session, or vehicle selection.
+
+This closes the UI state-restoration gap discovered during the controlled
+completed-trip shadow-evaluation validation.
+
+### Audit finding
+
+`/api/fleet/live` correctly returned the controlled trip as the selected
+vehicle's `activeTrip`.
+
+The Driver page did not previously restore that backend `activeTrip` into its
+local `tripId` state.
+
+As a result:
+
+- the backend trip remained active
+- the Driver page still displayed `Start Trip`
+- `stopTrip()` could not complete the existing trip because local `tripId`
+  remained `null`
+- the Driver page could present controls inconsistent with backend lifecycle
+  state
+
+### Focused implementation
+
+`app/driver/page.tsx` now defines a typed `ActiveTrip` contract containing:
+
+- `id`
+- `status`
+- `expectedRoute`
+- `originPort`
+- `destinationFishery`
+
+`VehicleOption` now includes:
+
+`activeTrip: ActiveTrip | null`
+
+The selected vehicle now restores active-trip state with:
+
+`setTripId(activeTrip?.id || null)`
+
+It also restores:
+
+- `originPort`
+- `destinationFishery`
+
+When the selected vehicle has no active trip, those restored trip fields are
+cleared.
+
+### Driver controls corrected
+
+`Start Trip` is now disabled whenever `tripId` already exists.
+
+This prevents the Driver page from offering a new trip start while an active
+backend trip is already associated with the selected vehicle.
+
+The former `Stop Trip` control is now labeled:
+
+`Complete Trip`
+
+It is disabled when there is no `tripId`.
+
+### Completion lifecycle preserved
+
+The existing `stopTrip()` implementation was not changed.
+
+It still requires:
+
+- a valid `tripId`
+- current latitude
+- current longitude
+
+It still completes the trip through the existing `sendLocation(...)` path
+using:
+
+`"delivered"`
+
+No API route was changed.
+
+The existing production completion lifecycle therefore remains responsible
+for:
+
+- location update
+- delivered transition
+- actual-arrival persistence
+- completed-trip outcome creation
+- completed-trip prediction evaluation
+- downstream post-location lifecycle processing
+
+### Validation
+
+The implementation passed:
+
+- clean baseline verification at `f3a8e6e`
+- exactly one source-file modification
+- UTF-8 BOM preservation
+- no first-line encoding churn
+- `git diff --check`
+- TypeScript validation
+- production build
+- implementation contract verification
+- existing completion lifecycle verification
+
+Final source diff:
+
+`1 file changed, 24 insertions(+), 3 deletions(-)`
+
+Implementation commit:
+
+`08d74c8 Restore active trip state in driver console`
+
+The commit contained exactly:
+
+`app/driver/page.tsx`
+
+Local and remote `main` were verified at `08d74c8` after push.
+
+### Production validation status
+
+The controlled production trip has not yet been completed.
+
+Target trip:
+
+`41d58a40-90c9-46d1-a45b-85a5a4832a66`
+
+Target vehicle:
+
+`c4bf3073-839c-4dab-ab0c-3def20dac26f`
+
+Target shadow snapshot:
+
+`4499c4f0-a66b-4159-8262-375d8b37b155`
+
+No new prediction was created during this UI fix.
+
+No database row was manually modified.
+
+Route soft-cap production aggregation remains disabled.
+
+### Next engineering step
+
+After this documentation work item is committed and pushed:
+
+1. wait for production deployment of `08d74c8`
+2. reload the Driver page
+3. confirm the existing backend trip restores into the UI
+4. confirm `Start Trip` is disabled
+5. confirm `Complete Trip` is enabled once current location is available
+6. complete the controlled trip through the normal Driver lifecycle
+7. verify the completed-trip outcome
+8. verify the completed-trip evaluation
+9. verify the selected prediction snapshot is
+   `4499c4f0-a66b-4159-8262-375d8b37b155`
+10. verify `metadata.routeSoftCapShadowEvaluation` is persisted
+11. confirm canonical v1 evaluation semantics remain unchanged
+
+Do not complete the production trip until this documentation work item is
+committed and pushed.
