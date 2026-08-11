@@ -69,6 +69,26 @@ export async function updateActiveTripFromLocation(
     };
 
     if (requestedStatus === "delivered") {
+      const {
+        data: completionTrip,
+        error: completionTripError,
+      } = await supabase
+        .from("vehicle_trips")
+        .select("actual_departure")
+        .eq("id", activeTrip.id)
+        .eq("organization_id", organizationId)
+        .maybeSingle();
+
+      if (completionTripError) {
+        throw completionTripError;
+      }
+
+      if (!completionTrip?.actual_departure) {
+        throw new Error(
+          "Trip cannot be completed before actual departure is recorded."
+        );
+      }
+
       updates.actual_arrival = occurredAt;
     }
 
