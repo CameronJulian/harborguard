@@ -7,11 +7,20 @@ import DriverMissionConsole from "@/components/driver/DriverMissionConsole";
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import AppShell from "@/components/AppShell";
 
+type ActiveTrip = {
+  id: string;
+  status: string;
+  expectedRoute: unknown;
+  originPort: string | null;
+  destinationFishery: string | null;
+};
+
 type VehicleOption = {
   id: string;
   nickname: string | null;
   registrationNumber: string;
   driverName: string | null;
+  activeTrip: ActiveTrip | null;
 };
 
 type FleetResponse = {
@@ -148,6 +157,14 @@ export default function DriverEmergencyPage() {
     () => vehicles.find((vehicle) => vehicle.id === selectedVehicleId) || null,
     [vehicles, selectedVehicleId]
   );
+
+  useEffect(() => {
+    const activeTrip = selectedVehicle?.activeTrip || null;
+
+    setTripId(activeTrip?.id || null);
+    setOriginPort(activeTrip?.originPort || "");
+    setDestinationFishery(activeTrip?.destinationFishery || "");
+  }, [selectedVehicle]);
 
   async function loadPendingRouteAssignment(vehicleId: string) {
     if (!vehicleId) return;
@@ -576,7 +593,7 @@ const heading =
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <button
                 onClick={startTrip}
-                disabled={busy}
+                disabled={busy || Boolean(tripId)}
                 style={primaryButtonStyle}
               >
                 {busy ? "Please wait..." : "Start Trip"}
@@ -592,8 +609,12 @@ const heading =
                 </button>
               )}
 
-              <button onClick={stopTrip} style={secondaryButtonStyle}>
-                Stop Trip
+              <button
+                onClick={stopTrip}
+                disabled={busy || !tripId}
+                style={secondaryButtonStyle}
+              >
+                Complete Trip
               </button>
             </div>
           </div>
