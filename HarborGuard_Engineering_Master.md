@@ -9335,3 +9335,180 @@ The validation should confirm that:
 7. production `threatRiskScore` remains unchanged.
 
 Do not introduce diminishing-return weighting or production family aggregation until real-route behavior has been observed and documented.
+
+---
+
+## 2026-08-11 - Real-route threat family diagnostics verified
+
+### Validation target
+
+Threat-family implementation commit: `32dddf1`
+
+Threat-family documentation commit: `4353b66`
+
+The diagnostic-only threat-family fields were validated against the production Route Safety prediction endpoint using a real route.
+
+The validation request intentionally omitted both `vehicleId` and `tripId`.
+
+### HTTP result
+
+The production prediction request completed successfully.
+
+### Production scoring
+
+Production threat scoring remained unchanged.
+
+The route returned:
+
+- `threatRiskScore = 100`
+- `threatRiskLevel = CRITICAL`
+
+The production threat score remained capped at `100`.
+
+### Saturation diagnostics
+
+The route returned:
+
+- `candidateThreatCount = 6`
+- `consolidatedThreatCount = 6`
+- `duplicateThreatsRemoved = 0`
+- `uncappedThreatRiskScore = 195`
+- `saturationAmount = 95`
+- `isThreatScoreSaturated = true`
+
+The six retained threats therefore carried a combined production score of `195`, while production continued to expose the existing capped `threatRiskScore = 100`.
+
+### Threat family diagnostics
+
+The route returned:
+
+- `threatFamilyCount = 3`
+- `largestThreatFamily = access_disruption`
+- `largestThreatFamilyCount = 3`
+- `largestThreatFamilyScore = 90`
+
+The diagnostic family breakdown was:
+
+- `security`
+  - count: `1`
+  - total score: `48`
+
+- `access_disruption`
+  - count: `3`
+  - total score: `90`
+
+- `road_safety`
+  - count: `2`
+  - total score: `57`
+
+The family totals reconcile exactly:
+
+`48 + 90 + 57 = 195`
+
+This matched the sum of the returned production threat scores and `uncappedThreatRiskScore = 195`.
+
+### Returned threat breakdown
+
+The six retained production threats were:
+
+- Known smash-and-grab hotspot
+  - type: `smash_grab_hotspot`
+  - production score: `48`
+  - diagnostic family: `security`
+
+- Possible roadblock ahead
+  - type: `roadblock`
+  - production score: `36`
+  - diagnostic family: `access_disruption`
+
+- Aggregated road-risk segment
+  - type: `collision`
+  - production score: `35`
+  - diagnostic family: `road_safety`
+
+- At Stock Road - Road construction
+  - type: `roadworks`
+  - production score: `27`
+  - diagnostic family: `access_disruption`
+
+- At New Eisleben Road - Road construction
+  - type: `roadworks`
+  - production score: `27`
+  - diagnostic family: `access_disruption`
+
+- Traffic lights not working
+  - type: `traffic_light_outage`
+  - production score: `22`
+  - diagnostic family: `road_safety`
+
+The individual production scores reconcile exactly:
+
+`48 + 36 + 35 + 27 + 27 + 22 = 195`
+
+### Observed aggregation structure
+
+The largest diagnostic family was `access_disruption`.
+
+It contributed:
+
+`36 + 27 + 27 = 90`
+
+The `road_safety` family contributed:
+
+`35 + 22 = 57`
+
+The `security` family contributed:
+
+`48`
+
+This demonstrates that the observed production score saturation was distributed across three meaningful threat families rather than being caused by one duplicate threat type.
+
+### Contract verification
+
+The browser validation completed with:
+
+`PASS: REAL-ROUTE THREAT FAMILY DIAGNOSTICS VERIFIED.`
+
+The following contracts were verified:
+
+- `threatFamilyCount` matched the number of represented families.
+- family threat counts summed to the returned threat count.
+- family score totals summed to the returned production threat-score total.
+- family score totals matched `uncappedThreatRiskScore`.
+- `largestThreatFamily` matched the highest-scoring family.
+- `largestThreatFamilyCount` matched that family's threat count.
+- `largestThreatFamilyScore` matched that family's score.
+- existing saturation diagnostics remained correct.
+- production threat scoring remained unchanged.
+
+### Side-effect safety
+
+`vehicleId` was omitted.
+
+Therefore vehicle-specific automatic escalation and automatic rerouting were not eligible during this validation request.
+
+`tripId` was omitted.
+
+Therefore the trip prediction snapshot path was not eligible.
+
+### Production behavior preserved
+
+No production aggregation formula was changed.
+
+No diminishing-return family weighting has been enabled.
+
+Production escalation thresholds remain unchanged.
+
+Production rerouting thresholds remain unchanged.
+
+Production congestion weighting remains disabled.
+
+### Result
+
+Real-route threat-family diagnostics are verified in production.
+
+HarborGuard can now observe both total score saturation and the family-level structure responsible for that saturation without changing live threat decisions.
+
+For this route, `access_disruption` was the largest contributing threat family with a score of `90`, followed by `road_safety` at `57` and `security` at `48`.
+
+The next engineering step should use these verified diagnostics to evaluate candidate diminishing-return or family-aware aggregation models diagnostically before any production threat-score formula is changed.
