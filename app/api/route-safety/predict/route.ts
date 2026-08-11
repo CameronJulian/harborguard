@@ -1518,6 +1518,115 @@ if (roadRiskSegmentsError) {
       largestThreatFamilyEntry?.[1].totalScore ??
       0;
 
+    const diagnosticMarginalDecayFamilyBreakdown:
+      Record<
+        string,
+        {
+          count: number;
+          rawTotalScore: number;
+          marginalDecayScore: number;
+          reduction: number;
+          contributions: Array<{
+            threatId: unknown;
+            type: unknown;
+            productionScore: number;
+            position: number;
+            weight: number;
+            weightedScore: number;
+          }>;
+        }
+      > = Object.fromEntries(
+        Object.keys(
+          threatFamilyBreakdown
+        ).map((family) => {
+          const familyThreats =
+            routeThreats
+              .filter(
+                (threat: any) =>
+                  threatFamilyForType(
+                    threat.type
+                  ) === family
+              )
+              .slice()
+              .sort(
+                (a: any, b: any) =>
+                  Number(b.score || 0) -
+                  Number(a.score || 0)
+              );
+
+          const contributions =
+            familyThreats.map(
+              (threat: any, index: number) => {
+                const productionScore =
+                  Number(threat.score || 0);
+
+                const weight =
+                  Math.pow(0.5, index);
+
+                const weightedScore =
+                  productionScore * weight;
+
+                return {
+                  threatId: threat.id,
+                  type: threat.type,
+                  productionScore,
+                  position: index + 1,
+                  weight,
+                  weightedScore,
+                };
+              }
+            );
+
+          const rawTotalScore =
+            familyThreats.reduce(
+              (total: number, threat: any) =>
+                total +
+                Number(threat.score || 0),
+              0
+            );
+
+          const marginalDecayScore =
+            contributions.reduce(
+              (total, contribution) =>
+                total +
+                contribution.weightedScore,
+              0
+            );
+
+          return [
+            family,
+            {
+              count: familyThreats.length,
+              rawTotalScore,
+              marginalDecayScore,
+              reduction:
+                rawTotalScore -
+                marginalDecayScore,
+              contributions,
+            },
+          ];
+        })
+      );
+
+    const diagnosticMarginalDecayUncappedThreatRiskScore =
+      Object.values(
+        diagnosticMarginalDecayFamilyBreakdown
+      ).reduce(
+        (total, family) =>
+          total + family.marginalDecayScore,
+        0
+      );
+
+    const diagnosticMarginalDecayThreatRiskScore =
+      Math.min(
+        100,
+        diagnosticMarginalDecayUncappedThreatRiskScore
+      );
+
+    const diagnosticMarginalDecayReduction =
+      uncappedThreatRiskScore -
+      diagnosticMarginalDecayUncappedThreatRiskScore;
+
     const weatherRiskScore =
       weatherResult?.weather.riskScore ?? 0;
 
@@ -1886,6 +1995,10 @@ if (roadRiskSegmentsError) {
       largestThreatFamily,
       largestThreatFamilyCount,
       largestThreatFamilyScore,
+      diagnosticMarginalDecayFamilyBreakdown,
+      diagnosticMarginalDecayUncappedThreatRiskScore,
+      diagnosticMarginalDecayThreatRiskScore,
+      diagnosticMarginalDecayReduction,
       threatRiskLevel,
       weatherRiskScore,
       weatherContribution,
