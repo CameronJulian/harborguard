@@ -12654,3 +12654,43 @@ Implementation commit: `daa2753` — `Add vehicle scoring version shadow evidenc
 ### Next engineering boundary
 
 Vehicle × scoring-version dependency visibility is now available alongside vehicle × UTC-day visibility and the existing marginal scoring-version distribution. The next work item must remain audit-first. Before adding UTC-day × scoring-version visibility, three-way dependency reporting, statistical inference, evidence-sufficiency criteria, preferred-version logic, or rollout-readiness rules, determine whether another descriptive joint dimension is actually required to resolve a concrete dependency-visibility gap. No statistical or production-activation decision should be made merely because the required fields are technically available.
+
+## Route Shadow Evidence Live Dependence-Method Readiness Audit
+
+Audit baseline: `37e6c9c`
+
+A read-only live evidence audit was completed against the existing authenticated `/api/fleet/route-soft-cap-shadow-evidence` path. No source code, database rows, migrations, environment configuration, or production behavior were changed.
+
+Observed live evidence at the time of the audit:
+
+- total evaluation count: 1
+- valid shadow evaluation count: 1
+- unique vehicle count: 1
+- largest vehicle evaluation count: 1
+- largest vehicle share: 1
+- observed vehicle x UTC-day cells: 1
+- evaluations in the observed vehicle x UTC-day cell: 1
+- observed UTC evidence days: 1
+- evidence span: 0 days
+- explicit scoring-version observations: 0
+- unknown scoring-version observations: 1
+- explicit scoring-version coverage rate: 0
+- vehicle x explicit scoring-version groups: none
+- observed classification agreement: 1 of 1
+- observed score-delta mean, median, minimum, and maximum: 0
+
+Method-readiness result: `D - OBSERVED DATA ARE STILL INSUFFICIENT TO SELECT A DEPENDENCE STRUCTURE`.
+
+The current live evidence contains one completed-trip observation from one vehicle on one UTC evidence day. It therefore does not expose repeated-vehicle dependence, repeated-day dependence, crossed vehicle x UTC-day dependence, or an explicit scoring-version stratum from which a defensible inferential dependence structure can be selected.
+
+The observed 1-of-1 classification agreement and zero score delta remain descriptive point observations only. They do not establish statistical precision, evidence sufficiency, rollout readiness, or production-activation readiness.
+
+No vehicle-clustered bootstrap, UTC-day-clustered bootstrap, multiway or hierarchical resampling method, cluster-robust variance method, confidence interval, standard error, statistical acceptance threshold, minimum sample size, minimum vehicle count, minimum active-day count, or scoring-version threshold is authorized by this audit.
+
+Unknown scoring-version observations remain valid global descriptive observations but cannot be assigned to an explicit scoring-version inferential stratum.
+
+Next methodological action: continue normal route-shadow evidence accumulation. Revisit dependence-method selection only after the observed evidence contains enough repeated vehicle, UTC-day, and scoring-version structure to evaluate the dependence dimensions descriptively.
+
+This audit does not select a preferred scoring version, define evidence sufficiency, define rollout readiness, or authorize route soft-cap production activation.
+
+The next HarborGuard work item must remain audit-first.
