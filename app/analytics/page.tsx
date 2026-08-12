@@ -75,6 +75,28 @@ type RoutePredictionThresholdAnalysisResponse = {
   analysis: RoutePredictionThresholdAnalysis[];
 };
 
+type RouteSoftCapShadowEvidence = {
+  totalEvaluationCount: number;
+  validShadowEvaluationCount: number;
+  classificationAgreementCount: number;
+  classificationDisagreementCount: number;
+  classificationAgreementRate: number | null;
+  positiveStateAgreementCount: number;
+  positiveStateChangeCount: number;
+  scoreDelta: {
+    positiveCount: number;
+    zeroCount: number;
+    negativeCount: number;
+    mean: number | null;
+    min: number | null;
+    max: number | null;
+  };
+};
+
+type RouteSoftCapShadowEvidenceResponse = {
+  success: boolean;
+  evidence: RouteSoftCapShadowEvidence;
+};
 type TelemetryAlertReviewSummary = {
   reviewedAlerts: number;
   evaluatedAlerts: number;
@@ -242,6 +264,12 @@ export default function AnalyticsPage() {
     useState(false);
   const [routePredictionThresholdAnalysisError, setRoutePredictionThresholdAnalysisError] =
     useState("");
+  const [routeSoftCapShadowEvidence, setRouteSoftCapShadowEvidence] =
+    useState<RouteSoftCapShadowEvidence | null>(null);
+  const [routeSoftCapShadowEvidenceLoading, setRouteSoftCapShadowEvidenceLoading] =
+    useState(false);
+  const [routeSoftCapShadowEvidenceError, setRouteSoftCapShadowEvidenceError] =
+    useState("");
   const [telemetryReviewPerformance, setTelemetryReviewPerformance] =
     useState<TelemetryAlertReviewPerformance | null>(null);
   const [telemetryReviewPerformanceLoading, setTelemetryReviewPerformanceLoading] =
@@ -381,6 +409,59 @@ export default function AnalyticsPage() {
       );
     } finally {
       setRoutePredictionThresholdAnalysisLoading(false);
+    }
+  }
+  async function loadRouteSoftCapShadowEvidence() {
+    setRouteSoftCapShadowEvidenceLoading(true);
+    setRouteSoftCapShadowEvidenceError("");
+
+    try {
+      const start = new Date(`${startDate}T00:00:00`);
+      const end = new Date(`${endDate}T23:59:59.999`);
+
+      const params = new URLSearchParams({
+        start: start.toISOString(),
+        end: end.toISOString(),
+      });
+
+      if (selectedVehicleId) {
+        params.set("vehicleId", selectedVehicleId);
+      }
+
+      const response = await fetchWithAuth(
+        `/api/fleet/route-soft-cap-shadow-evidence?${params.toString()}`,
+        {
+          cache: "no-store",
+        }
+      );
+
+      const result =
+        (await response.json()) as
+          | RouteSoftCapShadowEvidenceResponse
+          | { error?: string };
+
+      if (!response.ok) {
+        setRouteSoftCapShadowEvidence(null);
+        setRouteSoftCapShadowEvidenceError(
+          "error" in result && result.error
+            ? result.error
+            : "Failed to load route soft-cap shadow evidence."
+        );
+        return;
+      }
+
+      setRouteSoftCapShadowEvidence(
+        (result as RouteSoftCapShadowEvidenceResponse).evidence
+      );
+    } catch (error: unknown) {
+      setRouteSoftCapShadowEvidence(null);
+      setRouteSoftCapShadowEvidenceError(
+        error instanceof Error
+          ? error.message
+          : "Failed to load route soft-cap shadow evidence."
+      );
+    } finally {
+      setRouteSoftCapShadowEvidenceLoading(false);
     }
   }
   async function loadTelemetryReviewPerformance() {
@@ -562,6 +643,7 @@ const { data: incidentData } = await supabase
   useEffect(() => {
     loadRoutePredictionPerformance();
     loadRoutePredictionThresholdAnalysis();
+    loadRouteSoftCapShadowEvidence();
     loadTelemetryReviewPerformance();
   }, [startDate, endDate, selectedVehicleId]);
 
@@ -2131,6 +2213,135 @@ if (subscriptionLoaded && !premiumAllowed) {
           marginBottom: 24,
         }}
       >
+        <div style={{ ...cardStyle, padding: 26 }}>
+          <h2 style={sectionTitleStyle}>Route Soft-Cap Shadow Evidence</h2>
+          <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
+            Observational comparison of persisted production and route soft-cap
+            shadow outcomes for the selected reporting period and vehicle scope.
+            This evidence is descriptive only and does not enable or recommend
+            production route soft-cap aggregation.
+          </p>
+
+          {routeSoftCapShadowEvidenceLoading ? (
+            <div style={{ color: "#64748b" }}>
+              Loading route soft-cap shadow evidence...
+            </div>
+          ) : routeSoftCapShadowEvidenceError ? (
+            <div
+              style={{
+                padding: 14,
+                borderRadius: 12,
+                background: "#fef2f2",
+                border: "1px solid #fecaca",
+                color: "#b91c1c",
+              }}
+            >
+              {routeSoftCapShadowEvidenceError}
+            </div>
+          ) : !routeSoftCapShadowEvidence ||
+            routeSoftCapShadowEvidence.validShadowEvaluationCount === 0 ? (
+            <div style={{ color: "#64748b" }}>
+              No valid completed-trip route soft-cap shadow evaluations exist
+              for this period yet.
+            </div>
+          ) : (
+            <>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: isMobile
+                    ? "1fr"
+                    : "repeat(2, minmax(0, 1fr))",
+                  gap: 16,
+                  marginBottom: 16,
+                }}
+              >
+                {[
+                  {
+                    label: "Shadow Evaluations",
+                    value: formatNumber(
+                      routeSoftCapShadowEvidence.validShadowEvaluationCount
+                    ),
+                  },
+                  {
+                    label: "Classification Agreement",
+                    value: formatPerformancePercent(
+                      routeSoftCapShadowEvidence.classificationAgreementRate
+                    ),
+                  },
+                  {
+                    label: "Classification Changes",
+                    value: formatNumber(
+                      routeSoftCapShadowEvidence.classificationDisagreementCount
+                    ),
+                  },
+                  {
+                    label: "Positive-State Changes",
+                    value: formatNumber(
+                      routeSoftCapShadowEvidence.positiveStateChangeCount
+                    ),
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    style={{
+                      border: "1px solid #e5e7eb",
+                      borderRadius: 16,
+                      padding: 18,
+                      background: "#fff",
+                    }}
+                  >
+                    <div
+                      style={{
+                        color: "#64748b",
+                        fontSize: 13,
+                        marginBottom: 8,
+                      }}
+                    >
+                      {item.label}
+                    </div>
+
+                    <div
+                      style={{
+                        fontSize: 26,
+                        fontWeight: 800,
+                        lineHeight: 1.1,
+                      }}
+                    >
+                      {item.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div
+                style={{
+                  ...mutedTextStyle,
+                  fontSize: 13,
+                  lineHeight: 1.6,
+                }}
+              >
+                Mean score delta:{" "}
+                <strong>
+                  {routeSoftCapShadowEvidence.scoreDelta.mean === null
+                    ? "-"
+                    : routeSoftCapShadowEvidence.scoreDelta.mean.toFixed(2)}
+                </strong>
+                . Production-minus-shadow score deltas were positive in{" "}
+                {formatNumber(
+                  routeSoftCapShadowEvidence.scoreDelta.positiveCount
+                )}{" "}
+                evaluation(s), zero in{" "}
+                {formatNumber(routeSoftCapShadowEvidence.scoreDelta.zeroCount)},
+                and negative in{" "}
+                {formatNumber(
+                  routeSoftCapShadowEvidence.scoreDelta.negativeCount
+                )}. Smaller evidence sets should be interpreted cautiously.
+              </div>
+            </>
+          )}
+        </div>
+
         <div style={{ ...cardStyle, padding: 26 }}>
           <h2 style={sectionTitleStyle}>Trend Over Time</h2>
           <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
