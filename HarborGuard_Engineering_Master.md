@@ -11905,9 +11905,100 @@ Do not run another production completion until this documentation work item is c
 - Local and remote `main` matched at `afabc29` after push.
 - Tracked working tree was clean and nothing remained staged.
 
-### Production validation status
+### Production validation passed
 
-- The implementation has not yet been revalidated by another production completion attempt.
-- The previously controlled trip must not be retried until this documentation work item is committed and pushed.
-- Next step: deploy/confirm production availability of `afabc29` and perform one controlled retry of the existing completion scenario.
-- After that retry, verify the persisted trip status, `actual_arrival`, completed-trip outcome, completed-trip prediction evaluation, and `routeSoftCapShadowEvaluation` metadata before closing the runtime validation work item.
+- Controlled production validation of implementation `afabc29` completed successfully.
+- Production validation used dedicated test vehicle `TRACCAR-16839`.
+- Vehicle ID: `152119a0-6497-4692-a40f-4ced454d722e`.
+- Controlled trip ID: `f18e9e30-129c-4ec2-8200-bd2bcc9ac3db`.
+- Route: Cape Town Harbour to Saldanha Fishery Depot.
+- The controlled trip had a genuine persisted `actual_departure` before completion.
+- A trip-linked route prediction snapshot existed before completion.
+- The completion retry was performed through the normal Driver completion flow after production deployment of `afabc29`.
+
+#### Completion lifecycle result
+
+- The Driver completion request completed successfully.
+- Read-only `/api/fleet/live` verification showed the controlled vehicle no longer exposed an active trip after the retry.
+- The persisted trip transitioned from `en_route_to_port` to `delivered`.
+- Persisted `actual_departure` remained `2026-08-12 07:39:07.607+00`.
+- Persisted `actual_arrival` was created as `2026-08-12 08:46:38.919+00`.
+- The completion therefore preserved the real-departure integrity guard and produced a real persisted arrival timestamp.
+
+#### Completed-trip outcome
+
+- Completed-trip outcome ID: `34c8b77e-4750-483f-ad19-6a7af6662821`.
+- The outcome is linked to controlled trip `f18e9e30-129c-4ec2-8200-bd2bcc9ac3db`.
+- The outcome observation window begins at the persisted departure and ends at the persisted completion timestamp.
+- `adverse_event_occurred` was `false`.
+- No adverse-event evidence was observed for the controlled validation trip.
+
+#### Prediction snapshot
+
+- Prediction snapshot ID: `d0e4c076-86d5-4bf5-83bc-9eaae843afca`.
+- The snapshot is linked to the controlled trip.
+- Snapshot `vehicle_id` is `NULL`, exercising the implemented trip-linked null-vehicle eligibility path.
+- Canonical `overall_risk_score` was `100`.
+- Canonical `overall_risk_level` was `CRITICAL`.
+- The intended pre-completion snapshot was selected by the completed-trip evaluator.
+
+#### Completed-trip prediction evaluation
+
+- Evaluation ID: `53d4eec2-dd8e-4c58-a8bd-9a413057772a`.
+- Evaluation snapshot ID: `d0e4c076-86d5-4bf5-83bc-9eaae843afca`.
+- Evaluation outcome ID: `34c8b77e-4750-483f-ad19-6a7af6662821`.
+- Persisted `predicted_risk_score` was `100`.
+- Persisted `predicted_risk_level` was `CRITICAL`.
+- Prediction-positive threshold remained `35`.
+- `predicted_adverse_event` was `true`.
+- `observed_adverse_event` was `false`.
+- Canonical evaluation classification was `false_positive`.
+
+#### Route soft-cap shadow evaluation
+
+- `routeSoftCapShadowEvaluation` persisted on the completed-trip prediction evaluation.
+- Shadow overall risk score remained `100`.
+- Shadow overall risk level remained `CRITICAL`.
+- Shadow classification was `false_positive`.
+- `classificationAgreement` was `true`.
+- `overallRiskScoreDelta` was `0`.
+- Canonical and shadow completed-trip classifications therefore agreed for this controlled production case.
+- The previously persisted route soft-cap diagnostic threat score remained approximately `99.38223938223938`.
+- Route soft-cap diagnostics remained operationally equivalent for the tested route.
+- The shadow model did not change the critical-state decision.
+
+#### Filtered-location completion validation
+
+- The controlled production retry validates the `afabc29` filtered-location completion fix.
+- A final completion location may be rejected by telemetry filtering without preventing the explicit `delivered` trip lifecycle transition.
+- Rejected jitter/GPS-spike location samples remain unpersisted.
+- The delivered lifecycle still persists `actual_arrival`.
+- Completed-trip outcome creation remains intact.
+- Completed-trip prediction evaluation remains intact.
+- Route soft-cap shadow evaluation persistence remains intact.
+- Ordinary telemetry filtering remains unchanged.
+- Other requested trip statuses remain unchanged.
+
+#### Production invariants confirmed
+
+- Canonical completed-trip v1 semantics remain unchanged.
+- Canonical `predicted_risk_score` remains the persisted production score.
+- Prediction-positive threshold remains `35`.
+- Production Route Safety scoring was not changed.
+- Route soft-cap production aggregation remains disabled.
+- No database migration was introduced.
+- No manual production database repair was required for the successful retry.
+- No synthetic departure timestamp was introduced.
+- No synthetic arrival timestamp was introduced.
+
+#### Validation conclusion
+
+- Controlled production validation PASSED.
+- The controlled trip reached `delivered`.
+- `actual_arrival` persisted.
+- The completed-trip outcome persisted.
+- The intended route prediction snapshot was selected.
+- The completed-trip prediction evaluation persisted.
+- `routeSoftCapShadowEvaluation` persisted.
+- Canonical and shadow classifications agreed.
+- The filtered-location completion regression is runtime-validated for this controlled production case.
