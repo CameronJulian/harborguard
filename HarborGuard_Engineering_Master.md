@@ -12074,3 +12074,34 @@ The reader provides an organization-scoped way to accumulate and inspect a large
 The evidence endpoint is not a rollout decision engine and does not recommend enabling the soft cap.
 
 Future route soft-cap rollout consideration remains a separate focused work item and must be based on accumulated production shadow evidence rather than this reader's existence alone.
+
+## Route Soft-Cap Shadow Evidence Analytics
+
+Status: **Implemented and pushed**
+
+Implementation commit: `85d6635` — `Add route soft cap shadow evidence analytics`
+
+### Completed
+
+- Added the Analytics-page consumer for the read-only route soft-cap shadow evidence endpoint.
+- Reused the existing Analytics reporting-period selection.
+- Reused the existing vehicle filter when requesting shadow evidence.
+- Added loading, error, empty-evidence, and populated-evidence presentation states.
+- Added descriptive evidence metrics including classification agreement, positive-state changes, and score-delta reporting.
+- Corrected the JSX insertion boundary so the Route Soft-Cap Shadow Evidence panel and Trend Over Time panel remain independent sibling cards.
+- Verified the implementation with `git diff --check`, `npx tsc --noEmit`, and a successful production `npm run build`.
+- Production build confirmed `/analytics` and `/api/fleet/route-soft-cap-shadow-evidence`.
+- Implementation was committed as `85d6635` and pushed to `origin/main`.
+- Local `main` and `origin/main` were verified equal at `85d6635`.
+
+### Safety / rollout state
+
+- The evidence presentation is descriptive only.
+- No rollout recommendation was added.
+- No production activation was added.
+- Route soft-cap production aggregation remains disabled.
+- This milestone does not change the production scoring decision path.
+
+### Next engineering boundary
+
+Continue collecting and reviewing route soft-cap shadow evidence before considering any production aggregation change. Any future activation decision must be handled as a separate audited work item with its own validation and rollout controls.
