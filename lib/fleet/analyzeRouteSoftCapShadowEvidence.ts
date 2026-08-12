@@ -39,6 +39,28 @@ function ratio(
   return numerator / denominator;
 }
 
+function median(
+  values: number[]
+): number | null {
+  if (values.length === 0) {
+    return null;
+  }
+
+  const sorted = [...values].sort(
+    (left, right) => left - right
+  );
+
+  const middle = Math.floor(sorted.length / 2);
+
+  if (sorted.length % 2 === 1) {
+    return sorted[middle];
+  }
+
+  return (
+    sorted[middle - 1] + sorted[middle]
+  ) / 2;
+}
+
 function validFiniteScore(
   value: unknown
 ): value is number {
@@ -235,6 +257,8 @@ export function analyzeRouteSoftCapShadowEvidence(
         ) / scoreDeltas.length
       : null;
 
+  const scoreDeltaMedian = median(scoreDeltas);
+
   const classifiedEvaluationCount =
     evaluations.filter((evaluation) =>
       validRoutePredictionClassification(
@@ -287,6 +311,9 @@ export function analyzeRouteSoftCapShadowEvidence(
             evaluation.shadowOverallRiskScore
         );
 
+      const classificationScoreDeltaMedian =
+        median(classificationScoreDeltas);
+
       return {
         classification,
         eligibleEvaluationCount,
@@ -321,6 +348,7 @@ export function analyzeRouteSoftCapShadowEvidence(
                   0
                 ) / classificationScoreDeltas.length
               : null,
+          median: classificationScoreDeltaMedian,
           min:
             classificationScoreDeltas.length > 0
               ? Math.min(...classificationScoreDeltas)
@@ -363,6 +391,7 @@ export function analyzeRouteSoftCapShadowEvidence(
       zeroCount: zeroDeltaCount,
       negativeCount: negativeDeltaCount,
       mean: scoreDeltaMean,
+      median: scoreDeltaMedian,
       min:
         scoreDeltas.length > 0
           ? Math.min(...scoreDeltas)

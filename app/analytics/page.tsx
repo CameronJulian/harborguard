@@ -94,6 +94,7 @@ type RouteSoftCapShadowEvidence = {
     zeroCount: number;
     negativeCount: number;
     mean: number | null;
+    median: number | null;
     min: number | null;
     max: number | null;
   };
@@ -113,6 +114,7 @@ type RouteSoftCapShadowEvidence = {
     classificationAgreementRate: number | null;
     scoreDelta: {
       mean: number | null;
+      median: number | null;
       min: number | null;
       max: number | null;
     };
@@ -2396,6 +2398,12 @@ if (subscriptionLoaded && !premiumAllowed) {
                     ? "-"
                     : routeSoftCapShadowEvidence.scoreDelta.mean.toFixed(2)}
                 </strong>
+                , median:{" "}
+                <strong>
+                  {routeSoftCapShadowEvidence.scoreDelta.median === null
+                    ? "-"
+                    : routeSoftCapShadowEvidence.scoreDelta.median.toFixed(2)}
+                </strong>
                 . Production-minus-shadow score deltas were positive in{" "}
                 {formatNumber(
                   routeSoftCapShadowEvidence.scoreDelta.positiveCount
@@ -2504,6 +2512,12 @@ if (subscriptionLoaded && !premiumAllowed) {
                               {item.scoreDelta.mean === null
                                 ? "-"
                                 : item.scoreDelta.mean.toFixed(2)}
+                            </strong>
+                            . Median:{" "}
+                            <strong>
+                              {item.scoreDelta.median === null
+                                ? "-"
+                                : item.scoreDelta.median.toFixed(2)}
                             </strong>
                             .
                           </div>
