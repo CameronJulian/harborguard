@@ -78,6 +78,7 @@ type RoutePredictionThresholdAnalysisResponse = {
 type RouteSoftCapShadowEvidence = {
   totalEvaluationCount: number;
   validShadowEvaluationCount: number;
+  shadowEvidenceCoverageRate: number | null;
   classificationAgreementCount: number;
   classificationDisagreementCount: number;
   classificationAgreementRate: number | null;
@@ -97,7 +98,9 @@ type RouteSoftCapShadowEvidence = {
       | "false_positive"
       | "false_negative"
       | "true_negative";
+    eligibleEvaluationCount: number;
     validShadowEvaluationCount: number;
+    shadowEvidenceCoverageRate: number | null;
     classificationAgreementCount: number;
     classificationDisagreementCount: number;
     classificationAgreementRate: number | null;
@@ -2280,6 +2283,12 @@ if (subscriptionLoaded && !premiumAllowed) {
                     ),
                   },
                   {
+                    label: "Shadow Evidence Coverage",
+                    value: formatPerformancePercent(
+                      routeSoftCapShadowEvidence.shadowEvidenceCoverageRate
+                    ),
+                  },
+                  {
                     label: "Classification Agreement",
                     value: formatPerformancePercent(
                       routeSoftCapShadowEvidence.classificationAgreementRate
@@ -2420,7 +2429,15 @@ if (subscriptionLoaded && !premiumAllowed) {
                             {formatNumber(
                               item.validShadowEvaluationCount
                             )}{" "}
-                            evaluation(s). Agreement:{" "}
+                            of{" "}
+                            {formatNumber(
+                              item.eligibleEvaluationCount
+                            )}{" "}
+                            eligible evaluation(s) have valid shadow evidence.
+                            Coverage:{" "}
+                            {formatPerformancePercent(
+                              item.shadowEvidenceCoverageRate
+                            )}. Agreement:{" "}
                             {formatPerformancePercent(
                               item.classificationAgreementRate
                             )}{" "}

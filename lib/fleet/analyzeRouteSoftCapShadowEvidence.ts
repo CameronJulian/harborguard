@@ -27,6 +27,17 @@ function validRoutePredictionClassification(
   );
 }
 
+function ratio(
+  numerator: number,
+  denominator: number
+): number | null {
+  if (denominator === 0) {
+    return null;
+  }
+
+  return numerator / denominator;
+}
+
 function validFiniteScore(
   value: unknown
 ): value is number {
@@ -160,6 +171,15 @@ export function analyzeRouteSoftCapShadowEvidence(
 
   const byProductionClassification =
     routePredictionClassifications.map((classification) => {
+      const eligibleEvaluationCount =
+        evaluations.filter(
+          (evaluation) =>
+            validRoutePredictionClassification(
+              evaluation.classification
+            ) &&
+            evaluation.classification === classification
+        ).length;
+
       const classificationEvaluations =
         validEvaluations
           .filter(
@@ -189,8 +209,13 @@ export function analyzeRouteSoftCapShadowEvidence(
 
       return {
         classification,
+        eligibleEvaluationCount,
         validShadowEvaluationCount:
           classificationEvaluations.length,
+        shadowEvidenceCoverageRate: ratio(
+          classificationEvaluations.length,
+          eligibleEvaluationCount
+        ),
         classificationAgreementCount,
         classificationDisagreementCount:
           classificationEvaluations.length -
@@ -224,6 +249,10 @@ export function analyzeRouteSoftCapShadowEvidence(
     totalEvaluationCount: evaluations.length,
     validShadowEvaluationCount:
       shadowEvaluations.length,
+    shadowEvidenceCoverageRate: ratio(
+      shadowEvaluations.length,
+      evaluations.length
+    ),
     classificationAgreementCount:
       agreementCount,
     classificationDisagreementCount:
