@@ -12199,3 +12199,58 @@ Implementation commit: `643ea98` — `Add route shadow evidence coverage analyti
 ### Next engineering boundary
 
 Continue accumulating and reviewing route soft-cap shadow evidence with explicit attention to overall coverage, per-classification coverage, sample distribution, classification agreement, and score-delta behavior. Coverage must not be interpreted as rollout readiness on its own. Before defining any evidence-sufficiency threshold or considering production activation, perform a separate audit of the accumulated evidence distribution and define that decision boundary explicitly. Any future route soft-cap production activation remains a separate audited work item requiring production validation, rollout controls, and rollback planning.
+
+## Route Soft-Cap Shadow Evidence Sample Distribution
+
+Status: **Implemented and pushed**
+
+Implementation commit: `801d695` — `Add route shadow sample distribution analytics`
+
+### Completed
+
+- Extended the existing route soft-cap shadow-evidence analysis with descriptive production-classification sample-distribution metrics.
+- Added `classifiedEvaluationCount` as the total scoped evaluation population carrying one of the canonical completed-trip production classifications:
+  - `true_positive`
+  - `false_positive`
+  - `false_negative`
+  - `true_negative`
+- Added `classifiedValidShadowEvaluationCount` as the valid shadow-evaluation population carrying one of those same canonical production classifications.
+- Added `eligibleDistributionRate` for each production classification.
+- Defined `eligibleDistributionRate` as that classification's eligible evaluation count divided by `classifiedEvaluationCount`.
+- Added `shadowDistributionRate` for each production classification.
+- Defined `shadowDistributionRate` as that classification's valid shadow-evaluation count divided by `classifiedValidShadowEvaluationCount`.
+- Preserved the existing per-classification shadow-evidence coverage denominator independently from the new distribution denominators.
+- Preserved the existing classification agreement, disagreement, positive-state, and score-delta semantics.
+- Extended the Analytics Route Soft-Cap Shadow Evidence summary with `Classified Evaluations`.
+- Extended the Analytics summary with `Classified Shadow Evaluations`.
+- Extended each `By production classification` entry with `Eligible sample share`.
+- Extended each `By production classification` entry with `Shadow sample share`.
+- Preserved the existing reporting-period and optional vehicle scopes.
+- No API-route change was required because the existing shadow-evidence endpoint already supplies the canonical production classification and shadow metadata required by the analyzer.
+- Verified the focused implementation with `git diff --check`.
+- Verified TypeScript with `npx tsc --noEmit`.
+- Verified a successful production `npm run build`.
+- Production build confirmed `/analytics` and `/api/fleet/route-soft-cap-shadow-evidence`.
+- Implementation was committed as `801d695` and pushed to `origin/main`.
+- Local `main` and `origin/main` were verified equal at `801d695`.
+
+### Safety / rollout state
+
+- Sample-distribution reporting is observational and descriptive only.
+- Distribution percentages describe the composition of the accumulated canonical production-classification populations; they are not evidence-sufficiency or rollout-readiness calculations.
+- No minimum sample threshold was introduced.
+- No evidence-sufficiency threshold was introduced.
+- No preferred model or threshold recommendation was introduced.
+- No production activation recommendation was added.
+- No database migration was introduced.
+- No route-prediction evaluation schema was changed.
+- No completed-trip evaluator semantics were changed.
+- No production route-risk scoring was changed.
+- No production route-soft-cap aggregation was enabled.
+- Route soft-cap production aggregation remains disabled.
+- The production scoring decision path remains unchanged.
+- Existing persisted production classifications and versioned shadow metadata remain the evidence source of truth.
+
+### Next engineering boundary
+
+Continue accumulating and reviewing route soft-cap shadow evidence with explicit attention to overall coverage, per-classification coverage, eligible sample distribution, valid-shadow sample distribution, classification agreement, and score-delta behavior. The newly exposed distribution percentages must not be interpreted as evidence sufficiency or rollout readiness on their own. Before defining any minimum evidence threshold, evidence-sufficiency decision, preferred model or threshold, or considering production activation, perform a separate audit of the accumulated production evidence and explicitly define the decision criteria, validation requirements, rollout controls, and rollback plan. Any future route soft-cap production activation remains a separate audited work item.
