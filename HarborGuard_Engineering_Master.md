@@ -12105,3 +12105,48 @@ Implementation commit: `85d6635` — `Add route soft cap shadow evidence analyti
 ### Next engineering boundary
 
 Continue collecting and reviewing route soft-cap shadow evidence before considering any production aggregation change. Any future activation decision must be handled as a separate audited work item with its own validation and rollout controls.
+
+## Route Soft-Cap Shadow Evidence by Production Classification
+
+Status: **Implemented and pushed**
+
+Implementation commit: `d6d5193` — `Add route shadow evidence by production classification`
+
+### Completed
+
+- Extended route soft-cap shadow evidence with a descriptive `byProductionClassification` breakdown.
+- Used the persisted `route_prediction_evaluations.classification` column as the canonical production classification source.
+- Supported the canonical completed-trip classifications:
+  - `true_positive`
+  - `false_positive`
+  - `false_negative`
+  - `true_negative`
+- Preserved the existing aggregate shadow-evidence semantics independently from classification grouping.
+- Added per-classification valid shadow-evaluation counts.
+- Added per-classification classification agreement counts, disagreement counts, and agreement rates.
+- Added per-classification production-minus-shadow score-delta mean, minimum, and maximum.
+- Extended the shadow-evidence API query to retrieve both `classification` and `metadata`.
+- Passed the canonical classification into the shadow-evidence analyzer.
+- Extended the Analytics Route Soft-Cap Shadow Evidence panel with a `By production classification` section.
+- Reused the existing Analytics reporting-period and optional vehicle scope.
+- Reused the established True Positive, False Positive, False Negative, and True Negative display terminology.
+- Verified the implementation with `git diff --check`.
+- Verified TypeScript with `npx tsc --noEmit`.
+- Verified a successful production `npm run build`.
+- Production build confirmed both `/analytics` and `/api/fleet/route-soft-cap-shadow-evidence`.
+- Implementation was committed as `d6d5193` and pushed to `origin/main`.
+- Local `main` and `origin/main` were verified equal at `d6d5193`.
+
+### Safety / rollout state
+
+- The classification breakdown is observational and descriptive only.
+- No rollout-readiness calculation was added.
+- No preferred model or threshold recommendation was added.
+- No production activation was added.
+- Route soft-cap production aggregation remains disabled.
+- The production scoring decision path remains unchanged.
+- No database migration was introduced.
+
+### Next engineering boundary
+
+Continue collecting and reviewing the expanded production shadow-evidence distribution. Any future decision to enable route soft-cap production aggregation must remain a separate audited work item with explicit evidence review, validation, rollout controls, and rollback planning.
