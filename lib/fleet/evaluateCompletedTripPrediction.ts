@@ -130,6 +130,12 @@ export async function evaluateCompletedTripPrediction({
     routeSoftCapShadow?.diagnosticRouteSoftCapThreatRiskScore
   );
 
+  const shadowScoringVersion =
+    typeof routeSoftCapShadow?.scoringVersion === "string" &&
+    routeSoftCapShadow.scoringVersion.trim().length > 0
+      ? routeSoftCapShadow.scoringVersion
+      : null;
+
   const shadowWeatherContribution = Number(
     snapshotMetadata.weatherContribution
   );
@@ -183,6 +189,12 @@ export async function evaluateCompletedTripPrediction({
 
     routeSoftCapShadowEvaluation = {
       version: 1,
+      ...(shadowScoringVersion
+        ? {
+            scoringVersion:
+              shadowScoringVersion,
+          }
+        : {}),
       productionOverallRiskScore:
         predictedRiskScore,
       shadowThreatRiskScore,

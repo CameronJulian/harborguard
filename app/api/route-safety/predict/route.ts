@@ -2016,6 +2016,7 @@ if (roadRiskSegmentsError) {
               diagnosticTrafficWeightedThreatRisk,
               routeSoftCapShadow: {
                 version: 1,
+                scoringVersion: "route-soft-cap-v1",
                 diagnosticRouteSoftCapUncappedThreatRiskScore,
                 diagnosticRouteSoftCapThreatRiskScore,
                 diagnosticRouteSoftCapReduction,
