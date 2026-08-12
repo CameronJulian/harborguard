@@ -5,6 +5,7 @@ export type RouteSoftCapShadowEvidenceEvaluation = {
   metadata: unknown;
   outcomeCompletedAt: unknown;
   vehicleId: unknown;
+  tripId: unknown;
 };
 
 type ValidShadowEvaluation = {
@@ -165,6 +166,11 @@ export function analyzeRouteSoftCapShadowEvidence(
           evaluation.vehicleId.length > 0
             ? evaluation.vehicleId
             : null,
+        tripId:
+          typeof evaluation.tripId === "string" &&
+          evaluation.tripId.length > 0
+            ? evaluation.tripId
+            : null,
         shadowEvaluation: parseShadowEvaluation(
           evaluation.metadata
         ),
@@ -176,6 +182,7 @@ export function analyzeRouteSoftCapShadowEvidence(
           classification: unknown;
           outcomeCompletedAt: number | null;
           vehicleId: string | null;
+          tripId: string | null;
           shadowEvaluation: ValidShadowEvaluation;
         } => evaluation.shadowEvaluation !== null
       );
