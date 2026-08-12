@@ -11840,3 +11840,74 @@ That validation should verify:
 - canonical completed-trip v1 semantics remain unchanged
 
 Do not run another production completion until this documentation work item is committed and pushed.
+
+## Delivered completion through filtered GPS implemented
+
+**Implementation commit:** `afabc29`
+
+**Parent baseline:** `9c140a8`
+
+### Problem identified during controlled production validation
+
+- Controlled production validation exposed a completion-specific interaction between trip lifecycle handling and location telemetry filtering.
+- The controlled test trip had a valid persisted `actual_departure` and remained `en_route_to_port` before completion.
+- The Driver completion action sent the final known position with requested lifecycle status `delivered`.
+- When that position was sufficiently close to the most recent persisted vehicle location, telemetry analysis could classify the point as `jitter`.
+- The same structural risk also existed for a point classified as `gps_spike`.
+- `processVehicleLocationUpdate` previously returned immediately for either filtered telemetry result.
+- That early return occurred before `runPostLocationUpdateLifecycle` and therefore before the requested `delivered` transition.
+- `/api/fleet/update-location` still returned an HTTP-success response for the filtered point.
+- The Driver UI interpreted that HTTP success as successful completion and cleared its local trip state even though the persisted `vehicle_trips` row remained active.
+
+### Focused implementation
+
+- Extracted the existing trip-status transition, completed-trip outcome creation, and completed-trip prediction evaluation path into reusable `runTripStatusLifecycle` logic.
+- The normal accepted-location path continues to invoke the same trip lifecycle before stop lifecycle processing and automatic fleet-risk detection.
+- Updated `processVehicleLocationUpdate` so a telemetry sample filtered as `jitter` or `gps_spike` may still execute the trip-status lifecycle only when the explicit requested status is `delivered`.
+- The rejected location point itself remains filtered and is not persisted as a vehicle location.
+- Filtered completion does not manufacture behavior alerts, stop-detection evidence, or other telemetry-derived evidence from the rejected point.
+- Other requested trip statuses were not given this filtered-location exception.
+- Ordinary telemetry jitter and GPS-spike filtering behavior remains unchanged.
+
+### Completed-trip learning semantics preserved
+
+- `updateActiveTripFromLocation` remains the canonical persisted trip-status transition path.
+- Existing delivered-transition validation requiring a real `actual_departure` remains intact.
+- A legitimate delivered transition continues to persist `actual_arrival`.
+- `createCompletedTripOutcome` remains the canonical completed-trip outcome path.
+- Skipped completed-trip outcomes remain logged and continue to suppress prediction evaluation.
+- Existing or newly created completed-trip outcomes remain evaluator-eligible.
+- `evaluateCompletedTripPrediction` remains the canonical completed-trip prediction evaluation path.
+- The previously implemented `routeSoftCapShadowEvaluation` persistence path was not changed.
+- Canonical completed-trip v1 semantics were not changed.
+- Prediction-positive threshold semantics were not changed.
+- Production Route Safety scoring was not changed.
+- Route soft-cap production aggregation remains disabled.
+
+### Data and schema impact
+
+- No database migration was introduced.
+- No production database row was manually repaired as part of this implementation.
+- No synthetic departure or arrival timestamp behavior was introduced.
+- Rejected jitter/GPS-spike location samples remain unpersisted.
+
+### Validation completed
+
+- `git diff --check` passed for the focused two-file implementation.
+- TypeScript validation passed with `npx tsc --noEmit`.
+- Production build passed with `npm run build`.
+- Next.js production build generated all `123/123` static pages successfully.
+- Implementation commit `afabc29` contains exactly:
+  - `lib/fleet/processVehicleLocationUpdate.ts`
+  - `lib/fleet/runPostLocationUpdateLifecycle.ts`
+- Implementation commit parent is `9c140a8`.
+- Implementation was pushed successfully to `origin/main`.
+- Local and remote `main` matched at `afabc29` after push.
+- Tracked working tree was clean and nothing remained staged.
+
+### Production validation status
+
+- The implementation has not yet been revalidated by another production completion attempt.
+- The previously controlled trip must not be retried until this documentation work item is committed and pushed.
+- Next step: deploy/confirm production availability of `afabc29` and perform one controlled retry of the existing completion scenario.
+- After that retry, verify the persisted trip status, `actual_arrival`, completed-trip outcome, completed-trip prediction evaluation, and `routeSoftCapShadowEvaluation` metadata before closing the runtime validation work item.
