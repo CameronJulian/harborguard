@@ -12617,3 +12617,40 @@ Implementation commit: `b641d02` — `Add vehicle day shadow evidence visibility
 ### Next engineering boundary
 
 Vehicle × UTC-day dependency visibility is now available alongside the existing marginal shadow-evidence distributions. The next work item must remain audit-first. Before selecting any inferential methodology, evidence-sufficiency rule, confidence requirement, or rollout-readiness criterion, inspect the observed dependency structure and determine whether additional descriptive joint dimensions are required. Scoring-version dependency, statistical inference, thresholds, and production activation remain separate audited work items.
+
+## Route Shadow Evidence Vehicle x Scoring-Version Dependency Visibility
+
+Status: **Implemented and pushed**
+
+Implementation commit: `daa2753` — `Add vehicle scoring version shadow evidence visibility`
+
+### Completed
+
+- Extended the route soft-cap shadow-evidence analyzer with a descriptive joint vehicle × scoring-version grouping.
+- Joint grouping includes only valid shadow evaluations with both usable vehicle identity and an explicit scoring version.
+- Historical or otherwise unknown scoring-version evidence remains excluded from explicit version grouping and remains represented by the existing unknown-version reporting.
+- Added `byVehicleScoringVersion` output containing `vehicleId`, `scoringVersion`, and `evaluationCount`.
+- Vehicle/version groups are ordered deterministically by descending evaluation count, then vehicle identity, then scoring-version identity.
+- Used a tuple-derived grouping key rather than inferring or reconstructing scoring-version identity.
+- Extended Analytics with a `By vehicle and scoring version` section exposing descriptive joint counts.
+- Preserved the existing vehicle, UTC-day, vehicle × UTC-day, scoring-version, classification, score-delta, and other shadow-evidence reporting.
+- No API contract, database schema, persistence writer, completed-trip evaluator semantics, or historical record migration was changed.
+- Verified with `git diff --check`, TypeScript, a production `npm run build`, and a second TypeScript check after the build.
+- Implementation was committed as `daa2753` and pushed to `origin/main`.
+
+### Safety / methodology boundary
+
+- Vehicle × scoring-version reporting is descriptive and observational only.
+- No statistical independence assumption was introduced.
+- No preferred scoring version was selected.
+- No scoring-version threshold was introduced.
+- No bootstrap, confidence interval, standard error, hypothesis test, clustering method, or other inferential statistic was introduced.
+- No evidence-sufficiency or rollout-readiness rule was introduced.
+- No UTC-day × scoring-version or three-way dependency grouping was introduced.
+- Route soft-cap production aggregation remains disabled.
+- The production scoring decision path remains unchanged.
+- Historical evidence without explicit scoring identity remains unknown and is never inferred as `route-soft-cap-v1`.
+
+### Next engineering boundary
+
+Vehicle × scoring-version dependency visibility is now available alongside vehicle × UTC-day visibility and the existing marginal scoring-version distribution. The next work item must remain audit-first. Before adding UTC-day × scoring-version visibility, three-way dependency reporting, statistical inference, evidence-sufficiency criteria, preferred-version logic, or rollout-readiness rules, determine whether another descriptive joint dimension is actually required to resolve a concrete dependency-visibility gap. No statistical or production-activation decision should be made merely because the required fields are technically available.
