@@ -82,6 +82,11 @@ type RouteSoftCapShadowEvidence = {
   uniqueVehicleCount: number;
   largestVehicleEvaluationCount: number;
   largestVehicleShare: number | null;
+  byVehicle: {
+    vehicleId: string;
+    evaluationCount: number;
+    share: number | null;
+  }[];
   scoringVersionDistribution: {
     explicitVersionedEvaluationCount: number;
     unknownVersionEvaluationCount: number;
@@ -95,6 +100,10 @@ type RouteSoftCapShadowEvidence = {
   oldestEvidenceCompletedAt: string | null;
   newestEvidenceCompletedAt: string | null;
   evidenceSpanDays: number | null;
+  byUtcDay: {
+    utcDay: string;
+    evaluationCount: number;
+  }[];
   classifiedEvaluationCount: number;
   classifiedValidShadowEvaluationCount: number;
   classificationAgreementCount: number;
@@ -2466,6 +2475,73 @@ if (subscriptionLoaded && !premiumAllowed) {
                 {formatNumber(
                   routeSoftCapShadowEvidence.scoreDelta.negativeCount
                 )}. Smaller evidence sets should be interpreted cautiously.
+              </div>
+
+              <div className="mt-6">
+                <h3 className="text-sm font-semibold text-slate-100">
+                  By vehicle
+                </h3>
+
+                <div className="mt-3 space-y-2">
+                  {routeSoftCapShadowEvidence.byVehicle.length === 0 ? (
+                    <p className="text-sm text-slate-400">
+                      No vehicle-linked shadow evidence yet.
+                    </p>
+                  ) : (
+                    routeSoftCapShadowEvidence.byVehicle.map((item) => (
+                      <div
+                        key={item.vehicleId}
+                        className="flex items-center justify-between gap-4 rounded-lg border border-slate-800 px-3 py-2"
+                      >
+                        <span className="font-mono text-sm text-slate-200">
+                          {item.vehicleId}
+                        </span>
+                        <span className="text-sm text-slate-400">
+                          {formatNumber(item.evaluationCount)}{" "}
+                          ({formatPerformancePercent(item.share)})
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <p className="mt-2 text-xs text-slate-500">
+                  Vehicle distribution is descriptive only and does not define
+                  an acceptable concentration threshold.
+                </p>
+              </div>
+
+              <div className="mt-6">
+                <h3 className="text-sm font-semibold text-slate-100">
+                  By UTC evidence day
+                </h3>
+
+                <div className="mt-3 space-y-2">
+                  {routeSoftCapShadowEvidence.byUtcDay.length === 0 ? (
+                    <p className="text-sm text-slate-400">
+                      No timestamped shadow evidence yet.
+                    </p>
+                  ) : (
+                    routeSoftCapShadowEvidence.byUtcDay.map((item) => (
+                      <div
+                        key={item.utcDay}
+                        className="flex items-center justify-between gap-4 rounded-lg border border-slate-800 px-3 py-2"
+                      >
+                        <span className="font-mono text-sm text-slate-200">
+                          {item.utcDay}
+                        </span>
+                        <span className="text-sm text-slate-400">
+                          {formatNumber(item.evaluationCount)}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <p className="mt-2 text-xs text-slate-500">
+                  UTC-day counts expose temporal clustering descriptively and
+                  do not define a minimum active-day requirement.
+                </p>
               </div>
 
               <div className="mt-6">

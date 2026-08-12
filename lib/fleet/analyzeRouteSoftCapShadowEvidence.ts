@@ -249,6 +249,21 @@ export function analyzeRouteSoftCapShadowEvidence(
   const uniqueVehicleCount =
     vehicleEvaluationCounts.size;
 
+  const byVehicle =
+    Array.from(vehicleEvaluationCounts.entries())
+      .map(([vehicleId, evaluationCount]) => ({
+        vehicleId,
+        evaluationCount,
+        share: ratio(
+          evaluationCount,
+          validEvaluations.length
+        ),
+      }))
+      .sort((left, right) =>
+        right.evaluationCount - left.evaluationCount ||
+        left.vehicleId.localeCompare(right.vehicleId)
+      );
+
   const largestVehicleEvaluationCount =
     vehicleEvaluationCounts.size === 0
       ? 0
@@ -270,6 +285,31 @@ export function analyzeRouteSoftCapShadowEvidence(
       .filter(
         (value): value is number =>
           value !== null
+      );
+
+  const evidenceByUtcDayCounts =
+    new Map<string, number>();
+
+  evidenceCompletedAtTimes.forEach((completedAtTime) => {
+    const utcDay =
+      new Date(completedAtTime)
+        .toISOString()
+        .slice(0, 10);
+
+    evidenceByUtcDayCounts.set(
+      utcDay,
+      (evidenceByUtcDayCounts.get(utcDay) ?? 0) + 1
+    );
+  });
+
+  const byUtcDay =
+    Array.from(evidenceByUtcDayCounts.entries())
+      .map(([utcDay, evaluationCount]) => ({
+        utcDay,
+        evaluationCount,
+      }))
+      .sort((left, right) =>
+        left.utcDay.localeCompare(right.utcDay)
       );
 
   const oldestEvidenceCompletedAtTime =
@@ -464,6 +504,7 @@ export function analyzeRouteSoftCapShadowEvidence(
     uniqueVehicleCount,
     largestVehicleEvaluationCount,
     largestVehicleShare,
+    byVehicle,
     scoringVersionDistribution: {
       explicitVersionedEvaluationCount,
       unknownVersionEvaluationCount,
@@ -473,6 +514,7 @@ export function analyzeRouteSoftCapShadowEvidence(
     oldestEvidenceCompletedAt,
     newestEvidenceCompletedAt,
     evidenceSpanDays,
+    byUtcDay,
     classifiedEvaluationCount,
     classifiedValidShadowEvaluationCount,
     classificationAgreementCount:
