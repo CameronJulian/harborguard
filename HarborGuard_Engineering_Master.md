@@ -12483,3 +12483,34 @@ Implementation commit: `c702201` — `Persist route soft cap scoring version`
 ### Next engineering boundary
 
 The missing stable scoring-identity persistence gap is now closed for newly generated route soft-cap shadow evidence. The next work item must remain a separate read-only audit of the scoring-version distribution reader boundary. That audit should determine the exact parser, analyzer, response-contract, and Analytics insertion points for grouping explicit `scoringVersion` values while preserving an `Unknown` bucket for historical evidence without explicit identity. It must also determine whether version distribution should initially remain descriptive only and whether any minimum amount of explicitly versioned evidence is required before the distribution is useful. No scoring-version distribution, evidence-sufficiency rule, rollout-readiness logic, preferred-model decision, or production activation should be implemented until that audit is complete. Any future production activation remains a separate audited work item requiring explicit decision criteria, validation requirements, rollout controls, and rollback planning.
+
+## Route Soft-Cap Shadow Scoring-Version Distribution
+
+Status: **Implemented and pushed**
+
+Implementation commit: `f774bf5` — `Add scoring version shadow evidence distribution`
+
+### Completed
+
+- Extended the route soft-cap shadow-evidence analyzer to parse optional `scoringVersion` from persisted shadow-evaluation metadata.
+- Missing, blank, or non-string scoring-version values remain unknown and are never inferred as `route-soft-cap-v1`.
+- Added `explicitVersionedEvaluationCount`, `unknownVersionEvaluationCount`, `explicitVersionCoverageRate`, and deterministic per-version count/share reporting.
+- Valid shadow evaluations remain the denominator for scoring-version coverage and per-version shares.
+- Unknown evidence remains separate from explicit scoring versions.
+- Extended Analytics with `Versioned Shadow Evidence`, `Unknown Scoring Version`, `Explicit Version Coverage`, and a compact `By scoring version` distribution.
+- Preserved the existing API query, prediction writer, completed-trip evaluator, database schema, and historical records.
+- No migration or historical backfill was introduced.
+- Verified with `git diff --check`, `npx tsc --noEmit`, a production `npm run build`, and a second TypeScript check after regenerating Next.js generated types.
+- Implementation was committed as `f774bf5` and pushed to `origin/main`.
+
+### Safety / rollout state
+
+- Scoring-version distribution is observational and descriptive only.
+- No minimum versioned-evidence threshold, evidence-sufficiency rule, statistical-confidence rule, preferred scoring version, rollout-readiness decision, or production activation recommendation was introduced.
+- Route soft-cap production aggregation remains disabled.
+- The production scoring decision path remains unchanged.
+- Historical evidence without explicit scoring identity remains unknown.
+
+### Next engineering boundary
+
+The scoring-version distribution reader and Analytics visibility gap is now closed. Continue collecting and reviewing overall coverage, per-classification coverage, temporal coverage, classification agreement, score-delta behavior, vehicle concentration, explicit scoring-version coverage, unknown-version evidence, and per-version distribution. Before defining any evidence-sufficiency or rollout-readiness rule, perform a separate read-only audit of the remaining decision-support boundary. Any future production activation remains a separate audited work item requiring explicit decision criteria, validation requirements, rollout controls, and rollback planning.
