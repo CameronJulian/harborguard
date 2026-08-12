@@ -12546,3 +12546,42 @@ Implementation commit: `6824754` - `Add route shadow evidence representativeness
 ### Next engineering boundary
 
 The route shadow-evidence representativeness visibility gap is now closed at the descriptive evidence layer. Continue collecting and reviewing overall coverage, production-classification coverage, temporal coverage, classification agreement, score-delta behavior, vehicle concentration, explicit scoring-version coverage, unknown-version evidence, per-version distribution, per-vehicle distribution, and UTC-day evidence distribution. Before defining any evidence-sufficiency, statistical-confidence, representativeness, rollout-readiness, or production-activation rule, perform a separate read-only audit of the remaining decision-support boundary. Any future production activation remains a separate audited work item requiring explicit decision criteria, validation requirements, rollout controls, and rollback planning.
+## Route Shadow Evidence Observation Identity
+
+Status: **Implemented and pushed**
+
+Implementation commit: `554726b` - `Preserve route shadow trip identity`
+
+### Completed
+
+- Established the completed trip as the stable observation identity for route soft-cap shadow-evidence analysis.
+- Confirmed `route_prediction_evaluations` already persists a stable `trip_id` and enforces one evaluation per trip through the existing unique `trip_id` constraint.
+- Preserved existing persistence semantics; no database migration, uniqueness change, backfill, deduplication, or evaluator persistence change was required.
+- Extended the route soft-cap shadow-evidence API query to select the existing `trip_id`.
+- Extended the API row contract with `trip_id`.
+- Mapped persisted `trip_id` to analyzer-facing `tripId`.
+- Extended `RouteSoftCapShadowEvidenceEvaluation` with `tripId`.
+- Preserved normalized trip identity through valid shadow-evaluation construction as `string | null`.
+- Kept trip identity internal to the analysis path; no Analytics UI exposure was introduced.
+- Existing vehicle and UTC-day representativeness reporting remains unchanged.
+- Existing scoring-version distribution remains unchanged.
+- No statistical calculation was introduced.
+- Verified the focused two-file implementation with `git diff --check`, TypeScript before build, a successful production `npm run build`, and TypeScript again after the build.
+- Implementation was committed as `554726b` and pushed to `origin/main`.
+
+### Safety / rollout state
+
+- Route soft-cap production aggregation remains disabled.
+- The production scoring decision path remains unchanged.
+- Trip identity propagation is observational infrastructure only.
+- No confidence interval, standard error, bootstrap, significance test, or other inferential statistic was introduced.
+- No minimum sample-size, vehicle-count, active-day, agreement-rate, score-delta, or scoring-version threshold was introduced.
+- No evidence-sufficiency or representativeness rule was introduced.
+- No rollout-readiness decision was introduced.
+- No preferred scoring version was selected.
+- No production activation recommendation was introduced.
+- Historical scoring-version evidence without explicit scoring identity remains unknown.
+
+### Next engineering boundary
+
+The route shadow-evidence observation-identity propagation gap is now closed: persisted completed-trip identity is available to the analyzer without changing database schema or persistence semantics. The next work item must remain a separate audit-first decision-support task. Before implementing statistical uncertainty, evidence-sufficiency, representativeness, rollout-readiness, or production-activation logic, determine which dependency structure can be supported by the available trip-level observations, repeated vehicle observations, UTC evidence-day structure, and scoring-version strata. Any statistical methodology must explicitly account for the observation unit and relevant dependence rather than assuming that all completed-trip evaluations are independent. No statistical threshold or production activation should be implemented until that methodology boundary has been separately audited and justified.
