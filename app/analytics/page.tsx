@@ -79,6 +79,9 @@ type RouteSoftCapShadowEvidence = {
   totalEvaluationCount: number;
   validShadowEvaluationCount: number;
   shadowEvidenceCoverageRate: number | null;
+  oldestEvidenceCompletedAt: string | null;
+  newestEvidenceCompletedAt: string | null;
+  evidenceSpanDays: number | null;
   classifiedEvaluationCount: number;
   classifiedValidShadowEvaluationCount: number;
   classificationAgreementCount: number;
@@ -2291,6 +2294,31 @@ if (subscriptionLoaded && !premiumAllowed) {
                     value: formatPerformancePercent(
                       routeSoftCapShadowEvidence.shadowEvidenceCoverageRate
                     ),
+                  },
+                  {
+                    label: "Oldest Shadow Evidence",
+                    value:
+                      routeSoftCapShadowEvidence.oldestEvidenceCompletedAt === null
+                        ? "-"
+                        : new Date(
+                            routeSoftCapShadowEvidence.oldestEvidenceCompletedAt
+                          ).toLocaleString(),
+                  },
+                  {
+                    label: "Newest Shadow Evidence",
+                    value:
+                      routeSoftCapShadowEvidence.newestEvidenceCompletedAt === null
+                        ? "-"
+                        : new Date(
+                            routeSoftCapShadowEvidence.newestEvidenceCompletedAt
+                          ).toLocaleString(),
+                  },
+                  {
+                    label: "Evidence Span",
+                    value:
+                      routeSoftCapShadowEvidence.evidenceSpanDays === null
+                        ? "-"
+                        : `${routeSoftCapShadowEvidence.evidenceSpanDays.toFixed(2)} days`,
                   },
                   {
                     label: "Classified Evaluations",

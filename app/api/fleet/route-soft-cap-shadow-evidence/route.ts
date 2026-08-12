@@ -8,6 +8,7 @@ import {
 type RouteSoftCapShadowEvidenceRow = {
   classification: unknown;
   metadata: unknown;
+  outcome_completed_at: unknown;
 };
 
 export async function GET(req: Request) {
@@ -78,7 +79,7 @@ export async function GET(req: Request) {
 
     let evaluationsQuery = supabase
       .from("route_prediction_evaluations")
-      .select("classification, metadata")
+      .select("classification, metadata, outcome_completed_at")
       .eq("organization_id", organizationId);
 
     if (vehicleId) {
@@ -120,6 +121,8 @@ export async function GET(req: Request) {
       rows.map((row) => ({
         classification: row.classification,
         metadata: row.metadata,
+        outcomeCompletedAt:
+          row.outcome_completed_at,
       }));
 
     const evidence =

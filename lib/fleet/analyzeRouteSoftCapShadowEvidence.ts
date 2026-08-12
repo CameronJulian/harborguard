@@ -3,6 +3,7 @@ import type { RoutePredictionClassification } from "@/lib/fleet/calculateRoutePr
 export type RouteSoftCapShadowEvidenceEvaluation = {
   classification: unknown;
   metadata: unknown;
+  outcomeCompletedAt: unknown;
 };
 
 type ValidShadowEvaluation = {
@@ -47,6 +48,22 @@ function validFiniteScore(
     value >= 0 &&
     value <= 100
   );
+}
+
+function parseOutcomeCompletedAt(
+  value: unknown
+): number | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.getTime();
 }
 
 function parseShadowEvaluation(
@@ -109,6 +126,9 @@ export function analyzeRouteSoftCapShadowEvidence(
     evaluations
       .map((evaluation) => ({
         classification: evaluation.classification,
+        outcomeCompletedAt: parseOutcomeCompletedAt(
+          evaluation.outcomeCompletedAt
+        ),
         shadowEvaluation: parseShadowEvaluation(
           evaluation.metadata
         ),
@@ -118,6 +138,7 @@ export function analyzeRouteSoftCapShadowEvidence(
           evaluation
         ): evaluation is {
           classification: unknown;
+          outcomeCompletedAt: number | null;
           shadowEvaluation: ValidShadowEvaluation;
         } => evaluation.shadowEvaluation !== null
       );
@@ -125,6 +146,51 @@ export function analyzeRouteSoftCapShadowEvidence(
   const shadowEvaluations = validEvaluations.map(
     (evaluation) => evaluation.shadowEvaluation
   );
+
+  const evidenceCompletedAtTimes =
+    validEvaluations
+      .map(
+        (evaluation) =>
+          evaluation.outcomeCompletedAt
+      )
+      .filter(
+        (value): value is number =>
+          value !== null
+      );
+
+  const oldestEvidenceCompletedAtTime =
+    evidenceCompletedAtTimes.length > 0
+      ? Math.min(...evidenceCompletedAtTimes)
+      : null;
+
+  const newestEvidenceCompletedAtTime =
+    evidenceCompletedAtTimes.length > 0
+      ? Math.max(...evidenceCompletedAtTimes)
+      : null;
+
+  const oldestEvidenceCompletedAt =
+    oldestEvidenceCompletedAtTime === null
+      ? null
+      : new Date(
+          oldestEvidenceCompletedAtTime
+        ).toISOString();
+
+  const newestEvidenceCompletedAt =
+    newestEvidenceCompletedAtTime === null
+      ? null
+      : new Date(
+          newestEvidenceCompletedAtTime
+        ).toISOString();
+
+  const evidenceSpanDays =
+    oldestEvidenceCompletedAtTime === null ||
+    newestEvidenceCompletedAtTime === null
+      ? null
+      : (
+          newestEvidenceCompletedAtTime -
+          oldestEvidenceCompletedAtTime
+        ) /
+        (24 * 60 * 60 * 1000);
 
   const scoreDeltas =
     shadowEvaluations.map(
@@ -275,6 +341,9 @@ export function analyzeRouteSoftCapShadowEvidence(
       shadowEvaluations.length,
       evaluations.length
     ),
+    oldestEvidenceCompletedAt,
+    newestEvidenceCompletedAt,
+    evidenceSpanDays,
     classifiedEvaluationCount,
     classifiedValidShadowEvaluationCount,
     classificationAgreementCount:
