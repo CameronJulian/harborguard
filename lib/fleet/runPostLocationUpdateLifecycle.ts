@@ -97,25 +97,36 @@ export async function runPostLocationUpdateLifecycle(
     tripUpdate.previousStatus !== "delivered" &&
     tripUpdate.nextStatus === "delivered"
   ) {
-    await createCompletedTripOutcome({
+    const outcomeResult = await createCompletedTripOutcome({
       supabase,
       organizationId,
       vehicleId,
       tripId: activeTripId,
     });
 
-    try {
-      await evaluateCompletedTripPrediction({
-        supabase,
-        organizationId,
-        vehicleId,
-        tripId: activeTripId,
-      });
-    } catch (evaluationError) {
+    if (outcomeResult.skipped === true) {
       console.error(
-        "Completed-trip prediction evaluation failed:",
-        evaluationError
+        "Completed-trip outcome creation was skipped:",
+        {
+          organizationId,
+          vehicleId,
+          tripId: activeTripId,
+        }
       );
+    } else {
+      try {
+        await evaluateCompletedTripPrediction({
+          supabase,
+          organizationId,
+          vehicleId,
+          tripId: activeTripId,
+        });
+      } catch (evaluationError) {
+        console.error(
+          "Completed-trip prediction evaluation failed:",
+          evaluationError
+        );
+      }
     }
   }
 
