@@ -2,10 +2,10 @@
 
 **Document purpose:** Single source of truth for continuing HarborGuard development in a new ChatGPT conversation, with another developer, or after a long interruption.
 
-**Project owner:** Cameron Julian Hendrick  
-**Repository:** `C:\Users\cameron\harborguard`  
+**Project owner:** Cameron Julian Hendrick
+**Repository:** `C:\Users\cameron\harborguard`
 **Primary branch:** `main`
-**Current active development branch:** `feature/road-risk-layer-controls`  
+**Current active development branch:** `feature/road-risk-layer-controls`
 **Latest verified feature commit:** `5e32b8a`
 **Last updated:** 2026-07-28
 **Current status:** Live weather intelligence is integrated into Route Safety prediction and displayed in the Command Center. The latest verified feature is complete and pushed.
@@ -12002,3 +12002,75 @@ Do not run another production completion until this documentation work item is c
 - `routeSoftCapShadowEvaluation` persisted.
 - Canonical and shadow classifications agreed.
 - The filtered-location completion regression is runtime-validated for this controlled production case.
+## Route soft-cap shadow evidence reader implemented
+
+**Implementation commit:** `5787684`
+
+**Parent baseline:** `b388306`
+
+A focused read-only evidence reader was added for the already-persisted completed-trip route soft-cap shadow evaluations.
+
+### Implementation
+
+Two files were introduced:
+
+- `lib/fleet/analyzeRouteSoftCapShadowEvidence.ts`
+- `app/api/fleet/route-soft-cap-shadow-evidence/route.ts`
+
+The helper reads persisted `metadata.routeSoftCapShadowEvaluation` values and accepts only the existing version-1 shadow-evaluation contract.
+
+The evidence summary reports:
+
+- total evaluations examined;
+- valid route soft-cap shadow evaluations;
+- classification agreement and disagreement counts;
+- classification agreement rate;
+- positive-state agreement and change counts;
+- route soft-cap score-delta positive, zero, and negative counts;
+- mean score delta;
+- minimum score delta;
+- maximum score delta.
+
+The API route is authenticated through `requireOrganization()` and remains organization-scoped through `organization_id`.
+
+It mirrors the existing route-prediction analytical reader filtering contract with optional:
+
+- `vehicleId`;
+- `start`;
+- `end`.
+
+Date filtering continues to use `outcome_completed_at`.
+
+### Validation
+
+- TypeScript validation passed with `npx tsc --noEmit`.
+- Production build passed with `npm run build`.
+- The production build generated 124/124 static pages.
+- `/api/fleet/route-soft-cap-shadow-evidence` was present in the production build.
+- The implementation commit contains exactly the two intended implementation files.
+- Local and remote `main` matched at implementation commit `5787684` after push.
+- The tracked working tree was clean.
+- Nothing remained staged.
+
+### Safety and semantic boundaries
+
+This work item is observational only.
+
+- No database migration was introduced.
+- No route-prediction evaluation schema was changed.
+- No completed-trip evaluator semantics were changed.
+- No prediction-positive threshold was changed.
+- No production route-risk scoring was changed.
+- No production route-soft-cap aggregation was enabled.
+- No automatic vehicle-action eligibility semantics were changed.
+- Existing persisted evidence remains the source of truth.
+- Invalid or unsupported shadow metadata is excluded rather than reinterpreted.
+- Route soft-cap production aggregation remains disabled.
+
+### Purpose
+
+The reader provides an organization-scoped way to accumulate and inspect a larger distribution of real completed-trip route soft-cap shadow evidence without changing production scoring behavior.
+
+The evidence endpoint is not a rollout decision engine and does not recommend enabling the soft cap.
+
+Future route soft-cap rollout consideration remains a separate focused work item and must be based on accumulated production shadow evidence rather than this reader's existence alone.
