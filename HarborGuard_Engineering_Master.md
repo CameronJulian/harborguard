@@ -1467,7 +1467,8 @@ HarborGuard now treats HERE and TomTom as corroborating traffic intelligence sou
 ### Summary
 - Added road risk scoring for every HERE route alternative.
 - Reused the shared calculateDistanceMeters() helper.
-- Evaluated decoded HERE route geometry against oad_risk_segments.
+- Evaluated decoded HERE route geometry against
+oad_risk_segments.
 - Added:
   - safetyScore
   - riskScore
@@ -1487,7 +1488,8 @@ HarborGuard now treats HERE and TomTom as corroborating traffic intelligence sou
 **Commit:** 916288d
 
 ### Summary
-- Added ankRoutesBySafety().
+- Added
+ankRoutesBySafety().
 - Ranked routes by:
   1. Safety Score
   2. Duration
@@ -1669,7 +1671,8 @@ Taxonomy v2 road risk segment UI milestone completed.
 
 - Audited pp/api/route-safety/cron/providers/route.ts.
 - Updated HERE collision-related incidents to emit collision instead of the legacy ccident value.
-- Left oadblock unchanged because it remains a supported category.
+- Left
+oadblock unchanged because it remains a supported category.
 - TypeScript validation passed.
 - Next.js production build passed.
 
@@ -12694,3 +12697,67 @@ Next methodological action: continue normal route-shadow evidence accumulation. 
 This audit does not select a preferred scoring version, define evidence sufficiency, define rollout readiness, or authorize route soft-cap production activation.
 
 The next HarborGuard work item must remain audit-first.
+
+## Track B-1 — Route Shadow Evidence Analyzer Regression Coverage
+
+Implementation commit: `a3a0b4d`
+
+HarborGuard now has its first automated regression-test milestone for production-readiness release confidence.
+
+The existing `lib/fleet/analyzeRouteSoftCapShadowEvidence.ts` production analyzer was intentionally left unchanged.
+
+A Node-native regression suite was added at:
+
+- `tests/analyzeRouteSoftCapShadowEvidence.test.mjs`
+
+The project now exposes:
+
+- `npm test`
+
+using Node's built-in `node:test` runner with no third-party test framework dependency.
+
+The regression suite protects the analyzer's existing descriptive behavior across five cases:
+
+1. empty evidence input;
+2. one valid explicitly versioned evaluation;
+3. historical valid evidence with unknown scoring version;
+4. malformed shadow metadata excluded from shadow calculations;
+5. deterministic aggregation across multiple valid evaluations.
+
+The tests cover existing behavior including:
+
+- shadow evidence coverage;
+- vehicle concentration;
+- UTC-day grouping;
+- scoring-version distribution;
+- vehicle × UTC-day grouping;
+- vehicle × scoring-version grouping;
+- classification agreement and disagreement;
+- positive-state agreement/change;
+- score-delta counts and summary statistics;
+- temporal evidence span;
+- malformed metadata exclusion.
+
+Verification completed before commit:
+
+- `npm test`: PASS — 5 tests, 5 passed, 0 failed;
+- `npx tsc --noEmit`: PASS;
+- production build: PASS;
+- `git diff --check`: PASS;
+- production analyzer source: unchanged.
+
+No statistical inference was introduced.
+
+No evidence-sufficiency threshold was introduced.
+
+No route-soft-cap rollout-readiness decision was introduced.
+
+No production scoring behavior was changed.
+
+No database migration, provider configuration, or production endpoint behavior was changed.
+
+This milestone establishes the first automated release-confidence boundary for HarborGuard while preserving the existing route-shadow evidence methodology.
+
+Track A remains separate and continues normal production shadow-evidence accumulation.
+
+The next Track B work item must remain audit-first and should identify the next highest-value production-readiness regression or release-confidence boundary rather than expanding test coverage speculatively.
