@@ -87,6 +87,11 @@ type RouteSoftCapShadowEvidence = {
     evaluationCount: number;
     share: number | null;
   }[];
+  byVehicleUtcDay: {
+    vehicleId: string;
+    utcDay: string;
+    evaluationCount: number;
+  }[];
   scoringVersionDistribution: {
     explicitVersionedEvaluationCount: number;
     unknownVersionEvaluationCount: number;
@@ -2541,6 +2546,41 @@ if (subscriptionLoaded && !premiumAllowed) {
                 <p className="mt-2 text-xs text-slate-500">
                   UTC-day counts expose temporal clustering descriptively and
                   do not define a minimum active-day requirement.
+                </p>
+              </div>
+
+              <div className="mt-6">
+                <h3 className="text-sm font-semibold text-slate-100">
+                  By vehicle and UTC evidence day
+                </h3>
+
+                <div className="mt-3 space-y-2">
+                  {routeSoftCapShadowEvidence.byVehicleUtcDay.length === 0 ? (
+                    <p className="text-sm text-slate-400">
+                      No vehicle-and-day-linked shadow evidence yet.
+                    </p>
+                  ) : (
+                    routeSoftCapShadowEvidence.byVehicleUtcDay.map((item) => (
+                      <div
+                        key={`${item.vehicleId}:${item.utcDay}`}
+                        className="flex items-center justify-between gap-4 text-sm"
+                      >
+                        <span className="min-w-0 truncate text-slate-300">
+                          {item.vehicleId} · {item.utcDay}
+                        </span>
+
+                        <span className="shrink-0 font-medium text-slate-100">
+                          {formatNumber(item.evaluationCount)}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <p className="mt-3 text-xs text-slate-400">
+                  Vehicle-by-day counts are descriptive only and expose joint
+                  concentration without defining statistical independence,
+                  evidence sufficiency, or rollout readiness.
                 </p>
               </div>
 

@@ -294,6 +294,57 @@ export function analyzeRouteSoftCapShadowEvidence(
           value !== null
       );
 
+  const vehicleUtcDayEvaluationCounts =
+    new Map<string, {
+      vehicleId: string;
+      utcDay: string;
+      evaluationCount: number;
+    }>();
+
+  validEvaluations.forEach((evaluation) => {
+    if (
+      evaluation.vehicleId === null ||
+      evaluation.outcomeCompletedAt === null
+    ) {
+      return;
+    }
+
+    const utcDay =
+      new Date(evaluation.outcomeCompletedAt)
+        .toISOString()
+        .slice(0, 10);
+
+    const key =
+      `${evaluation.vehicleId}:${utcDay}`;
+
+    const existing =
+      vehicleUtcDayEvaluationCounts.get(key);
+
+    if (existing) {
+      existing.evaluationCount += 1;
+      return;
+    }
+
+    vehicleUtcDayEvaluationCounts.set(key, {
+      vehicleId: evaluation.vehicleId,
+      utcDay,
+      evaluationCount: 1,
+    });
+  });
+
+  const byVehicleUtcDay =
+    Array.from(
+      vehicleUtcDayEvaluationCounts.values()
+    ).sort(
+      (left, right) =>
+        right.evaluationCount -
+          left.evaluationCount ||
+        left.vehicleId.localeCompare(
+          right.vehicleId
+        ) ||
+        left.utcDay.localeCompare(right.utcDay)
+    );
+
   const evidenceByUtcDayCounts =
     new Map<string, number>();
 
@@ -512,6 +563,7 @@ export function analyzeRouteSoftCapShadowEvidence(
     largestVehicleEvaluationCount,
     largestVehicleShare,
     byVehicle,
+    byVehicleUtcDay,
     scoringVersionDistribution: {
       explicitVersionedEvaluationCount,
       unknownVersionEvaluationCount,
