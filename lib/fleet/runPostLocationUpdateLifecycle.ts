@@ -43,45 +43,28 @@ export type RunPostLocationUpdateLifecycleInput = {
     CreateLocationBehaviorAlertsInput["speedingCandidate"];
 };
 
-export async function runPostLocationUpdateLifecycle(
-  input: RunPostLocationUpdateLifecycleInput
+export type RunTripStatusLifecycleInput = {
+  supabase: any;
+  organizationId: string;
+  vehicleId: string;
+  activeTrip: ActiveTripFromLocation | null;
+  activeTripId: string | null;
+  requestedStatus?: string;
+  occurredAt: string;
+};
+
+export async function runTripStatusLifecycle(
+  input: RunTripStatusLifecycleInput
 ): Promise<void> {
   const {
     supabase,
     organizationId,
     vehicleId,
-    tripId,
     activeTrip,
     activeTripId,
     requestedStatus,
-    latitude,
-    longitude,
-    speedKmh,
-    source,
     occurredAt,
-    stopSpeedKmh,
-    stopMinutes,
-    minimumSlowPoints,
-    harshBrakingCandidate,
-    rapidAccelerationCandidate,
-    harshCorneringCandidate,
-    speedingCandidate,
   } = input;
-
-  await createLocationBehaviorAlerts({
-    supabase,
-    organizationId,
-    vehicleId,
-    tripId,
-    activeTripId,
-    latitude,
-    longitude,
-    source,
-    harshBrakingCandidate,
-    rapidAccelerationCandidate,
-    harshCorneringCandidate,
-    speedingCandidate,
-  });
 
   const tripUpdate = await updateActiveTripFromLocation({
     supabase,
@@ -129,6 +112,57 @@ export async function runPostLocationUpdateLifecycle(
       }
     }
   }
+}
+
+export async function runPostLocationUpdateLifecycle(
+  input: RunPostLocationUpdateLifecycleInput
+): Promise<void> {
+  const {
+    supabase,
+    organizationId,
+    vehicleId,
+    tripId,
+    activeTrip,
+    activeTripId,
+    requestedStatus,
+    latitude,
+    longitude,
+    speedKmh,
+    source,
+    occurredAt,
+    stopSpeedKmh,
+    stopMinutes,
+    minimumSlowPoints,
+    harshBrakingCandidate,
+    rapidAccelerationCandidate,
+    harshCorneringCandidate,
+    speedingCandidate,
+  } = input;
+
+  await createLocationBehaviorAlerts({
+    supabase,
+    organizationId,
+    vehicleId,
+    tripId,
+    activeTripId,
+    latitude,
+    longitude,
+    source,
+    harshBrakingCandidate,
+    rapidAccelerationCandidate,
+    harshCorneringCandidate,
+    speedingCandidate,
+  });
+
+  await runTripStatusLifecycle({
+    supabase,
+    organizationId,
+    vehicleId,
+    activeTrip,
+    activeTripId,
+    requestedStatus,
+    occurredAt,
+  });
 
   await updateVehicleStopLifecycle({
     supabase,

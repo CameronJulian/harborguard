@@ -14,6 +14,7 @@ import {
   getVehicleForLocationUpdate,
 } from "@/lib/fleet/getVehicleForLocationUpdate";
 import {
+  runTripStatusLifecycle,
   runPostLocationUpdateLifecycle,
 } from "@/lib/fleet/runPostLocationUpdateLifecycle";
 import type {
@@ -185,6 +186,28 @@ export async function processVehicleLocationUpdate({
     });
 
   if (telemetryAnalysis.skipped) {
+    if (requestedStatus === "delivered") {
+      const activeTrip =
+        await getActiveVehicleTrip({
+          supabase,
+          organizationId,
+          vehicleId,
+        });
+
+      const activeTripId =
+        activeTrip?.id || tripId || null;
+
+      await runTripStatusLifecycle({
+        supabase,
+        organizationId,
+        vehicleId,
+        activeTrip,
+        activeTripId,
+        requestedStatus,
+        occurredAt,
+      });
+    }
+
     return {
       ok: true,
       skipped: telemetryAnalysis.skipped,
