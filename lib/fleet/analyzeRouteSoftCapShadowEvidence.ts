@@ -1,4 +1,7 @@
+import type { RoutePredictionClassification } from "@/lib/fleet/calculateRoutePredictionPerformance";
+
 export type RouteSoftCapShadowEvidenceEvaluation = {
+  classification: unknown;
   metadata: unknown;
 };
 
@@ -8,6 +11,21 @@ type ValidShadowEvaluation = {
   predictionPositiveThreshold: number;
   classificationAgreement: boolean;
 };
+
+const routePredictionClassifications: RoutePredictionClassification[] = [
+  "true_positive",
+  "false_positive",
+  "false_negative",
+  "true_negative",
+];
+
+function validRoutePredictionClassification(
+  value: unknown
+): value is RoutePredictionClassification {
+  return routePredictionClassifications.includes(
+    value as RoutePredictionClassification
+  );
+}
 
 function validFiniteScore(
   value: unknown
@@ -78,31 +96,40 @@ export function analyzeRouteSoftCapShadowEvidence(
 ) {
   const validEvaluations =
     evaluations
-      .map((evaluation) =>
-        parseShadowEvaluation(evaluation.metadata)
-      )
+      .map((evaluation) => ({
+        classification: evaluation.classification,
+        shadowEvaluation: parseShadowEvaluation(
+          evaluation.metadata
+        ),
+      }))
       .filter(
         (
           evaluation
-        ): evaluation is ValidShadowEvaluation =>
-          evaluation !== null
+        ): evaluation is {
+          classification: unknown;
+          shadowEvaluation: ValidShadowEvaluation;
+        } => evaluation.shadowEvaluation !== null
       );
 
+  const shadowEvaluations = validEvaluations.map(
+    (evaluation) => evaluation.shadowEvaluation
+  );
+
   const scoreDeltas =
-    validEvaluations.map(
+    shadowEvaluations.map(
       (evaluation) =>
         evaluation.productionOverallRiskScore -
         evaluation.shadowOverallRiskScore
     );
 
   const agreementCount =
-    validEvaluations.filter(
+    shadowEvaluations.filter(
       (evaluation) =>
         evaluation.classificationAgreement
     ).length;
 
   const positiveStateAgreementCount =
-    validEvaluations.filter((evaluation) => {
+    shadowEvaluations.filter((evaluation) => {
       const productionPositive =
         evaluation.productionOverallRiskScore >=
         evaluation.predictionPositiveThreshold;
@@ -131,21 +158,83 @@ export function analyzeRouteSoftCapShadowEvidence(
         ) / scoreDeltas.length
       : null;
 
+  const byProductionClassification =
+    routePredictionClassifications.map((classification) => {
+      const classificationEvaluations =
+        validEvaluations
+          .filter(
+            (evaluation) =>
+              validRoutePredictionClassification(
+                evaluation.classification
+              ) &&
+              evaluation.classification === classification
+          )
+          .map(
+            (evaluation) =>
+              evaluation.shadowEvaluation
+          );
+
+      const classificationAgreementCount =
+        classificationEvaluations.filter(
+          (evaluation) =>
+            evaluation.classificationAgreement
+        ).length;
+
+      const classificationScoreDeltas =
+        classificationEvaluations.map(
+          (evaluation) =>
+            evaluation.productionOverallRiskScore -
+            evaluation.shadowOverallRiskScore
+        );
+
+      return {
+        classification,
+        validShadowEvaluationCount:
+          classificationEvaluations.length,
+        classificationAgreementCount,
+        classificationDisagreementCount:
+          classificationEvaluations.length -
+          classificationAgreementCount,
+        classificationAgreementRate:
+          classificationEvaluations.length > 0
+            ? classificationAgreementCount /
+              classificationEvaluations.length
+            : null,
+        scoreDelta: {
+          mean:
+            classificationScoreDeltas.length > 0
+              ? classificationScoreDeltas.reduce(
+                  (sum, delta) => sum + delta,
+                  0
+                ) / classificationScoreDeltas.length
+              : null,
+          min:
+            classificationScoreDeltas.length > 0
+              ? Math.min(...classificationScoreDeltas)
+              : null,
+          max:
+            classificationScoreDeltas.length > 0
+              ? Math.max(...classificationScoreDeltas)
+              : null,
+        },
+      };
+    });
+
   return {
     totalEvaluationCount: evaluations.length,
     validShadowEvaluationCount:
-      validEvaluations.length,
+      shadowEvaluations.length,
     classificationAgreementCount:
       agreementCount,
     classificationDisagreementCount:
-      validEvaluations.length - agreementCount,
+      shadowEvaluations.length - agreementCount,
     classificationAgreementRate:
-      validEvaluations.length > 0
-        ? agreementCount / validEvaluations.length
+      shadowEvaluations.length > 0
+        ? agreementCount / shadowEvaluations.length
         : null,
     positiveStateAgreementCount,
     positiveStateChangeCount:
-      validEvaluations.length -
+      shadowEvaluations.length -
       positiveStateAgreementCount,
     scoreDelta: {
       positiveCount: positiveDeltaCount,
@@ -161,5 +250,7 @@ export function analyzeRouteSoftCapShadowEvidence(
           ? Math.max(...scoreDeltas)
           : null,
     },
+    byProductionClassification,
+
   };
 }

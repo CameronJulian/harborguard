@@ -91,6 +91,22 @@ type RouteSoftCapShadowEvidence = {
     min: number | null;
     max: number | null;
   };
+  byProductionClassification: {
+    classification:
+      | "true_positive"
+      | "false_positive"
+      | "false_negative"
+      | "true_negative";
+    validShadowEvaluationCount: number;
+    classificationAgreementCount: number;
+    classificationDisagreementCount: number;
+    classificationAgreementRate: number | null;
+    scoreDelta: {
+      mean: number | null;
+      min: number | null;
+      max: number | null;
+    };
+  }[];
 };
 
 type RouteSoftCapShadowEvidenceResponse = {
@@ -2337,6 +2353,98 @@ if (subscriptionLoaded && !premiumAllowed) {
                 {formatNumber(
                   routeSoftCapShadowEvidence.scoreDelta.negativeCount
                 )}. Smaller evidence sets should be interpreted cautiously.
+              </div>
+
+              <div
+                style={{
+                  marginTop: 18,
+                  borderTop: "1px solid #e5e7eb",
+                  paddingTop: 18,
+                }}
+              >
+                <div
+                  style={{
+                    fontWeight: 700,
+                    marginBottom: 12,
+                  }}
+                >
+                  By production classification
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: isMobile
+                      ? "1fr"
+                      : "repeat(2, minmax(0, 1fr))",
+                    gap: 12,
+                  }}
+                >
+                  {routeSoftCapShadowEvidence.byProductionClassification.map(
+                    (item) => {
+                      const label =
+                        item.classification === "true_positive"
+                          ? "True Positive"
+                          : item.classification === "false_positive"
+                            ? "False Positive"
+                            : item.classification === "false_negative"
+                              ? "False Negative"
+                              : "True Negative";
+
+                      return (
+                        <div
+                          key={item.classification}
+                          style={{
+                            border: "1px solid #e5e7eb",
+                            borderRadius: 14,
+                            padding: 14,
+                            background: "#fff",
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontWeight: 700,
+                              marginBottom: 8,
+                            }}
+                          >
+                            {label}
+                          </div>
+
+                          <div
+                            style={{
+                              ...mutedTextStyle,
+                              fontSize: 13,
+                              lineHeight: 1.6,
+                            }}
+                          >
+                            {formatNumber(
+                              item.validShadowEvaluationCount
+                            )}{" "}
+                            evaluation(s). Agreement:{" "}
+                            {formatPerformancePercent(
+                              item.classificationAgreementRate
+                            )}{" "}
+                            (
+                            {formatNumber(
+                              item.classificationAgreementCount
+                            )}{" "}
+                            agreed,{" "}
+                            {formatNumber(
+                              item.classificationDisagreementCount
+                            )}{" "}
+                            changed). Mean production-minus-shadow score delta:{" "}
+                            <strong>
+                              {item.scoreDelta.mean === null
+                                ? "-"
+                                : item.scoreDelta.mean.toFixed(2)}
+                            </strong>
+                            .
+                          </div>
+                        </div>
+                      );
+                    }
+                  )}
+                </div>
               </div>
             </>
           )}
