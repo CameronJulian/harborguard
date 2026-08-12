@@ -12150,3 +12150,52 @@ Implementation commit: `d6d5193` — `Add route shadow evidence by production cl
 ### Next engineering boundary
 
 Continue collecting and reviewing the expanded production shadow-evidence distribution. Any future decision to enable route soft-cap production aggregation must remain a separate audited work item with explicit evidence review, validation, rollout controls, and rollback planning.
+
+## Route Soft-Cap Shadow Evidence Coverage
+
+Status: **Implemented and pushed**
+
+Implementation commit: `643ea98` — `Add route shadow evidence coverage analytics`
+
+### Completed
+
+- Extended the existing route soft-cap shadow-evidence analysis with descriptive evidence coverage metrics.
+- Added overall shadow-evidence coverage as valid shadow evaluations divided by all scoped completed-trip prediction evaluations.
+- Added per-production-classification coverage using the canonical completed-trip classification groups:
+  - `true_positive`
+  - `false_positive`
+  - `false_negative`
+  - `true_negative`
+- Added an explicit eligible evaluation count for each production classification.
+- Defined each per-classification coverage rate as valid shadow evaluations in that classification divided by all scoped evaluations with that canonical production classification.
+- Preserved existing valid shadow-evaluation counts independently from the new eligible classification denominators.
+- Preserved existing classification agreement, disagreement, positive-state, and score-delta semantics.
+- Extended the Analytics Route Soft-Cap Shadow Evidence panel with overall `Shadow Evidence Coverage`.
+- Extended the `By production classification` presentation with eligible counts and descriptive coverage rates.
+- Preserved the existing reporting-period and optional vehicle scopes.
+- Corrected the classification-agreement display formatting without changing metric semantics.
+- Verified the focused implementation with `git diff --check`.
+- Verified TypeScript with `npx tsc --noEmit`.
+- Verified a successful production `npm run build`.
+- Production build confirmed `/analytics` and `/api/fleet/route-soft-cap-shadow-evidence`.
+- Implementation was committed as `643ea98` and pushed to `origin/main`.
+- Local `main` and `origin/main` were verified equal at `643ea98`.
+
+### Safety / rollout state
+
+- Shadow-evidence coverage is observational and descriptive only.
+- Coverage is not a rollout-readiness calculation.
+- No minimum sample threshold or evidence-sufficiency threshold was introduced.
+- No preferred model, threshold, or activation recommendation was added.
+- No database migration was introduced.
+- No route-prediction evaluation schema was changed.
+- No completed-trip evaluator semantics were changed.
+- No production route-risk scoring was changed.
+- No production route-soft-cap aggregation was enabled.
+- Route soft-cap production aggregation remains disabled.
+- The production scoring decision path remains unchanged.
+- Existing persisted production classifications and versioned shadow metadata remain the evidence source of truth.
+
+### Next engineering boundary
+
+Continue accumulating and reviewing route soft-cap shadow evidence with explicit attention to overall coverage, per-classification coverage, sample distribution, classification agreement, and score-delta behavior. Coverage must not be interpreted as rollout readiness on its own. Before defining any evidence-sufficiency threshold or considering production activation, perform a separate audit of the accumulated evidence distribution and define that decision boundary explicitly. Any future route soft-cap production activation remains a separate audited work item requiring production validation, rollout controls, and rollback planning.
