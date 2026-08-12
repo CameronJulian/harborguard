@@ -12366,3 +12366,65 @@ Implementation commit: `8eb9a94` — `Add route shadow score delta median analyt
 ### Next engineering boundary
 
 Continue accumulating and reviewing route soft-cap shadow evidence with explicit attention to overall coverage, per-classification coverage, eligible sample distribution, valid-shadow sample distribution, temporal coverage, classification agreement, and richer score-delta behavior. The newly exposed median must not be interpreted as evidence sufficiency or rollout readiness on its own. Before defining any minimum evidence threshold, statistical-confidence rule, evidence-sufficiency decision, preferred model or threshold, or considering production activation, continue the separate audit of the remaining descriptive decision-support gaps, with vehicle concentration and stable model/version distribution still unresolved. Any future route soft-cap production activation remains a separate audited work item requiring explicit decision criteria, validation requirements, rollout controls, and rollback planning.
+
+## Route Soft-Cap Shadow Evidence Vehicle Concentration
+
+Status: **Implemented and pushed**
+
+Implementation commit: `20e85bc` — `Add route shadow vehicle concentration analytics`
+
+### Completed
+
+- Extended route soft-cap shadow-evidence analysis with aggregate vehicle-concentration visibility.
+- Reused the existing persisted `vehicle_id` field from `route_prediction_evaluations`.
+- Extended the route soft-cap shadow-evidence API query to select `vehicle_id` together with the existing classification, metadata, and completed-outcome timestamp fields.
+- Passed persisted `vehicle_id` into the analyzer as `vehicleId`.
+- Added defensive vehicle-ID handling so only non-empty string identifiers participate in concentration aggregation.
+- Vehicle concentration is calculated only across valid shadow evaluations.
+- Added `uniqueVehicleCount` as the number of distinct represented vehicles among valid shadow evaluations in the current reporting scope.
+- Added `largestVehicleEvaluationCount` as the largest valid-shadow evaluation contribution from any one represented vehicle.
+- Added `largestVehicleShare` as `largestVehicleEvaluationCount / validShadowEvaluationCount`.
+- When no valid shadow evaluations are present, `largestVehicleShare` remains `null` through the existing ratio helper.
+- Missing or invalid vehicle identifiers are excluded from the represented-vehicle count and per-vehicle contribution map.
+- Raw vehicle identifiers are used only internally for aggregation and are not returned in the route soft-cap shadow-evidence response.
+- No raw vehicle identifiers, vehicle names, registrations, or ranked vehicle table were added to Analytics.
+- Extended the Analytics route soft-cap shadow-evidence response type with `uniqueVehicleCount`.
+- Extended the Analytics response type with `largestVehicleEvaluationCount`.
+- Extended the Analytics response type with `largestVehicleShare`.
+- Added `Vehicles Represented` to the Analytics summary.
+- Added `Largest Vehicle Evidence Count` to the Analytics summary.
+- Added `Largest Vehicle Evidence Share` to the Analytics summary.
+- Preserved existing organization, reporting-period, and optional single-vehicle filters.
+- When a single vehicle is selected and valid shadow evidence exists, the scoped concentration naturally represents one vehicle and a largest-vehicle share of 100 percent.
+- Preserved existing coverage, temporal coverage, sample distribution, production-classification coverage, classification-agreement, positive-state, and score-delta semantics.
+- No database migration was required because `vehicle_id` already exists on the persisted evaluation records used by the endpoint.
+- Verified the focused implementation with `git diff --check`.
+- Verified TypeScript with `npx tsc --noEmit`.
+- Verified a successful production `npm run build`.
+- Production build confirmed `/analytics` and `/api/fleet/route-soft-cap-shadow-evidence`.
+- Implementation was committed as `20e85bc` and pushed to `origin/main`.
+- Local `main` and `origin/main` were verified equal at `20e85bc`.
+
+### Safety / rollout state
+
+- Vehicle-concentration reporting is observational and descriptive only.
+- `uniqueVehicleCount`, `largestVehicleEvaluationCount`, and `largestVehicleShare` describe the distribution of currently accumulated valid shadow evidence across vehicles; they are not evidence-sufficiency or rollout-readiness calculations.
+- No maximum-concentration threshold was introduced.
+- No minimum unique-vehicle threshold was introduced.
+- No evidence-sufficiency threshold was introduced.
+- No preferred model or threshold recommendation was introduced.
+- No production activation recommendation was added.
+- No raw vehicle identifiers were exposed in the Analytics UI.
+- No vehicle ranking table was introduced.
+- No database migration was introduced.
+- No route-prediction evaluation schema was changed.
+- No completed-trip evaluator semantics were changed.
+- No production route-risk scoring was changed.
+- No production route-soft-cap aggregation was enabled.
+- Route soft-cap production aggregation remains disabled.
+- The production scoring decision path remains unchanged.
+- Existing persisted production classifications, versioned shadow metadata, completed-outcome timestamps, stored production/shadow scores, and persisted vehicle identifiers remain the evidence source of truth.
+
+### Next engineering boundary
+
+Continue accumulating and reviewing route soft-cap shadow evidence with explicit attention to overall coverage, per-classification coverage, eligible sample distribution, valid-shadow sample distribution, temporal coverage, classification agreement, score-delta behavior, and vehicle concentration. Vehicle concentration must not be interpreted as evidence sufficiency or rollout readiness on its own. The remaining explicitly unresolved descriptive decision-support gap is stable model/version distribution. Before defining any minimum evidence threshold, concentration threshold, statistical-confidence rule, evidence-sufficiency decision, preferred model or threshold, or considering production activation, perform a separate audit of whether a stable model/version identifier is actually persisted and can be aggregated without altering production persistence semantics. Any future route soft-cap production activation remains a separate audited work item requiring explicit decision criteria, validation requirements, rollout controls, and rollback planning.
