@@ -11725,3 +11725,118 @@ That behavior is intentionally not changed by implementation commit `5e847bd` an
 The already delivered controlled production trip must not be manually repaired until its recovery/replay semantics are separately audited.
 
 **Next:** document and close this implementation work item, then audit the post-location lifecycle's handling of skipped completed-trip outcome creation before performing another controlled production completion.
+
+## Skipped completed-trip outcome handling implemented
+
+**Implementation commit:** `3f6fc6d`
+
+**Parent baseline:** `f142a29`
+
+### Purpose
+
+Improve completed-trip lifecycle observability and control flow when `createCompletedTripOutcome` returns a skipped result.
+
+This work follows the production failure investigation where a delivered trip had no valid completed-trip outcome and the prediction evaluator subsequently had no outcome to evaluate.
+
+### Audit finding
+
+`runPostLocationUpdateLifecycle` previously awaited `createCompletedTripOutcome(...)` but discarded its returned result.
+
+The prediction evaluator then ran whenever a trip had transitioned to `delivered`, even if completed-trip outcome creation had explicitly returned `skipped: true`.
+
+A skipped completed-trip outcome means there is no valid outcome row available for evaluation.
+
+An existing outcome is different from a skipped outcome and remains evaluator-eligible.
+
+### Focused implementation
+
+`lib/fleet/runPostLocationUpdateLifecycle.ts` now captures:
+
+`const outcomeResult = await createCompletedTripOutcome(...)`
+
+When:
+
+`outcomeResult.skipped === true`
+
+HarborGuard now logs:
+
+`Completed-trip outcome creation was skipped:`
+
+together with:
+
+- `organizationId`
+- `vehicleId`
+- `tripId`
+
+The completed-trip prediction evaluator is not invoked for that skipped-outcome path.
+
+### Preserved evaluator paths
+
+If outcome creation was not skipped, evaluation continues normally.
+
+This preserves both:
+
+- newly created outcome evaluation
+- existing outcome evaluation
+
+Existing outcomes remain evaluator-eligible because an outcome row already exists and an evaluation may still need to be created.
+
+### Preserved contracts
+
+- `runPostLocationUpdateLifecycle` remains `Promise<void>`.
+- The HTTP response contract was not changed.
+- The location processing result contract was not changed.
+- Database persistence semantics were not changed.
+- Completed-trip outcome semantics were not changed.
+- Completed-trip prediction evaluator semantics were not changed.
+- Vehicle-stop lifecycle processing remains enabled.
+- Automatic fleet risk detection remains enabled.
+- Route soft-cap production aggregation remains disabled.
+- No database migration was introduced.
+
+### Error behavior
+
+A skipped completed-trip outcome is treated as a non-fatal post-transition lifecycle condition.
+
+The implementation intentionally does not throw after the trip transition has already persisted because that could return an HTTP failure even though the trip status change had already succeeded.
+
+The skipped state is instead made explicit through structured server logging and the guaranteed-useless evaluator invocation is suppressed.
+
+### Verification
+
+- Exactly one source file changed.
+- Exact implementation contract verification passed.
+- Exactly one `createCompletedTripOutcome` call remains.
+- Exactly one `evaluateCompletedTripPrediction` call remains.
+- Exactly one skipped-outcome log exists.
+- `git diff --check` passed.
+- TypeScript validation passed with `npx tsc --noEmit`.
+- Production build passed with `npm run build`.
+- `Promise<void>` lifecycle contract remained unchanged.
+- Implementation commit contains exactly `lib/fleet/runPostLocationUpdateLifecycle.ts`.
+- Local and remote `main` both resolved to `3f6fc6d` after push.
+
+### Current lifecycle status
+
+The completed-trip lifecycle now has two complementary protections:
+
+1. A trip cannot transition to `delivered` without an existing `actual_departure`.
+2. If completed-trip outcome generation is nevertheless skipped, that condition is explicitly logged and the prediction evaluator is not called without a valid outcome.
+
+No production recovery or database repair has been performed for the previously completed controlled trip.
+
+### Next engineering step
+
+After this documentation work item is committed and pushed, perform a fresh controlled production validation using a normally started trip with a real `actual_departure`.
+
+That validation should verify:
+
+- normal trip start records `actual_departure`
+- completion records `actual_arrival`
+- completed-trip outcome creation succeeds
+- prediction evaluation succeeds
+- the intended route prediction snapshot is selected
+- `metadata.routeSoftCapShadowEvaluation` persists
+- canonical completed-trip v1 semantics remain unchanged
+
+Do not run another production completion until this documentation work item is committed and pushed.
