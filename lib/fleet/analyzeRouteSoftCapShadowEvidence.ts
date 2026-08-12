@@ -4,6 +4,7 @@ export type RouteSoftCapShadowEvidenceEvaluation = {
   classification: unknown;
   metadata: unknown;
   outcomeCompletedAt: unknown;
+  vehicleId: unknown;
 };
 
 type ValidShadowEvaluation = {
@@ -151,6 +152,11 @@ export function analyzeRouteSoftCapShadowEvidence(
         outcomeCompletedAt: parseOutcomeCompletedAt(
           evaluation.outcomeCompletedAt
         ),
+        vehicleId:
+          typeof evaluation.vehicleId === "string" &&
+          evaluation.vehicleId.length > 0
+            ? evaluation.vehicleId
+            : null,
         shadowEvaluation: parseShadowEvaluation(
           evaluation.metadata
         ),
@@ -161,12 +167,43 @@ export function analyzeRouteSoftCapShadowEvidence(
         ): evaluation is {
           classification: unknown;
           outcomeCompletedAt: number | null;
+          vehicleId: string | null;
           shadowEvaluation: ValidShadowEvaluation;
         } => evaluation.shadowEvaluation !== null
       );
 
   const shadowEvaluations = validEvaluations.map(
     (evaluation) => evaluation.shadowEvaluation
+  );
+
+  const vehicleEvaluationCounts = new Map<string, number>();
+
+  validEvaluations.forEach((evaluation) => {
+    if (evaluation.vehicleId === null) {
+      return;
+    }
+
+    vehicleEvaluationCounts.set(
+      evaluation.vehicleId,
+      (vehicleEvaluationCounts.get(
+        evaluation.vehicleId
+      ) ?? 0) + 1
+    );
+  });
+
+  const uniqueVehicleCount =
+    vehicleEvaluationCounts.size;
+
+  const largestVehicleEvaluationCount =
+    vehicleEvaluationCounts.size === 0
+      ? 0
+      : Math.max(
+          ...vehicleEvaluationCounts.values()
+        );
+
+  const largestVehicleShare = ratio(
+    largestVehicleEvaluationCount,
+    validEvaluations.length
   );
 
   const evidenceCompletedAtTimes =
@@ -369,6 +406,9 @@ export function analyzeRouteSoftCapShadowEvidence(
       shadowEvaluations.length,
       evaluations.length
     ),
+    uniqueVehicleCount,
+    largestVehicleEvaluationCount,
+    largestVehicleShare,
     oldestEvidenceCompletedAt,
     newestEvidenceCompletedAt,
     evidenceSpanDays,

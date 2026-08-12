@@ -79,6 +79,9 @@ type RouteSoftCapShadowEvidence = {
   totalEvaluationCount: number;
   validShadowEvaluationCount: number;
   shadowEvidenceCoverageRate: number | null;
+  uniqueVehicleCount: number;
+  largestVehicleEvaluationCount: number;
+  largestVehicleShare: number | null;
   oldestEvidenceCompletedAt: string | null;
   newestEvidenceCompletedAt: string | null;
   evidenceSpanDays: number | null;
@@ -2295,6 +2298,24 @@ if (subscriptionLoaded && !premiumAllowed) {
                     label: "Shadow Evidence Coverage",
                     value: formatPerformancePercent(
                       routeSoftCapShadowEvidence.shadowEvidenceCoverageRate
+                    ),
+                  },
+                  {
+                    label: "Vehicles Represented",
+                    value: formatNumber(
+                      routeSoftCapShadowEvidence.uniqueVehicleCount
+                    ),
+                  },
+                  {
+                    label: "Largest Vehicle Evidence Count",
+                    value: formatNumber(
+                      routeSoftCapShadowEvidence.largestVehicleEvaluationCount
+                    ),
+                  },
+                  {
+                    label: "Largest Vehicle Evidence Share",
+                    value: formatPerformancePercent(
+                      routeSoftCapShadowEvidence.largestVehicleShare
                     ),
                   },
                   {
