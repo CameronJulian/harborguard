@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/analyzeRouteSoftCapShadowEvidence.test.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
