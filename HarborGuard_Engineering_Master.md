@@ -12310,3 +12310,59 @@ Implementation commit: `5011505` — `Add temporal route shadow evidence analyti
 ### Next engineering boundary
 
 Continue accumulating and reviewing route soft-cap shadow evidence with explicit attention to overall coverage, per-classification coverage, eligible sample distribution, valid-shadow sample distribution, temporal evidence coverage, classification agreement, and score-delta behavior. Oldest/newest evidence timestamps and evidence span must not be interpreted as evidence sufficiency or rollout readiness on their own. Before defining any minimum evidence threshold, evidence-sufficiency decision, preferred model or threshold, or considering production activation, perform a separate audit of the remaining descriptive decision-support gaps, including vehicle concentration, model/version distribution, and richer score-delta dispersion, then explicitly define the decision criteria, validation requirements, rollout controls, and rollback plan. Any future route soft-cap production activation remains a separate audited work item.
+
+## Route Soft-Cap Shadow Evidence Score-Delta Median
+
+Status: **Implemented and pushed**
+
+Implementation commit: `8eb9a94` — `Add route shadow score delta median analytics`
+
+### Completed
+
+- Extended the existing route soft-cap shadow-evidence score-delta analysis with a deterministic median statistic.
+- Added a reusable `median` helper in `analyzeRouteSoftCapShadowEvidence.ts`.
+- The median helper returns `null` for an empty input population.
+- For an odd-sized population, the median is the middle value of an ascending numeric sort.
+- For an even-sized population, the median is the arithmetic mean of the two middle values.
+- The helper sorts a copied array and does not mutate the existing score-delta population.
+- Added overall `scoreDelta.median` for the complete valid shadow-evidence population.
+- Added per-production-classification `scoreDelta.median`.
+- Overall and per-classification medians use the same existing production-minus-shadow score-delta definition as the existing mean/min/max calculations.
+- Extended the Analytics route soft-cap shadow-evidence response type with overall `scoreDelta.median`.
+- Extended each production-classification score-delta response type with `median`.
+- Extended the Analytics overall score-delta summary to display the median beside the existing mean.
+- Extended each `By production classification` entry to display its score-delta median beside the existing mean.
+- Preserved existing positive/zero/negative score-delta counts.
+- Preserved existing mean, minimum, and maximum score-delta calculations.
+- Preserved existing overall coverage, temporal coverage, sample distribution, production-classification coverage, classification-agreement, and positive-state semantics.
+- No route-soft-cap shadow-evidence API change was required because the raw production and shadow scores were already available in analyzer memory.
+- No database migration was required.
+- Verified the focused implementation with `git diff --check`.
+- Verified TypeScript with `npx tsc --noEmit`.
+- Verified a successful production `npm run build`.
+- Production build confirmed `/analytics` and `/api/fleet/route-soft-cap-shadow-evidence`.
+- Implementation was committed as `8eb9a94` and pushed to `origin/main`.
+- Local `main` and `origin/main` were verified equal at `8eb9a94`.
+
+### Safety / rollout state
+
+- Score-delta median reporting is observational and descriptive only.
+- The median provides a more robust description of the accumulated production-minus-shadow score-delta population; it is not an evidence-sufficiency or rollout-readiness calculation.
+- No percentile or statistical-confidence threshold was introduced.
+- No minimum sample threshold was introduced.
+- No evidence-sufficiency threshold was introduced.
+- No preferred model or threshold recommendation was introduced.
+- No production activation recommendation was added.
+- No route-soft-cap shadow-evidence API contract was changed.
+- No database migration was introduced.
+- No route-prediction evaluation schema was changed.
+- No completed-trip evaluator semantics were changed.
+- No production route-risk scoring was changed.
+- No production route-soft-cap aggregation was enabled.
+- Route soft-cap production aggregation remains disabled.
+- The production scoring decision path remains unchanged.
+- Existing persisted production classifications, versioned shadow metadata, completed-outcome timestamps, and stored production/shadow scores remain the evidence source of truth.
+
+### Next engineering boundary
+
+Continue accumulating and reviewing route soft-cap shadow evidence with explicit attention to overall coverage, per-classification coverage, eligible sample distribution, valid-shadow sample distribution, temporal coverage, classification agreement, and richer score-delta behavior. The newly exposed median must not be interpreted as evidence sufficiency or rollout readiness on its own. Before defining any minimum evidence threshold, statistical-confidence rule, evidence-sufficiency decision, preferred model or threshold, or considering production activation, continue the separate audit of the remaining descriptive decision-support gaps, with vehicle concentration and stable model/version distribution still unresolved. Any future route soft-cap production activation remains a separate audited work item requiring explicit decision criteria, validation requirements, rollout controls, and rollback planning.
