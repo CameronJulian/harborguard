@@ -12254,3 +12254,59 @@ Implementation commit: `801d695` — `Add route shadow sample distribution analy
 ### Next engineering boundary
 
 Continue accumulating and reviewing route soft-cap shadow evidence with explicit attention to overall coverage, per-classification coverage, eligible sample distribution, valid-shadow sample distribution, classification agreement, and score-delta behavior. The newly exposed distribution percentages must not be interpreted as evidence sufficiency or rollout readiness on their own. Before defining any minimum evidence threshold, evidence-sufficiency decision, preferred model or threshold, or considering production activation, perform a separate audit of the accumulated production evidence and explicitly define the decision criteria, validation requirements, rollout controls, and rollback plan. Any future route soft-cap production activation remains a separate audited work item.
+
+## Route Soft-Cap Shadow Evidence Temporal Coverage
+
+Status: **Implemented and pushed**
+
+Implementation commit: `5011505` — `Add temporal route shadow evidence analytics`
+
+### Completed
+
+- Extended the route soft-cap shadow-evidence analysis with descriptive temporal evidence visibility.
+- Reused persisted completed-trip `outcome_completed_at` as the canonical evidence timestamp for this milestone.
+- Extended the route soft-cap shadow-evidence API query to select `outcome_completed_at` together with the existing production classification and shadow metadata.
+- Passed the persisted timestamp into the analyzer as `outcomeCompletedAt`.
+- Added defensive timestamp parsing that accepts valid persisted timestamp strings and returns `null` for missing or invalid values.
+- Missing or invalid timestamps do not invalidate an otherwise valid shadow evaluation; they are excluded only from temporal calculations.
+- Temporal metrics are calculated only from timestamp-bearing valid shadow evaluations.
+- Added `oldestEvidenceCompletedAt` as the earliest valid persisted shadow-evidence completion timestamp in the current API scope.
+- Added `newestEvidenceCompletedAt` as the latest valid persisted shadow-evidence completion timestamp in the current API scope.
+- Added `evidenceSpanDays` as the elapsed time in days between the oldest and newest valid shadow-evidence timestamps.
+- When no timestamp-bearing valid shadow evaluations exist, the oldest timestamp, newest timestamp, and span are `null`.
+- When exactly one timestamp-bearing valid shadow evaluation exists, oldest and newest are equal and the evidence span is `0` days.
+- Temporal analysis is deterministic for the same persisted evidence set and does not use `Date.now()` or request-time evidence-age calculations.
+- Extended the Analytics Route Soft-Cap Shadow Evidence summary with `Oldest Shadow Evidence`.
+- Extended the Analytics summary with `Newest Shadow Evidence`.
+- Extended the Analytics summary with `Evidence Span`.
+- Preserved the existing reporting-period and optional vehicle scopes.
+- Preserved existing coverage, sample-distribution, classification-agreement, positive-state, and score-delta semantics.
+- No database migration was required because `outcome_completed_at` already exists and was already the endpoint's completed-outcome reporting-window field.
+- Verified the focused implementation with `git diff --check`.
+- Verified TypeScript with `npx tsc --noEmit`.
+- Verified a successful production `npm run build`.
+- Production build confirmed `/analytics` and `/api/fleet/route-soft-cap-shadow-evidence`.
+- Implementation was committed as `5011505` and pushed to `origin/main`.
+- Local `main` and `origin/main` were verified equal at `5011505`.
+
+### Safety / rollout state
+
+- Temporal evidence reporting is observational and descriptive only.
+- Oldest/newest timestamps and evidence span describe the time coverage of currently accumulated valid shadow evidence; they are not evidence-sufficiency or rollout-readiness calculations.
+- No evidence-age threshold was introduced.
+- No minimum sample threshold was introduced.
+- No evidence-sufficiency threshold was introduced.
+- No preferred model or threshold recommendation was introduced.
+- No production activation recommendation was added.
+- No database migration was introduced.
+- No route-prediction evaluation schema was changed.
+- No completed-trip evaluator semantics were changed.
+- No production route-risk scoring was changed.
+- No production route-soft-cap aggregation was enabled.
+- Route soft-cap production aggregation remains disabled.
+- The production scoring decision path remains unchanged.
+- Existing persisted production classifications, versioned shadow metadata, and completed-outcome timestamps remain the evidence source of truth.
+
+### Next engineering boundary
+
+Continue accumulating and reviewing route soft-cap shadow evidence with explicit attention to overall coverage, per-classification coverage, eligible sample distribution, valid-shadow sample distribution, temporal evidence coverage, classification agreement, and score-delta behavior. Oldest/newest evidence timestamps and evidence span must not be interpreted as evidence sufficiency or rollout readiness on their own. Before defining any minimum evidence threshold, evidence-sufficiency decision, preferred model or threshold, or considering production activation, perform a separate audit of the remaining descriptive decision-support gaps, including vehicle concentration, model/version distribution, and richer score-delta dispersion, then explicitly define the decision criteria, validation requirements, rollout controls, and rollback plan. Any future route soft-cap production activation remains a separate audited work item.
