@@ -12,6 +12,7 @@ type ValidShadowEvaluation = {
   shadowOverallRiskScore: number;
   predictionPositiveThreshold: number;
   classificationAgreement: boolean;
+  scoringVersion: string | null;
 };
 
 const routePredictionClassifications: RoutePredictionClassification[] = [
@@ -130,6 +131,12 @@ function parseShadowEvaluation(
     return null;
   }
 
+  const scoringVersion =
+    typeof value.scoringVersion === "string" &&
+    value.scoringVersion.trim().length > 0
+      ? value.scoringVersion.trim()
+      : null;
+
   return {
     productionOverallRiskScore:
       value.productionOverallRiskScore,
@@ -139,6 +146,7 @@ function parseShadowEvaluation(
       value.predictionPositiveThreshold,
     classificationAgreement:
       value.classificationAgreement,
+    scoringVersion,
   };
 }
 
@@ -175,6 +183,53 @@ export function analyzeRouteSoftCapShadowEvidence(
   const shadowEvaluations = validEvaluations.map(
     (evaluation) => evaluation.shadowEvaluation
   );
+
+  const scoringVersionCounts = new Map<string, number>();
+
+  shadowEvaluations.forEach((evaluation) => {
+    if (evaluation.scoringVersion === null) {
+      return;
+    }
+
+    scoringVersionCounts.set(
+      evaluation.scoringVersion,
+      (scoringVersionCounts.get(
+        evaluation.scoringVersion
+      ) ?? 0) + 1
+    );
+  });
+
+  const explicitVersionedEvaluationCount =
+    Array.from(scoringVersionCounts.values()).reduce(
+      (sum, count) => sum + count,
+      0
+    );
+
+  const unknownVersionEvaluationCount =
+    shadowEvaluations.length -
+    explicitVersionedEvaluationCount;
+
+  const explicitVersionCoverageRate = ratio(
+    explicitVersionedEvaluationCount,
+    shadowEvaluations.length
+  );
+
+  const byVersion =
+    Array.from(scoringVersionCounts.entries())
+      .map(([scoringVersion, evaluationCount]) => ({
+        scoringVersion,
+        evaluationCount,
+        share: ratio(
+          evaluationCount,
+          shadowEvaluations.length
+        ),
+      }))
+      .sort((left, right) =>
+        right.evaluationCount - left.evaluationCount ||
+        left.scoringVersion.localeCompare(
+          right.scoringVersion
+        )
+      );
 
   const vehicleEvaluationCounts = new Map<string, number>();
 
@@ -409,6 +464,12 @@ export function analyzeRouteSoftCapShadowEvidence(
     uniqueVehicleCount,
     largestVehicleEvaluationCount,
     largestVehicleShare,
+    scoringVersionDistribution: {
+      explicitVersionedEvaluationCount,
+      unknownVersionEvaluationCount,
+      explicitVersionCoverageRate,
+      byVersion,
+    },
     oldestEvidenceCompletedAt,
     newestEvidenceCompletedAt,
     evidenceSpanDays,

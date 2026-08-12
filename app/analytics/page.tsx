@@ -82,6 +82,16 @@ type RouteSoftCapShadowEvidence = {
   uniqueVehicleCount: number;
   largestVehicleEvaluationCount: number;
   largestVehicleShare: number | null;
+  scoringVersionDistribution: {
+    explicitVersionedEvaluationCount: number;
+    unknownVersionEvaluationCount: number;
+    explicitVersionCoverageRate: number | null;
+    byVersion: {
+      scoringVersion: string;
+      evaluationCount: number;
+      share: number | null;
+    }[];
+  };
   oldestEvidenceCompletedAt: string | null;
   newestEvidenceCompletedAt: string | null;
   evidenceSpanDays: number | null;
@@ -2319,6 +2329,27 @@ if (subscriptionLoaded && !premiumAllowed) {
                     ),
                   },
                   {
+                    label: "Versioned Shadow Evidence",
+                    value: formatNumber(
+                      routeSoftCapShadowEvidence.scoringVersionDistribution
+                        .explicitVersionedEvaluationCount
+                    ),
+                  },
+                  {
+                    label: "Unknown Scoring Version",
+                    value: formatNumber(
+                      routeSoftCapShadowEvidence.scoringVersionDistribution
+                        .unknownVersionEvaluationCount
+                    ),
+                  },
+                  {
+                    label: "Explicit Version Coverage",
+                    value: formatPerformancePercent(
+                      routeSoftCapShadowEvidence.scoringVersionDistribution
+                        .explicitVersionCoverageRate
+                    ),
+                  },
+                  {
                     label: "Oldest Shadow Evidence",
                     value:
                       routeSoftCapShadowEvidence.oldestEvidenceCompletedAt === null
@@ -2435,6 +2466,42 @@ if (subscriptionLoaded && !premiumAllowed) {
                 {formatNumber(
                   routeSoftCapShadowEvidence.scoreDelta.negativeCount
                 )}. Smaller evidence sets should be interpreted cautiously.
+              </div>
+
+              <div className="mt-6">
+                <h3 className="text-sm font-semibold text-slate-100">
+                  By scoring version
+                </h3>
+
+                <div className="mt-3 space-y-2">
+                  {routeSoftCapShadowEvidence.scoringVersionDistribution
+                    .byVersion.length === 0 ? (
+                    <p className="text-sm text-slate-400">
+                      No explicitly versioned shadow evidence yet.
+                    </p>
+                  ) : (
+                    routeSoftCapShadowEvidence.scoringVersionDistribution
+                      .byVersion.map((item) => (
+                        <div
+                          key={item.scoringVersion}
+                          className="flex items-center justify-between gap-4 rounded-lg border border-slate-800 px-3 py-2"
+                        >
+                          <span className="font-mono text-sm text-slate-200">
+                            {item.scoringVersion}
+                          </span>
+                          <span className="text-sm text-slate-400">
+                            {formatNumber(item.evaluationCount)}{" "}
+                            ({formatPerformancePercent(item.share)})
+                          </span>
+                        </div>
+                      ))
+                  )}
+                </div>
+
+                <p className="mt-2 text-xs text-slate-500">
+                  Unknown scoring-version evidence is reported separately
+                  and is not treated as a scoring version.
+                </p>
               </div>
 
               <div
