@@ -79,6 +79,8 @@ type RouteSoftCapShadowEvidence = {
   totalEvaluationCount: number;
   validShadowEvaluationCount: number;
   shadowEvidenceCoverageRate: number | null;
+  classifiedEvaluationCount: number;
+  classifiedValidShadowEvaluationCount: number;
   classificationAgreementCount: number;
   classificationDisagreementCount: number;
   classificationAgreementRate: number | null;
@@ -99,8 +101,10 @@ type RouteSoftCapShadowEvidence = {
       | "false_negative"
       | "true_negative";
     eligibleEvaluationCount: number;
+    eligibleDistributionRate: number | null;
     validShadowEvaluationCount: number;
     shadowEvidenceCoverageRate: number | null;
+    shadowDistributionRate: number | null;
     classificationAgreementCount: number;
     classificationDisagreementCount: number;
     classificationAgreementRate: number | null;
@@ -2289,6 +2293,18 @@ if (subscriptionLoaded && !premiumAllowed) {
                     ),
                   },
                   {
+                    label: "Classified Evaluations",
+                    value: formatNumber(
+                      routeSoftCapShadowEvidence.classifiedEvaluationCount
+                    ),
+                  },
+                  {
+                    label: "Classified Shadow Evaluations",
+                    value: formatNumber(
+                      routeSoftCapShadowEvidence.classifiedValidShadowEvaluationCount
+                    ),
+                  },
+                  {
                     label: "Classification Agreement",
                     value: formatPerformancePercent(
                       routeSoftCapShadowEvidence.classificationAgreementRate
@@ -2437,6 +2453,12 @@ if (subscriptionLoaded && !premiumAllowed) {
                             Coverage:{" "}
                             {formatPerformancePercent(
                               item.shadowEvidenceCoverageRate
+                            )}. Eligible sample share:{" "}
+                            {formatPerformancePercent(
+                              item.eligibleDistributionRate
+                            )}. Shadow sample share:{" "}
+                            {formatPerformancePercent(
+                              item.shadowDistributionRate
                             )}. Agreement:{" "}
                             {formatPerformancePercent(
                               item.classificationAgreementRate

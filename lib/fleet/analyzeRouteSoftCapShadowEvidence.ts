@@ -169,6 +169,20 @@ export function analyzeRouteSoftCapShadowEvidence(
         ) / scoreDeltas.length
       : null;
 
+  const classifiedEvaluationCount =
+    evaluations.filter((evaluation) =>
+      validRoutePredictionClassification(
+        evaluation.classification
+      )
+    ).length;
+
+  const classifiedValidShadowEvaluationCount =
+    validEvaluations.filter((evaluation) =>
+      validRoutePredictionClassification(
+        evaluation.classification
+      )
+    ).length;
+
   const byProductionClassification =
     routePredictionClassifications.map((classification) => {
       const eligibleEvaluationCount =
@@ -210,11 +224,19 @@ export function analyzeRouteSoftCapShadowEvidence(
       return {
         classification,
         eligibleEvaluationCount,
+        eligibleDistributionRate: ratio(
+          eligibleEvaluationCount,
+          classifiedEvaluationCount
+        ),
         validShadowEvaluationCount:
           classificationEvaluations.length,
         shadowEvidenceCoverageRate: ratio(
           classificationEvaluations.length,
           eligibleEvaluationCount
+        ),
+        shadowDistributionRate: ratio(
+          classificationEvaluations.length,
+          classifiedValidShadowEvaluationCount
         ),
         classificationAgreementCount,
         classificationDisagreementCount:
@@ -253,6 +275,8 @@ export function analyzeRouteSoftCapShadowEvidence(
       shadowEvaluations.length,
       evaluations.length
     ),
+    classifiedEvaluationCount,
+    classifiedValidShadowEvaluationCount,
     classificationAgreementCount:
       agreementCount,
     classificationDisagreementCount:
