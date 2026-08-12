@@ -12585,3 +12585,35 @@ Implementation commit: `554726b` - `Preserve route shadow trip identity`
 ### Next engineering boundary
 
 The route shadow-evidence observation-identity propagation gap is now closed: persisted completed-trip identity is available to the analyzer without changing database schema or persistence semantics. The next work item must remain a separate audit-first decision-support task. Before implementing statistical uncertainty, evidence-sufficiency, representativeness, rollout-readiness, or production-activation logic, determine which dependency structure can be supported by the available trip-level observations, repeated vehicle observations, UTC evidence-day structure, and scoring-version strata. Any statistical methodology must explicitly account for the observation unit and relevant dependence rather than assuming that all completed-trip evaluations are independent. No statistical threshold or production activation should be implemented until that methodology boundary has been separately audited and justified.
+
+## Route Shadow Evidence Vehicle x UTC-Day Dependency Visibility
+
+Status: **Implemented and pushed**
+
+Implementation commit: `b641d02` — `Add vehicle day shadow evidence visibility`
+
+### Completed
+
+- Extended the route soft-cap shadow-evidence analyzer with a descriptive joint vehicle × UTC evidence-day grouping.
+- Joint grouping includes only valid shadow evaluations that have both usable vehicle identity and completion time.
+- Added `byVehicleUtcDay` output containing `vehicleId`, `utcDay`, and `evaluationCount`.
+- Vehicle/day groups are ordered deterministically by descending evaluation count, then vehicle identity, then UTC day.
+- Extended Analytics with a `By vehicle and UTC evidence day` section exposing the joint observation counts.
+- Preserved the existing independent vehicle, UTC-day, scoring-version, classification, score-delta, and other shadow-evidence reporting.
+- No API contract, database schema, persistence writer, or historical record migration was changed.
+- Verified with `git diff --check`, `npx tsc --noEmit`, a production `npm run build`, and a second TypeScript check after generated Next.js types were refreshed.
+- Implementation was committed as `b641d02` and pushed to `origin/main`.
+
+### Safety / methodology boundary
+
+- Vehicle × UTC-day reporting is descriptive and observational only.
+- No statistical independence assumption was introduced.
+- No clustering method, cluster-robust variance calculation, bootstrap method, confidence interval, hypothesis test, or inferential statistic was introduced.
+- No minimum sample-size or evidence-sufficiency threshold was introduced.
+- No rollout-readiness or production-activation decision was introduced.
+- Route soft-cap production aggregation and the production scoring decision path remain unchanged.
+- The joint distribution exists to make repeated-observation dependency structure visible before any later statistical methodology is selected.
+
+### Next engineering boundary
+
+Vehicle × UTC-day dependency visibility is now available alongside the existing marginal shadow-evidence distributions. The next work item must remain audit-first. Before selecting any inferential methodology, evidence-sufficiency rule, confidence requirement, or rollout-readiness criterion, inspect the observed dependency structure and determine whether additional descriptive joint dimensions are required. Scoring-version dependency, statistical inference, thresholds, and production activation remain separate audited work items.
