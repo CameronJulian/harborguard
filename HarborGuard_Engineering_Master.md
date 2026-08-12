@@ -12514,3 +12514,35 @@ Implementation commit: `f774bf5` — `Add scoring version shadow evidence distri
 ### Next engineering boundary
 
 The scoring-version distribution reader and Analytics visibility gap is now closed. Continue collecting and reviewing overall coverage, per-classification coverage, temporal coverage, classification agreement, score-delta behavior, vehicle concentration, explicit scoring-version coverage, unknown-version evidence, and per-version distribution. Before defining any evidence-sufficiency or rollout-readiness rule, perform a separate read-only audit of the remaining decision-support boundary. Any future production activation remains a separate audited work item requiring explicit decision criteria, validation requirements, rollout controls, and rollback planning.
+
+## Route Shadow Evidence Representativeness
+
+Status: **Implemented and pushed**
+
+Implementation commit: `6824754` - `Add route shadow evidence representativeness`
+
+### Completed
+
+- Extended route soft-cap shadow-evidence analysis with a deterministic per-vehicle distribution.
+- Added per-vehicle valid-shadow evaluation counts and shares.
+- Added deterministic UTC evidence-day distribution for timestamped valid shadow evidence.
+- Extended Analytics visibility with descriptive `By vehicle` and `By UTC evidence day` sections.
+- Preserved scoring-version distribution and the existing route soft-cap shadow-evidence analysis.
+- Representativeness reporting remains observational and descriptive only.
+- No acceptable vehicle-concentration threshold was introduced.
+- No minimum active-day or temporal-spread requirement was introduced.
+- No evidence-sufficiency, statistical-confidence, rollout-readiness, or production-activation rule was introduced.
+- Verified with `git diff --check`, `npx tsc --noEmit`, a production `npm run build`, and a second TypeScript check after the build.
+- Implementation was committed as `6824754` and pushed to `origin/main`.
+
+### Safety / rollout state
+
+- Route soft-cap production aggregation remains disabled.
+- The production scoring decision path remains unchanged.
+- Vehicle concentration and temporal distribution are exposed as decision-support evidence only.
+- The new distributions do not independently establish representativeness or evidence sufficiency.
+- No production activation recommendation is implied by this milestone.
+
+### Next engineering boundary
+
+The route shadow-evidence representativeness visibility gap is now closed at the descriptive evidence layer. Continue collecting and reviewing overall coverage, production-classification coverage, temporal coverage, classification agreement, score-delta behavior, vehicle concentration, explicit scoring-version coverage, unknown-version evidence, per-version distribution, per-vehicle distribution, and UTC-day evidence distribution. Before defining any evidence-sufficiency, statistical-confidence, representativeness, rollout-readiness, or production-activation rule, perform a separate read-only audit of the remaining decision-support boundary. Any future production activation remains a separate audited work item requiring explicit decision criteria, validation requirements, rollout controls, and rollback planning.
