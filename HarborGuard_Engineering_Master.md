@@ -12428,3 +12428,58 @@ Implementation commit: `20e85bc` — `Add route shadow vehicle concentration ana
 ### Next engineering boundary
 
 Continue accumulating and reviewing route soft-cap shadow evidence with explicit attention to overall coverage, per-classification coverage, eligible sample distribution, valid-shadow sample distribution, temporal coverage, classification agreement, score-delta behavior, and vehicle concentration. Vehicle concentration must not be interpreted as evidence sufficiency or rollout readiness on its own. The remaining explicitly unresolved descriptive decision-support gap is stable model/version distribution. Before defining any minimum evidence threshold, concentration threshold, statistical-confidence rule, evidence-sufficiency decision, preferred model or threshold, or considering production activation, perform a separate audit of whether a stable model/version identifier is actually persisted and can be aggregated without altering production persistence semantics. Any future route soft-cap production activation remains a separate audited work item requiring explicit decision criteria, validation requirements, rollout controls, and rollback planning.
+
+## Route Soft-Cap Shadow Scoring-Version Persistence
+
+Status: **Implemented and pushed**
+
+Implementation commit: `c702201` — `Persist route soft cap scoring version`
+
+### Completed
+
+- Added an explicit immutable scoring identity for newly generated route soft-cap shadow evidence.
+- The scoring identity is `route-soft-cap-v1`.
+- New route-prediction snapshots now persist `routeSoftCapShadow.scoringVersion`.
+- The existing `routeSoftCapShadow.version: 1` field remains the metadata/schema contract version and is not treated as scoring identity.
+- The completed-trip evaluator now reads `routeSoftCapShadow.scoringVersion` when it is present as a non-empty string.
+- The completed-trip evaluator copies the explicit scoring version forward into `routeSoftCapShadowEvaluation.scoringVersion`.
+- The scoring-version value is propagated unchanged rather than reconstructed or inferred later.
+- `scoringVersion` remains optional for historical snapshots.
+- Historical snapshots and evaluations without explicit scoring identity remain unversioned / unknown.
+- No historical record was assigned `route-soft-cap-v1` by assumption.
+- No backfill was performed from metadata `version: 1`.
+- No backfill was performed from prediction threshold values.
+- No backfill was performed from Git history, commit dates, or deployment dates.
+- Existing shadow-metadata eligibility remains based on the existing metadata contract rather than requiring `scoringVersion`.
+- No database migration was required because snapshot and evaluation metadata are already persisted as JSONB.
+- No route-prediction evaluation schema change was required.
+- No shadow-evidence analyzer change was made.
+- No route soft-cap shadow-evidence API change was made.
+- No Analytics UI change was made.
+- No model/version distribution reader was implemented in this milestone.
+- No model/version distribution UI was implemented in this milestone.
+- Verified the focused implementation with `git diff --check`.
+- Verified TypeScript with `npx tsc --noEmit`.
+- Verified a successful production `npm run build`.
+- Implementation was committed as `c702201` and pushed to `origin/main`.
+- Local `main` and `origin/main` were verified equal at `c702201`.
+
+### Safety / rollout state
+
+- Scoring-version persistence is observational metadata only.
+- Persisting `route-soft-cap-v1` does not change production route-risk calculations.
+- Persisting `route-soft-cap-v1` does not enable route soft-cap production aggregation.
+- No existing route-soft-cap shadow score, threshold, classification, or evaluator decision was changed.
+- `scoringVersion` is not an evidence-sufficiency signal.
+- `scoringVersion` is not a rollout-readiness signal.
+- No minimum versioned-evidence threshold was introduced.
+- No evidence-sufficiency threshold was introduced.
+- No preferred model or threshold recommendation was introduced.
+- No production activation recommendation was added.
+- Historical missing scoring versions remain explicit unknowns rather than being inferred.
+- Route soft-cap production aggregation remains disabled.
+- The production scoring decision path remains unchanged.
+
+### Next engineering boundary
+
+The missing stable scoring-identity persistence gap is now closed for newly generated route soft-cap shadow evidence. The next work item must remain a separate read-only audit of the scoring-version distribution reader boundary. That audit should determine the exact parser, analyzer, response-contract, and Analytics insertion points for grouping explicit `scoringVersion` values while preserving an `Unknown` bucket for historical evidence without explicit identity. It must also determine whether version distribution should initially remain descriptive only and whether any minimum amount of explicitly versioned evidence is required before the distribution is useful. No scoring-version distribution, evidence-sufficiency rule, rollout-readiness logic, preferred-model decision, or production activation should be implemented until that audit is complete. Any future production activation remains a separate audited work item requiring explicit decision criteria, validation requirements, rollout controls, and rollback planning.
