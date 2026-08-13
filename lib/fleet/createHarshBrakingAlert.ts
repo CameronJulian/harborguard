@@ -210,6 +210,7 @@ export async function createHarshBrakingAlert(
             occurredAt,
             candidate,
             corroboration,
+            trafficCalmingContext,
           });
 
         console.info(

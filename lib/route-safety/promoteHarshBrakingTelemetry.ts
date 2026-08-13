@@ -1,4 +1,10 @@
 import type {
+  BehaviorTrafficCalmingContext,
+} from "@/lib/fleet/resolveBehaviorTrafficCalmingContext";
+import {
+  buildHarshBrakingPromotionMetadata,
+} from "@/lib/route-safety/buildHarshBrakingPromotionMetadata";
+import type {
   HarshBrakingCorroborationResult,
 } from "@/lib/fleet/harshBrakingCorroboration";
 
@@ -19,6 +25,9 @@ export type PromoteHarshBrakingTelemetryInput = {
     decelerationMps2: number;
   };
   corroboration: HarshBrakingCorroborationResult;
+  trafficCalmingContext:
+    | BehaviorTrafficCalmingContext
+    | null;
 };
 
 export type PromoteHarshBrakingTelemetryResult = {
@@ -38,6 +47,7 @@ export async function promoteHarshBrakingTelemetry({
   occurredAt,
   candidate,
   corroboration,
+  trafficCalmingContext,
 }: PromoteHarshBrakingTelemetryInput): Promise<PromoteHarshBrakingTelemetryResult> {
   if (!corroboration.thresholdMet) {
     return {
@@ -76,32 +86,14 @@ export async function promoteHarshBrakingTelemetry({
         verified: true,
         verification_count:
           corroboration.distinctVehicleCount,
-        metadata: {
-          telemetryType: "harsh_braking",
-          sourceVehicleId: vehicleId,
-          tripId,
-          candidate,
-          corroboration: {
-            thresholdMet:
-              corroboration.thresholdMet,
-            distinctVehicleCount:
-              corroboration.distinctVehicleCount,
-            distinctVehicleIds:
-              corroboration.distinctVehicleIds,
-            otherVehicleIds:
-              corroboration.otherVehicleIds,
-            nearbyAlertCount:
-              corroboration.nearbyAlertCount,
-            radiusMeters:
-              corroboration.radiusMeters,
-            timeWindowMinutes:
-              corroboration.timeWindowMinutes,
-            windowStartedAt:
-              corroboration.windowStartedAt,
-            windowEndedAt:
-              corroboration.windowEndedAt,
-          },
-        },
+        metadata:
+          buildHarshBrakingPromotionMetadata({
+            vehicleId,
+            tripId,
+            candidate,
+            corroboration,
+            trafficCalmingContext,
+          }),
         updated_at: occurredAt,
       },
       {
