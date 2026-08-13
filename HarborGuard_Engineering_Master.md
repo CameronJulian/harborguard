@@ -12890,3 +12890,95 @@ No database migration or production configuration change was introduced.
 Track A remains separate and continues normal production shadow-evidence accumulation.
 
 The next Track B work item must remain audit-first and should identify the next highest-value deterministic production-readiness regression or the smallest justified integration-test boundary.
+
+## Track B-4 — Telemetry Input Parsing Regression Coverage
+
+Implementation commit: `61e70da`
+
+HarborGuard now has automated regression coverage for the deterministic telemetry request-normalization and validation boundary used by the fleet update-location flow.
+
+The existing production parser remained unchanged:
+
+- `lib/fleet/parseUpdateLocationInput.ts`
+
+The existing update-location API route also remained unchanged:
+
+- `app/api/fleet/update-location/route.ts`
+
+A new Node-native regression suite was added at:
+
+- `tests/parseUpdateLocationInput.test.mjs`
+
+The existing `npm test` command now runs the Track B-1 route-shadow evidence suite, Track B-2 GPS movement suite, Track B-3 harsh-braking candidate suite, and Track B-4 telemetry input parser suite.
+
+Track B-4 protects twenty existing parser behaviors, including:
+
+1. numeric telemetry input preservation;
+2. numeric-string conversion;
+3. whitespace and malformed numeric input rejection as `NaN`;
+4. scientific-notation numeric-string conversion;
+5. hexadecimal numeric-string conversion;
+6. required vehicle ID validation;
+7. numeric-string coordinate conversion;
+8. non-finite coordinate rejection;
+9. exact latitude boundary acceptance at -90 and 90;
+10. out-of-range latitude rejection;
+11. exact longitude boundary acceptance at -180 and 180;
+12. out-of-range longitude rejection;
+13. finite speed and heading preservation;
+14. current negative-speed acceptance behavior;
+15. missing or invalid speed and heading defaulting to zero;
+16. default source of `mobile` and default trip ID of `null`;
+17. preservation of supplied trip ID, telemetry source, and requested status;
+18. omitted `recordedAt` remaining undefined;
+19. blank, invalid, and non-string `recordedAt` rejection;
+20. valid `recordedAt` normalization to ISO together with preservation of the complete success-result shape.
+
+The audit confirmed that `parseFleetTelemetryNumber(...)` currently delegates nonblank strings to JavaScript `Number(...)`. As a result, existing production behavior accepts numeric formats such as scientific notation and hexadecimal strings.
+
+The audit also confirmed that the parser currently does not add runtime enum validation for telemetry source or requested status.
+
+Finite negative speed values are currently preserved by this parser.
+
+Finite heading values outside the conventional 0 through 360 degree range are currently preserved by this parser.
+
+Track B-4 deliberately protects those current behaviors rather than silently introducing new request-validation policy.
+
+The parser continues to provide explicit finite and range validation for latitude and longitude.
+
+The update-location route continues mapping parser validation failures to HTTP 400 responses and passing successful parsed values into the existing vehicle-location processing flow.
+
+Verification completed before commit:
+
+- `npm test`: PASS — 49 tests, 49 passed, 0 failed;
+- `npx tsc --noEmit`: PASS;
+- production build: PASS;
+- `git diff --check`: PASS;
+- `lib/fleet/parseUpdateLocationInput.ts`: unchanged;
+- `app/api/fleet/update-location/route.ts`: unchanged.
+
+No telemetry parser production logic was changed.
+
+No source-enum validation policy was added.
+
+No requested-status validation policy was added.
+
+No speed validation policy was changed.
+
+No heading validation policy was changed.
+
+No latitude or longitude policy was changed.
+
+No `recordedAt` validation policy was changed.
+
+No database behavior was changed.
+
+No telemetry persistence behavior was changed.
+
+No alert-lifecycle behavior was changed.
+
+No production API response behavior was changed.
+
+Track A remains separate and continues normal production shadow-evidence accumulation.
+
+The next Track B work item must remain audit-first and should identify the next highest-value deterministic production-readiness regression or the smallest justified integration-test boundary.
