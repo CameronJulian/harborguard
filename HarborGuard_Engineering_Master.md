@@ -13528,3 +13528,107 @@ Local `main` and `origin/main` were verified at the same implementation commit b
 B-11 therefore establishes municipal traffic-calming data as non-authoritative explanatory telemetry evidence without allowing it to change candidate detection, corroboration thresholds, alert validity, telemetry promotion, or route-risk scoring.
 
 The next Track B work item must begin with a fresh audit. No B-12 production consumer, City dataset, scoring change, or UI integration should be selected without first identifying one precise gap and its behavior-preserving insertion point.
+
+## Track B-12 - Harsh-Braking Promotion Traffic-Calming Evidence Preservation
+
+Implementation commit: `4f38574`
+
+HarborGuard now preserves municipal traffic-calming evidence when already-corroborated harsh-braking telemetry is promoted into route intelligence.
+
+B-12 closes the context-loss boundary identified after B-11:
+
+- B-11 attaches nearby municipal traffic-calming context to harsh-driving `vehicle_alerts.telemetry_evidence`;
+- corroborated harsh-braking telemetry may subsequently be promoted into `route_intelligence`;
+- before B-12, that promotion preserved the telemetry candidate and corroboration evidence but dropped the traffic-calming context;
+- B-12 now carries that context into `route_intelligence.metadata`.
+
+The implementation introduced:
+
+- `lib/route-safety/buildHarshBrakingPromotionMetadata.ts`
+- `tests/buildHarshBrakingPromotionMetadata.test.mjs`
+
+The following existing production files were updated:
+
+- `lib/fleet/createHarshBrakingAlert.ts`
+- `lib/route-safety/promoteHarshBrakingTelemetry.ts`
+- `package.json`
+
+`createHarshBrakingAlert.ts` now passes the already-resolved B-11 `trafficCalmingContext` into harsh-braking telemetry promotion.
+
+`promoteHarshBrakingTelemetry.ts` now accepts that context and delegates route-intelligence metadata construction to `buildHarshBrakingPromotionMetadata(...)`.
+
+The metadata builder preserves the existing telemetry metadata contract:
+
+- `telemetryType`;
+- `sourceVehicleId`;
+- `tripId`;
+- harsh-braking candidate evidence;
+- corroboration threshold state;
+- distinct vehicle count;
+- distinct vehicle IDs;
+- other vehicle IDs;
+- nearby alert count;
+- corroboration radius;
+- corroboration time window;
+- corroboration window timestamps.
+
+It additionally preserves:
+
+- `trafficCalmingContext`.
+
+Traffic-calming context remains explanatory evidence only.
+
+B-12 does not change harsh-braking promotion eligibility.
+
+Promotion continues to require the existing `corroboration.thresholdMet` condition.
+
+The following behavior remains unchanged:
+
+- harsh-braking candidate detection;
+- harsh-braking corroboration thresholds;
+- distinct-vehicle requirements;
+- promotion eligibility;
+- promotion confidence calculation;
+- `verification_count` calculation;
+- road-risk aggregation RPC selection;
+- road-risk aggregation RPC parameters;
+- route-risk scoring;
+- alert validity;
+- database schema and migrations.
+
+The existing `aggregate_road_risk_intelligence` RPC continues to receive the same event type, latitude, longitude, event time, organization and intelligence identifiers as before.
+
+Traffic-calming context is not supplied as an aggregation parameter and therefore does not directly alter road-risk scoring.
+
+The new direct B-12 regression suite passed 4/4 with zero failures.
+
+The complete registered HarborGuard test suite passed 151/151 with zero failures.
+
+TypeScript validation passed with:
+
+- `npx tsc --noEmit`
+
+The production build passed successfully.
+
+The build completed TypeScript validation and generated all 124 static pages successfully.
+
+The B-12 implementation commit changed exactly five files:
+
+- `lib/fleet/createHarshBrakingAlert.ts`
+- `lib/route-safety/buildHarshBrakingPromotionMetadata.ts`
+- `lib/route-safety/promoteHarshBrakingTelemetry.ts`
+- `package.json`
+- `tests/buildHarshBrakingPromotionMetadata.test.mjs`
+
+The implementation commit contained:
+
+- 222 insertions;
+- 27 deletions.
+
+Implementation commit `4f38574` was pushed successfully to `origin/main`.
+
+Local `main` and `origin/main` were verified at the same B-12 implementation commit before this documentation update began.
+
+B-12 therefore preserves B-11 municipal traffic-calming evidence across the harsh-braking telemetry-to-route-intelligence promotion boundary without converting that evidence into corroboration, promotion policy, or road-risk weighting.
+
+The next Track B work item must begin with a fresh audit. No B-13 dataset, scoring change, telemetry promotion extension, route-risk consumer, operator-facing integration, or City of Cape Town enrichment should be selected without first identifying one precise gap and its behavior-preserving insertion point.
