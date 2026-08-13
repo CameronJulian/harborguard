@@ -33,3 +33,28 @@ export function historicalRoadRiskRecencyWeight(
 
   return 0.7;
 }
+
+export function calculateOperationalRoadRisk(
+  riskScore: unknown,
+  lastEventAt: unknown,
+  nowMilliseconds = Date.now()
+) {
+  const rawRiskScore = Math.min(
+    100,
+    Math.max(0, Number(riskScore) || 0)
+  );
+
+  return Math.min(
+    100,
+    Math.max(
+      0,
+      Math.round(
+        rawRiskScore *
+          historicalRoadRiskRecencyWeight(
+            lastEventAt,
+            nowMilliseconds
+          )
+      )
+    )
+  );
+}

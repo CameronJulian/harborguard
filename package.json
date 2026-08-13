@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/analyzeRouteSoftCapShadowEvidence.test.mjs tests/evaluateGpsMovement.test.mjs tests/detectHarshBrakingCandidate.test.mjs tests/parseUpdateLocationInput.test.mjs tests/getDistanceMeters.test.mjs tests/cityOfCapeTownRoadContext.test.mjs tests/enrichRouteSafetyAlertsWithRoadContext.test.mjs",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/analyzeRouteSoftCapShadowEvidence.test.mjs tests/evaluateGpsMovement.test.mjs tests/detectHarshBrakingCandidate.test.mjs tests/parseUpdateLocationInput.test.mjs tests/getDistanceMeters.test.mjs tests/cityOfCapeTownRoadContext.test.mjs tests/enrichRouteSafetyAlertsWithRoadContext.test.mjs tests/calculateOperationalRoadRisk.test.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

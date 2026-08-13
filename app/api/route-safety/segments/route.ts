@@ -1,7 +1,7 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 
 import { requireOrganization } from "@/lib/server-auth";
-import { historicalRoadRiskRecencyWeight } from "@/lib/routing/roadRiskRecency";
+import { calculateOperationalRoadRisk } from "@/lib/routing/roadRiskRecency";
 
 const DEFAULT_LIMIT = 250;
 const MAX_LIMIT = 500;
@@ -87,20 +87,9 @@ export async function GET(req: NextRequest) {
 
     const segments = (data || [])
       .map((segment: any) => {
-        const rawRiskScore = Math.min(
-          100,
-          Math.max(0, Number(segment.risk_score) || 0)
-        );
-
-        const effectiveRiskScore = Math.min(
-          100,
-          Math.max(
-            0,
-            Math.round(
-              rawRiskScore *
-                historicalRoadRiskRecencyWeight(segment.last_event_at)
-            )
-          )
+        const effectiveRiskScore = calculateOperationalRoadRisk(
+          segment.risk_score,
+          segment.last_event_at
         );
 
         return {
