@@ -10,6 +10,12 @@ import {
 import {
   createSpeedingAlert,
 } from "@/lib/fleet/createSpeedingAlert";
+import {
+  resolveBehaviorTrafficCalmingContext,
+} from "@/lib/fleet/resolveBehaviorTrafficCalmingContext";
+import {
+  resolveTrafficCalmingContext,
+} from "@/lib/road-context/trafficCalmingProvider";
 import type {
   HarshBrakingCandidate,
 } from "@/lib/fleet/detectHarshBrakingCandidate";
@@ -61,6 +67,17 @@ export async function createLocationBehaviorAlerts(
   const resolvedTripId =
     activeTripId || tripId || null;
 
+  const trafficCalmingContext =
+    await resolveBehaviorTrafficCalmingContext({
+      latitude,
+      longitude,
+      harshBrakingCandidate,
+      rapidAccelerationCandidate,
+      harshCorneringCandidate,
+      resolveContext:
+        resolveTrafficCalmingContext,
+    });
+
   if (harshBrakingCandidate) {
     await createHarshBrakingAlert({
       supabase,
@@ -71,6 +88,7 @@ export async function createLocationBehaviorAlerts(
       longitude,
       candidate: harshBrakingCandidate,
       source,
+      trafficCalmingContext,
     });
   }
 
@@ -84,6 +102,7 @@ export async function createLocationBehaviorAlerts(
       longitude,
       candidate: rapidAccelerationCandidate,
       source,
+      trafficCalmingContext,
     });
   }
 
@@ -97,6 +116,7 @@ export async function createLocationBehaviorAlerts(
       longitude,
       candidate: harshCorneringCandidate,
       source,
+      trafficCalmingContext,
     });
   }
 

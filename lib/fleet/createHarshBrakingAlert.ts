@@ -1,3 +1,6 @@
+import type {
+  BehaviorTrafficCalmingContext,
+} from "@/lib/fleet/resolveBehaviorTrafficCalmingContext";
 import {
   findHarshBrakingCorroboration,
 } from "@/lib/fleet/harshBrakingCorroboration";
@@ -24,6 +27,9 @@ export type CreateHarshBrakingAlertInput = {
   latitude: number;
   longitude: number;
   source: "mobile" | "hardware" | "manual";
+  trafficCalmingContext:
+    | BehaviorTrafficCalmingContext
+    | null;
   candidate: HarshBrakingCandidate;
 };
 
@@ -48,6 +54,7 @@ export async function createHarshBrakingAlert(
     latitude,
     longitude,
     source,
+    trafficCalmingContext,
     candidate,
   } = input;
 
@@ -137,6 +144,7 @@ export async function createHarshBrakingAlert(
           telemetry_evidence: {
             ...candidate,
             source,
+            trafficCalmingContext,
           },
         })
         .select("id")

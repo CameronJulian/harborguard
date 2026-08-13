@@ -1,3 +1,6 @@
+import type {
+  BehaviorTrafficCalmingContext,
+} from "@/lib/fleet/resolveBehaviorTrafficCalmingContext";
 import {
   findRapidAccelerationCorroboration,
 } from "@/lib/fleet/rapidAccelerationCorroboration";
@@ -18,6 +21,9 @@ export type CreateRapidAccelerationAlertInput = {
   latitude: number;
   longitude: number;
   source: "mobile" | "hardware" | "manual";
+  trafficCalmingContext:
+    | BehaviorTrafficCalmingContext
+    | null;
   candidate: RapidAccelerationCandidate;
 };
 
@@ -41,6 +47,7 @@ export async function createRapidAccelerationAlert(
     latitude,
     longitude,
     source,
+    trafficCalmingContext,
     candidate,
   } = input;
 
@@ -123,6 +130,7 @@ export async function createRapidAccelerationAlert(
           telemetry_evidence: {
             ...candidate,
             source,
+            trafficCalmingContext,
           },
         });
 
