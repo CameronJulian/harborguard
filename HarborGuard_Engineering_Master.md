@@ -12820,3 +12820,73 @@ No database migration or production configuration change was introduced.
 Track A remains separate and continues normal production shadow-evidence accumulation.
 
 The next Track B work item must remain audit-first and should identify the next highest-value deterministic production-readiness regression or the smallest justified integration-test boundary.
+
+## Track B-3 — Harsh-Braking Candidate Regression Coverage
+
+Implementation commit: `3882e4a`
+
+HarborGuard now has automated regression coverage for the deterministic harsh-braking candidate decision boundary used by fleet telemetry processing.
+
+The existing production detector remained unchanged:
+
+- `lib/fleet/detectHarshBrakingCandidate.ts`
+
+A new Node-native regression suite was added at:
+
+- `tests/detectHarshBrakingCandidate.test.mjs`
+
+The existing `npm test` command now runs the Track B-1 route-shadow evidence suite, Track B-2 GPS movement suite, and Track B-3 harsh-braking candidate suite.
+
+Track B-3 protects sixteen existing harsh-braking behaviors, including:
+
+1. valid harsh-braking candidate creation;
+2. manual telemetry rejection;
+3. previous-speed minimum rejection and exact-boundary behavior;
+4. speed-drop minimum rejection;
+5. exact minimum speed drop still requiring the independent deceleration threshold;
+6. minimum interval rejection and exact minimum interval acceptance;
+7. maximum interval rejection and exact maximum interval acceptance;
+8. exact runtime equality at the minimum deceleration threshold;
+9. below-threshold deceleration rejection;
+10. non-finite previous-speed rejection;
+11. non-finite current-speed rejection;
+12. negative current-speed rejection;
+13. existing output rounding for speeds;
+14. existing output rounding for speed drop;
+15. existing output rounding for interval duration;
+16. existing output rounding for deceleration.
+
+The production thresholds audited for this milestone remain:
+
+- minimum previous speed: 30 km/h;
+- minimum speed drop: 20 km/h;
+- valid interval window: 2 through 15 seconds inclusive;
+- minimum deceleration: 3 m/s².
+
+The audit confirmed that a 20 km/h drop over 2 seconds produces approximately 2.7778 m/s² and therefore does not independently satisfy the deceleration threshold.
+
+The audit also confirmed that a 21.6 km/h drop over 2 seconds produces exactly 3 m/s² at JavaScript runtime and is accepted by the existing strict `<` deceleration rejection rule when all other conditions pass.
+
+Verification completed before commit:
+
+- `npm test`: PASS — 29 tests, 29 passed, 0 failed;
+- `npx tsc --noEmit`: PASS;
+- production build: PASS;
+- `git diff --check`: PASS;
+- `lib/fleet/detectHarshBrakingCandidate.ts`: unchanged.
+
+No harsh-braking thresholds were changed.
+
+No telemetry-source eligibility rules were changed.
+
+No harsh-braking alert-creation behavior was changed.
+
+No telemetry persistence behavior was changed.
+
+No route-intelligence promotion behavior was changed.
+
+No database migration or production configuration change was introduced.
+
+Track A remains separate and continues normal production shadow-evidence accumulation.
+
+The next Track B work item must remain audit-first and should identify the next highest-value deterministic production-readiness regression or the smallest justified integration-test boundary.
