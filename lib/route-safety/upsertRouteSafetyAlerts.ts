@@ -335,6 +335,20 @@ provider_sources,
             : sameProviderMatch.expires_at;
       }
 
+      const existingRoadName =
+        typeof sameProviderMatch.road_name === "string"
+          ? sameProviderMatch.road_name.trim()
+          : "";
+
+      const incomingRoadName =
+        typeof row.road_name === "string"
+          ? row.road_name.trim()
+          : "";
+
+      const refreshedRoadName =
+        existingRoadName ||
+        incomingRoadName ||
+        null;
       const { error: refreshError } = await supabase
         .from("route_safety_alerts")
         .update({
@@ -346,6 +360,7 @@ provider_sources,
           verified_at: confirmedAt,
           verification_status: "verified",
           expires_at: refreshedExpiresAt,
+          road_name: refreshedRoadName,
         })
         .eq("organization_id", organizationId)
         .eq("id", sameProviderMatch.id);
@@ -362,6 +377,7 @@ provider_sources,
         confirmedAt;
       sameProviderMatch.provider_last_seen = providerLastSeen;
       sameProviderMatch.expires_at = refreshedExpiresAt;
+      sameProviderMatch.road_name = refreshedRoadName;
 
       refreshedExisting += 1;
       continue;

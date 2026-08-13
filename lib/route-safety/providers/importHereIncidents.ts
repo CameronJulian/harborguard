@@ -4,6 +4,8 @@ import type {
 import type { ProviderResult } from "@/lib/route-safety/providers/types";
 import type { RouteSafetyAlertRow } from "@/lib/route-safety/types";
 import { insertNewProviderAlerts } from "@/lib/route-safety/upsertRouteSafetyAlerts";
+import { enrichRouteSafetyAlertsWithRoadContext } from "@/lib/route-safety/enrichRouteSafetyAlertsWithRoadContext";
+import { resolveRoadContext } from "@/lib/road-context/provider";
 
 
 
@@ -210,7 +212,7 @@ export async function importHereIncidents(
       ? data.results
       : [];
 
-    const rows = incidents
+    const normalizedRows = incidents
       .map((incident: any): RouteSafetyAlertRow | null => {
         const details = incident?.incidentDetails || {};
 
@@ -261,6 +263,19 @@ provider_geometry:
         };
       })
       .filter((row: RouteSafetyAlertRow | null): row is RouteSafetyAlertRow => row !== null);
+
+    const roadContextEnrichment =
+
+      await enrichRouteSafetyAlertsWithRoadContext(
+
+        normalizedRows,
+
+        resolveRoadContext
+
+      );
+
+
+    const rows = roadContextEnrichment.rows;
 
     const result = await insertNewProviderAlerts(
       supabase,

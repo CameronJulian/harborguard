@@ -4,6 +4,8 @@ import type {
 } from "@/lib/route-safety/providers/getIntelligenceSourceConfiguration";
 import type { RouteSafetyAlertRow } from "@/lib/route-safety/types";
 import { insertNewProviderAlerts } from "@/lib/route-safety/upsertRouteSafetyAlerts";
+import { enrichRouteSafetyAlertsWithRoadContext } from "@/lib/route-safety/enrichRouteSafetyAlertsWithRoadContext";
+import { resolveRoadContext } from "@/lib/road-context/provider";
 
 function mapTomTomType(
   category: number | string | null,
@@ -174,7 +176,7 @@ export async function importTomTomIncidents(
       ? data.incidents
       : [];
 
-    const rows = incidents
+    const normalizedRows = incidents
       .map((incident: any): RouteSafetyAlertRow | null => {
         const coordinates = incident?.geometry?.coordinates;
 
@@ -243,6 +245,19 @@ export async function importTomTomIncidents(
 };
       })
       .filter((row: RouteSafetyAlertRow | null): row is RouteSafetyAlertRow => row !== null);
+
+    const roadContextEnrichment =
+
+      await enrichRouteSafetyAlertsWithRoadContext(
+
+        normalizedRows,
+
+        resolveRoadContext
+
+      );
+
+
+    const rows = roadContextEnrichment.rows;
 
     const result = await insertNewProviderAlerts(
       supabase,
