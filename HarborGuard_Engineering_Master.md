@@ -13365,3 +13365,73 @@ Local `main` and `origin/main` were verified at the same implementation commit b
 Track A remains separate and continues normal production shadow-evidence accumulation.
 
 The next Track B work item is the audit-first City traffic-calming context foundation. It must introduce traffic-calming context as a separate boundary from the existing road-identity context and must not change route-risk scoring, telemetry detector behavior, alert validity, or database state until the context resolver itself has deterministic regression coverage.
+
+## Track B-10 - City of Cape Town Traffic-Calming Context Foundation
+
+Implementation commit: `1e4e400`
+
+HarborGuard now has a dedicated provider-neutral traffic-calming context boundary backed by audited City of Cape Town municipal traffic-calming data.
+
+The implementation introduced:
+
+- `lib/road-context/trafficCalmingTypes.ts`
+- `lib/road-context/trafficCalmingProvider.ts`
+- `lib/road-context/providers/cityOfCapeTownTrafficCalming.ts`
+
+The City provider resolves two deterministic traffic-calming feature classes:
+
+- speed bumps from City of Cape Town ODP Split 12 FeatureServer layer 7;
+- raised intersections from City of Cape Town ODP Split 12 FeatureServer layer 8.
+
+Traffic-calming context remains a separate boundary from the existing City road-identity context.
+
+The provider performs bounded point-distance evaluation around the requested coordinate, normalizes municipal ArcGIS feature responses, and returns deterministic nearby traffic-calming context without making City data availability a requirement for unrelated HarborGuard behavior.
+
+Automated regression coverage was added at:
+
+- `tests/cityOfCapeTownTrafficCalmingContext.test.mjs`
+
+The direct B-10 regression suite contains 16 deterministic tests and passed 16/16 with zero failures.
+
+The repository `npm test` command was extended to register the B-10 suite while preserving the previously registered deterministic Track B suites.
+
+After implementation, the complete registered HarborGuard test suite passed 141/141 with zero failures.
+
+TypeScript validation passed with:
+
+- `npx tsc --noEmit`
+
+The production build also passed successfully, including generation of all 124 static pages.
+
+The implementation commit changed exactly five files:
+
+- `lib/road-context/providers/cityOfCapeTownTrafficCalming.ts`
+- `lib/road-context/trafficCalmingProvider.ts`
+- `lib/road-context/trafficCalmingTypes.ts`
+- `package.json`
+- `tests/cityOfCapeTownTrafficCalmingContext.test.mjs`
+
+The implementation commit contained:
+
+- 1,347 insertions;
+- 1 deletion.
+
+No route-risk scoring behavior was changed.
+
+No telemetry detector behavior was changed.
+
+No traffic-alert validity behavior was changed.
+
+No database migration or schema change was introduced.
+
+No production database state was changed.
+
+No unrelated dirty or untracked worktree files were included in the implementation commit.
+
+Implementation commit `1e4e400` was pushed successfully to `origin/main`.
+
+Local `main` and `origin/main` were verified at the same implementation commit before documentation work began.
+
+Track A remains separate and continues normal production shadow-evidence accumulation.
+
+The next Track B work item must remain audit-first. Before integrating traffic-calming context into route-risk scoring, telemetry corroboration, operator-facing context, or another production consumer, the exact consumer boundary and behavior-preserving insertion point must be audited and justified.
