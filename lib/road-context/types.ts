@@ -15,6 +15,10 @@
 
   surfaceType: string | null;
 
+  maintenanceAuthority: string | null;
+
+  ownership: string | null;
+
   distanceMeters: number | null;
 };
 

@@ -51,6 +51,8 @@ test("maps City road centreline attributes", () => {
       "S B / N B",
     surfaceType:
       "Asphalt",
+    maintenanceAuthority: null,
+    ownership: null,
     distanceMeters:
       null,
   });
@@ -472,5 +474,34 @@ test("skips malformed candidate geometry", () => {
   assert.equal(
     result?.roadName,
     "Valid Road"
+  );
+});
+
+test("maps City road ownership and maintenance authority", () => {
+  const result =
+    mapCityOfCapeTownRoadFeature({
+      attributes: {
+        OBJECTID: 3,
+        ROAD_NAME: "MAIN",
+        SL_RCL_KEY: "RCL00000300",
+        MNT_AUTH: "CoCT",
+        OWNRSHP:
+          "Western Cape Government",
+      },
+    });
+
+  assert.equal(
+    result?.maintenanceAuthority,
+    "CoCT"
+  );
+
+  assert.equal(
+    result?.ownership,
+    "Western Cape Government"
+  );
+
+  assert.equal(
+    result?.providerSegmentId,
+    "RCL00000300"
   );
 });

@@ -226,6 +226,8 @@ type ArcGisRoadFeature = {
     SPD_LMT?: unknown;
     SPD_LMT_SRC?: unknown;
     SURF_TYPE?: unknown;
+    MNT_AUTH?: unknown;
+    OWNRSHP?: unknown;
   };
 
   geometry?: ArcGisPolylineGeometry;
@@ -327,6 +329,16 @@ export function mapCityOfCapeTownRoadFeature(
       attributes.SURF_TYPE
     );
 
+  const maintenanceAuthority =
+    normalizeString(
+      attributes.MNT_AUTH
+    );
+
+  const ownership =
+    normalizeString(
+      attributes.OWNRSHP
+    );
+
   if (
     !providerSegmentId &&
     !roadName &&
@@ -346,6 +358,8 @@ export function mapCityOfCapeTownRoadFeature(
     speedLimitSource,
     direction,
     surfaceType,
+    maintenanceAuthority,
+    ownership,
     distanceMeters:
       distanceMeters === null
         ? null
@@ -415,6 +429,8 @@ function buildQueryUrl({
         "SPD_LMT",
         "SPD_LMT_SRC",
         "SURF_TYPE",
+        "MNT_AUTH",
+        "OWNRSHP",
       ].join(","),
 
       returnGeometry: "true",
