@@ -13435,3 +13435,96 @@ Local `main` and `origin/main` were verified at the same implementation commit b
 Track A remains separate and continues normal production shadow-evidence accumulation.
 
 The next Track B work item must remain audit-first. Before integrating traffic-calming context into route-risk scoring, telemetry corroboration, operator-facing context, or another production consumer, the exact consumer boundary and behavior-preserving insertion point must be audited and justified.
+
+## Track B-11 - Traffic-Calming Telemetry Evidence Context
+
+Implementation commit: `e9b8813`
+
+HarborGuard now enriches harsh-driving behavior alerts with nearby municipal traffic-calming context while preserving existing telemetry detection, corroboration, promotion, and route-risk behavior.
+
+The implementation introduced:
+
+- `lib/fleet/resolveBehaviorTrafficCalmingContext.ts`
+- `tests/resolveBehaviorTrafficCalmingContext.test.mjs`
+
+The existing behavior-alert orchestration boundary was updated at:
+
+- `lib/fleet/createLocationBehaviorAlerts.ts`
+
+The following alert creators now accept traffic-calming context:
+
+- `lib/fleet/createHarshBrakingAlert.ts`
+- `lib/fleet/createRapidAccelerationAlert.ts`
+- `lib/fleet/createHarshCorneringAlert.ts`
+
+The B-11 behavior-context helper reuses the canonical provider-neutral `TrafficCalmingContext` type introduced in B-10 rather than defining a second traffic-calming domain model.
+
+Traffic-calming context is resolved only when at least one harsh-driving candidate exists.
+
+When multiple harsh-driving candidates exist for the same location update, municipal traffic-calming context is resolved once and reused across the applicable behavior alerts.
+
+The resolved context is attached only as explanatory `telemetry_evidence` for:
+
+- harsh braking;
+- rapid acceleration;
+- harsh cornering.
+
+Speeding alert behavior remains unchanged.
+
+Traffic-calming context remains fail-open. If the municipal resolver returns no trustworthy context or throws an error, normal HarborGuard behavior continues and the context resolves to `null`.
+
+B-11 does not treat municipal traffic-calming infrastructure as vehicle corroboration.
+
+The existing corroboration modules remain unchanged:
+
+- `lib/fleet/harshBrakingCorroboration.ts`
+- `lib/fleet/rapidAccelerationCorroboration.ts`
+- `lib/fleet/harshCorneringCorroboration.ts`
+
+Telemetry candidate detection also remains unchanged.
+
+The following production boundaries were explicitly left unchanged:
+
+- `lib/fleet/analyzeVehicleLocationTelemetry.ts`
+- `lib/fleet/processVehicleLocationUpdate.ts`
+- `lib/route-safety/createTelemetryObservation.ts`
+- harsh-braking telemetry promotion;
+- rapid-acceleration telemetry promotion;
+- harsh-cornering telemetry promotion;
+- route-risk scoring;
+- detector thresholds;
+- alert validity rules;
+- database schema and migrations.
+
+The direct B-11 regression suite passed 6/6 with zero failures.
+
+The complete registered HarborGuard test suite passed 147/147 with zero failures.
+
+TypeScript validation passed with:
+
+- `npx tsc --noEmit`
+
+The production build passed successfully, including generation of all 124 static pages.
+
+The B-11 implementation commit changed exactly seven files:
+
+- `lib/fleet/createHarshBrakingAlert.ts`
+- `lib/fleet/createHarshCorneringAlert.ts`
+- `lib/fleet/createLocationBehaviorAlerts.ts`
+- `lib/fleet/createRapidAccelerationAlert.ts`
+- `lib/fleet/resolveBehaviorTrafficCalmingContext.ts`
+- `package.json`
+- `tests/resolveBehaviorTrafficCalmingContext.test.mjs`
+
+The implementation commit contained:
+
+- 227 insertions;
+- 1 deletion.
+
+Implementation commit `e9b8813` was pushed successfully to `origin/main`.
+
+Local `main` and `origin/main` were verified at the same implementation commit before this documentation update began.
+
+B-11 therefore establishes municipal traffic-calming data as non-authoritative explanatory telemetry evidence without allowing it to change candidate detection, corroboration thresholds, alert validity, telemetry promotion, or route-risk scoring.
+
+The next Track B work item must begin with a fresh audit. No B-12 production consumer, City dataset, scoring change, or UI integration should be selected without first identifying one precise gap and its behavior-preserving insertion point.
