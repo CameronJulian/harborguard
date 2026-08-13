@@ -12761,3 +12761,62 @@ This milestone establishes the first automated release-confidence boundary for H
 Track A remains separate and continues normal production shadow-evidence accumulation.
 
 The next Track B work item must remain audit-first and should identify the next highest-value production-readiness regression or release-confidence boundary rather than expanding test coverage speculatively.
+
+## Track B-2 — GPS Movement Evaluation Regression Coverage
+
+Implementation commit: `ef5c921`
+
+HarborGuard now has automated regression coverage for the deterministic GPS movement decision boundary used by fleet telemetry processing.
+
+The existing production evaluator remained unchanged:
+
+- `lib/fleet/evaluateGpsMovement.ts`
+
+A new Node-native regression suite was added at:
+
+- `tests/evaluateGpsMovement.test.mjs`
+
+The existing `npm test` command now runs both the Track B-1 route-shadow evidence suite and the Track B-2 GPS movement suite.
+
+Track B-2 protects eight existing GPS movement behaviors:
+
+1. movement below the minimum distance is classified as `jitter`;
+2. movement exactly at the minimum-distance boundary is not classified as jitter when speed remains valid;
+3. ordinary movement inside configured limits is accepted;
+4. movement above the configured maximum speed is classified as `gps_spike`;
+5. movement whose calculated JavaScript speed equals the configured maximum is accepted;
+6. zero elapsed interval preserves the current calculated-speed fallback of `0`;
+7. negative elapsed interval preserves the current calculated-speed fallback of `0`;
+8. jitter classification remains higher priority than GPS-spike classification when both conditions could otherwise appear relevant.
+
+During regression development, a proposed mathematical boundary fixture exposed normal IEEE-754 floating-point behavior: a calculation expected mathematically to equal 120 km/h evaluated as `120.00000000000001`.
+
+The production evaluator was not changed in response.
+
+Instead, the final equality-boundary regression uses a configured maximum equal to the actual JavaScript calculated value so the test protects the existing strict `>` contract without introducing a new epsilon, rounding, or tolerance policy.
+
+Verification completed before commit:
+
+- `npm test`: PASS — 13 tests, 13 passed, 0 failed;
+- `npx tsc --noEmit`: PASS;
+- production build: PASS;
+- `git diff --check`: PASS;
+- `lib/fleet/evaluateGpsMovement.ts`: unchanged.
+
+No GPS movement thresholds were changed.
+
+No jitter semantics were changed.
+
+No GPS-spike semantics were changed.
+
+No telemetry persistence behavior was changed.
+
+No anomaly-alert behavior was changed.
+
+No provider-ingestion behavior was changed.
+
+No database migration or production configuration change was introduced.
+
+Track A remains separate and continues normal production shadow-evidence accumulation.
+
+The next Track B work item must remain audit-first and should identify the next highest-value deterministic production-readiness regression or the smallest justified integration-test boundary.
