@@ -15,6 +15,7 @@ import { resolveRouteDrainageCatchmentContext } from "@/lib/route-safety/resolve
 import { resolveRouteFireStationContext } from "@/lib/route-safety/resolveRouteFireStationContext";
 import { resolveRoutePoliceStationContext } from "@/lib/route-safety/resolveRoutePoliceStationContext";
 import { resolveRouteKoebergProtectiveActionZoneContext } from "@/lib/route-safety/resolveRouteKoebergProtectiveActionZoneContext";
+import { resolveRouteKoebergRadiiPlanningContext } from "@/lib/route-safety/resolveRouteKoebergRadiiPlanningContext";
 
 const TRAFFIC_DIAGNOSTIC_COMPOSITE_CONFIG = {
   weights: {
@@ -690,6 +691,15 @@ if (roadRiskSegmentsError) {
 const koebergProtectiveActionZoneContext =
 
   await resolveRouteKoebergProtectiveActionZoneContext({
+
+    routePoints,
+
+  });
+
+
+const koebergRadiiPlanningContext =
+
+  await resolveRouteKoebergRadiiPlanningContext({
 
     routePoints,
 
@@ -2140,6 +2150,7 @@ const koebergProtectiveActionZoneContext =
       fireStationContext,
       policeStationContext,
       koebergProtectiveActionZoneContext,
+      koebergRadiiPlanningContext,
       weather: weatherResult
         ? {
             provider: weatherResult.provider,
