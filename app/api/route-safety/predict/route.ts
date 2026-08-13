@@ -9,6 +9,7 @@ import type { WeatherProviderResult } from "@/lib/weather/types";
 import { routeIncidentSeverityWeight, routeIncidentTypeWeight } from "@/lib/route-safety/incidentWeights";
 import { historicalRoadRiskRecencyWeight } from "@/lib/routing/roadRiskRecency";
 import { extractTrafficCalmingContext } from "@/lib/route-safety/extractTrafficCalmingContext";
+import { resolveRouteOpenWatercourseContext } from "@/lib/route-safety/resolveRouteOpenWatercourseContext";
 
 const TRAFFIC_DIAGNOSTIC_COMPOSITE_CONFIG = {
   weights: {
@@ -654,6 +655,11 @@ if (roadRiskSegmentsError) {
       ...decodedRoutePoints,
       [destinationLat, destinationLng] as [number, number],
     ];
+
+    const openWatercourseContext =
+      await resolveRouteOpenWatercourseContext({
+        routePoints,
+      });
 
     if (routeCorridorTrafficDiagnosticsEnabled) {
       const sampleFractions = [0, 0.25, 0.5, 0.75, 1];
@@ -2094,6 +2100,7 @@ if (roadRiskSegmentsError) {
       diagnosticRouteTrafficSampling,
       experimentalTrafficModel,
       threats: routeThreats,
+      openWatercourseContext,
       weather: weatherResult
         ? {
             provider: weatherResult.provider,
