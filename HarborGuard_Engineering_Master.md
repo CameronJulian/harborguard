@@ -13059,3 +13059,81 @@ No database migration or production configuration change was introduced.
 Track A remains separate and continues normal production shadow-evidence accumulation.
 
 The next Track B work item must remain audit-first and should identify the next highest-value deterministic production-readiness regression or the smallest justified integration-test boundary.
+
+## Track B-6 - City Road Context Enrichment
+
+Implementation commit: `338d76c`
+
+HarborGuard now enriches imported traffic safety alerts with City of Cape Town road-context data before persistence.
+
+The implementation introduced a dedicated road-context abstraction and City of Cape Town provider:
+
+- `lib/road-context/types.ts`
+- `lib/road-context/provider.ts`
+- `lib/road-context/providers/cityOfCapeTown.ts`
+
+A shared point-to-polyline geographic helper was added at:
+
+- `lib/geo/getPointToPolylineDistanceMeters.ts`
+
+Route-safety road-context enrichment is implemented in:
+
+- `lib/route-safety/enrichRouteSafetyAlertsWithRoadContext.ts`
+
+The HERE and TomTom incident import paths now pass normalized traffic alerts through the shared road-context enrichment layer before upsert:
+
+- `lib/route-safety/providers/importHereIncidents.ts`
+- `lib/route-safety/providers/importTomTomIncidents.ts`
+
+The existing route-safety upsert path was also updated so a same-provider refresh can fill a previously missing `road_name` while preserving an already populated road name.
+
+The City of Cape Town provider resolves road context from the audited municipal road geometry source and uses point-to-polyline distance rather than relying only on point proximity.
+
+The enrichment layer is provider-agnostic and preserves the alert when road context is unavailable rather than making external road-context availability a requirement for traffic-alert ingestion.
+
+Diagnostic validation against representative Cape Town HERE traffic alerts confirmed that five alerts with missing `road_name` values were all enriched successfully.
+
+The diagnostic returned:
+
+- attempted: 5;
+- enriched: 5;
+- unavailable: 0.
+
+Representative resolved road names included:
+
+- KLOOF;
+- ROELAND;
+- MAIN;
+- GOVAN MBEKI;
+- EDWARD MAKELE.
+
+Automated regression coverage was added at:
+
+- `tests/cityOfCapeTownRoadContext.test.mjs`
+- `tests/enrichRouteSafetyAlertsWithRoadContext.test.mjs`
+
+The repository `npm test` command was extended to include both new regression suites while preserving the existing deterministic Track B test coverage.
+
+Verification completed before the implementation commit:
+
+- automated test suite: PASS;
+- TypeScript verification: PASS;
+- production build: PASS;
+- `git diff --check`: PASS;
+- representative live road-context enrichment diagnostic: PASS.
+
+The implementation commit changed 11 files with 1,810 insertions and 3 deletions.
+
+No database migration was introduced.
+
+No route-risk scoring threshold was changed.
+
+No traffic-provider registry policy was changed.
+
+No existing alert was made dependent on successful road-context resolution.
+
+No unrelated dirty worktree files were included in the implementation commit.
+
+Track A remains separate and continues normal production shadow-evidence accumulation.
+
+The next Track B work item must remain audit-first and should identify the next highest-value deterministic production-readiness regression or the smallest justified integration-test boundary.
