@@ -14,6 +14,7 @@ import { resolveRouteMainDrainageContext } from "@/lib/route-safety/resolveRoute
 import { resolveRouteDrainageCatchmentContext } from "@/lib/route-safety/resolveRouteDrainageCatchmentContext";
 import { resolveRouteFireStationContext } from "@/lib/route-safety/resolveRouteFireStationContext";
 import { resolveRoutePoliceStationContext } from "@/lib/route-safety/resolveRoutePoliceStationContext";
+import { resolveRouteKoebergProtectiveActionZoneContext } from "@/lib/route-safety/resolveRouteKoebergProtectiveActionZoneContext";
 
 const TRAFFIC_DIAGNOSTIC_COMPOSITE_CONFIG = {
   weights: {
@@ -561,7 +562,7 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
-	
+
 	const { data: roadRiskSegments, error: roadRiskSegmentsError } =
   await supabase
     .from("road_risk_segments")
@@ -684,6 +685,15 @@ if (roadRiskSegmentsError) {
       await resolveRoutePoliceStationContext({
         routePoints,
       });
+
+
+const koebergProtectiveActionZoneContext =
+
+  await resolveRouteKoebergProtectiveActionZoneContext({
+
+    routePoints,
+
+  });
 
     if (routeCorridorTrafficDiagnosticsEnabled) {
       const sampleFractions = [0, 0.25, 0.5, 0.75, 1];
@@ -1063,7 +1073,7 @@ if (roadRiskSegmentsError) {
         traffic_calming_context: trafficCalmingContext,
       };
     });
-	
+
 	    const roadRiskSegmentThreatInputs = (roadRiskSegments || []).map(
       (segment: any) => {
         const riskScore = Math.min(
@@ -2129,6 +2139,7 @@ if (roadRiskSegmentsError) {
       drainageCatchmentContext,
       fireStationContext,
       policeStationContext,
+      koebergProtectiveActionZoneContext,
       weather: weatherResult
         ? {
             provider: weatherResult.provider,
