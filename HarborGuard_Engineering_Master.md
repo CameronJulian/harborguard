@@ -13137,3 +13137,75 @@ No unrelated dirty worktree files were included in the implementation commit.
 Track A remains separate and continues normal production shadow-evidence accumulation.
 
 The next Track B work item must remain audit-first and should identify the next highest-value deterministic production-readiness regression or the smallest justified integration-test boundary.
+
+## Track B-7 - Centralized Operational Road Risk
+
+Implementation commit: `81e606a`
+
+HarborGuard now has a shared operational road-risk calculation for runtime consumers that need the effective risk value derived from persisted segment risk and historical recency.
+
+The implementation added the shared helper:
+
+- `calculateOperationalRoadRisk(...)`
+
+in:
+
+- `lib/routing/roadRiskRecency.ts`
+
+The helper preserves the existing operational calculation semantics by:
+
+1. converting the persisted risk score to a numeric value;
+2. constraining the raw score to the existing `0` to `100` range;
+3. applying the existing `historicalRoadRiskRecencyWeight(...)`;
+4. rounding the resulting effective score;
+5. constraining the final result to the existing `0` to `100` range.
+
+The Route Safety segments API now uses this shared helper instead of maintaining an inline copy of the same effective-risk calculation:
+
+- `app/api/route-safety/segments/route.ts`
+
+This was deliberately narrowed to a behavior-preserving refactor after audit.
+
+The prediction route and HERE route-scoring path were not migrated as part of B-7 because their surrounding scoring semantics are not identical to the segments API calculation and changing them would have expanded the work beyond the verified behavior-preserving boundary.
+
+Automated regression coverage was added at:
+
+- `tests/calculateOperationalRoadRisk.test.mjs`
+
+The repository `npm test` command was extended to include the new operational-road-risk regression suite while preserving the previously registered deterministic Track B suites.
+
+The implementation commit changed exactly four files:
+
+- `app/api/route-safety/segments/route.ts`
+- `lib/routing/roadRiskRecency.ts`
+- `package.json`
+- `tests/calculateOperationalRoadRisk.test.mjs`
+
+The implementation commit contained:
+
+- 149 insertions;
+- 16 deletions.
+
+No persisted `road_risk_segments.risk_score` values were changed.
+
+No database migration was introduced.
+
+No historical recency thresholds were changed.
+
+No route-risk threshold was changed.
+
+No HERE routing verification weighting was changed.
+
+No Route Safety prediction scoring behavior was changed.
+
+No rapid-acceleration work was included in the implementation commit.
+
+No unrelated dirty or untracked worktree files were included in the implementation commit.
+
+Implementation commit `81e606a` was pushed successfully to `origin/main`.
+
+Local `main` and `origin/main` were verified at the same implementation commit before documentation work began.
+
+Track A remains separate and continues normal production shadow-evidence accumulation.
+
+The next Track B work item must remain audit-first and should identify the next highest-value deterministic production-readiness regression or the smallest justified integration-test boundary.
