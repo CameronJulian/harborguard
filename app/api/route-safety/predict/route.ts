@@ -13,6 +13,7 @@ import { resolveRouteOpenWatercourseContext } from "@/lib/route-safety/resolveRo
 import { resolveRouteMainDrainageContext } from "@/lib/route-safety/resolveRouteMainDrainageContext";
 import { resolveRouteDrainageCatchmentContext } from "@/lib/route-safety/resolveRouteDrainageCatchmentContext";
 import { resolveRouteFireStationContext } from "@/lib/route-safety/resolveRouteFireStationContext";
+import { resolveRoutePoliceStationContext } from "@/lib/route-safety/resolveRoutePoliceStationContext";
 
 const TRAFFIC_DIAGNOSTIC_COMPOSITE_CONFIG = {
   weights: {
@@ -676,6 +677,11 @@ if (roadRiskSegmentsError) {
 
     const fireStationContext =
       await resolveRouteFireStationContext({
+        routePoints,
+      });
+
+    const policeStationContext =
+      await resolveRoutePoliceStationContext({
         routePoints,
       });
 
@@ -2122,6 +2128,7 @@ if (roadRiskSegmentsError) {
       mainDrainageContext,
       drainageCatchmentContext,
       fireStationContext,
+      policeStationContext,
       weather: weatherResult
         ? {
             provider: weatherResult.provider,
