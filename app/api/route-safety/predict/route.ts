@@ -11,6 +11,7 @@ import { historicalRoadRiskRecencyWeight } from "@/lib/routing/roadRiskRecency";
 import { extractTrafficCalmingContext } from "@/lib/route-safety/extractTrafficCalmingContext";
 import { resolveRouteOpenWatercourseContext } from "@/lib/route-safety/resolveRouteOpenWatercourseContext";
 import { resolveRouteMainDrainageContext } from "@/lib/route-safety/resolveRouteMainDrainageContext";
+import { resolveRouteDrainageCatchmentContext } from "@/lib/route-safety/resolveRouteDrainageCatchmentContext";
 
 const TRAFFIC_DIAGNOSTIC_COMPOSITE_CONFIG = {
   weights: {
@@ -664,6 +665,11 @@ if (roadRiskSegmentsError) {
 
     const mainDrainageContext =
       await resolveRouteMainDrainageContext({
+        routePoints,
+      });
+
+    const drainageCatchmentContext =
+      await resolveRouteDrainageCatchmentContext({
         routePoints,
       });
 
@@ -2108,6 +2114,7 @@ if (roadRiskSegmentsError) {
       threats: routeThreats,
       openWatercourseContext,
       mainDrainageContext,
+      drainageCatchmentContext,
       weather: weatherResult
         ? {
             provider: weatherResult.provider,
