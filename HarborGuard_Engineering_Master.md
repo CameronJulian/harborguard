@@ -13209,3 +13209,85 @@ Local `main` and `origin/main` were verified at the same implementation commit b
 Track A remains separate and continues normal production shadow-evidence accumulation.
 
 The next Track B work item must remain audit-first and should identify the next highest-value deterministic production-readiness regression or the smallest justified integration-test boundary.
+
+## Track B-8 - Rapid Acceleration Detection Regression Coverage
+
+Implementation commit: `7c4b51a`
+
+HarborGuard now has deterministic regression coverage for the existing rapid-acceleration candidate detector.
+
+This work item deliberately adds regression protection without changing production rapid-acceleration detection behavior.
+
+Automated regression coverage was added at:
+
+- `tests/detectRapidAccelerationCandidate.test.mjs`
+
+The regression suite exercises the existing `detectRapidAccelerationCandidate(...)` contract in:
+
+- `lib/fleet/detectRapidAccelerationCandidate.ts`
+
+Coverage includes:
+
+1. acceptance of qualifying hardware telemetry;
+2. acceptance of qualifying mobile telemetry;
+3. rejection of manual telemetry;
+4. rejection of non-finite previous-speed values;
+5. rejection of non-finite current-speed values;
+6. rejection of negative previous speeds;
+7. rejection of negative current speeds;
+8. rejection below the minimum interval boundary;
+9. acceptance at the exact minimum interval boundary when the remaining gates pass;
+10. acceptance at the exact maximum interval boundary when the remaining gates pass;
+11. rejection above the maximum interval boundary;
+12. rejection below the minimum speed-increase threshold;
+13. confirmation that the exact speed-increase threshold still obeys the acceleration gate;
+14. rejection below the minimum acceleration threshold;
+15. acceptance at the exact acceleration threshold;
+16. preservation of the existing output-rounding contract.
+
+The regression suite uses the audited production threshold values:
+
+- minimum speed increase: `20 km/h`;
+- minimum interval: `2 seconds`;
+- maximum interval: `15 seconds`;
+- minimum acceleration: `3 m/s²`.
+
+The repository `npm test` command was extended to include:
+
+- `tests/detectRapidAccelerationCandidate.test.mjs`
+
+while preserving the previously registered deterministic Track B regression suites.
+
+The implementation commit changed exactly two files:
+
+- `package.json`
+- `tests/detectRapidAccelerationCandidate.test.mjs`
+
+The implementation commit contained:
+
+- 216 insertions;
+- 1 deletion.
+
+No production rapid-acceleration detector implementation was changed.
+
+No rapid-acceleration threshold was changed.
+
+No telemetry-source eligibility policy was changed.
+
+No rapid-acceleration alert lifecycle behavior was changed.
+
+No rapid-acceleration corroboration behavior was changed.
+
+No telemetry-to-road-intelligence promotion behavior was changed.
+
+No database migration or schema change was introduced.
+
+No unrelated dirty or untracked worktree files were included in the implementation commit.
+
+Implementation commit `7c4b51a` was pushed successfully to `origin/main`.
+
+Local `main` and `origin/main` were verified at the same implementation commit before documentation work began.
+
+Track A remains separate and continues normal production shadow-evidence accumulation.
+
+The next Track B work item must remain audit-first and should identify the next highest-value deterministic production-readiness regression or the smallest justified integration-test boundary.
