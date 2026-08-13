@@ -12982,3 +12982,80 @@ No production API response behavior was changed.
 Track A remains separate and continues normal production shadow-evidence accumulation.
 
 The next Track B work item must remain audit-first and should identify the next highest-value deterministic production-readiness regression or the smallest justified integration-test boundary.
+
+## Track B-5 — Shared Geographic Distance Regression Coverage
+
+Implementation commit: `abd6bd5`
+
+HarborGuard now has automated regression coverage for the shared geographic-distance helper used across fleet telemetry, corroboration, geofence-risk, threat-prediction, and mobile-tracking flows.
+
+The existing production helper remained unchanged:
+
+- `lib/geo/getDistanceMeters.ts`
+
+A new Node-native regression suite was added at:
+
+- `tests/getDistanceMeters.test.mjs`
+
+The existing `npm test` command now runs the Track B-1 route-shadow evidence suite, Track B-2 GPS movement suite, Track B-3 harsh-braking suite, Track B-4 telemetry parser suite, and Track B-5 geographic distance suite.
+
+Track B-5 protects ten existing geographic-distance behaviors:
+
+1. identical coordinates return zero distance;
+2. one degree latitude at the equator produces the expected Haversine distance;
+3. one degree longitude at the equator produces the expected Haversine distance;
+4. one degree latitude and longitude are equivalent at the equator;
+5. a realistic short Cape Town coordinate delta remains stable;
+6. distance remains symmetric between two coordinates;
+7. antipodal coordinates produce approximately pi times the configured Earth radius;
+8. non-finite latitude input preserves the current NaN result;
+9. infinite latitude input preserves the current NaN result;
+10. the helper continues not to introduce coordinate-range validation for finite out-of-range values.
+
+The audited implementation uses an Earth radius of 6,371,000 metres and the existing Haversine formula.
+
+The audit confirmed representative numeric behavior including:
+
+- identical coordinate distance: 0 metres;
+- one degree latitude at the equator: approximately 111,194.9266 metres;
+- one degree longitude at the equator: approximately 111,194.9266 metres;
+- a 0.001-degree latitude delta near Cape Town: approximately 111.1949 metres;
+- antipodal distance: approximately 20,015,086.7960 metres.
+
+Tests use explicit floating-point tolerances where appropriate rather than depending on brittle decimal equality.
+
+The audit also identified additional local geographic-distance implementations elsewhere in the codebase.
+
+Those duplicate implementations were deliberately left unchanged because migration or consolidation was outside the narrow B-5 regression-coverage scope.
+
+Verification completed before commit:
+
+- `npm test`: PASS — 59 tests, 59 passed, 0 failed;
+- `npx tsc --noEmit`: PASS;
+- production build: PASS;
+- `git diff --check`: PASS;
+- `lib/geo/getDistanceMeters.ts`: unchanged.
+
+No geographic-distance production logic was changed.
+
+No Earth-radius constant was changed.
+
+No Haversine calculation behavior was changed.
+
+No coordinate-validation policy was added.
+
+No duplicate distance implementation was migrated.
+
+No geofence threshold was changed.
+
+No telemetry threshold was changed.
+
+No corroboration radius was changed.
+
+No threat-prediction behavior was changed.
+
+No database migration or production configuration change was introduced.
+
+Track A remains separate and continues normal production shadow-evidence accumulation.
+
+The next Track B work item must remain audit-first and should identify the next highest-value deterministic production-readiness regression or the smallest justified integration-test boundary.
