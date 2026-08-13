@@ -1,6 +1,9 @@
 import type {
   BehaviorTrafficCalmingContext,
 } from "@/lib/fleet/resolveBehaviorTrafficCalmingContext";
+import type {
+  BehaviorPedestrianContext,
+} from "@/lib/fleet/resolveBehaviorPedestrianContext";
 import {
   findRapidAccelerationCorroboration,
 } from "@/lib/fleet/rapidAccelerationCorroboration";
@@ -23,6 +26,9 @@ export type CreateRapidAccelerationAlertInput = {
   source: "mobile" | "hardware" | "manual";
   trafficCalmingContext:
     | BehaviorTrafficCalmingContext
+    | null;
+  pedestrianContext:
+    | BehaviorPedestrianContext
     | null;
   candidate: RapidAccelerationCandidate;
 };
@@ -48,6 +54,7 @@ export async function createRapidAccelerationAlert(
     longitude,
     source,
     trafficCalmingContext,
+    pedestrianContext,
     candidate,
   } = input;
 
@@ -131,6 +138,7 @@ export async function createRapidAccelerationAlert(
             ...candidate,
             source,
             trafficCalmingContext,
+            pedestrianContext,
           },
         });
 

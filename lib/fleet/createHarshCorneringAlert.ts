@@ -1,6 +1,9 @@
 import type {
   BehaviorTrafficCalmingContext,
 } from "@/lib/fleet/resolveBehaviorTrafficCalmingContext";
+import type {
+  BehaviorPedestrianContext,
+} from "@/lib/fleet/resolveBehaviorPedestrianContext";
 import {
   findHarshCorneringCorroboration,
 } from "@/lib/fleet/harshCorneringCorroboration";
@@ -23,6 +26,9 @@ export type CreateHarshCorneringAlertInput = {
   source: "mobile" | "hardware" | "manual";
   trafficCalmingContext:
     | BehaviorTrafficCalmingContext
+    | null;
+  pedestrianContext:
+    | BehaviorPedestrianContext
     | null;
   candidate: HarshCorneringCandidate;
 };
@@ -48,6 +54,7 @@ export async function createHarshCorneringAlert(
     longitude,
     source,
     trafficCalmingContext,
+    pedestrianContext,
     candidate,
   } = input;
 
@@ -132,6 +139,7 @@ export async function createHarshCorneringAlert(
             ...candidate,
             source,
             trafficCalmingContext,
+            pedestrianContext,
           },
         });
 

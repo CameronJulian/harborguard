@@ -1,6 +1,9 @@
 import type {
   BehaviorTrafficCalmingContext,
 } from "@/lib/fleet/resolveBehaviorTrafficCalmingContext";
+import type {
+  BehaviorPedestrianContext,
+} from "@/lib/fleet/resolveBehaviorPedestrianContext";
 import {
   findHarshBrakingCorroboration,
 } from "@/lib/fleet/harshBrakingCorroboration";
@@ -30,6 +33,9 @@ export type CreateHarshBrakingAlertInput = {
   trafficCalmingContext:
     | BehaviorTrafficCalmingContext
     | null;
+  pedestrianContext:
+    | BehaviorPedestrianContext
+    | null;
   candidate: HarshBrakingCandidate;
 };
 
@@ -55,6 +61,7 @@ export async function createHarshBrakingAlert(
     longitude,
     source,
     trafficCalmingContext,
+    pedestrianContext,
     candidate,
   } = input;
 
@@ -145,6 +152,7 @@ export async function createHarshBrakingAlert(
             ...candidate,
             source,
             trafficCalmingContext,
+            pedestrianContext,
           },
         })
         .select("id")
