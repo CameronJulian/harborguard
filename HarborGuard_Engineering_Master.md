@@ -13632,3 +13632,126 @@ Local `main` and `origin/main` were verified at the same B-12 implementation com
 B-12 therefore preserves B-11 municipal traffic-calming evidence across the harsh-braking telemetry-to-route-intelligence promotion boundary without converting that evidence into corroboration, promotion policy, or road-risk weighting.
 
 The next Track B work item must begin with a fresh audit. No B-13 dataset, scoring change, telemetry promotion extension, route-risk consumer, operator-facing integration, or City of Cape Town enrichment should be selected without first identifying one precise gap and its behavior-preserving insertion point.
+
+
+## Track B-13 - Route-Safety Traffic-Calming Explanatory Context
+
+Implementation commit: `f3369a2`
+
+HarborGuard now carries validated municipal traffic-calming context from promoted route intelligence into the route-safety prediction threat model as explanatory context.
+
+B-13 closes the downstream consumer gap identified after B-12:
+
+- B-11 resolves and attaches nearby City of Cape Town traffic-calming context to harsh-driving telemetry evidence;
+- B-12 preserves that context when corroborated harsh-braking telemetry is promoted into `route_intelligence.metadata`;
+- before B-13, `/api/route-safety/predict` loaded route-intelligence metadata but only consumed existing descriptive metadata fields;
+- B-13 now validates and propagates `trafficCalmingContext` through the prediction threat transformation.
+
+The implementation introduced:
+
+- `lib/route-safety/extractTrafficCalmingContext.ts`
+- `tests/extractTrafficCalmingContext.test.mjs`
+
+The following existing production files were updated:
+
+- `app/api/route-safety/predict/route.ts`
+- `package.json`
+
+`extractTrafficCalmingContext(...)` validates the canonical `TrafficCalmingContext` contract before exposing it downstream.
+
+The validated context preserves:
+
+- provider;
+- feature type;
+- provider feature identity;
+- ownership;
+- status code;
+- latitude;
+- longitude;
+- distance from the telemetry location.
+
+Only the City of Cape Town traffic-calming provider is accepted.
+
+Only the currently supported feature types are accepted:
+
+- `speed_bump`;
+- `raised_intersection`.
+
+Malformed or incomplete metadata fails closed to `null` rather than being exposed as trusted traffic-calming evidence.
+
+Within `/api/route-safety/predict`, the validated context is:
+
+1. extracted from each `route_intelligence.metadata` object;
+2. attached to the normalized intelligence input as `traffic_calming_context`;
+3. propagated onto the route-threat object as `trafficCalmingContext`.
+
+B-13 remains explanatory only.
+
+The following scoring and decision behavior remains unchanged:
+
+- `routeIncidentSeverityWeight`;
+- `routeIncidentTypeWeight`;
+- base route-threat score;
+- geometry weighting;
+- traffic weighting;
+- `candidateThreatCount`;
+- `threatRiskScore`;
+- final route risk score;
+- risk level;
+- route-threat consolidation;
+- duplicate-threat filtering;
+- automatic escalation thresholds;
+- automatic rerouting thresholds;
+- road-risk aggregation;
+- incident eligibility;
+- telemetry promotion eligibility.
+
+Traffic-calming context is therefore exposed to downstream route-safety consumers without becoming a scoring weight, corroboration factor, or route-selection rule.
+
+The direct B-13 regression suite covers nine cases:
+
+- valid speed-bump context;
+- valid raised-intersection context;
+- nullable provider attributes;
+- absent context;
+- unknown provider;
+- unknown feature type;
+- malformed provider feature identity;
+- malformed status code;
+- negative distance.
+
+The registered HarborGuard test suite passed 160/160 with zero failures.
+
+TypeScript validation passed with:
+
+- `npx tsc --noEmit`
+
+The production build passed successfully and generated all 124 static pages.
+
+The final B-13 implementation commit changed exactly four files:
+
+- `app/api/route-safety/predict/route.ts`
+- `lib/route-safety/extractTrafficCalmingContext.ts`
+- `package.json`
+- `tests/extractTrafficCalmingContext.test.mjs`
+
+The implementation commit contained:
+
+- 212 insertions;
+- 1 deletion.
+
+Implementation commit `f3369a2` was pushed successfully to `origin/main`.
+
+Local `main` and `origin/main` were verified at the same B-13 implementation commit before this documentation update began.
+
+B-13 therefore completes the B-11 -> B-12 -> B-13 explanatory-evidence path:
+
+`City traffic-calming context`
+-> `vehicle_alerts.telemetry_evidence`
+-> `route_intelligence.metadata`
+-> `/api/route-safety/predict`
+-> route threat `trafficCalmingContext`
+
+without changing existing route-risk scoring or automated route-safety decisions.
+
+The next Track B work item must begin with a fresh audit. No B-14 dataset, scoring change, operator UI change, predictive model change, route-selection rule, or City of Cape Town enrichment should be selected without first identifying one precise gap and its behavior-preserving insertion point.
