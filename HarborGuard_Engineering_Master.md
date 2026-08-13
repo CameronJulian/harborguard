@@ -13291,3 +13291,77 @@ Local `main` and `origin/main` were verified at the same implementation commit b
 Track A remains separate and continues normal production shadow-evidence accumulation.
 
 The next Track B work item must remain audit-first and should identify the next highest-value deterministic production-readiness regression or the smallest justified integration-test boundary.
+
+## Track B-9 - Harsh Cornering Detection Regression Coverage
+
+Implementation commit: `5f7b22d`
+
+HarborGuard now has deterministic regression coverage for the existing harsh-cornering candidate detector.
+
+This work item deliberately adds regression protection without changing production harsh-cornering detection behavior.
+
+Automated regression coverage was added at:
+
+- `tests/detectHarshCorneringCandidate.test.mjs`
+
+The regression suite exercises the existing harsh-cornering candidate detection contract.
+
+Coverage includes:
+
+1. acceptance of qualifying hardware telemetry;
+2. acceptance of qualifying mobile telemetry;
+3. rejection of manual telemetry;
+4. rejection of a null normalized heading delta;
+5. rejection of a non-finite normalized heading delta;
+6. rejection of a non-finite previous heading;
+7. rejection of a non-finite current heading;
+8. rejection of a non-finite speed;
+9. rejection below the minimum speed boundary;
+10. acceptance at the exact minimum speed boundary;
+11. rejection below the minimum interval boundary;
+12. acceptance at the exact minimum interval boundary;
+13. acceptance at the exact maximum interval boundary;
+14. rejection above the maximum interval boundary;
+15. rejection below the minimum heading-change threshold;
+16. acceptance at the exact heading-change threshold;
+17. preservation of the existing output-rounding contract.
+
+The repository `npm test` command was extended to include:
+
+- `tests/detectHarshCorneringCandidate.test.mjs`
+
+while preserving the previously registered deterministic Track B regression suites.
+
+The implementation commit changed exactly two files:
+
+- `package.json`
+- `tests/detectHarshCorneringCandidate.test.mjs`
+
+The implementation commit contained:
+
+- 191 insertions;
+- 1 deletion.
+
+No production harsh-cornering detector implementation was changed.
+
+No harsh-cornering threshold was changed.
+
+No telemetry-source eligibility policy was changed.
+
+No harsh-cornering alert lifecycle behavior was changed.
+
+No harsh-cornering corroboration behavior was changed.
+
+No telemetry-to-road-intelligence promotion behavior was changed.
+
+No database migration or schema change was introduced.
+
+No unrelated dirty or untracked worktree files were included in the implementation commit.
+
+Implementation commit `5f7b22d` was pushed successfully to `origin/main`.
+
+Local `main` and `origin/main` were verified at the same implementation commit before documentation work began.
+
+Track A remains separate and continues normal production shadow-evidence accumulation.
+
+The next Track B work item is the audit-first City traffic-calming context foundation. It must introduce traffic-calming context as a separate boundary from the existing road-identity context and must not change route-risk scoring, telemetry detector behavior, alert validity, or database state until the context resolver itself has deterministic regression coverage.
