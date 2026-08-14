@@ -345,6 +345,30 @@ export async function createAnonymousJourneyExposure({
     throw upsertError;
   }
 
+  const observedDates =
+    rows
+      .map((row) => row.observed_date)
+      .sort();
+
+  const startDate = observedDates[0];
+  const endDate =
+    observedDates[
+      observedDates.length - 1
+    ];
+
+  const { error: aggregationError } =
+    await supabaseAdmin.rpc(
+      "aggregate_crowd_segment_exposure_stats",
+      {
+        p_start_date: startDate,
+        p_end_date: endDate,
+      }
+    );
+
+  if (aggregationError) {
+    throw aggregationError;
+  }
+
   return {
     created: rows.length,
     skipped: false,
