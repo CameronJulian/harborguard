@@ -14855,3 +14855,139 @@ C-1B is now:
 - awaiting legitimate non-zero C-1A evidence for final non-zero aggregation and idempotency validation.
 
 ---
+
+## C-1 controlled non-zero lifecycle validation completed
+
+**Status:** C-1A non-zero lifecycle persistence verified with controlled representative journey evidence; C-1B non-zero aggregation and repeated-RPC idempotency verified.
+
+### Controlled validation method
+
+A controlled HarborGuard trip was created through the normal authenticated application API lifecycle rather than by inserting crowd-intelligence rows directly into Supabase.
+
+The controlled validation used:
+
+- the existing `/api/fleet/start-trip` route;
+- the existing `/api/fleet/update-location` route;
+- a real authenticated HarborGuard owner/admin/operator session;
+- an existing organization-scoped vehicle;
+- four accepted manual location observations;
+- the normal delivered trip-status transition;
+- the existing post-location completed-trip lifecycle;
+- the deployed C-1A and C-1B production database objects.
+
+The controlled trip ID was:
+
+`cce1f24f-2d31-49d7-b72f-acc252765037`
+
+The selected validation vehicle was:
+
+`8c97bf76-be64-4d05-ad1b-e7b2176c39a2`
+
+The trip completed through the normal lifecycle with persisted status `delivered`.
+
+The persisted trip window was:
+
+- `actual_departure`: `2026-08-14T11:45:35.634+00:00`;
+- `actual_arrival`: `2026-08-14T11:51:35.634+00:00`.
+
+Four trip-linked `vehicle_locations` rows were verified for the completed trip.
+
+### C-1A non-zero persistence result
+
+The completed-trip lifecycle created anonymous `crowd_segment_traversals` evidence successfully.
+
+Three anonymous traversal buckets were verified for the completed trip:
+
+- `-33.918:18.424` / direction bucket `2` / UTC hour `11` / observed date `2026-08-14`;
+- `-33.918:18.425` / direction bucket `2` / UTC hour `11` / observed date `2026-08-14`;
+- `-33.918:18.426` / direction bucket `2` / UTC hour `11` / observed date `2026-08-14`.
+
+Each traversal row had `sample_count = 1` and the expected observation timestamp for its accepted GPS sample.
+
+This proves that C-1A can persist non-zero anonymous completed-trip journey exposure through HarborGuard's normal delivered-trip lifecycle.
+
+The persisted segment keys use the existing three-decimal HarborGuard coordinate-grid identity.
+
+The direction bucket value `2` corresponds to eastbound movement under the existing eight-way C-1 direction model.
+
+### C-1B non-zero aggregation result
+
+The deployed `aggregate_crowd_segment_exposure_stats` RPC was executed successfully after C-1A persistence.
+
+The RPC returned:
+
+`aggregated_rows: 3`
+
+Each C-1A traversal bucket had one matching row in `crowd_segment_exposure_stats`.
+
+For all three matching aggregate rows:
+
+- `traversal_count = 1`;
+- `sample_count = 1`;
+- `first_observed_at` matched the source `first_seen_at`;
+- `last_observed_at` matched the source `last_seen_at`;
+- segment, direction, UTC hour, and observed-date identity matched the C-1A source bucket exactly.
+
+### C-1B repeated-RPC idempotency
+
+The aggregation RPC was then executed twice against unchanged source observations.
+
+Both executions completed without database error and each returned:
+
+`aggregated_rows: 3`
+
+The aggregate rows before the repeated executions, after the first execution, and after the second execution were identical in their factual aggregate values.
+
+The explicit validation result was:
+
+`IDEMPOTENT= true`
+
+This closes the previously deferred C-1B non-zero aggregation and repeated-RPC idempotency validation condition.
+
+### Remaining C-1A validation condition
+
+One narrower C-1A runtime check remains open.
+
+The controlled validation proved that a legitimate delivered lifecycle invocation creates anonymous traversal rows, but the same completed trip has not yet been explicitly reprocessed through `createAnonymousJourneyExposure()` twice to demonstrate runtime repeat-safe persistence of the C-1A source layer itself.
+
+C-1A is designed for repeat-safe persistence through the unique bucket identity:
+
+`trip_token + segment_key + direction_bucket + hour_bucket + observed_date`
+
+and the helper uses an upsert on that identity.
+
+However, do not record C-1A source reprocessing idempotency as runtime-passed until the same completed trip is deliberately reprocessed in an appropriate controlled validation path and confirmed not to create duplicate traversal buckets.
+
+### Validation interpretation
+
+This was a controlled lifecycle validation using representative manual GPS observations accepted through HarborGuard's normal update-location pipeline.
+
+It was not a naturally collected live telematics journey, and it did not bypass the application lifecycle by directly inserting C-1A or C-1B rows.
+
+No production Route Safety scoring behavior was changed.
+
+### C-1 status after controlled validation
+
+C-1A now has runtime proof of:
+
+- authenticated normal-trip lifecycle traversal;
+- delivered-trip transition;
+- four persisted trip-linked location observations;
+- non-zero anonymous traversal persistence;
+- expected segment identity;
+- expected direction bucket;
+- expected UTC-hour and observed-date buckets;
+- expected sample and observation timestamps.
+
+C-1B now has runtime proof of:
+
+- non-zero aggregate generation from legitimate C-1A source rows;
+- exact matching aggregate bucket identity;
+- correct non-zero traversal counts;
+- correct non-zero sample counts;
+- correct first and last observation timestamps;
+- repeat-safe RPC recomputation against unchanged source data.
+
+The only remaining C-1 validation item is explicit runtime reprocessing idempotency of the C-1A source helper itself.
+
+---
