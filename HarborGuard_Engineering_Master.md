@@ -14727,3 +14727,131 @@ C-1A is now:
 Do not record the deferred real-journey persistence and idempotency checks as passed until suitable journey evidence exists.
 
 ---
+
+## C-1B Crowd Segment Exposure Aggregation implemented
+
+**Status:** Implemented, committed, deployed, and runtime-validated against the current empty C-1A source state.
+
+### Implementation
+
+C-1B adds the durable privacy-separated aggregate layer above `public.crowd_segment_traversals`.
+
+Migration:
+
+`20260814112530_create_crowd_segment_exposure_stats.sql`
+
+Implementation commit:
+
+`5289980 feat: add crowd segment exposure aggregation`
+
+The implementation introduces:
+
+- `public.crowd_segment_exposure_stats`;
+- one aggregate row per `segment_key + direction_bucket + hour_bucket + observed_date`;
+- `traversal_count` as the count of anonymous completed-trip traversal buckets;
+- `sample_count` as the summed accepted GPS evidence across those traversal buckets;
+- `first_observed_at` and `last_observed_at` observation bounds;
+- unique bucket identity for repeat-safe aggregation;
+- segment/time lookup indexes;
+- RLS with direct `anon` and `authenticated` table access revoked;
+- service-role table access;
+- `public.aggregate_crowd_segment_exposure_stats(date, date)` for idempotent aggregate recomputation;
+- optional inclusive observed-date boundaries;
+- service-role-only function execution.
+
+The aggregate table does not store `trip_token`, `trip_id`, `vehicle_id`, `organization_id`, or `user_id`.
+
+C-1B therefore moves the shared intelligence layer further away from identifiable journey evidence rather than reintroducing private identifiers.
+
+### Aggregation semantics
+
+The aggregation RPC recomputes aggregate values from `crowd_segment_traversals` and upserts the computed result into `crowd_segment_exposure_stats`.
+
+For each segment, direction, UTC hour, and observed-date bucket:
+
+- `traversal_count` = `COUNT(*)` of anonymous traversal buckets;
+- `sample_count` = `SUM(sample_count)`;
+- `first_observed_at` = `MIN(first_seen_at)`;
+- `last_observed_at` = `MAX(last_seen_at)`.
+
+The function does not blindly increment aggregate counters. Re-running aggregation against unchanged source observations therefore recomputes the same factual aggregate state.
+
+C-1B does not modify `road_risk_segments` or Route Safety production scoring.
+
+### Source verification
+
+Before commit and deployment:
+
+- the change was limited to the single C-1B migration;
+- forbidden identity-field checks returned no matches;
+- TypeScript validation passed with `npx tsc --noEmit`;
+- the production Next.js build passed;
+- all `124/124` static pages were generated successfully;
+- the Supabase deployment dry run identified only the C-1B migration as pending.
+
+### Remote deployment
+
+The C-1B migration was successfully applied to the linked remote Supabase project.
+
+After deployment, migration history reported:
+
+`20260814112530 | 20260814112530 | 2026-08-14 11:25:30`
+
+A subsequent `supabase db push --dry-run` reported:
+
+`Remote database is up to date.`
+
+### Runtime validation
+
+Service-role access to `crowd_segment_exposure_stats` succeeded:
+
+- HTTP status `200`;
+- database error `null`;
+- aggregate row count `0`.
+
+The aggregation RPC was invoked successfully against the current production source state:
+
+- HTTP status `200`;
+- database error `null`;
+- returned `aggregated_rows: 0`.
+
+This zero-row result is expected because `crowd_segment_traversals` currently contains no legitimate completed-trip traversal observations.
+
+Anonymous access to `crowd_segment_exposure_stats` was rejected at runtime:
+
+- HTTP status `401 Unauthorized`;
+- PostgreSQL error code `42501`;
+- `permission denied for table crowd_segment_exposure_stats`.
+
+This verifies the intended service-role-only access boundary in the deployed environment.
+
+### Deferred non-zero aggregation validation
+
+C-1B has not yet been validated with non-zero legitimate source observations because the upstream C-1A production table remains empty.
+
+The following checks therefore remain deferred:
+
+- aggregation of one or more legitimate anonymous C-1A traversal rows into non-zero C-1B statistics;
+- exact non-zero `traversal_count` and `sample_count` correctness against real journey evidence;
+- real-data `first_observed_at` and `last_observed_at` correctness;
+- repeated RPC execution against non-zero unchanged source data producing stable aggregate values.
+
+Do not record those non-zero-data checks as passed until legitimate C-1A traversal evidence exists or they are proven in an appropriate controlled non-production environment.
+
+### C-1B conclusion
+
+C-1B is now:
+
+- implemented;
+- TypeScript verified;
+- production-build verified;
+- committed and pushed as `5289980`;
+- remote migration deployed;
+- local and remote migration history synchronized;
+- service-role table access runtime-verified;
+- anonymous table access denial runtime-verified;
+- empty-source aggregation RPC behavior runtime-verified;
+- isolated from existing Route Safety production scoring;
+- awaiting legitimate non-zero C-1A evidence for final non-zero aggregation and idempotency validation.
+
+---
