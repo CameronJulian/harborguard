@@ -15262,3 +15262,224 @@ The event-time preservation boundary required for descriptive event-per-exposure
 The next Crowd Intelligence implementation may now proceed to the descriptive numerator/exposure layer, but production Route Safety scoring should remain unchanged until that later layer is explicitly audited and validated.
 
 ---
+
+## C-1C2 descriptive event-per-exposure normalization completed
+
+**Status:** PASS. The first descriptive adverse-event-per-exposure normalization layer is implemented, deployed, access-restricted, and runtime validated.
+
+### Implementation boundary
+
+C-1C2 intentionally remains descriptive-only.
+
+It does not alter Route Safety scoring, rerouting, prediction, UI behavior, or any production safety decision.
+
+The implementation is a non-persistent SQL RPC rather than a new durable aggregate table.
+
+Implementation commit:
+
+`a672b3d feat: add crowd event exposure normalization`
+
+Migration:
+
+`supabase/migrations/20260814153500_create_crowd_event_exposure_rpc.sql`
+
+RPC:
+
+`public.get_crowd_event_exposure_stats(date, date)`
+
+### Descriptive evidence model
+
+The numerator is sourced from `road_risk_segment_events` and uses the durable authoritative `event_at` established by C-1C1.
+
+Adverse events are grouped by:
+
+- canonical `segment_key`;
+- UTC event date;
+- UTC event hour.
+
+The denominator is sourced from `crowd_segment_exposure_stats`.
+
+Because the audited adverse-event evidence does not contain a consistent direction dimension, C-1C2 does not assign events to an arbitrary `direction_bucket`.
+
+Instead, exposure is collapsed across all available direction buckets for the same:
+
+- `segment_key`;
+- `observed_date`;
+- `hour_bucket`.
+
+The RPC returns:
+
+- `organization_id`;
+- `segment_key`;
+- `observed_date`;
+- `hour_bucket`;
+- `event_count`;
+- `traversal_count`;
+- `sample_count`;
+- `events_per_100_traversals`.
+
+Where exposure exists, the descriptive normalized value is:
+
+`100 * event_count / traversal_count`
+
+Missing exposure is not interpreted as zero exposure. If no denominator exists, `events_per_100_traversals` is `NULL`.
+
+No minimum-evidence or statistical-confidence threshold was invented in C-1C2.
+
+### Access boundary
+
+The C-1C2 RPC is explicitly revoked from:
+
+- `public`;
+- `anon`;
+- `authenticated`.
+
+Execution is granted only to `service_role`.
+
+Controlled runtime validation confirmed anonymous execution is rejected with PostgreSQL permission error `42501`.
+
+### Deployment validation
+
+The migration was applied successfully to the linked Supabase project.
+
+Remote migration state confirmed:
+
+`20260814153500 | 20260814153500`
+
+A subsequent Supabase dry-run reported:
+
+`Remote database is up to date.`
+
+### Controlled runtime semantic validation
+
+Temporary isolated evidence was created for three deliberately separate segment keys so each C-1C2 semantic could be proven independently.
+
+#### Event plus exposure
+
+The controlled bucket contained one adverse event and one traversal with two underlying samples.
+
+Observed result:
+
+- `event_count = 1`;
+- `traversal_count = 1`;
+- `sample_count = 2`;
+- `events_per_100_traversals = 100`.
+
+Validation result:
+
+`BOTH PASS= true`
+
+#### Exposure only
+
+The controlled bucket contained exposure but no adverse event.
+
+Observed result:
+
+- `event_count = 0`;
+- `traversal_count = 1`;
+- `sample_count = 2`;
+- `events_per_100_traversals = 0`.
+
+Validation result:
+
+`EXPOSURE ONLY PASS= true`
+
+#### Event only
+
+The controlled bucket contained an adverse event but no exposure denominator.
+
+Observed result:
+
+- `event_count = 1`;
+- `traversal_count = NULL`;
+- `sample_count = NULL`;
+- `events_per_100_traversals = NULL`.
+
+Validation result:
+
+`EVENT ONLY PASS= true`
+
+### Access-control runtime validation
+
+Anonymous RPC execution returned:
+
+`status = 401`
+
+with:
+
+`permission denied for function get_crowd_event_exposure_stats`
+
+Validation results:
+
+`SERVICE ROLE ONLY= true`
+
+`C1C2 VALIDATION PASS= true`
+
+### Controlled validation cleanup
+
+The initial cleanup removed the temporary source traversal rows, road-risk segments, route-intelligence rows, and road-risk event evidence.
+
+That cleanup exposed an independent C-1B lifecycle characteristic: rerunning `aggregate_crowd_segment_exposure_stats` does not prune aggregate buckets whose source traversal rows have subsequently been deleted.
+
+The two temporary stale C-1B aggregate rows were therefore explicitly removed.
+
+Final cleanup verification reported:
+
+`ROUTE INTELLIGENCE= 0`
+
+`ROAD RISK SEGMENTS= 0`
+
+`TRAVERSALS= 0`
+
+`EXPOSURE STATS= 0`
+
+and:
+
+`ALL TEMP DATA REMOVED= true`
+
+No controlled C-1C2 validation evidence remained after cleanup.
+
+### C-1B stale aggregate pruning follow-up
+
+Controlled C-1C2 cleanup identified that `aggregate_crowd_segment_exposure_stats` recomputes or upserts buckets represented by source traversal evidence but does not delete an existing aggregate bucket when all corresponding source `crowd_segment_traversals` rows are later removed.
+
+This observation does not invalidate C-1B aggregation correctness for existing source evidence and does not invalidate C-1C2 event-per-exposure normalization semantics.
+
+It is nevertheless a real aggregate-lifecycle concern and must remain explicitly tracked for a later audit and implementation decision.
+
+Do not silently interpret the current aggregation RPC as a pruning or synchronization mechanism.
+
+### Verification completed
+
+Before implementation deployment:
+
+- only the intended C-1C2 SQL migration was introduced;
+- the migration passed `git diff --check`;
+- `supabase db push --dry-run` identified only the intended migration;
+- `npx tsc --noEmit` passed;
+- `npm run build` passed;
+- the production build generated all `124/124` static pages successfully;
+- the implementation was committed and pushed before deployment.
+
+After deployment:
+
+- the remote migration was present;
+- the remote database was up to date;
+- event-plus-exposure semantics passed;
+- exposure-only semantics passed;
+- event-only/null-denominator semantics passed;
+- the service-role-only boundary passed;
+- all temporary validation evidence was removed;
+- tracked Git status remained clean.
+
+### C-1C2 closure
+
+C-1C2 is complete at the implementation, deployment, access-control, semantic-runtime-validation, and cleanup levels.
+
+The system now has a descriptive service-side event-per-exposure primitive based on authoritative event occurrence time and anonymous crowd traversal exposure.
+
+This primitive must remain separate from production Route Safety scoring until minimum-evidence requirements, statistical interpretation, representativeness, and any proposed scoring integration are separately audited and validated.
+
+The C-1B stale aggregate pruning behavior discovered during controlled cleanup remains an explicit independent follow-up.
+
+---
