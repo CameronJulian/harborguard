@@ -152,6 +152,14 @@ export default function Sidebar({
         <Link href="/incidents" style={navStyle("/incidents")} onClick={onNavigate}>
           Incident Management
         </Link>
+
+        <Link
+          href="/mobile-tracker"
+          style={navStyle("/mobile-tracker")}
+          onClick={onNavigate}
+        >
+          Mobile Tracker
+        </Link>
       </div>
 
       <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 18 }}>
