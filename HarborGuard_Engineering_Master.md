@@ -14374,3 +14374,422 @@ Strong candidate directions include:
 No scoring changes should be introduced without a separate audit.
 
 ---
+## C-1A Anonymous Journey Exposure Persistence implemented
+
+**Status:** Implemented, source-verified, committed, and pushed
+
+**Baseline commit:** `0e8e7c0`
+
+**Implementation commit:** `57b7e47` - `feat: add anonymous journey exposure foundation`
+
+### Purpose
+
+Begin the Crowd Intelligence exposure-denominator foundation without changing existing production Route Safety scoring.
+
+HarborGuard already persisted adverse road-risk evidence through `road_risk_segments`, but it did not persist a privacy-separated denominator describing how completed journeys traverse road segments.
+
+C-1A introduces that first anonymous journey-exposure persistence layer.
+
+### Database foundation
+
+Added migration:
+
+`supabase/migrations/20260814090000_create_crowd_segment_traversals.sql`
+
+The migration introduces:
+
+`public.crowd_segment_traversals`
+
+Each persisted row represents one anonymous completed-trip traversal bucket for:
+
+- a canonical HarborGuard road `segment_key`;
+- movement direction;
+- UTC hour;
+- observed date;
+- one anonymous trip-scoped token.
+
+The table stores:
+
+- `segment_key`;
+- `direction_bucket`;
+- `hour_bucket`;
+- `observed_date`;
+- `trip_token`;
+- `sample_count`;
+- `first_seen_at`;
+- `last_seen_at`;
+- `created_at`.
+
+### Existing segment identity reused
+
+C-1A does not introduce a competing road segmentation model.
+
+The helper uses the same three-decimal rounded-coordinate identity already used by HarborGuard road-risk intelligence:
+
+`latitude.toFixed(3):longitude.toFixed(3)`
+
+This keeps the new exposure layer compatible with the existing rounded-coordinate road-risk segment model.
+
+### Privacy boundary
+
+The shared crowd traversal table intentionally excludes raw:
+
+- `user_id`;
+- `vehicle_id`;
+- `organization_id`;
+- `trip_id`.
+
+A deterministic SHA-256 trip-scoped token is stored only for repeat-safe persistence.
+
+The token is derived from the trip identifier but the raw trip identifier is not written into the shared crowd table.
+
+### Database access boundary
+
+Row Level Security is enabled on `crowd_segment_traversals`.
+
+Direct table access is revoked from:
+
+- `anon`;
+- `authenticated`.
+
+The table is granted only to:
+
+`service_role`
+
+The existing authenticated or tenant-scoped Supabase client remains responsible for validating and reading the private source journey data.
+
+Only the privacy-separated crowd persistence operation is elevated through the existing:
+
+`supabaseAdmin`
+
+service-role client.
+
+### Source journey validation
+
+Added:
+
+`lib/fleet/createAnonymousJourneyExposure.ts`
+
+Before creating anonymous exposure observations, the helper verifies the source trip using:
+
+- `tripId`;
+- `organizationId`;
+- `vehicleId`;
+- delivered status;
+- persisted `actual_departure`;
+- persisted `actual_arrival`.
+
+Location evidence is then read from `vehicle_locations` for the exact organization, vehicle, trip, and completed-trip observation window.
+
+Invalid coordinates and invalid timestamps are discarded.
+
+A minimum of two valid location points is required.
+
+### Traversal derivation
+
+For each pair of consecutive accepted GPS observations, C-1A derives movement bearing from the actual coordinate movement.
+
+The bearing is mapped into one of eight directional buckets:
+
+- north;
+- north-east;
+- east;
+- south-east;
+- south;
+- south-west;
+- west;
+- north-west.
+
+The traversal is then bucketed by:
+
+- rounded road segment;
+- movement direction;
+- UTC hour;
+- observed date.
+
+Repeated GPS observations in the same trip/segment/direction/hour/date bucket are accumulated through `sample_count`.
+
+The first and last observation timestamps are retained for the bucket.
+
+### Idempotency
+
+The database has a unique traversal key across:
+
+- `trip_token`;
+- `segment_key`;
+- `direction_bucket`;
+- `hour_bucket`;
+- `observed_date`.
+
+Persistence uses an upsert against that key.
+
+This makes repeated completed-trip processing repeat-safe for the same anonymous journey exposure bucket.
+
+### Completed-trip lifecycle integration
+
+Updated:
+
+`lib/fleet/runPostLocationUpdateLifecycle.ts`
+
+Anonymous journey exposure creation now runs only after successful completed-trip outcome creation.
+
+If completed-trip outcome creation is skipped, the C-1A exposure path is not invoked.
+
+When outcome creation succeeds, HarborGuard now attempts:
+
+`createAnonymousJourneyExposure(...)`
+
+before the existing completed-trip prediction evaluation.
+
+### Failure isolation
+
+Crowd exposure persistence is intentionally best-effort.
+
+A failure in anonymous exposure creation is logged as:
+
+`Anonymous journey exposure creation failed:`
+
+but does not prevent the existing completed-trip prediction evaluator from running.
+
+This prevents the Crowd Intelligence learning layer from becoming an operational dependency of the trip-completion lifecycle.
+
+### Production semantics preserved
+
+C-1A does not change:
+
+- `road_risk_segments`;
+- existing adverse-event aggregation;
+- Route Safety production threat scoring;
+- Route Safety risk levels;
+- traffic weighting;
+- weather weighting;
+- route soft-cap production behavior;
+- automatic rerouting thresholds;
+- automatic escalation thresholds;
+- completed-trip outcome semantics;
+- canonical completed-trip prediction evaluation semantics.
+
+No machine-learning scoring model was introduced.
+
+No route-ranking or route-selection behavior was changed.
+
+### Exact implementation scope
+
+Implementation commit `57b7e47` contains exactly:
+
+- `lib/fleet/createAnonymousJourneyExposure.ts`;
+- `lib/fleet/runPostLocationUpdateLifecycle.ts`;
+- `supabase/migrations/20260814090000_create_crowd_segment_traversals.sql`.
+
+Source diff:
+
+`3 files changed, 450 insertions(+)`
+
+### Verification completed
+
+Before commit and push:
+
+- exact three-file scope was verified;
+- the privacy schema excluded raw user, vehicle, organization, and trip identifiers;
+- the source trip read remained tenant-scoped;
+- the source vehicle-location read remained tenant-scoped;
+- the shared crowd write was verified to use `supabaseAdmin`;
+- the crowd table remained service-role-only;
+- TypeScript validation passed with `npx tsc --noEmit`;
+- the production Next.js build passed with `npm run build`;
+- the production build generated all `124/124` static pages successfully;
+- the staged snapshot contained exactly the three intended C-1A files.
+
+### Repository state
+
+Implementation commit:
+
+`57b7e47 feat: add anonymous journey exposure foundation`
+
+The implementation was pushed successfully to `origin/main`.
+
+After push:
+
+- local `HEAD`: `57b7e47`;
+- `origin/main`: `57b7e47`;
+- branch: `main`;
+- tracked working tree: clean;
+- index: clean.
+
+### Runtime validation status
+
+Production runtime validation has not yet been completed for C-1A.
+
+The source implementation and migration are committed and pushed, but a real completed journey has not yet been used to prove the complete deployed persistence path.
+
+Do not treat the existence of implementation commit `57b7e47` as evidence that production traversal rows have already been generated.
+
+### Next engineering step
+
+After this documentation update is committed and pushed, perform a focused C-1A deployment/runtime validation before beginning the next Crowd Intelligence implementation item.
+
+That validation should verify:
+
+- the C-1A migration is applied in the target environment;
+- `crowd_segment_traversals` exists with the intended RLS and grants;
+- a legitimately completed trip invokes the existing completed-trip lifecycle;
+- private source reads remain organization and vehicle scoped;
+- anonymous traversal rows are created through the service-role persistence boundary;
+- no raw `user_id`, `vehicle_id`, `organization_id`, or `trip_id` is stored in the crowd table;
+- the persisted `segment_key` uses the existing three-decimal rounded-coordinate identity;
+- direction, UTC hour, observed date, sample count, and observation timestamps are populated correctly;
+- reprocessing the same completed trip does not create duplicate traversal buckets;
+- completed-trip prediction evaluation continues normally;
+- Route Safety production scoring remains unchanged.
+
+Only after C-1A runtime validation is documented should the next Crowd Intelligence roadmap item begin.
+
+---
+## C-1A Anonymous Journey Exposure Persistence implemented
+
+**Status:** Implemented, source-verified, committed, and pushed
+
+**Baseline commit:** `0e8e7c0`
+
+**Implementation commit:** `57b7e47` - `feat: add anonymous journey exposure foundation`
+
+### Purpose
+
+Begin the Crowd Intelligence exposure-denominator foundation without changing production Route Safety scoring.
+
+C-1A introduces a privacy-separated record of how completed journeys traverse HarborGuard road segments.
+
+### Implementation
+
+Added:
+
+- `lib/fleet/createAnonymousJourneyExposure.ts`
+- `supabase/migrations/20260814090000_create_crowd_segment_traversals.sql`
+
+Updated:
+
+- `lib/fleet/runPostLocationUpdateLifecycle.ts`
+
+The new `public.crowd_segment_traversals` table stores anonymous completed-trip traversal buckets using:
+
+- `segment_key`
+- `direction_bucket`
+- `hour_bucket`
+- `observed_date`
+- `trip_token`
+- `sample_count`
+- `first_seen_at`
+- `last_seen_at`
+
+### Segment identity
+
+C-1A reuses HarborGuard's existing three-decimal rounded-coordinate segment identity:
+
+`latitude.toFixed(3):longitude.toFixed(3)`
+
+No competing road segmentation model was introduced.
+
+### Privacy boundary
+
+The shared crowd table intentionally excludes raw:
+
+- `user_id`
+- `vehicle_id`
+- `organization_id`
+- `trip_id`
+
+A deterministic SHA-256 trip-scoped token is used only for repeat-safe persistence.
+
+Row Level Security is enabled.
+
+Direct access is revoked from `anon` and `authenticated`.
+
+The table is accessible only through `service_role`.
+
+Private `vehicle_trips` and `vehicle_locations` reads remain on the caller-provided tenant-scoped Supabase client.
+
+Only the anonymous crowd persistence operation uses the existing `supabaseAdmin` service-role client.
+
+### Completed-trip integration
+
+Anonymous journey exposure creation runs only after successful completed-trip outcome creation.
+
+If outcome creation is skipped, C-1A is not invoked.
+
+Crowd exposure persistence is best-effort. A failure is logged without preventing the existing completed-trip prediction evaluator from running.
+
+### Idempotency
+
+Traversal persistence uses a unique key across:
+
+- `trip_token`
+- `segment_key`
+- `direction_bucket`
+- `hour_bucket`
+- `observed_date`
+
+Repeated processing therefore updates the same anonymous traversal bucket rather than creating duplicates.
+
+### Production semantics preserved
+
+C-1A does not change:
+
+- `road_risk_segments`
+- production Route Safety threat scoring
+- weather weighting
+- traffic weighting
+- automatic rerouting thresholds
+- automatic escalation thresholds
+- canonical completed-trip outcome semantics
+- canonical completed-trip prediction evaluation semantics
+
+No machine-learning model was introduced.
+
+### Verification
+
+Implementation commit `57b7e47` contains exactly three files and 450 insertions.
+
+Verification passed:
+
+- exact three-file scope
+- privacy-field checks
+- tenant-scoped source reads
+- service-role anonymous crowd persistence
+- `npx tsc --noEmit`
+- `npm run build`
+- production Next.js build
+- clean staged snapshot
+
+After implementation push:
+
+- local `HEAD`: `57b7e47`
+- `origin/main`: `57b7e47`
+- tracked working tree: clean
+- index: clean
+
+### Runtime validation status
+
+Production runtime validation has not yet been completed for C-1A.
+
+Implementation commit `57b7e47` proves the source implementation is complete and pushed, but does not yet prove that a real deployed completed trip has generated `crowd_segment_traversals` rows.
+
+### Next engineering step
+
+After this documentation update is committed and pushed, perform focused C-1A runtime validation.
+
+Verify:
+
+- the migration is deployed
+- `crowd_segment_traversals` exists with the intended permissions
+- a legitimate completed trip generates anonymous traversal rows
+- no raw user, vehicle, organization, or trip identity is stored
+- segment keys use the existing three-decimal identity
+- direction, hour, date, counts, and timestamps persist correctly
+- reprocessing does not create duplicate traversal buckets
+- completed-trip prediction evaluation continues normally
+- production Route Safety scoring remains unchanged
+
+Only after C-1A runtime validation is documented should the next Crowd Intelligence implementation item begin.
+
+---
+
