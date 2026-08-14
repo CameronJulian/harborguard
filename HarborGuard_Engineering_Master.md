@@ -15654,3 +15654,217 @@ Do not introduce an arbitrary evidence threshold merely because the coverage RPC
 The next crowd-intelligence work should continue accumulating and observing real event/exposure evidence. Statistical sufficiency, confidence, reliability, or production scoring should remain deferred until HarborGuard has enough real overlapping evidence to justify those semantics empirically.
 
 ---
+
+## C-1B2 - Automatic Crowd Exposure Aggregation Lifecycle Wiring
+
+**Status:** Complete
+**Date:** 2026-08-14
+**Implementation commit:** `bd2de95`
+**Scope:** Automatically refresh validated C-1B crowd exposure aggregates after successful C-1A completed-journey persistence.
+
+### Objective
+
+Close the lifecycle gap between anonymous completed-journey traversal persistence and the existing C-1B exposure aggregation primitive.
+
+Before C-1B2, `createAnonymousJourneyExposure(...)` persisted anonymous C-1A traversal evidence, but application code did not automatically invoke `aggregate_crowd_segment_exposure_stats(...)`.
+
+As a result, C-1B aggregation existed and had been independently validated, but aggregate freshness depended on explicit/manual invocation.
+
+### Audit findings
+
+The pre-implementation audit confirmed:
+
+- `createAnonymousJourneyExposure(...)` is the authoritative completed-trip C-1A persistence helper;
+- traversal rows are upserted into `crowd_segment_traversals`;
+- the helper returned immediately after a successful traversal upsert;
+- no application-code caller of `aggregate_crowd_segment_exposure_stats(...)` existed;
+- the existing completed-trip lifecycle already wraps crowd-exposure processing in its own best-effort error boundary;
+- each traversal row derives its own UTC `observed_date`;
+- a journey may therefore theoretically span more than one UTC date;
+- the existing C-1B RPC accepts an inclusive nullable start/end date range and is service-role-only.
+
+The smallest correct insertion point was therefore immediately after successful C-1A traversal persistence and before the helper returns.
+
+### Implementation
+
+Modified:
+
+`lib/fleet/createAnonymousJourneyExposure.ts`
+
+After a successful `crowd_segment_traversals` upsert, the helper now:
+
+1. extracts `observed_date` from the traversal rows;
+2. sorts those dates;
+3. derives the earliest affected date;
+4. derives the latest affected date;
+5. invokes:
+
+`aggregate_crowd_segment_exposure_stats`
+
+with:
+
+- `p_start_date` = earliest affected `observed_date`;
+- `p_end_date` = latest affected `observed_date`.
+
+If aggregation returns an error, the helper throws that error.
+
+The existing outer completed-trip lifecycle remains responsible for the best-effort failure boundary, so an aggregation failure does not redefine delivered-trip completion semantics.
+
+The existing helper return contract remains unchanged.
+
+### Why a date range is used
+
+C-1A derives `observed_date` independently from each accepted traversal timestamp.
+
+A completed journey can theoretically cross UTC midnight.
+
+C-1B2 therefore does not assume that all traversal evidence belongs to a single UTC date. It derives the minimum and maximum `observed_date` from the actual rows produced by the journey and refreshes the inclusive affected range.
+
+### Verification
+
+Before commit:
+
+- exactly one tracked implementation file was modified;
+- `git diff --check` passed;
+- `npx tsc --noEmit` passed;
+- `npm run build` passed;
+- the Next.js production build compiled successfully;
+- all 124 static pages were generated successfully.
+
+Implementation was committed and pushed as:
+
+`bd2de95 - feat: refresh crowd exposure aggregates after journey persistence`
+
+Local `HEAD` and `origin/main` both resolved to:
+
+`bd2de95`
+
+with a clean tracked working tree.
+
+### Controlled runtime validation
+
+C-1B2 was validated against the known completed controlled trip:
+
+`cce1f24f-2d31-49d7-b72f-acc252765037`
+
+The validation invoked the real:
+
+`createAnonymousJourneyExposure(...)`
+
+helper directly.
+
+The validation command did not separately invoke:
+
+`aggregate_crowd_segment_exposure_stats(...)`
+
+This isolates the new lifecycle wiring as the mechanism responsible for the aggregate refresh.
+
+Before reprocessing, the three known C-1B aggregate rows had:
+
+`updated_at = 2026-08-14T15:32:29.562402+00:00`
+
+The helper returned:
+
+`{ created: 3, skipped: false }`
+
+After reprocessing, the same aggregate rows had:
+
+`updated_at = 2026-08-14T16:18:23.284253+00:00`
+
+while retaining their expected aggregate values.
+
+Runtime assertions returned:
+
+`C1A SOURCE STABLE= true`
+
+`C1B MATCHING AGGREGATES= true`
+
+`C1B UPDATED_AT REFRESHED= true`
+
+`C1B2 AUTOMATIC AGGREGATION PASS= true`
+
+### Runtime interpretation
+
+The validation proves that reprocessing the completed journey:
+
+- does not duplicate or mutate the authoritative C-1A traversal evidence;
+- automatically invokes the C-1B aggregation path;
+- refreshes the affected aggregate buckets;
+- preserves the expected traversal and sample counts;
+- requires no separate manual aggregation RPC invocation.
+
+The source rows remained:
+
+- three traversal buckets;
+- one traversal per bucket;
+- one sample per bucket.
+
+The corresponding aggregate rows remained:
+
+- three aggregate buckets;
+- `traversal_count = 1`;
+- `sample_count = 1`.
+
+Only aggregate refresh metadata advanced as expected.
+
+### Failure semantics
+
+C-1B aggregation errors are deliberately not swallowed inside `createAnonymousJourneyExposure(...)`.
+
+Instead, the helper throws the aggregation error to its existing caller.
+
+The completed-trip lifecycle already owns a best-effort error boundary around anonymous journey exposure processing, preserving the existing lifecycle behavior while ensuring C-1B failures remain observable.
+
+C-1B2 does not alter trip completion semantics.
+
+### Explicit non-goals
+
+C-1B2 does not:
+
+- modify the C-1B aggregation formula;
+- modify C-1A anonymization;
+- modify C-1A idempotency semantics;
+- introduce a cron or scheduled aggregation process;
+- introduce a new migration;
+- change crowd event/exposure normalization;
+- define statistical sufficiency;
+- define confidence or reliability thresholds;
+- change Route Safety production scoring.
+
+### Validation result
+
+C-1B2 passed:
+
+- audit-first insertion-point verification;
+- focused one-file implementation;
+- staged-diff verification;
+- whitespace validation;
+- TypeScript validation;
+- production-build validation;
+- implementation commit and push;
+- local/remote commit synchronization;
+- controlled completed-trip reprocessing;
+- C-1A source-stability verification;
+- automatic C-1B refresh verification;
+- aggregate-value verification;
+- tracked working-tree cleanliness.
+
+**C-1B2 result: PASS**
+
+### Result
+
+C-1A anonymous completed-journey evidence persistence and C-1B exposure aggregation are now connected through the normal completed-journey processing path.
+
+A successful C-1A persistence operation automatically refreshes the C-1B aggregate range covering the journey's actual UTC observation dates.
+
+Manual C-1B invocation is no longer required for this lifecycle path.
+
+### Remaining boundary
+
+C-1B2 closes aggregate freshness for successful completed-journey processing.
+
+It does not resolve the independently identified stale-aggregate pruning behavior when source traversal evidence is subsequently deleted.
+
+That behavior remains a separate follow-up and must not be conflated with C-1B2 lifecycle aggregation.
+
+---
