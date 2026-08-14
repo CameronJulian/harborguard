@@ -223,6 +223,286 @@ export default function CommandCenterRouteSafetySection({
               </div>
             )}
 
+            {routePrediction.openWatercourseContext ||
+            routePrediction.mainDrainageContext ||
+            routePrediction.drainageCatchmentContext ||
+            routePrediction.fireStationContext ||
+            routePrediction.policeStationContext ||
+            routePrediction.koebergProtectiveActionZoneContext ||
+            routePrediction.koebergRadiiPlanningContext ||
+            routePrediction.koebergEvacuationDirectionContext ? (
+              <div
+                style={{
+                  marginTop: 10,
+                  padding: 12,
+                  borderRadius: 12,
+                  border: "1px solid #cbd5e1",
+                  background: "#f8fafc",
+                  color: "#0f172a",
+                  fontSize: 13,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    flexWrap: "wrap",
+                    marginBottom: 8,
+                  }}
+                >
+                  <strong>Municipal Route Context</strong>
+
+                  <StatusBadge
+                    label="CONTEXT ONLY"
+                    tone="info"
+                  />
+                </div>
+
+                <div
+                  style={{
+                    color: "#475569",
+                    marginBottom: 10,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  City of Cape Town infrastructure and emergency-planning
+                  context detected for this route. These details are
+                  informational and do not change the HarborGuard route
+                  risk score.
+                </div>
+
+                {routePrediction.openWatercourseContext ||
+                routePrediction.mainDrainageContext ||
+                routePrediction.drainageCatchmentContext ? (
+                  <div style={{ marginBottom: 10 }}>
+                    <div
+                      style={{
+                        fontWeight: 900,
+                        color: "#0369a1",
+                        marginBottom: 5,
+                      }}
+                    >
+                      Environmental infrastructure
+                    </div>
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gap: 6,
+                      }}
+                    >
+                      {routePrediction.openWatercourseContext ? (
+                        <div>
+                          <strong>Nearby watercourse:</strong>{" "}
+                          {routePrediction.openWatercourseContext.riverName ||
+                            routePrediction.openWatercourseContext.description ||
+                            routePrediction.openWatercourseContext.watercourseType ||
+                            "City open watercourse"}
+                          {Number.isFinite(
+                            routePrediction.openWatercourseContext.distanceMeters
+                          )
+                            ? ` - ${Math.round(
+                                routePrediction.openWatercourseContext
+                                  .distanceMeters
+                              )} m away`
+                            : ""}
+                          {routePrediction.openWatercourseContext.catchment
+                            ? ` | Catchment: ${routePrediction.openWatercourseContext.catchment}`
+                            : ""}
+                        </div>
+                      ) : null}
+
+                      {routePrediction.mainDrainageContext ? (
+                        <div>
+                          <strong>Nearby main drainage:</strong>{" "}
+                          {routePrediction.mainDrainageContext.assetType ||
+                            routePrediction.mainDrainageContext
+                              .locationDescription ||
+                            routePrediction.mainDrainageContext.sapDescription ||
+                            "City drainage asset"}
+                          {Number.isFinite(
+                            routePrediction.mainDrainageContext.distanceMeters
+                          )
+                            ? ` - ${Math.round(
+                                routePrediction.mainDrainageContext
+                                  .distanceMeters
+                              )} m away`
+                            : ""}
+                          {routePrediction.mainDrainageContext.catchment
+                            ? ` | Catchment: ${routePrediction.mainDrainageContext.catchment}`
+                            : ""}
+                        </div>
+                      ) : null}
+
+                      {routePrediction.drainageCatchmentContext ? (
+                        <div>
+                          <strong>Drainage catchment:</strong>{" "}
+                          {routePrediction.drainageCatchmentContext
+                            .catchmentRegion || "City catchment region"}
+                          {Number.isFinite(
+                            routePrediction.drainageCatchmentContext.areaKm2
+                          )
+                            ? ` | ${routePrediction.drainageCatchmentContext.areaKm2} km²`
+                            : ""}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+
+                {routePrediction.fireStationContext ||
+                routePrediction.policeStationContext ? (
+                  <div style={{ marginBottom: 10 }}>
+                    <div
+                      style={{
+                        fontWeight: 900,
+                        color: "#166534",
+                        marginBottom: 5,
+                      }}
+                    >
+                      Nearby emergency resources
+                    </div>
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gap: 6,
+                      }}
+                    >
+                      {routePrediction.fireStationContext ? (
+                        <div>
+                          <strong>Fire station:</strong>{" "}
+                          {routePrediction.fireStationContext.stationName ||
+                            "City fire station"}
+                          {routePrediction.fireStationContext.stationClass
+                            ? ` | ${routePrediction.fireStationContext.stationClass}`
+                            : ""}
+                          {Number.isFinite(
+                            routePrediction.fireStationContext.distanceMeters
+                          )
+                            ? ` | ${Math.round(
+                                routePrediction.fireStationContext.distanceMeters
+                              )} m from sampled route location`
+                            : ""}
+                        </div>
+                      ) : null}
+
+                      {routePrediction.policeStationContext ? (
+                        <div>
+                          <strong>Police station:</strong>{" "}
+                          {routePrediction.policeStationContext.stationName ||
+                            "Police station"}
+                          {routePrediction.policeStationContext.cluster
+                            ? ` | Cluster: ${routePrediction.policeStationContext.cluster}`
+                            : ""}
+                          {Number.isFinite(
+                            routePrediction.policeStationContext.distanceMeters
+                          )
+                            ? ` | ${Math.round(
+                                routePrediction.policeStationContext
+                                  .distanceMeters
+                              )} m from sampled route location`
+                            : ""}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+
+                {routePrediction.koebergProtectiveActionZoneContext ||
+                routePrediction.koebergRadiiPlanningContext ||
+                routePrediction.koebergEvacuationDirectionContext ? (
+                  <div
+                    style={{
+                      padding: 10,
+                      borderRadius: 10,
+                      border: "1px solid #fde68a",
+                      background: "#fffbeb",
+                      color: "#78350f",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontWeight: 900,
+                        marginBottom: 5,
+                      }}
+                    >
+                      Koeberg emergency-planning context
+                    </div>
+
+                    <div
+                      style={{
+                        fontSize: 12,
+                        marginBottom: 7,
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      Published planning geography only. This does not indicate
+                      an active emergency, evacuation order, radiological
+                      condition or road closure.
+                    </div>
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gap: 6,
+                      }}
+                    >
+                      {routePrediction.koebergProtectiveActionZoneContext ? (
+                        <div>
+                          <strong>Protective Action Zone:</strong>{" "}
+                          {routePrediction.koebergProtectiveActionZoneContext
+                            .zoneNumber
+                            ? `Zone ${routePrediction.koebergProtectiveActionZoneContext.zoneNumber}`
+                            : "Published PAZ"}
+                        </div>
+                      ) : null}
+
+                      {routePrediction.koebergRadiiPlanningContext ? (
+                        <div>
+                          <strong>Planning radius:</strong>{" "}
+                          {
+                            routePrediction.koebergRadiiPlanningContext
+                              .planningDistanceKm
+                          }{" "}
+                          km
+                        </div>
+                      ) : null}
+
+                      {routePrediction.koebergEvacuationDirectionContext ? (
+                        <div>
+                          <strong>Nearest published evacuation direction:</strong>{" "}
+                          {String(
+                            routePrediction.koebergEvacuationDirectionContext
+                              .direction || "unknown"
+                          ).toUpperCase()}
+                          {routePrediction.koebergEvacuationDirectionContext
+                            .routeName
+                            ? ` | ${routePrediction.koebergEvacuationDirectionContext.routeName}`
+                            : ""}
+                          {routePrediction.koebergEvacuationDirectionContext
+                            .routeType
+                            ? ` | ${routePrediction.koebergEvacuationDirectionContext.routeType}`
+                            : ""}
+                          {Number.isFinite(
+                            routePrediction.koebergEvacuationDirectionContext
+                              .distanceMeters
+                          )
+                            ? ` | ${Math.round(
+                                routePrediction
+                                  .koebergEvacuationDirectionContext
+                                  .distanceMeters
+                              )} m from nearest sampled route point`
+                            : ""}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             {routePrediction.weather ? (
               <div
                 style={{
