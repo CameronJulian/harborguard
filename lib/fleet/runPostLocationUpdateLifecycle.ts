@@ -13,6 +13,9 @@ import {
   evaluateCompletedTripPrediction,
 } from "@/lib/fleet/evaluateCompletedTripPrediction";
 import {
+  createAnonymousJourneyExposure,
+} from "@/lib/fleet/createAnonymousJourneyExposure";
+import {
   updateVehicleStopLifecycle,
 } from "@/lib/fleet/updateVehicleStopLifecycle";
 import { detectFleetRisks } from "@/lib/fleet/risk-detection";
@@ -97,6 +100,20 @@ export async function runTripStatusLifecycle(
         }
       );
     } else {
+      try {
+        await createAnonymousJourneyExposure({
+          supabase,
+          organizationId,
+          vehicleId,
+          tripId: activeTripId,
+        });
+      } catch (crowdExposureError) {
+        console.error(
+          "Anonymous journey exposure creation failed:",
+          crowdExposureError
+        );
+      }
+
       try {
         await evaluateCompletedTripPrediction({
           supabase,
