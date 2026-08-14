@@ -42,6 +42,39 @@ export async function POST(req: Request) {
       );
     }
 
+    const { data: existingTrip, error: existingTripError } =
+      await supabase
+        .from("vehicle_trips")
+        .select("*")
+        .eq("vehicle_id", vehicleId)
+        .eq("organization_id", organizationId)
+        .in("status", [
+          "scheduled",
+          "en_route_to_port",
+          "collecting",
+          "en_route_to_fishery",
+          "emergency",
+        ])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (existingTripError) {
+      return NextResponse.json(
+        { error: existingTripError.message },
+        { status: 500 }
+      );
+    }
+
+    if (existingTrip) {
+      return NextResponse.json({
+        success: true,
+        reusedExistingTrip: true,
+        message: "Existing open trip returned.",
+        trip: existingTrip,
+      });
+    }
+
     const hasRouteCoords =
       typeof body.originLatitude === "number" &&
       typeof body.originLongitude === "number" &&
