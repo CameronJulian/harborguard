@@ -6,8 +6,26 @@ import {
 
 import { useEffect, useRef, useState } from "react";
 
+type VehicleOption = {
+  id: string;
+  nickname?: string | null;
+  registration_number?: string | null;
+  make?: string | null;
+  model?: string | null;
+  is_active?: boolean | null;
+};
+
+type VehiclesResponse = {
+  success?: boolean;
+  vehicles?: VehicleOption[];
+  error?: string;
+};
+
 export default function MobileTrackerPage() {
   const [vehicleId, setVehicleId] = useState("");
+  const [vehicles, setVehicles] = useState<VehicleOption[]>([]);
+  const [vehiclesLoading, setVehiclesLoading] = useState(true);
+  const [vehicleLoadError, setVehicleLoadError] = useState("");
   const [tracking, setTracking] = useState(false);
   const [message, setMessage] = useState("Ready.");
   const [lastLocation, setLastLocation] = useState<any>(null);
@@ -25,6 +43,62 @@ export default function MobileTrackerPage() {
   const MAX_ACCURACY_METERS = 50;   // ignore bad GPS
   const MAX_SPEED_KMH = 180;        // ignore teleport spikes
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadVehicles() {
+      try {
+        setVehiclesLoading(true);
+        setVehicleLoadError("");
+
+        const response = await fetch("/api/fleet/vehicles", {
+          cache: "no-store",
+        });
+
+        const result = (await response.json()) as VehiclesResponse;
+
+        if (!response.ok) {
+          throw new Error(result.error || "Failed to load vehicles.");
+        }
+
+        const activeVehicles = (
+          Array.isArray(result.vehicles)
+            ? result.vehicles
+            : []
+        ).filter((vehicle) => vehicle.is_active !== false);
+
+        if (cancelled) {
+          return;
+        }
+
+        setVehicles(activeVehicles);
+
+        if (activeVehicles.length > 0) {
+          setVehicleId((current) => current || activeVehicles[0].id);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setVehicles([]);
+          setVehicleLoadError(
+            error instanceof Error
+              ? error.message
+              : "Failed to load vehicles."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setVehiclesLoading(false);
+        }
+      }
+    }
+
+    loadVehicles();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   function stopTracking() {
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current);
@@ -37,7 +111,7 @@ export default function MobileTrackerPage() {
 
   function startTracking() {
     if (!vehicleId.trim()) {
-      setMessage("Enter vehicle ID first.");
+      setMessage("Select a vehicle first.");
       return;
     }
 
@@ -241,13 +315,70 @@ export default function MobileTrackerPage() {
           Keep this open while driving.
         </p>
 
-        <input
+        <label
+          htmlFor="mobile-tracker-vehicle"
+          style={{
+            display: "block",
+            color: "#cbd5e1",
+            fontSize: 14,
+            fontWeight: 700,
+            marginBottom: 6,
+          }}
+        >
+          Vehicle
+        </label>
+
+        <select
+          id="mobile-tracker-vehicle"
           value={vehicleId}
           onChange={(e) => setVehicleId(e.target.value)}
-          placeholder="Vehicle ID"
-          disabled={tracking}
-          style={{ width: "100%", padding: 12, marginBottom: 12 }}
-        />
+          disabled={tracking || vehiclesLoading}
+          style={{
+            width: "100%",
+            padding: 12,
+            marginBottom: 12,
+            borderRadius: 8,
+          }}
+        >
+          <option value="">
+            {vehiclesLoading
+              ? "Loading vehicles..."
+              : vehicles.length === 0
+                ? "No active vehicles available"
+                : "Select vehicle"}
+          </option>
+
+          {vehicles.map((vehicle) => {
+            const registration =
+              vehicle.registration_number || "No registration";
+
+            const name =
+              vehicle.nickname ||
+              [vehicle.make, vehicle.model]
+                .filter(Boolean)
+                .join(" ") ||
+              registration;
+
+            return (
+              <option key={vehicle.id} value={vehicle.id}>
+                {name} - {registration}
+              </option>
+            );
+          })}
+        </select>
+
+        {vehicleLoadError && (
+          <p
+            style={{
+              color: "#fca5a5",
+              fontSize: 14,
+              marginTop: 0,
+              marginBottom: 12,
+            }}
+          >
+            {vehicleLoadError}
+          </p>
+        )}
 
         {!tracking ? (
           <button onClick={startTracking}>Start</button>
