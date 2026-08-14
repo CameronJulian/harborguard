@@ -15483,3 +15483,174 @@ This primitive must remain separate from production Route Safety scoring until m
 The C-1B stale aggregate pruning behavior discovered during controlled cleanup remains an explicit independent follow-up.
 
 ---
+
+## C-1C3A - Crowd Event/Exposure Evidence Coverage
+
+**Status:** Complete
+**Date:** 2026-08-14
+**Implementation commit:** `040d923`
+**Scope:** Descriptive evidence coverage only; no statistical sufficiency, confidence, reliability, or production scoring semantics.
+
+### Objective
+
+Expose the current structure and coverage of HarborGuard crowd event/exposure evidence without inventing a minimum evidence threshold or treating sparse observational data as statistically sufficient.
+
+C-1C3A intentionally reports descriptive evidence characteristics only. It does not determine whether an event rate is reliable, representative, statistically valid, sufficiently sampled, or eligible for Route Safety production scoring.
+
+### Implementation
+
+Added migration:
+
+`supabase/migrations/20260814160000_create_crowd_event_exposure_coverage_rpc.sql`
+
+The migration creates:
+
+`public.get_crowd_event_exposure_coverage(p_start_date date, p_end_date date)`
+
+The RPC delegates to the validated C-1C2 descriptive normalization layer:
+
+`public.get_crowd_event_exposure_stats(...)`
+
+It therefore does not introduce a second event/exposure normalization formula.
+
+The RPC returns:
+
+- `total_bucket_count`
+- `event_exposure_bucket_count`
+- `exposure_only_bucket_count`
+- `event_only_bucket_count`
+- `calculable_rate_bucket_count`
+- `positive_calculable_rate_bucket_count`
+- `unique_exposure_segment_count`
+- `unique_event_segment_count`
+- `exposure_day_count`
+- `event_day_count`
+- `has_event_exposure_overlap`
+
+These fields describe evidence volume, coverage, and numerator/denominator overlap only.
+
+### Explicit non-goals
+
+C-1C3A does not define or expose:
+
+- minimum traversal evidence;
+- minimum sample counts;
+- evidence sufficiency;
+- statistical confidence;
+- confidence intervals;
+- reliability thresholds;
+- representativeness thresholds;
+- statistical validity;
+- production-scoring eligibility;
+- Route Safety score changes.
+
+No production Route Safety scoring behavior was changed.
+
+### Access boundary
+
+The coverage RPC is service-role-only.
+
+Execution is revoked from:
+
+- `public`
+- `anon`
+- `authenticated`
+
+Execution is granted to:
+
+- `service_role`
+
+Runtime anonymous validation returned:
+
+`HTTP 401`
+
+with PostgreSQL error:
+
+`42501 - permission denied for function get_crowd_event_exposure_coverage`
+
+This confirms the intended server-side-only access boundary.
+
+### Deployment validation
+
+Migration:
+
+`20260814160000_create_crowd_event_exposure_coverage_rpc.sql`
+
+was successfully deployed to the remote Supabase database.
+
+Migration history confirmed:
+
+`20260814160000 | 20260814160000 | 2026-08-14 16:00:00`
+
+A subsequent:
+
+`supabase db push --dry-run`
+
+reported:
+
+`Remote database is up to date.`
+
+### Live runtime validation
+
+The service-role RPC executed successfully with no error.
+
+Current live descriptive evidence coverage returned:
+
+| Metric | Value |
+| --- | ---: |
+| Total buckets | 5 |
+| Event + exposure buckets | 0 |
+| Exposure-only buckets | 3 |
+| Event-only buckets | 2 |
+| Calculable-rate buckets | 3 |
+| Positive calculable-rate buckets | 0 |
+| Unique exposure segments | 3 |
+| Unique event segments | 1 |
+| Exposure UTC days | 1 |
+| Event UTC days | 1 |
+| Event/exposure overlap present | false |
+
+The automated runtime assertion returned:
+
+`LIVE COVERAGE MATCH= true`
+
+### Interpretation
+
+The current production evidence remains sparse and structurally separated.
+
+There are currently zero buckets containing both a positive adverse-event numerator and traversal exposure for the same normalized segment/date/hour bucket.
+
+Consequently:
+
+- no positive event-per-traversal rate is currently observable;
+- the available evidence cannot support a defensible minimum-evidence threshold;
+- the available evidence cannot support a statistical-confidence classification;
+- the available evidence cannot support a reliability or representativeness claim;
+- the available evidence must not yet influence Route Safety production scoring.
+
+C-1C3A therefore exposes descriptive evidence visibility while deliberately preserving the boundary between observation and statistical judgment.
+
+### Validation result
+
+C-1C3A passed:
+
+- migration dry-run;
+- implementation commit and push;
+- remote migration deployment;
+- migration-history verification;
+- remote schema synchronization;
+- service-role runtime execution;
+- expected live evidence semantics;
+- anonymous-access denial;
+- service-role-only boundary verification;
+- tracked working-tree cleanliness.
+
+**C-1C3A result: PASS**
+
+### Next boundary
+
+Do not introduce an arbitrary evidence threshold merely because the coverage RPC now exists.
+
+The next crowd-intelligence work should continue accumulating and observing real event/exposure evidence. Statistical sufficiency, confidence, reliability, or production scoring should remain deferred until HarborGuard has enough real overlapping evidence to justify those semantics empirically.
+
+---
