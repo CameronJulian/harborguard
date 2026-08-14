@@ -14645,3 +14645,85 @@ That validation should verify:
 Only after C-1A runtime validation is documented should the next Crowd Intelligence roadmap item begin.
 
 ---
+
+## C-1A deployment and runtime access validation completed
+
+**Status:** Deployed and runtime access controls verified; end-to-end journey persistence validation deferred pending eligible real journey evidence.
+
+### Remote migration deployment
+
+The C-1A migration was successfully applied to the linked remote Supabase project:
+
+`20260814090000_create_crowd_segment_traversals.sql`
+
+After deployment, Supabase migration history reported:
+
+`20260814090000 | 20260814090000 | 2026-08-14 09:00:00`
+
+A subsequent `supabase db push --dry-run` reported:
+
+`Remote database is up to date.`
+
+This verifies that the C-1A migration is present in both local and remote migration history and that no local migrations remained pending after deployment.
+
+### Runtime table and access validation
+
+The deployed `public.crowd_segment_traversals` table was queried through the configured HarborGuard Supabase clients.
+
+Service-role access succeeded with no database error.
+
+The table contained zero traversal rows at the time of validation.
+
+An anonymous client read was rejected with:
+
+- HTTP status `401 Unauthorized`;
+- PostgreSQL error code `42501`;
+- `permission denied for table crowd_segment_traversals`.
+
+This runtime result confirms that direct anonymous access to the shared crowd table is blocked while HarborGuard's service-role persistence boundary can access the deployed table.
+
+### Real completed-trip evidence audit
+
+Existing delivered trips were searched for trip-linked `vehicle_locations` within their persisted `actual_departure` to `actual_arrival` windows.
+
+The recent delivered trips contained either zero or one matching location observation.
+
+A broader search across up to 500 delivered trips found no completed trip containing at least two matching trip-linked GPS observations.
+
+The audit result was:
+
+`NO_ELIGIBLE_COMPLETED_TRIPS`
+
+C-1A requires at least two valid location observations because movement between consecutive observations is required to derive anonymous segment traversal direction.
+
+### Deferred end-to-end validation
+
+The following C-1A behaviors therefore remain unproven against a legitimate completed journey:
+
+- creation of anonymous `crowd_segment_traversals` rows from a real completed trip;
+- persisted segment, direction, UTC-hour, observed-date, count, and timestamp values;
+- repeat-safe upsert/idempotency when the same completed trip is processed again;
+- continued completed-trip prediction evaluation during an actual successful crowd persistence event.
+
+These checks were not forced using fabricated production journey data.
+
+They should be completed when a legitimate completed trip contains at least two valid trip-linked GPS observations, or in an appropriate controlled non-production environment with representative journey evidence.
+
+### C-1A validation conclusion
+
+C-1A is now:
+
+- source implemented;
+- TypeScript verified;
+- production-build verified;
+- committed and pushed;
+- remote migration deployed;
+- local and remote migration history synchronized;
+- deployed table existence verified through successful service-role access;
+- anonymous table access denial runtime-verified;
+- production table confirmed initially empty;
+- end-to-end real-journey persistence and idempotency deferred because no eligible completed journey currently exists.
+
+Do not record the deferred real-journey persistence and idempotency checks as passed until suitable journey evidence exists.
+
+---
