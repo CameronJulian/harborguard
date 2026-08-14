@@ -17,6 +17,35 @@ type QualityRow = {
   updated_at: string | null;
 };
 
+/*
+ * C-1D6 descriptive operational age only.
+ *
+ * This function does not classify freshness, staleness,
+ * reliability, SLA compliance, or scoring eligibility.
+ */
+function ageMinutes(
+  value: string | null | undefined
+): number | null {
+  if (!value) {
+    return null;
+  }
+
+  const time =
+    new Date(value).getTime();
+
+  if (!Number.isFinite(time)) {
+    return null;
+  }
+
+  return Math.max(
+    0,
+    Math.round(
+      ((Date.now() - time) / 60000) *
+        100
+    ) / 100
+  );
+}
+
 function latestTimestamp(
   values: Array<string | null | undefined>
 ): string | null {
@@ -467,6 +496,43 @@ export async function GET() {
         latestAggregateAt,
       ]);
 
+    /*
+     * C-1D6 intentionally reports elapsed age only.
+     *
+     * No threshold or interpretation is applied here.
+     */
+    const freshness = {
+      lastActivityAgeMinutes:
+        ageMinutes(
+          lastActivityAt
+        ),
+
+      pipelineAgeMinutes:
+        ageMinutes(
+          latestPipelineAt
+        ),
+
+      locationQualityAgeMinutes:
+        ageMinutes(
+          quality.lastUpdatedAt
+        ),
+
+      traversalAgeMinutes:
+        ageMinutes(
+          latestTraversalAt
+        ),
+
+      aggregateAgeMinutes:
+        ageMinutes(
+          latestAggregateAt
+        ),
+
+      latestFailureAgeMinutes:
+        ageMinutes(
+          latestFailure?.failedAt
+        ),
+    };
+
     let status:
       CrowdHealthStatus;
 
@@ -500,6 +566,14 @@ export async function GET() {
           "shared_privacy_safe",
 
         lastActivityAt,
+
+        /*
+         * Descriptive elapsed ages only.
+         *
+         * These values intentionally do not define a
+         * freshness SLA or stale/stalled classification.
+         */
+        freshness,
 
         pipeline: {
           total:

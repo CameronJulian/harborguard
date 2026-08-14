@@ -166,6 +166,26 @@ type CrowdIntelligenceHealthResponse = {
     scope: "shared_privacy_safe";
     lastActivityAt: string | null;
 
+    freshness: {
+      lastActivityAgeMinutes:
+        number | null;
+
+      pipelineAgeMinutes:
+        number | null;
+
+      locationQualityAgeMinutes:
+        number | null;
+
+      traversalAgeMinutes:
+        number | null;
+
+      aggregateAgeMinutes:
+        number | null;
+
+      latestFailureAgeMinutes:
+        number | null;
+    };
+
     pipeline: {
       total: number;
       accepted: number;
@@ -219,6 +239,43 @@ function crowdHealthLabel(
     case "no_data":
       return "No observability data yet";
   }
+}
+
+function formatCrowdAgeMinutes(
+  ageMinutes: number | null
+): string {
+  if (
+    ageMinutes === null ||
+    !Number.isFinite(ageMinutes)
+  ) {
+    return "—";
+  }
+
+  if (ageMinutes < 1) {
+    return "< 1 minute";
+  }
+
+  if (ageMinutes < 60) {
+    return `${Math.round(
+      ageMinutes
+    )} minutes`;
+  }
+
+  const hours =
+    ageMinutes / 60;
+
+  if (hours < 24) {
+    return `${Math.round(
+      hours * 10
+    ) / 10} hours`;
+  }
+
+  const days =
+    hours / 24;
+
+  return `${Math.round(
+    days * 10
+  ) / 10} days`;
 }
 
 function crowdHealthColor(
@@ -1424,6 +1481,17 @@ export default function FleetDashboardPage() {
 
                 <div>
                   <strong>
+                    Last Crowd activity age:
+                  </strong>{" "}
+                  {formatCrowdAgeMinutes(
+                    crowdIntelligenceHealth
+                      .freshness
+                      .lastActivityAgeMinutes
+                  )}
+                </div>
+
+                <div>
+                  <strong>
                     Pipeline receipts:
                   </strong>{" "}
                   {
@@ -1474,6 +1542,17 @@ export default function FleetDashboardPage() {
 
                 <div>
                   <strong>
+                    Pipeline processing age:
+                  </strong>{" "}
+                  {formatCrowdAgeMinutes(
+                    crowdIntelligenceHealth
+                      .freshness
+                      .pipelineAgeMinutes
+                  )}
+                </div>
+
+                <div>
+                  <strong>
                     Latest pipeline failure:
                   </strong>{" "}
                   {formatDateTime(
@@ -1494,6 +1573,50 @@ export default function FleetDashboardPage() {
                       "_",
                       " "
                     ) ?? "—"}
+                </div>
+
+                <div>
+                  <strong>
+                    Latest failure age:
+                  </strong>{" "}
+                  {formatCrowdAgeMinutes(
+                    crowdIntelligenceHealth
+                      .freshness
+                      .latestFailureAgeMinutes
+                  )}
+                </div>
+
+                <div>
+                  <strong>
+                    Location-quality activity age:
+                  </strong>{" "}
+                  {formatCrowdAgeMinutes(
+                    crowdIntelligenceHealth
+                      .freshness
+                      .locationQualityAgeMinutes
+                  )}
+                </div>
+
+                <div>
+                  <strong>
+                    Latest traversal age:
+                  </strong>{" "}
+                  {formatCrowdAgeMinutes(
+                    crowdIntelligenceHealth
+                      .freshness
+                      .traversalAgeMinutes
+                  )}
+                </div>
+
+                <div>
+                  <strong>
+                    Latest aggregate refresh age:
+                  </strong>{" "}
+                  {formatCrowdAgeMinutes(
+                    crowdIntelligenceHealth
+                      .freshness
+                      .aggregateAgeMinutes
+                  )}
                 </div>
               </div>
 
