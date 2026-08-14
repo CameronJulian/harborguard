@@ -154,6 +154,80 @@ const sectionTitleStyle: CSSProperties = {
   margin: "0 0 8px 0",
 };
 
+type CrowdIntelligenceHealthStatus =
+  | "healthy"
+  | "warning"
+  | "no_data";
+
+type CrowdIntelligenceHealthResponse = {
+  success: boolean;
+  health: {
+    status: CrowdIntelligenceHealthStatus;
+    scope: "shared_privacy_safe";
+    lastActivityAt: string | null;
+
+    pipeline: {
+      total: number;
+      accepted: number;
+      skipped: number;
+      failed: number;
+      lastProcessedAt: string | null;
+
+      skipReasons: {
+        tripNotDelivered: number;
+        invalidTripTimeOrder: number;
+        insufficientLocationPoints: number;
+        noMovementSegments: number;
+      };
+    };
+
+    locationQuality: {
+      total: number;
+      accepted: number;
+      jitter: number;
+      gpsSpike: number;
+      bySource: {
+        mobile: number;
+        hardware: number;
+        manual: number;
+      };
+      lastUpdatedAt: string | null;
+    };
+
+    exposure: {
+      traversalRows: number;
+      aggregateRows: number;
+      latestTraversalAt: string | null;
+      latestAggregateAt: string | null;
+    };
+  };
+};
+
+function crowdHealthLabel(
+  status: CrowdIntelligenceHealthStatus
+) {
+  switch (status) {
+    case "healthy":
+      return "Healthy";
+    case "warning":
+      return "Warning";
+    case "no_data":
+      return "No observability data yet";
+  }
+}
+
+function crowdHealthColor(
+  status: CrowdIntelligenceHealthStatus
+) {
+  switch (status) {
+    case "healthy":
+      return "#16a34a";
+    case "warning":
+      return "#d97706";
+    case "no_data":
+      return "#64748b";
+  }
+}
 const mutedTextStyle: CSSProperties = {
   color: "#64748b",
   margin: 0,
@@ -263,6 +337,19 @@ export default function FleetDashboardPage() {
   const [telematicsHealthError, setTelematicsHealthError] = useState("");
   const [telematicsHealthUpdating, setTelematicsHealthUpdating] =
     useState(false);
+  const [
+    crowdIntelligenceHealth,
+    setCrowdIntelligenceHealth,
+  ] =
+    useState<
+      CrowdIntelligenceHealthResponse["health"] | null
+    >(null);
+
+  const [
+    crowdIntelligenceHealthError,
+    setCrowdIntelligenceHealthError,
+  ] =
+    useState("");
   const [vehicleIcons, setVehicleIcons] = useState<Record<string, any>>({});
   const subscribedRef = useRef(false);
 
@@ -325,6 +412,51 @@ export default function FleetDashboardPage() {
     }
   }
 
+  async function loadCrowdIntelligenceHealth() {
+    try {
+      const response =
+        await fetch(
+          "/api/fleet/crowd-intelligence-health",
+          {
+            cache: "no-store",
+          }
+        );
+
+      const result =
+        (await response.json()) as
+          | CrowdIntelligenceHealthResponse
+          | { error: string };
+
+      if (!response.ok) {
+        setCrowdIntelligenceHealth(null);
+
+        setCrowdIntelligenceHealthError(
+          "error" in result
+            ? result.error
+            : "Failed to load Crowd Intelligence operational health."
+        );
+
+        return;
+      }
+
+      setCrowdIntelligenceHealth(
+        (
+          result as
+            CrowdIntelligenceHealthResponse
+        ).health
+      );
+
+      setCrowdIntelligenceHealthError("");
+    } catch (error: unknown) {
+      setCrowdIntelligenceHealth(null);
+
+      setCrowdIntelligenceHealthError(
+        error instanceof Error
+          ? error.message
+          : "Failed to load Crowd Intelligence operational health."
+      );
+    }
+  }
   async function updateTelematicsEnabled(
     enabled: boolean
   ) {
@@ -373,6 +505,7 @@ export default function FleetDashboardPage() {
   useEffect(() => {
     loadFleet();
     loadTelematicsHealth();
+    loadCrowdIntelligenceHealth();
   }, []);
 
   const mapVehicles = useMemo(
@@ -537,6 +670,7 @@ export default function FleetDashboardPage() {
             onClick={() => {
               loadFleet(true);
               loadTelematicsHealth();
+              loadCrowdIntelligenceHealth();
             }}
             style={{
               padding: "12px 16px",
@@ -1125,6 +1259,307 @@ export default function FleetDashboardPage() {
               )}
             </div>
           </div>
+        </div>
+        <div
+          style={{
+            ...cardStyle,
+            padding: 26,
+            marginBottom: 24,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 16,
+              alignItems: "flex-start",
+              flexWrap: "wrap",
+              marginBottom: 18,
+            }}
+          >
+            <div>
+              <h2
+                style={{
+                  ...sectionTitleStyle,
+                  marginBottom: 6,
+                }}
+              >
+                Crowd Intelligence Operational Health
+              </h2>
+
+              <p style={mutedTextStyle}>
+                Privacy-safe engineering visibility for journey processing,
+                anonymous exposure, and incoming location quality.
+              </p>
+            </div>
+
+            {crowdIntelligenceHealth ? (
+              <div
+                style={{
+                  color: crowdHealthColor(
+                    crowdIntelligenceHealth.status
+                  ),
+                  fontWeight: 800,
+                  fontSize: 16,
+                }}
+              >
+                {crowdHealthLabel(
+                  crowdIntelligenceHealth.status
+                )}
+              </div>
+            ) : null}
+          </div>
+
+          {crowdIntelligenceHealthError ? (
+            <div
+              style={{
+                padding: 12,
+                borderRadius: 12,
+                background: "#fef2f2",
+                border: "1px solid #fecaca",
+                color: "#b91c1c",
+              }}
+            >
+              {crowdIntelligenceHealthError}
+            </div>
+          ) : crowdIntelligenceHealth ? (
+            <>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "repeat(auto-fit, minmax(150px, 1fr))",
+                  gap: 12,
+                  marginBottom: 18,
+                }}
+              >
+                {[
+                  {
+                    label: "Accepted journeys",
+                    value:
+                      crowdIntelligenceHealth
+                        .pipeline.accepted,
+                  },
+                  {
+                    label: "Skipped journeys",
+                    value:
+                      crowdIntelligenceHealth
+                        .pipeline.skipped,
+                  },
+                  {
+                    label: "Failed journeys",
+                    value:
+                      crowdIntelligenceHealth
+                        .pipeline.failed,
+                  },
+                  {
+                    label: "Traversal rows",
+                    value:
+                      crowdIntelligenceHealth
+                        .exposure.traversalRows,
+                  },
+                  {
+                    label: "Aggregate rows",
+                    value:
+                      crowdIntelligenceHealth
+                        .exposure.aggregateRows,
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    style={{
+                      padding: 14,
+                      borderRadius: 14,
+                      background: "#f8fafc",
+                      border:
+                        "1px solid #e5e7eb",
+                    }}
+                  >
+                    <div
+                      style={{
+                        color: "#64748b",
+                        fontSize: 13,
+                        marginBottom: 6,
+                      }}
+                    >
+                      {item.label}
+                    </div>
+
+                    <div
+                      style={{
+                        fontSize: 24,
+                        fontWeight: 800,
+                      }}
+                    >
+                      {item.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "repeat(auto-fit, minmax(240px, 1fr))",
+                  gap: 12,
+                  fontSize: 14,
+                  color: "#334155",
+                }}
+              >
+                <div>
+                  <strong>
+                    Last Crowd activity:
+                  </strong>{" "}
+                  {formatDateTime(
+                    crowdIntelligenceHealth
+                      .lastActivityAt
+                  )}
+                </div>
+
+                <div>
+                  <strong>
+                    Pipeline receipts:
+                  </strong>{" "}
+                  {
+                    crowdIntelligenceHealth
+                      .pipeline.total
+                  }
+                </div>
+
+                <div>
+                  <strong>
+                    Accepted GPS observations:
+                  </strong>{" "}
+                  {
+                    crowdIntelligenceHealth
+                      .locationQuality.accepted
+                  }
+                </div>
+
+                <div>
+                  <strong>
+                    Jitter observations:
+                  </strong>{" "}
+                  {
+                    crowdIntelligenceHealth
+                      .locationQuality.jitter
+                  }
+                </div>
+
+                <div>
+                  <strong>
+                    GPS spike observations:
+                  </strong>{" "}
+                  {
+                    crowdIntelligenceHealth
+                      .locationQuality.gpsSpike
+                  }
+                </div>
+
+                <div>
+                  <strong>
+                    Last pipeline processing:
+                  </strong>{" "}
+                  {formatDateTime(
+                    crowdIntelligenceHealth
+                      .pipeline.lastProcessedAt
+                  )}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  marginTop: 18,
+                  padding: 14,
+                  borderRadius: 14,
+                  background: "#f8fafc",
+                  border:
+                    "1px solid #e5e7eb",
+                }}
+              >
+                <div
+                  style={{
+                    fontWeight: 800,
+                    marginBottom: 10,
+                  }}
+                >
+                  Journey skip reasons
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "repeat(auto-fit, minmax(180px, 1fr))",
+                    gap: 12,
+                    fontSize: 13,
+                    color: "#475569",
+                  }}
+                >
+                  <div>
+                    <strong>
+                      Insufficient GPS points:
+                    </strong>{" "}
+                    {
+                      crowdIntelligenceHealth
+                        .pipeline.skipReasons
+                        .insufficientLocationPoints
+                    }
+                  </div>
+
+                  <div>
+                    <strong>
+                      No movement segments:
+                    </strong>{" "}
+                    {
+                      crowdIntelligenceHealth
+                        .pipeline.skipReasons
+                        .noMovementSegments
+                    }
+                  </div>
+
+                  <div>
+                    <strong>
+                      Invalid trip time:
+                    </strong>{" "}
+                    {
+                      crowdIntelligenceHealth
+                        .pipeline.skipReasons
+                        .invalidTripTimeOrder
+                    }
+                  </div>
+
+                  <div>
+                    <strong>
+                      Trip not delivered:
+                    </strong>{" "}
+                    {
+                      crowdIntelligenceHealth
+                        .pipeline.skipReasons
+                        .tripNotDelivered
+                    }
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  marginTop: 16,
+                  fontSize: 13,
+                  color: "#64748b",
+                }}
+              >
+                Operational pipeline health only. These values do not define
+                road-risk confidence, statistical sufficiency, reliability,
+                representativeness, or Route Safety scoring eligibility.
+              </div>
+            </>
+          ) : (
+            <div style={mutedTextStyle}>
+              Loading Crowd Intelligence operational health...
+            </div>
+          )}
         </div>
       </div>
     </AppShell>
