@@ -21,6 +21,13 @@ type RecordCrowdJourneyPipelineReceiptInput = {
   outcome: CrowdJourneyPipelineOutcome;
   reason: CrowdJourneyPipelineReason | null;
   traversalRowCount: number;
+
+  /*
+   * Normal production lifecycle behavior remains best-effort by
+   * default. Replay callers can request strict persistence so a
+   * replay cannot report success when its receipt failed to save.
+   */
+  throwOnError?: boolean;
 };
 
 export async function recordCrowdJourneyPipelineReceipt({
@@ -29,6 +36,7 @@ export async function recordCrowdJourneyPipelineReceipt({
   outcome,
   reason,
   traversalRowCount,
+  throwOnError = false,
 }: RecordCrowdJourneyPipelineReceiptInput): Promise<void> {
   const observedDate =
     new Date(observedAt)
@@ -61,5 +69,9 @@ export async function recordCrowdJourneyPipelineReceipt({
         error,
       }
     );
+
+    if (throwOnError) {
+      throw error;
+    }
   }
 }
