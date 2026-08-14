@@ -13755,3 +13755,389 @@ B-13 therefore completes the B-11 -> B-12 -> B-13 explanatory-evidence path:
 without changing existing route-risk scoring or automated route-safety decisions.
 
 The next Track B work item must begin with a fresh audit. No B-14 dataset, scoring change, operator UI change, predictive model change, route-selection rule, or City of Cape Town enrichment should be selected without first identifying one precise gap and its behavior-preserving insertion point.
+
+---
+
+# Engineering Progress Update - 14 August 2026
+
+## City of Cape Town Municipal Data Integration - Consolidated Completion State
+
+**Status:** Implemented, verified, committed, and pushed
+
+**Current implementation baseline:** `e7b15d7`
+
+**Branch:** `main`
+
+**Remote state:** local `main` and `origin/main` verified synchronized at `e7b15d7`
+
+### Objective
+
+Record the completed HarborGuard City of Cape Town municipal-data integration work and distinguish clearly between:
+
+1. City data that is connected to real HarborGuard application flows;
+2. City context that improves route, telemetry, infrastructure, emergency, and environmental awareness;
+3. explanatory/contextual data that deliberately does not yet modify production risk scoring.
+
+The City integration work is not merely a collection of unused provider wrappers.
+
+HarborGuard now consumes municipal data through real operational boundaries including:
+
+- road-context enrichment;
+- telemetry and traffic-calming evidence;
+- promoted route intelligence;
+- Route Safety prediction;
+- route-wide environmental context;
+- route-wide emergency-resource context;
+- route-wide Koeberg emergency-planning context.
+
+### Product impact
+
+The City integration materially improves HarborGuard as a safety-intelligence SaaS by adding authoritative local context that generic navigation or basic fleet-tracking products do not necessarily provide.
+
+The integrated municipal context improves:
+
+- road identity and road semantics;
+- interpretation of harsh-driving telemetry;
+- permanent traffic-calming awareness;
+- pedestrian-context awareness;
+- road ownership and maintenance-authority awareness;
+- environmental and drainage awareness;
+- emergency-resource awareness;
+- nuclear-emergency planning awareness;
+- route explainability;
+- future predictive-model inputs;
+- future operator decision support.
+
+These integrations deliberately separate factual municipal context from production risk policy.
+
+A municipal feature is not automatically treated as danger merely because it exists near a route.
+
+### City dataset integration state
+
+#### TCT Road Centreline
+
+**Status:** Integrated and operationally consumed.
+
+HarborGuard uses City road context for authoritative road enrichment including applicable road identity and semantics such as:
+
+- road name;
+- road classification;
+- speed-limit context where available;
+- travel/direction context where available;
+- road surface context where available;
+- ownership or maintenance-authority enrichment where available.
+
+This data strengthens HarborGuard's road-intelligence and provider-enrichment layer.
+
+#### Traffic Calming - Speed Bumps
+
+**Status:** Integrated and consumed.
+
+City speed-bump context is used as factual traffic-calming evidence.
+
+The established HarborGuard evidence path includes:
+
+`City traffic-calming context`
+-> `vehicle_alerts.telemetry_evidence`
+-> `route_intelligence.metadata`
+-> `/api/route-safety/predict`
+-> route threat `trafficCalmingContext`
+
+Speed-bump proximity therefore helps HarborGuard explain physical-road context around telemetry and route-intelligence events.
+
+It does not independently increase route risk.
+
+#### Traffic Calming - Raised Intersections
+
+**Status:** Integrated and consumed.
+
+Raised-intersection data participates in the same traffic-calming context boundary as speed bumps.
+
+This improves explanation of harsh-driving and road-condition evidence while preserving existing detector and scoring semantics.
+
+#### Pedestrian Crossings
+
+**Status:** Integrated.
+
+City pedestrian-crossing data is available as HarborGuard pedestrian and driving-context intelligence.
+
+This creates a municipal evidence source for areas where pedestrian interaction is structurally more likely.
+
+The integration remains context-aware rather than blindly treating every crossing as a dangerous location.
+
+#### Road Ownership and Maintenance Authority
+
+**Status:** Functionally integrated through road context.
+
+HarborGuard carries ownership and maintenance-authority information where supplied by the audited City road-context source.
+
+A separate standalone ownership provider is not required merely to duplicate authority information that is already available through the existing road context.
+
+A future standalone City ownership layer should only be introduced if a new audit proves that it provides materially richer or more accurate authority information.
+
+#### Road Classification
+
+**Status:** Integrated through road-centreline context.
+
+Road classification is already represented through the authoritative road-context integration and therefore does not require a duplicate classification provider without a newly identified gap.
+
+### Stormwater and environmental infrastructure
+
+HarborGuard now has multiple independent City environmental-context integrations.
+
+They remain contextual and fail-open.
+
+#### Open Watercourse
+
+**Status:** Integrated into Route Safety.
+
+HarborGuard can expose City open-watercourse context relevant to route geometry.
+
+This provides useful environmental and future flood-prediction context.
+
+#### Main Drainage
+
+**Status:** Integrated into Route Safety.
+
+HarborGuard resolves City main-drainage context against route geometry.
+
+This expands environmental infrastructure awareness beyond generic weather information.
+
+#### Drainage Catchment
+
+**Status:** Integrated into Route Safety.
+
+HarborGuard resolves City drainage-catchment context against the route.
+
+This adds broader catchment-level environmental context useful for future flood and infrastructure modelling.
+
+### Emergency-resource context
+
+#### Fire Stations
+
+**Status:** Integrated into Route Safety.
+
+HarborGuard can resolve City fire-station context for route geometry.
+
+This provides emergency-response resource awareness without treating proximity to a fire station as route risk.
+
+#### Police Stations
+
+**Status:** Integrated into Route Safety.
+
+HarborGuard can resolve City police-station context for route geometry.
+
+This provides emergency/security resource awareness while remaining context-only.
+
+### Koeberg emergency-planning integration
+
+The Koeberg municipal-data work is now represented by three complementary context families.
+
+These features describe published emergency-planning geography.
+
+They do not assert that an emergency, evacuation order, radiological event, road closure, or elevated route risk currently exists.
+
+#### Koeberg Protective Action Zone
+
+**Track B-27 route integration:** Complete.
+
+**Implementation commit:** `b4b5fca`
+
+HarborGuard performs route-wide PAZ sampling rather than relying on the route midpoint.
+
+Behavior includes:
+
+- valid route-coordinate filtering;
+- preservation of route travel order;
+- consecutive duplicate collapse;
+- route-wide PAZ membership lookup;
+- per-sample fail-open behavior;
+- top-level `koebergProtectiveActionZoneContext`.
+
+Risk scoring was not changed.
+
+#### Koeberg Radii Planning
+
+**Track B-28 route integration:** Complete.
+
+**Implementation commit:** `fe06fd8`
+
+HarborGuard evaluates valid route samples across the complete route and retains the valid context with the smallest encountered `planningDistanceKm`.
+
+Behavior includes:
+
+- full-route sampling;
+- no midpoint-only semantics;
+- invalid-coordinate filtering;
+- consecutive duplicate collapse;
+- minimum planning-distance selection;
+- first route occurrence retained for equal minimum planning distances;
+- per-sample fail-open behavior;
+- top-level `koebergRadiiPlanningContext`.
+
+Risk scoring was not changed.
+
+#### Koeberg Evacuation Direction
+
+**Track B-29 route integration:** Complete.
+
+**Implementation commit:** `e7b15d7`
+
+HarborGuard now evaluates the published City North, South, and East Koeberg evacuation-direction data across the complete route.
+
+The underlying provider resolves the nearest published evacuation-direction feature for an individual coordinate.
+
+The route-level integration then retains the context with the smallest valid `distanceMeters` encountered anywhere along the route.
+
+Behavior includes:
+
+- full-route sampling;
+- no midpoint-only semantics;
+- valid route-coordinate filtering;
+- consecutive duplicate collapse;
+- invalid provider-distance rejection;
+- minimum `distanceMeters` selection;
+- first route occurrence retained for equal route-level distance;
+- provider-level North/South/East selection preserved;
+- direction metadata preserved;
+- route name/type metadata preserved;
+- provider identity preserved;
+- per-sample fail-open behavior;
+- all-null/all-failure route returning `null`;
+- top-level `koebergEvacuationDirectionContext`.
+
+Risk scoring was not changed.
+
+### Current Koeberg Route Safety response context
+
+The completed Koeberg route-context sequence is now:
+
+`koebergProtectiveActionZoneContext`
+-> `koebergRadiiPlanningContext`
+-> `koebergEvacuationDirectionContext`
+
+All three are exposed as additive Route Safety context.
+
+### Context versus production scoring
+
+An important architectural decision was preserved throughout the City integration work.
+
+The following municipal context does not automatically become production risk weight merely because it is present:
+
+- traffic-calming infrastructure;
+- pedestrian infrastructure;
+- watercourses;
+- drainage infrastructure;
+- drainage catchments;
+- fire stations;
+- police stations;
+- Koeberg planning geography.
+
+This avoids false risk inflation.
+
+For example:
+
+- proximity to a speed bump can help explain harsh braking;
+- proximity to drainage infrastructure can contribute future flood-model context;
+- proximity to a fire or police station describes resource availability;
+- presence inside Koeberg planning geography describes published emergency-planning context.
+
+None of those facts independently proves an active hazard.
+
+Any future change that allows one of these datasets to modify `threatRiskScore`, weather risk, traffic risk, overall route risk, escalation, or rerouting must begin with a separate audit and must be supported by evidence.
+
+### Existing scoring behavior preserved
+
+The City integration track did not use the later contextual integrations to redefine existing production:
+
+- `threatRiskScore`;
+- `weatherRiskScore`;
+- `trafficRiskScore`;
+- weather contribution;
+- traffic contribution;
+- route threat sorting;
+- automatic escalation thresholds;
+- automatic rerouting thresholds;
+- route prediction persistence semantics.
+
+The municipal integrations therefore improve HarborGuard's factual and explanatory intelligence without introducing uncontrolled scoring behavior.
+
+### Regression and verification state
+
+The final B-29 implementation was verified together with the existing City/Koeberg route context.
+
+At the final City implementation checkpoint:
+
+- focused B-29 route regression passed;
+- B-26 evacuation provider regression passed;
+- B-27 PAZ regression remained green;
+- B-28 Radii regression remained green;
+- existing route-context regressions remained green;
+- the complete registered HarborGuard test suite passed;
+- TypeScript validation passed;
+- the Next.js production build passed;
+- diff hygiene passed;
+- UTF-8 BOM hygiene passed;
+- the exact B-29 four-file scope was verified;
+- local `main` and `origin/main` were synchronized after push.
+
+### Final City implementation commit
+
+The final City integration implementation checkpoint is:
+
+`e7b15d7 feat: integrate Koeberg evacuation direction route context`
+
+The B-29 commit changed exactly:
+
+- `app/api/route-safety/predict/route.ts`;
+- `lib/route-safety/resolveRouteKoebergEvacuationDirectionContext.ts`;
+- `package.json`;
+- `tests/resolveRouteKoebergEvacuationDirectionContext.test.mjs`.
+
+### City of Cape Town integration status
+
+**City of Cape Town Integration Track: COMPLETE**
+
+The originally identified high-value municipal-data categories are now substantially represented inside HarborGuard.
+
+The remaining work should no longer be framed primarily as "integrate City of Cape Town data."
+
+Future work should instead ask more specific product questions such as:
+
+- Which municipal contexts should be displayed directly to dispatchers?
+- Which should appear on the Route Safety map?
+- Which contextual features have enough evidence to become predictive features?
+- Which should remain explanatory only?
+- Should a dedicated Road Ownership dataset add anything beyond current road-authority enrichment?
+- How should drainage and weather context eventually combine into a defensible flood-prediction model?
+- How should emergency-resource context support response recommendations?
+- How should Koeberg planning context be surfaced in operator and driver experiences without implying a live emergency?
+
+Each of those must begin with a fresh audit before implementation.
+
+### Documentation state
+
+This section consolidates the City of Cape Town integration state after completion of B-29.
+
+Earlier Engineering Master entries remain authoritative for their individual implementation milestones and validation evidence.
+
+This consolidated section provides the current product-level view so a future HarborGuard development session does not incorrectly assume that these municipal datasets still need initial provider integration.
+
+### Next recommended engineering step
+
+Do not immediately add another City dataset merely to expand the provider count.
+
+Begin the next roadmap decision with a fresh audit of the now-completed HarborGuard municipal context layer and identify the highest-value remaining product gap.
+
+Potential candidates include:
+
+- operator-facing visualization of the newly available route contexts;
+- evidence-based predictive use of drainage/environmental context;
+- emergency-resource recommendation UX;
+- map representation of contextual infrastructure;
+- validation of City-context behavior against real routes;
+- broader production-readiness work.
+
+No new risk-scoring formula should be introduced merely because the City integration track is complete.
+
+---
