@@ -26,6 +26,10 @@ export default function MobileTrackerPage() {
   const [vehicles, setVehicles] = useState<VehicleOption[]>([]);
   const [vehiclesLoading, setVehiclesLoading] = useState(true);
   const [vehicleLoadError, setVehicleLoadError] = useState("");
+  const [originPort, setOriginPort] = useState("");
+  const [destinationFishery, setDestinationFishery] = useState("");
+  const [tripId, setTripId] = useState<string | null>(null);
+  const [journeyBusy, setJourneyBusy] = useState(false);
   const [tracking, setTracking] = useState(false);
   const [message, setMessage] = useState("Ready.");
   const [lastLocation, setLastLocation] = useState<any>(null);
@@ -99,29 +103,20 @@ export default function MobileTrackerPage() {
     };
   }, []);
 
-  function stopTracking() {
+  function stopGpsWatch() {
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current);
       watchIdRef.current = null;
     }
 
     setTracking(false);
-    setMessage("Tracking stopped.");
   }
 
-  function startTracking() {
-    if (!vehicleId.trim()) {
-      setMessage("Select a vehicle first.");
-      return;
-    }
-
-    if (!navigator.geolocation) {
-      setMessage("GPS not supported.");
-      return;
-    }
-
+  function beginGpsTracking(activeTripId: string) {
     setTracking(true);
     setMessage("Starting GPS tracking...");
+
+    lastSentRef.current = null;
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       async (position) => {
@@ -132,7 +127,6 @@ export default function MobileTrackerPage() {
           ? position.coords.speed * 3.6
           : 0;
 
-        // ===== FILTER 1: Accuracy check
         if (accuracy > MAX_ACCURACY_METERS) {
           setMessage("Ignoring low-accuracy GPS...");
           return;
@@ -140,7 +134,6 @@ export default function MobileTrackerPage() {
 
         const current = { lat, lng };
 
-        // ===== FILTER 2: Distance check
         if (lastSentRef.current) {
           const distance = getDistanceMeters(
             {
@@ -154,11 +147,9 @@ export default function MobileTrackerPage() {
           );
 
           if (distance < MIN_DISTANCE_METERS) {
-            // ignore jitter
             return;
           }
 
-          // ===== FILTER 3: Speed sanity (anti teleport)
           const timeDiff =
             (Date.now() - lastSentRef.current.time) / 1000;
 
@@ -172,6 +163,7 @@ export default function MobileTrackerPage() {
 
         const payload = {
           vehicleId: vehicleId.trim(),
+          tripId: activeTripId,
           latitude: lat,
           longitude: lng,
           speedKmh,
@@ -184,18 +176,21 @@ export default function MobileTrackerPage() {
         try {
           const res = await fetch("/api/fleet/update-location", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+            },
             body: JSON.stringify(payload),
           });
 
           const result = await res.json();
 
           if (!res.ok) {
-            setMessage(result.error || "Failed to send location.");
+            setMessage(
+              result.error || "Failed to send location."
+            );
             return;
           }
 
-          // ✅ Save last good point
           lastSentRef.current = {
             lat,
             lng,
@@ -203,7 +198,7 @@ export default function MobileTrackerPage() {
           };
 
           setMessage(
-            `Tracking active. ${new Date().toLocaleTimeString()}`
+            `Journey tracking active. ${new Date().toLocaleTimeString()}`
           );
         } catch (err: any) {
           setMessage(err.message || "Network error.");
@@ -220,6 +215,126 @@ export default function MobileTrackerPage() {
     );
   }
 
+  async function startJourney() {
+    if (!vehicleId.trim()) {
+      setMessage("Select a vehicle first.");
+      return;
+    }
+
+    if (!originPort.trim() || !destinationFishery.trim()) {
+      setMessage("Enter an origin and destination first.");
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      setMessage("GPS not supported.");
+      return;
+    }
+
+    setJourneyBusy(true);
+    setMessage("Starting journey...");
+
+    try {
+      const response = await fetch("/api/fleet/start-trip", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          vehicleId: vehicleId.trim(),
+          originPort: originPort.trim(),
+          destinationFishery: destinationFishery.trim(),
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.trip?.id) {
+        setMessage(
+          result.error || "Failed to start journey."
+        );
+        return;
+      }
+
+      const activeTripId = result.trip.id as string;
+
+      setTripId(activeTripId);
+
+      if (result.reusedExistingTrip) {
+        setOriginPort(
+          result.trip.origin_port || originPort.trim()
+        );
+        setDestinationFishery(
+          result.trip.destination_fishery ||
+            destinationFishery.trim()
+        );
+      }
+
+      beginGpsTracking(activeTripId);
+    } catch (error: any) {
+      setMessage(error.message || "Failed to start journey.");
+    } finally {
+      setJourneyBusy(false);
+    }
+  }
+
+  async function completeJourney() {
+    if (!tripId) {
+      setMessage("No active journey to complete.");
+      return;
+    }
+
+    if (!lastLocation) {
+      setMessage(
+        "Wait for a valid GPS location before completing the journey."
+      );
+      return;
+    }
+
+    setJourneyBusy(true);
+    setMessage("Completing journey...");
+
+    try {
+      const response = await fetch(
+        "/api/fleet/update-location",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            vehicleId: vehicleId.trim(),
+            tripId,
+            latitude: lastLocation.latitude,
+            longitude: lastLocation.longitude,
+            speedKmh: lastLocation.speedKmh || 0,
+            heading: lastLocation.heading || 0,
+            source: "mobile",
+            status: "delivered",
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setMessage(
+          result.error || "Failed to complete journey."
+        );
+        return;
+      }
+
+      stopGpsWatch();
+      setTripId(null);
+      setMessage("Journey completed successfully.");
+    } catch (error: any) {
+      setMessage(
+        error.message || "Failed to complete journey."
+      );
+    } finally {
+      setJourneyBusy(false);
+    }
+  }
   async function submitCrowdReport() {
     if (!lastLocation) {
       setReportMessage(
@@ -287,7 +402,17 @@ export default function MobileTrackerPage() {
   }
 
   useEffect(() => {
-    return () => stopTracking();
+    return () => {
+      if (
+        watchIdRef.current !== null &&
+        typeof navigator !== "undefined" &&
+        navigator.geolocation
+      ) {
+        navigator.geolocation.clearWatch(
+          watchIdRef.current
+        );
+      }
+    };
   }, []);
 
   return (
@@ -332,7 +457,7 @@ export default function MobileTrackerPage() {
           id="mobile-tracker-vehicle"
           value={vehicleId}
           onChange={(e) => setVehicleId(e.target.value)}
-          disabled={tracking || vehiclesLoading}
+          disabled={tracking || journeyBusy || !!tripId || vehiclesLoading}
           style={{
             width: "100%",
             padding: 12,
@@ -380,17 +505,112 @@ export default function MobileTrackerPage() {
           </p>
         )}
 
-        {!tracking ? (
-          <button onClick={startTracking}>Start</button>
+        <label
+          htmlFor="mobile-tracker-origin"
+          style={{
+            display: "block",
+            color: "#cbd5e1",
+            fontSize: 14,
+            fontWeight: 700,
+            marginBottom: 6,
+          }}
+        >
+          Origin
+        </label>
+
+        <input
+          id="mobile-tracker-origin"
+          value={originPort}
+          onChange={(event) => setOriginPort(event.target.value)}
+          placeholder="Where are you starting?"
+          disabled={tracking || journeyBusy}
+          style={{
+            width: "100%",
+            padding: 12,
+            marginBottom: 12,
+            borderRadius: 8,
+            boxSizing: "border-box",
+          }}
+        />
+
+        <label
+          htmlFor="mobile-tracker-destination"
+          style={{
+            display: "block",
+            color: "#cbd5e1",
+            fontSize: 14,
+            fontWeight: 700,
+            marginBottom: 6,
+          }}
+        >
+          Destination
+        </label>
+
+        <input
+          id="mobile-tracker-destination"
+          value={destinationFishery}
+          onChange={(event) =>
+            setDestinationFishery(event.target.value)
+          }
+          placeholder="Where are you going?"
+          disabled={tracking || journeyBusy}
+          style={{
+            width: "100%",
+            padding: 12,
+            marginBottom: 12,
+            borderRadius: 8,
+            boxSizing: "border-box",
+          }}
+        />
+
+        {!tripId ? (
+          <button
+            type="button"
+            onClick={startJourney}
+            disabled={
+              journeyBusy ||
+              vehiclesLoading ||
+              !vehicleId ||
+              !originPort.trim() ||
+              !destinationFishery.trim()
+            }
+          >
+            {journeyBusy ? "Starting..." : "Start Journey"}
+          </button>
         ) : (
-          <button onClick={stopTracking}>Stop</button>
+          <button
+            type="button"
+            onClick={completeJourney}
+            disabled={journeyBusy || !lastLocation}
+          >
+            {journeyBusy
+              ? "Completing..."
+              : "Complete Journey"}
+          </button>
         )}
 
         <div style={{ marginTop: 12 }}>
-          <strong>Status:</strong> {tracking ? "Tracking" : "Idle"}
+          <strong>Status:</strong>{" "}
+          {tripId
+            ? tracking
+              ? "Journey active"
+              : "Journey ready"
+            : "Idle"}
           <br />
           {message}
         </div>
+
+        {tripId && (
+          <div
+            style={{
+              marginTop: 8,
+              color: "#94a3b8",
+              fontSize: 12,
+            }}
+          >
+            Trip: {tripId}
+          </div>
+        )}
 
         {lastLocation && (
           <div style={{ marginTop: 12 }}>
