@@ -158,6 +158,24 @@ export async function createAnonymousJourneyExposure({
   const observationEndedAt =
     String(trip.actual_arrival);
 
+  const observationStartedTime =
+    new Date(observationStartedAt).getTime();
+
+  const observationEndedTime =
+    new Date(observationEndedAt).getTime();
+
+  if (
+    !Number.isFinite(observationStartedTime) ||
+    !Number.isFinite(observationEndedTime) ||
+    observationEndedTime <= observationStartedTime
+  ) {
+    return {
+      created: 0,
+      skipped: true,
+      reason: "invalid_trip_time_order",
+    };
+  }
+
   const { data: locations, error: locationsError } =
     await supabase
       .from("vehicle_locations")
