@@ -1,5 +1,7 @@
-import { createHash } from "crypto";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import {
+  createCrowdAnonymousTripToken,
+} from "@/lib/fleet/createCrowdAnonymousTripToken";
 
 type CreateAnonymousJourneyExposureInput = {
   supabase: any;
@@ -13,6 +15,21 @@ type VehicleLocationPoint = {
   longitude: unknown;
   recorded_at: string | null;
 };
+
+export type AnonymousJourneyExposureResult =
+  | {
+      created: number;
+      skipped: false;
+    }
+  | {
+      created: 0;
+      skipped: true;
+      reason:
+        | "trip_not_delivered"
+        | "invalid_trip_time_order"
+        | "insufficient_location_points"
+        | "no_movement_segments";
+    };
 
 type TraversalAccumulator = {
   segment_key: string;
@@ -108,22 +125,13 @@ function directionBucket(
   );
 }
 
-function anonymousTripToken(
-  tripId: string
-): string {
-  return createHash("sha256")
-    .update(
-      `harborguard:crowd-segment-traversal:v1:${tripId}`
-    )
-    .digest("hex");
-}
 
 export async function createAnonymousJourneyExposure({
   supabase,
   organizationId,
   vehicleId,
   tripId,
-}: CreateAnonymousJourneyExposureInput) {
+}: CreateAnonymousJourneyExposureInput): Promise<AnonymousJourneyExposureResult> {
   const { data: trip, error: tripError } =
     await supabase
       .from("vehicle_trips")
@@ -243,7 +251,7 @@ export async function createAnonymousJourneyExposure({
   }
 
   const tripToken =
-    anonymousTripToken(tripId);
+    createCrowdAnonymousTripToken(tripId);
 
   const traversals =
     new Map<string, TraversalAccumulator>();

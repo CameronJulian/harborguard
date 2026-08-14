@@ -16,6 +16,9 @@ import {
   createAnonymousJourneyExposure,
 } from "@/lib/fleet/createAnonymousJourneyExposure";
 import {
+  recordCrowdJourneyPipelineReceipt,
+} from "@/lib/fleet/recordCrowdJourneyPipelineReceipt";
+import {
   updateVehicleStopLifecycle,
 } from "@/lib/fleet/updateVehicleStopLifecycle";
 import { detectFleetRisks } from "@/lib/fleet/risk-detection";
@@ -101,17 +104,41 @@ export async function runTripStatusLifecycle(
       );
     } else {
       try {
-        await createAnonymousJourneyExposure({
-          supabase,
-          organizationId,
-          vehicleId,
+        const crowdExposureResult =
+          await createAnonymousJourneyExposure({
+            supabase,
+            organizationId,
+            vehicleId,
+            tripId: activeTripId,
+          });
+
+        await recordCrowdJourneyPipelineReceipt({
           tripId: activeTripId,
+          observedAt: occurredAt,
+          outcome:
+            crowdExposureResult.skipped === true
+              ? "skipped"
+              : "accepted",
+          reason:
+            crowdExposureResult.skipped === true
+              ? crowdExposureResult.reason
+              : null,
+          traversalRowCount:
+            crowdExposureResult.created,
         });
       } catch (crowdExposureError) {
         console.error(
           "Anonymous journey exposure creation failed:",
           crowdExposureError
         );
+
+        await recordCrowdJourneyPipelineReceipt({
+          tripId: activeTripId,
+          observedAt: occurredAt,
+          outcome: "failed",
+          reason: "processing_error",
+          traversalRowCount: 0,
+        });
       }
 
       try {
