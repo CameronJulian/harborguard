@@ -14991,3 +14991,145 @@ C-1B now has runtime proof of:
 The only remaining C-1 validation item is explicit runtime reprocessing idempotency of the C-1A source helper itself.
 
 ---
+
+## C-1A runtime reprocessing idempotency validated
+
+**Status:** PASS. The final outstanding controlled-runtime validation condition for C-1 is closed.
+
+### Validation target
+
+The previously completed controlled trip was deliberately reprocessed through the real `createAnonymousJourneyExposure()` helper twice.
+
+No new trip was created for this validation.
+
+Controlled trip:
+
+`cce1f24f-2d31-49d7-b72f-acc252765037`
+
+Controlled vehicle:
+
+`8c97bf76-be64-4d05-ad1b-e7b2176c39a2`
+
+The validation invoked the existing production helper rather than manually inserting rows into `crowd_segment_traversals`.
+
+### Baseline
+
+Before reprocessing, the controlled trip had exactly three anonymous C-1A traversal rows.
+
+Validation result:
+
+`BEFORE COUNT= 3`
+
+The three persisted buckets remained:
+
+- `-33.918:18.424` / direction bucket `2` / UTC hour `11` / observed date `2026-08-14`;
+- `-33.918:18.425` / direction bucket `2` / UTC hour `11` / observed date `2026-08-14`;
+- `-33.918:18.426` / direction bucket `2` / UTC hour `11` / observed date `2026-08-14`.
+
+Each bucket had `sample_count = 1`.
+
+### First explicit reprocessing
+
+The real `createAnonymousJourneyExposure()` helper was executed again against the same completed trip, organization, and vehicle.
+
+The helper returned:
+
+`RUN1 RESULT= { created: 3, skipped: false }`
+
+After that execution, the persisted source-layer row count remained:
+
+`AFTER RUN1 COUNT= 3`
+
+The before and after row snapshots were identical.
+
+Validation result:
+
+`FIRST REPROCESS STABLE= true`
+
+The helper's `created: 3` result represents the three calculated rows passed through the helper's upsert path; it did not produce three additional persisted traversal rows.
+
+### Second explicit reprocessing
+
+The same helper was immediately executed a second time against the same completed trip.
+
+The helper returned:
+
+`RUN2 RESULT= { created: 3, skipped: false }`
+
+The persisted source-layer row count again remained:
+
+`AFTER RUN2 COUNT= 3`
+
+The row snapshot after the first reprocessing and the row snapshot after the second reprocessing were identical.
+
+Validation result:
+
+`SECOND REPROCESS STABLE= true`
+
+### C-1A idempotency result
+
+The explicit final validation result was:
+
+`C1A IDEMPOTENT= true`
+
+Across the baseline and both deliberate reprocessing executions:
+
+- traversal row count remained exactly three;
+- no duplicate traversal buckets were created;
+- persisted row IDs remained stable;
+- `segment_key` remained stable;
+- `direction_bucket` remained stable;
+- `hour_bucket` remained stable;
+- `observed_date` remained stable;
+- `trip_token` remained stable;
+- `sample_count` remained stable;
+- `first_seen_at` remained stable;
+- `last_seen_at` remained stable.
+
+This provides controlled-runtime proof that repeated processing of the same completed trip does not duplicate or alter the existing anonymous C-1A traversal buckets.
+
+### Repository state after validation
+
+The validation used transient execution tooling only.
+
+No tracked HarborGuard source file was modified by the runtime validation.
+
+After validation:
+
+- `DOTENV_CONFIG_PATH` was removed from the PowerShell environment;
+- tracked Git status was clean;
+- no new application feature or Route Safety behavior was introduced.
+
+### C-1 closure
+
+The previously open C-1A source reprocessing-idempotency condition is now passed.
+
+C-1A controlled-runtime validation now covers:
+
+- deployed schema and access boundaries;
+- authenticated normal completed-trip lifecycle execution;
+- non-zero anonymous traversal persistence;
+- expected segment identity;
+- expected direction bucketing;
+- expected UTC-hour and observed-date bucketing;
+- expected sample and observation timestamps;
+- repeated source-helper processing of the same completed trip;
+- stable persisted row identity across repeated processing;
+- absence of duplicate traversal buckets.
+
+C-1B controlled-runtime validation covers:
+
+- deployed aggregate schema and RPC;
+- non-zero aggregation from legitimate C-1A source rows;
+- exact aggregate bucket identity;
+- correct traversal and sample counts;
+- correct first and last observation timestamps;
+- repeated-RPC idempotency against unchanged source evidence.
+
+Therefore the C-1 controlled-runtime validation sequence is complete.
+
+Do not interpret this controlled validation as naturally collected production telematics evidence. The validation used representative location observations passed through HarborGuard's normal authenticated trip lifecycle.
+
+With C-1 implementation, deployment, documentation, non-zero lifecycle validation, C-1A reprocessing idempotency, and C-1B aggregation idempotency complete, the engineering workflow may proceed to the next Crowd Intelligence roadmap item after this documentation update is committed and pushed.
+
+---
