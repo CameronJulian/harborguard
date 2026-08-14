@@ -14141,3 +14141,236 @@ Potential candidates include:
 No new risk-scoring formula should be introduced merely because the City integration track is complete.
 
 ---
+
+---
+
+# Engineering Progress Update - 14 August 2026
+
+## Post-City Product Feature - Operator Municipal Route Context
+
+**Status:** Complete
+
+**Implementation commit:** `9e92382`
+
+**Commit message:** `feat: surface municipal route context in command center`
+
+**Branch:** `main`
+
+### Objective
+
+Convert the completed City of Cape Town backend municipal-context integrations into directly useful operator-facing HarborGuard intelligence.
+
+The implementation surfaces existing municipal route context inside the Command Center Route Safety Prediction experience without changing production risk scoring, rerouting, escalation, API behavior, or database state.
+
+### Product value
+
+This milestone closes an important product gap between backend municipal intelligence and the operator experience.
+
+Previously, HarborGuard's Route Safety API could resolve and return City of Cape Town context, but the Command Center did not visibly consume those fields.
+
+Operators can now see relevant municipal context while reviewing a route prediction.
+
+This improves:
+
+- route explainability;
+- environmental infrastructure awareness;
+- emergency-resource awareness;
+- Koeberg emergency-planning awareness;
+- practical value from the completed City integration track;
+- operator decision support.
+
+### UI location
+
+The feature is implemented in:
+
+`app/command-center/sections/CommandCenterRouteSafetySection.tsx`
+
+The new panel appears in the existing Route Safety Prediction result before the live-weather section.
+
+### Municipal Route Context panel
+
+A new operator-facing section is rendered as:
+
+`Municipal Route Context`
+
+The panel is displayed only when at least one supported municipal context is available.
+
+If all municipal contexts are `null`, the panel is hidden rather than displaying empty placeholders.
+
+The panel includes a:
+
+`CONTEXT ONLY`
+
+status badge.
+
+The explanatory copy explicitly states that the municipal details are informational and do not change the HarborGuard route risk score.
+
+### Environmental infrastructure context
+
+The panel can display:
+
+- Open Watercourse context;
+- Main Drainage context;
+- Drainage Catchment context.
+
+Operator-facing details may include relevant names, descriptions, asset types, catchments, areas, and route-relative distance where available.
+
+These remain contextual.
+
+Their presence does not independently assert flooding or route danger.
+
+### Emergency-resource context
+
+The panel can display:
+
+- Fire Station context;
+- Police Station context.
+
+Useful operator-facing metadata includes station identity, available classification or cluster information, and route-relative distance where available.
+
+Proximity to emergency resources remains informational and does not independently increase route risk.
+
+### Koeberg emergency-planning context
+
+The panel can display all three completed Koeberg route-context families:
+
+- `koebergProtectiveActionZoneContext`;
+- `koebergRadiiPlanningContext`;
+- `koebergEvacuationDirectionContext`.
+
+The UI explicitly labels this as:
+
+`Koeberg emergency-planning context`
+
+and warns operators that published planning geography does not indicate:
+
+- an active emergency;
+- an evacuation order;
+- a radiological condition;
+- a road closure.
+
+This preserves the context-versus-live-emergency boundary established during the City integration work.
+
+### City contexts now surfaced in Command Center
+
+The operator Route Safety UI now consumes all eight route-level municipal context fields:
+
+1. `openWatercourseContext`
+2. `mainDrainageContext`
+3. `drainageCatchmentContext`
+4. `fireStationContext`
+5. `policeStationContext`
+6. `koebergProtectiveActionZoneContext`
+7. `koebergRadiiPlanningContext`
+8. `koebergEvacuationDirectionContext`
+
+### Architectural scope
+
+This milestone required only a Command Center UI change.
+
+No changes were required to:
+
+- `/api/route-safety/predict`;
+- route-context providers;
+- route-context resolvers;
+- database schema;
+- migrations;
+- risk-scoring logic;
+- rerouting logic;
+- escalation logic.
+
+The existing `routePrediction` object already retained the complete prediction response, allowing this feature to consume the municipal context without introducing another backend contract.
+
+### Exact implementation scope
+
+The implementation commit changed exactly one file:
+
+- `app/command-center/sections/CommandCenterRouteSafetySection.tsx`
+
+The implementation added 280 lines.
+
+### Verification evidence
+
+Before commit and push, the implementation was verified with:
+
+- exact one-file scope;
+- all eight City context references present;
+- backend/scoring/database boundaries unchanged;
+- `git diff --check`;
+- full HarborGuard registered test suite;
+- TypeScript validation;
+- production Next.js build;
+- clean staged snapshot.
+
+The full test suite passed:
+
+`352 / 352`
+
+TypeScript validation passed.
+
+The production Next.js build completed successfully.
+
+### Final repository state
+
+Implementation commit:
+
+`9e92382 feat: surface municipal route context in command center`
+
+After push:
+
+- local `HEAD`: `9e92382`;
+- `origin/main`: `9e92382`;
+- branch: `main`;
+- tracked repository: clean;
+- index: clean;
+- local and remote: synchronized.
+
+### Scoring and automation boundary
+
+This feature is visualization and operator intelligence only.
+
+It does not change:
+
+- `threatRiskScore`;
+- `weatherRiskScore`;
+- `trafficRiskScore`;
+- overall route risk;
+- rerouting decisions;
+- escalation behavior;
+- automated incident behavior.
+
+Any future decision to promote municipal context into predictive or scoring features requires a separate evidence-based audit.
+
+### Current product state
+
+The completed City of Cape Town integration is no longer backend-only.
+
+HarborGuard now exposes a meaningful portion of its municipal route intelligence directly to Command Center operators during Route Safety prediction.
+
+The completed path is:
+
+`City municipal source`
+-> provider
+-> route resolver
+-> `/api/route-safety/predict`
+-> Command Center `routePrediction`
+-> operator-facing Municipal Route Context
+
+### Next recommended step
+
+Do not add another municipal provider by default.
+
+Begin the next feature with a fresh audit of operator value.
+
+Strong candidate directions include:
+
+- map visualization of municipal route context;
+- operator drill-down or context details;
+- validation of municipal context against real production routes;
+- evidence-based flood prediction using weather plus drainage context;
+- emergency-resource response recommendations;
+- stronger typing for the Route Safety prediction client contract.
+
+No scoring changes should be introduced without a separate audit.
+
+---
