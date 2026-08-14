@@ -17,6 +17,9 @@ import {
   runTripStatusLifecycle,
   runPostLocationUpdateLifecycle,
 } from "@/lib/fleet/runPostLocationUpdateLifecycle";
+import {
+  recordCrowdLocationQualityOutcome,
+} from "@/lib/fleet/recordCrowdLocationQualityOutcome";
 import type {
   ParsedUpdateLocationInput,
 } from "@/lib/fleet/parseUpdateLocationInput";
@@ -186,6 +189,12 @@ export async function processVehicleLocationUpdate({
     });
 
   if (telemetryAnalysis.skipped) {
+    await recordCrowdLocationQualityOutcome({
+      source,
+      outcome: telemetryAnalysis.skipped,
+      occurredAt,
+    });
+
     if (requestedStatus === "delivered") {
       const activeTrip =
         await getActiveVehicleTrip({
@@ -245,6 +254,12 @@ export async function processVehicleLocationUpdate({
       errorType: "location_persistence",
     };
   }
+
+  await recordCrowdLocationQualityOutcome({
+    source,
+    outcome: "accepted",
+    occurredAt,
+  });
 
   const activeTrip =
     await getActiveVehicleTrip({
