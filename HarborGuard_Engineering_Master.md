@@ -15133,3 +15133,132 @@ Do not interpret this controlled validation as naturally collected production te
 With C-1 implementation, deployment, documentation, non-zero lifecycle validation, C-1A reprocessing idempotency, and C-1B aggregation idempotency complete, the engineering workflow may proceed to the next Crowd Intelligence roadmap item after this documentation update is committed and pushed.
 
 ---
+
+## C-1C1 authoritative road-risk event time preservation completed
+
+**Status:** PASS. Authoritative adverse-event occurrence time is now durably preserved in the road-risk event ledger.
+
+### Why this change was required
+
+Before C-1C1, `aggregate_road_risk_intelligence` already received an authoritative `p_event_at` value from each producer, but `road_risk_segment_events` persisted only ledger `created_at`.
+
+That meant downstream event-per-exposure analysis could not safely group historical adverse events by real occurrence time without falling back to ingestion time or source-specific metadata.
+
+### Implementation
+
+Implementation commit:
+
+`7f1a66b fix: preserve road risk event time`
+
+Migration:
+
+`supabase/migrations/20260814151000_preserve_road_risk_event_time.sql`
+
+The migration:
+
+- added `event_at timestamptz` to `road_risk_segment_events`;
+- conservatively backfilled existing rows from ledger `created_at`;
+- made `event_at` non-null;
+- added a `road_risk_segment_id, event_at desc` index;
+- preserved the existing `aggregate_road_risk_intelligence` signature;
+- preserved authenticated and service-role RPC execution permissions;
+- updated the event-ledger insert so new rows persist `coalesce(p_event_at, now())`;
+- preserved the existing `organization_id + route_intelligence_id` idempotency boundary.
+
+No TypeScript, API, UI, predictor, reroute, or Route Safety scoring consumer was changed.
+
+### Deployment validation
+
+The migration was applied successfully to the linked Supabase project.
+
+Remote migration state confirmed:
+
+`20260814151000 | 20260814151000`
+
+A subsequent dry-run reported:
+
+`Remote database is up to date.`
+
+### Existing-row backfill validation
+
+Existing `road_risk_segment_events` rows were queried after deployment.
+
+Validation results:
+
+`NULL EVENT_AT= 0`
+
+`BACKFILL MATCH COUNT= 2`
+
+Both pre-C-1C1 ledger rows had `event_at` equal to their existing `created_at` value, as intended by the conservative backfill policy.
+
+This backfill is explicitly provenance-limited: it does not claim that pre-C-1C1 `created_at` values represent original event occurrence time.
+
+### Controlled runtime event-time persistence validation
+
+A temporary controlled `route_intelligence` record was created with a deliberately distinct authoritative event timestamp:
+
+`2026-08-14T10:15:30.000Z`
+
+The real deployed `aggregate_road_risk_intelligence` RPC was then invoked with that value as `p_event_at`.
+
+The resulting temporary `road_risk_segment_events` row persisted:
+
+`created_at = 2026-08-14T15:17:09.785987+00:00`
+
+`event_at   = 2026-08-14T10:15:30+00:00`
+
+The explicit runtime comparison result was:
+
+`EVENT_AT MATCH= true`
+
+and:
+
+`C1C1 EVENT TIME PRESERVATION= true`
+
+This proves that newly aggregated road-risk evidence now preserves the authoritative adverse-event occurrence time independently from ledger creation time.
+
+### Controlled validation cleanup
+
+The temporary validation evidence was removed after the runtime proof.
+
+Cleanup results:
+
+`REMAINING LEDGER ROWS= 0`
+
+`REMAINING ROUTE INTELLIGENCE ROWS= 0`
+
+`REMAINING SEGMENT ROWS= 0`
+
+No permanent synthetic road-risk evidence remained after validation.
+
+### Verification completed
+
+Before implementation commit and deployment:
+
+- the migration scope was limited to one SQL file;
+- the modified ledger insert was verified;
+- the RPC signature was unchanged;
+- the service-role grant remained intact;
+- `supabase db push --dry-run` identified only the intended migration;
+- `npx tsc --noEmit` passed;
+- `npm run build` passed;
+- the production build generated all `124/124` static pages successfully.
+
+After deployment:
+
+- the remote migration was present;
+- the remote database was up to date;
+- existing rows had non-null `event_at` values;
+- new runtime evidence preserved the supplied `p_event_at` exactly;
+- temporary validation rows were fully cleaned up;
+- tracked Git status remained clean.
+
+### C-1C1 closure
+
+C-1C1 is complete at the implementation, deployment, backfill, and controlled-runtime-validation levels.
+
+The event-time preservation boundary required for descriptive event-per-exposure analysis is now available.
+
+The next Crowd Intelligence implementation may now proceed to the descriptive numerator/exposure layer, but production Route Safety scoring should remain unchanged until that later layer is explicitly audited and validated.
+
+---
