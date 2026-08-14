@@ -173,6 +173,11 @@ type CrowdIntelligenceHealthResponse = {
       failed: number;
       lastProcessedAt: string | null;
 
+      latestFailure: {
+        reason: string | null;
+        failedAt: string | null;
+      } | null;
+
       skipReasons: {
         tripNotDelivered: number;
         invalidTripTimeOrder: number;
@@ -1465,6 +1470,30 @@ export default function FleetDashboardPage() {
                     crowdIntelligenceHealth
                       .pipeline.lastProcessedAt
                   )}
+                </div>
+
+                <div>
+                  <strong>
+                    Latest pipeline failure:
+                  </strong>{" "}
+                  {formatDateTime(
+                    crowdIntelligenceHealth
+                      .pipeline.latestFailure
+                      ?.failedAt ?? null
+                  )}
+                </div>
+
+                <div>
+                  <strong>
+                    Latest failure reason:
+                  </strong>{" "}
+                  {crowdIntelligenceHealth
+                    .pipeline.latestFailure
+                    ?.reason
+                    ?.replaceAll(
+                      "_",
+                      " "
+                    ) ?? "—"}
                 </div>
               </div>
 

@@ -61,6 +61,7 @@ export async function GET() {
       pipelineAcceptedResult,
       pipelineSkippedResult,
       pipelineFailedResult,
+      latestFailureResult,
 
       skipTripNotDeliveredResult,
       skipInvalidTimeResult,
@@ -136,6 +137,34 @@ export async function GET() {
           "outcome",
           "failed"
         ),
+
+      /*
+       * C-1D5 deliberately selects only the operational
+       * failure reason and processing timestamp.
+       *
+       * Do not select trip_token or any raw journey,
+       * vehicle, organization, user, driver, or
+       * coordinate identifier here.
+       */
+      supabaseAdmin
+        .from(
+          "crowd_journey_pipeline_receipts"
+        )
+        .select(
+          "reason,updated_at"
+        )
+        .eq(
+          "outcome",
+          "failed"
+        )
+        .order(
+          "updated_at",
+          {
+            ascending: false,
+          }
+        )
+        .limit(1)
+        .maybeSingle(),
 
       supabaseAdmin
         .from(
@@ -303,6 +332,7 @@ export async function GET() {
       pipelineAcceptedResult,
       pipelineSkippedResult,
       pipelineFailedResult,
+      latestFailureResult,
       skipTripNotDeliveredResult,
       skipInvalidTimeResult,
       skipInsufficientPointsResult,
@@ -394,6 +424,19 @@ export async function GET() {
     const pipelineFailed =
       pipelineFailedResult.count ?? 0;
 
+    const latestFailure =
+      latestFailureResult.data
+        ? {
+            reason:
+              latestFailureResult.data
+                .reason ?? null,
+
+            failedAt:
+              latestFailureResult.data
+                .updated_at ?? null,
+          }
+        : null;
+
     const traversalRows =
       traversalCountResult.count ?? 0;
 
@@ -473,6 +516,8 @@ export async function GET() {
 
           lastProcessedAt:
             latestPipelineAt,
+
+          latestFailure,
 
           skipReasons: {
             tripNotDelivered:
