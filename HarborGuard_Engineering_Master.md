@@ -15868,3 +15868,275 @@ It does not resolve the independently identified stale-aggregate pruning behavio
 That behavior remains a separate follow-up and must not be conflated with C-1B2 lifecycle aggregation.
 
 ---
+
+---
+
+# 2026-08-15 - C-1D Crowd Intelligence Production Hardening (Completed)
+
+## Objective
+
+Complete the C-1D Crowd Intelligence production-hardening sequence before enabling any Crowd-derived production Route Safety scoring.
+
+The work was performed audit-first and incrementally. Each implementation item identified one precise gap, made a focused change, verified the change, and committed/pushed the result before proceeding.
+
+C-1D is now complete across all ten planned items.
+
+## Completed scope
+
+### C-1D1 - Data-quality observability
+
+**Status: COMPLETE**
+
+Added explicit Crowd location-data quality observability so invalid or unusable journey evidence can be measured rather than silently discarded.
+
+The implementation established visibility into location-quality filtering and provided the foundation for distinguishing valid Crowd evidence from collection-quality problems.
+
+Implementation commit:
+
+`d2db997` - `feat: add crowd location quality observability`
+
+### C-1D2 - Journey evidence eligibility
+
+**Status: COMPLETE**
+
+Added deterministic temporal eligibility enforcement for Crowd journeys.
+
+Completed journeys are evaluated against the required journey lifecycle and time-order conditions before anonymous evidence is accepted.
+
+This prevents temporally invalid completed-trip evidence from entering Crowd traversal persistence.
+
+Implementation commit:
+
+`9a034dc` - `feat: enforce crowd journey temporal eligibility`
+
+### C-1D3 - Pipeline observability
+
+**Status: COMPLETE**
+
+Added persistent Crowd journey pipeline observability and subsequent operational/failure diagnostics.
+
+The completed processing path now records deterministic journey outcomes rather than leaving successful, skipped, or failed processing implicit.
+
+The observability work includes:
+
+- persistent journey pipeline receipts;
+- operational-health visibility;
+- explicit pipeline failure diagnostics;
+- deterministic accepted/skipped/failed interpretation.
+
+Implementation commits:
+
+- `c4aba70` - `feat: add crowd journey pipeline observability`
+- `bcaf3aa` - `feat: add crowd intelligence operational health`
+- `6def309` - `feat: add crowd pipeline failure diagnostics`
+
+### C-1D4 - Crowd Intelligence evidence dashboard/API
+
+**Status: COMPLETE**
+
+Added Crowd Intelligence freshness/evidence diagnostics to the existing operational-health surface.
+
+The operational layer can now expose the state and freshness of Crowd evidence without changing production Route Safety scoring.
+
+This closes the evidence-health visibility gap required before larger-scale real-world collection.
+
+Implementation commit:
+
+`39060ab` - `feat: add crowd intelligence freshness diagnostics`
+
+### C-1D5 - Anonymous diversity/cohort architecture
+
+**Status: COMPLETE**
+
+Extended Crowd aggregation to preserve anonymous journey diversity rather than relying only on traversal/sample volume.
+
+The architecture can now distinguish repeated evidence volume from the number of anonymous journeys contributing evidence to an aggregate bucket.
+
+This improves the future statistical-sufficiency foundation without exposing private journey identity.
+
+Implementation commit:
+
+`bcbe7a3` - `feat: add anonymous crowd journey diversity`
+
+### C-1D6 - Idempotency & replay guarantees
+
+**Status: COMPLETE**
+
+Added deterministic single-journey Crowd replay.
+
+The replay path uses the existing completed-journey processing primitives while preserving idempotency.
+
+Repeated replay does not intentionally multiply authoritative traversal evidence or aggregate evidence.
+
+Strict receipt persistence is used during replay so replay failures remain observable instead of being silently swallowed.
+
+Implementation commit:
+
+`a7618a2` - `feat: add idempotent crowd journey replay`
+
+### C-1D7 - Aggregation integrity monitoring
+
+**Status: COMPLETE**
+
+Added explicit Crowd aggregation integrity monitoring.
+
+The integrity layer compares authoritative traversal-source buckets with persisted aggregate buckets and detects divergence including:
+
+- missing aggregate buckets;
+- orphan aggregate buckets;
+- traversal-count mismatches;
+- anonymous-journey-count mismatches;
+- sample-count mismatches.
+
+A healthy integrity snapshot requires all mismatch counts to remain zero.
+
+Implementation commit:
+
+`7bff0e9` - `feat: add crowd aggregation integrity monitoring`
+
+### C-1D8 - Historical recomputation/rebuild tooling
+
+**Status: COMPLETE**
+
+Added deterministic historical Crowd journey rebuild tooling.
+
+The historical rebuild path reuses the established journey replay behavior over eligible completed journeys rather than introducing a separate Crowd processing implementation.
+
+This provides a recovery/recomputation mechanism for historical evidence while preserving the established idempotency boundary.
+
+Implementation commit:
+
+`bb8addd` - `feat: add historical crowd journey rebuild`
+
+Controlled database snapshot validation confirmed:
+
+- delivered completed trips: 3;
+- pipeline receipts: 1;
+- traversal rows: 3;
+- aggregate rows: 3;
+- source bucket count: 3;
+- aggregate bucket count: 3;
+- missing aggregate bucket count: 0;
+- orphan aggregate bucket count: 0;
+- traversal-count mismatch count: 0;
+- anonymous-journey mismatch count: 0;
+- sample-count mismatch count: 0;
+- `integrity_ok = true`.
+
+The snapshot also confirmed historical delivered-trip evidence exists across the controlled validation period.
+
+### C-1D9 - Privacy & retention architecture
+
+**Status: COMPLETE**
+
+Added privacy-safe Crowd retention pruning.
+
+The retention architecture operates through the established privacy-separated Crowd layer and accepts an explicit cutoff rather than embedding an arbitrary legal/business retention duration into application logic.
+
+Retention-policy duration remains a separately governed operational/legal decision.
+
+Implementation commit:
+
+`0ed9602` - `feat: add privacy-safe crowd retention pruning`
+
+### C-1D10 - Real-world collection protocol
+
+**Status: COMPLETE**
+
+Added the repeatable real-world Crowd Intelligence collection runbook:
+
+`docs/Crowd_Intelligence_Real_World_Collection_Protocol.md`
+
+The protocol defines:
+
+- legitimate journey prerequisites;
+- real device GPS collection requirements;
+- normal journey start and completion behavior;
+- accepted/skipped/failed outcome interpretation;
+- post-journey Crowd health verification;
+- privacy boundaries;
+- replay and historical recovery guidance;
+- collection-run acceptance criteria;
+- minimum operational run records;
+- retention boundaries;
+- stop conditions;
+- completion checklist;
+- explicit production-scoring scope boundaries.
+
+The protocol prohibits fabricated production GPS evidence and direct Crowd-table repair as a normal collection mechanism.
+
+It also explicitly distinguishes collection-quality skips such as `insufficient_location_points` from Crowd pipeline infrastructure failures.
+
+Implementation commit:
+
+`33fdb0f` - `docs: add crowd real-world collection protocol`
+
+## C-1D implementation sequence
+
+The completed C-1D implementation chain on `main` is:
+
+1. `d2db997` - Crowd location quality observability
+2. `9a034dc` - Crowd journey temporal eligibility
+3. `c4aba70` - Crowd journey pipeline observability
+4. `bcaf3aa` - Crowd Intelligence operational health
+5. `6def309` - Crowd pipeline failure diagnostics
+6. `39060ab` - Crowd Intelligence freshness diagnostics
+7. `bcbe7a3` - Anonymous Crowd journey diversity
+8. `a7618a2` - Idempotent Crowd journey replay
+9. `7bff0e9` - Crowd aggregation integrity monitoring
+10. `bb8addd` - Historical Crowd journey rebuild
+11. `0ed9602` - Privacy-safe Crowd retention pruning
+12. `33fdb0f` - Real-world Crowd collection protocol
+
+These commits collectively close the ten C-1D roadmap requirements.
+
+## Validation summary
+
+Across the C-1D sequence, validation included as applicable:
+
+- audit-first repository and insertion-point inspection;
+- focused source/database/documentation changes;
+- staged-diff verification;
+- `git diff --check`;
+- TypeScript validation with `npx tsc --noEmit`;
+- Next.js production builds;
+- Supabase migration verification;
+- controlled database/runtime validation;
+- replay/idempotency checks;
+- aggregate-integrity checks;
+- local/remote Git synchronization;
+- clean tracked working-tree verification.
+
+The final C-1D10 state was committed and pushed on `main` at:
+
+`33fdb0f`
+
+At completion:
+
+- `HEAD = 33fdb0f`;
+- `origin/main = 33fdb0f`;
+- the tracked working tree was clean.
+
+## Production-scoring boundary
+
+C-1D completion does **not** enable Crowd-derived production Route Safety scoring.
+
+The work establishes the observability, evidence-quality, privacy, diversity, replay, integrity, historical-rebuild, retention, and collection foundations required to accumulate and evaluate real-world evidence safely.
+
+Production Crowd-derived scoring must remain disabled until a separate audited milestone establishes sufficient real-world evidence and explicitly defines/validates:
+
+- statistical sufficiency;
+- minimum independent journey diversity;
+- confidence/reliability thresholds;
+- geographic coverage requirements;
+- temporal coverage requirements;
+- production weighting behavior;
+- safe fallback behavior.
+
+## Result
+
+**C-1D1 through C-1D10: COMPLETE**
+
+HarborGuard now has the operational hardening required to collect, observe, diagnose, replay, rebuild, validate, retain, and evaluate privacy-separated Crowd Intelligence evidence without silently promoting that evidence into production Route Safety scoring.
+
+The next Crowd Intelligence phase should be selected only after reviewing the post-C-1D roadmap and the real-world evidence requirements.
