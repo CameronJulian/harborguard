@@ -16258,3 +16258,56 @@ Operational state after Phase 2A:
 ### Next step
 
 Audit and implement a geographically filtered, freshness-bounded stored traffic-flow observation reader before removing the live `getHereTrafficFlow()` call from `buildTrafficIntelligence()`.
+
+## HERE Traffic Cost Control - Phase 2B: Stored Observation Reader
+
+**Status: COMPLETE**
+
+Added a dedicated reader for recent persisted traffic-flow observations.
+
+The new reader:
+
+- reads organization-scoped HERE traffic observations from `traffic_flow_observations`;
+- applies a default 60-minute freshness cutoff;
+- orders observations newest-first;
+- keeps only the newest observation for each stable provider segment;
+- requires persisted provider geometry;
+- converts HERE `links[].points[]` geometry into polyline paths;
+- uses the shared `getPointToPolylineDistanceMeters` helper for geographic relevance;
+- excludes observations outside the requested runtime radius;
+- reconstructs the existing traffic-flow item shape used by HarborGuard downstream consumers;
+- caps returned flow corridors at 20;
+- makes no external HERE request.
+
+Implementation file:
+
+`lib/traffic/loadRecentTrafficFlowObservations.ts`
+
+The reader was intentionally implemented and verified independently before changing any runtime traffic-intelligence caller.
+
+Validation completed:
+
+- focused staged-diff inspection;
+- `npx tsc --noEmit`;
+- successful Next.js production build;
+- `git diff --check`;
+- single-file commit;
+- successful remote branch push.
+
+Implementation commit:
+
+`4a8f476` - `Add stored traffic flow observation reader`
+
+Operational state after Phase 2B:
+
+- HERE remains disabled;
+- scheduled HERE traffic-flow collection remains paused;
+- the Phase 1 and Phase 2A database migrations remain unapplied;
+- `buildTrafficIntelligence()` still uses the live HERE Traffic Flow path when HERE is enabled;
+- the new stored reader is not yet wired into production runtime traffic intelligence.
+
+### Next step
+
+Replace the live `getHereTrafficFlow()` call inside `buildTrafficIntelligence()` with `loadRecentTrafficFlowObservations()` while preserving the existing intelligence-source registry kill switch and downstream flow contract.
+
+That wiring change will establish the runtime cost-control boundary where application traffic-intelligence reads use Supabase and only the controlled collector is permitted to call HERE.
