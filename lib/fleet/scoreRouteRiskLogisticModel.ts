@@ -1,15 +1,11 @@
 import {
-  ROUTE_RISK_FEATURE_SCHEMA_VERSION,
-  ROUTE_RISK_LABEL_SCHEMA_VERSION,
-  ROUTE_RISK_TRAINING_CONTRACT_VERSION,
-} from "@/lib/fleet/buildRouteRiskTrainingExample";
-
-import {
-  ROUTE_RISK_LOGISTIC_BASELINE_VERSION,
   ROUTE_RISK_LOGISTIC_FEATURE_DIVISOR,
-  ROUTE_RISK_LOGISTIC_FEATURE_ORDER,
   type RouteRiskLogisticBaselineModel,
 } from "@/lib/fleet/trainRouteRiskLogisticBaseline";
+
+import {
+  parseRouteRiskLogisticBaselineModel,
+} from "@/lib/fleet/parseRouteRiskLogisticBaselineModel";
 
 export type RouteRiskLogisticPredictionFeatures = {
   overallRiskScore: number;
@@ -61,95 +57,6 @@ function validateRiskScore(
   return value;
 }
 
-function validateModel(
-  model: RouteRiskLogisticBaselineModel
-) {
-  if (
-    model.algorithmVersion !==
-    ROUTE_RISK_LOGISTIC_BASELINE_VERSION
-  ) {
-    throw new Error(
-      "Unsupported route-risk logistic model version."
-    );
-  }
-
-  if (
-    model.trainingContractVersion !==
-    ROUTE_RISK_TRAINING_CONTRACT_VERSION
-  ) {
-    throw new Error(
-      "Unsupported route-risk training contract version."
-    );
-  }
-
-  if (
-    model.featureSchemaVersion !==
-    ROUTE_RISK_FEATURE_SCHEMA_VERSION
-  ) {
-    throw new Error(
-      "Unsupported route-risk feature schema version."
-    );
-  }
-
-  if (
-    model.labelSchemaVersion !==
-    ROUTE_RISK_LABEL_SCHEMA_VERSION
-  ) {
-    throw new Error(
-      "Unsupported route-risk label schema version."
-    );
-  }
-
-  if (
-    model.featureOrder.length !==
-    ROUTE_RISK_LOGISTIC_FEATURE_ORDER.length
-  ) {
-    throw new Error(
-      "Unsupported route-risk logistic feature order."
-    );
-  }
-
-  for (
-    let index = 0;
-    index <
-    ROUTE_RISK_LOGISTIC_FEATURE_ORDER.length;
-    index += 1
-  ) {
-    if (
-      model.featureOrder[index] !==
-      ROUTE_RISK_LOGISTIC_FEATURE_ORDER[index]
-    ) {
-      throw new Error(
-        "Unsupported route-risk logistic feature order."
-      );
-    }
-  }
-
-  if (
-    model.normalization.divideBy !==
-    ROUTE_RISK_LOGISTIC_FEATURE_DIVISOR
-  ) {
-    throw new Error(
-      "Unsupported route-risk logistic normalization."
-    );
-  }
-
-  requireFiniteNumber(
-    model.intercept,
-    "model.intercept"
-  );
-
-  for (
-    const featureName of
-    ROUTE_RISK_LOGISTIC_FEATURE_ORDER
-  ) {
-    requireFiniteNumber(
-      model.coefficients[featureName],
-      `model.coefficients.${featureName}`
-    );
-  }
-}
-
 function sigmoid(
   value: number
 ) {
@@ -180,15 +87,16 @@ function sigmoid(
  * - It performs no registry or lifecycle mutation.
  * - It performs no threshold selection or adverse-event classification.
  * - It performs no production Route Safety integration.
- * - It validates the persisted model contract before scoring.
+ * - It validates the full persisted model contract before scoring.
  */
 export function scoreRouteRiskLogisticModel({
   model,
   features,
 }: ScoreRouteRiskLogisticModelInput): RouteRiskLogisticPrediction {
-  validateModel(
-    model
-  );
+  const validatedModel =
+    parseRouteRiskLogisticBaselineModel(
+      model
+    );
 
   const overallRiskScore =
     validateRiskScore(
@@ -219,14 +127,14 @@ export function scoreRouteRiskLogisticModel({
     ROUTE_RISK_LOGISTIC_FEATURE_DIVISOR;
 
   const linear =
-    model.intercept +
-    model.coefficients.overallRiskScore *
+    validatedModel.intercept +
+    validatedModel.coefficients.overallRiskScore *
       overallRiskScore +
-    model.coefficients.threatRiskScore *
+    validatedModel.coefficients.threatRiskScore *
       threatRiskScore +
-    model.coefficients.weatherRiskScore *
+    validatedModel.coefficients.weatherRiskScore *
       weatherRiskScore +
-    model.coefficients.trafficRiskScore *
+    validatedModel.coefficients.trafficRiskScore *
       trafficRiskScore;
 
   const predictedProbability =
