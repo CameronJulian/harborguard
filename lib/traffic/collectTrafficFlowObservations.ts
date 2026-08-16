@@ -64,7 +64,12 @@ export async function collectTrafficFlowObservations(
       normalizedOrganizationId,
       trafficFlow.flow,
       observedAt,
-      collectionKey
+      collectionKey,
+      {
+        latitude: scope.latitude,
+        longitude: scope.longitude,
+        radiusMeters: scope.radiusMeters,
+      }
     );
 
   return {

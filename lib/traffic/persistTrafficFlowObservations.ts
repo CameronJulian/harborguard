@@ -9,6 +9,12 @@ export type TrafficFlowObservationInput = {
   jamFactor: number;
 };
 
+export type TrafficFlowCollectionScopeInput = {
+  latitude: number;
+  longitude: number;
+  radiusMeters: number;
+};
+
 export type PersistTrafficFlowObservationsResult = {
   received: number;
   persisted: number;
@@ -20,7 +26,8 @@ export async function persistTrafficFlowObservations(
   organizationId: string,
   observations: TrafficFlowObservationInput[],
   observedAt: string,
-  collectionKey: string | null = null
+  collectionKey: string | null = null,
+  collectionScope: TrafficFlowCollectionScopeInput | null = null
 ): Promise<PersistTrafficFlowObservationsResult> {
   const normalizedOrganizationId =
     organizationId.trim();
@@ -46,6 +53,40 @@ export async function persistTrafficFlowObservations(
   const normalizedCollectionKey =
     collectionKey?.trim() || null;
 
+  let collectionLatitude: number | null = null;
+  let collectionLongitude: number | null = null;
+  let collectionRadiusMeters: number | null = null;
+
+  if (collectionScope !== null) {
+    const latitude =
+      Number(collectionScope.latitude);
+
+    const longitude =
+      Number(collectionScope.longitude);
+
+    const radiusMeters =
+      Number(collectionScope.radiusMeters);
+
+    if (
+      !Number.isFinite(latitude) ||
+      latitude < -90 ||
+      latitude > 90 ||
+      !Number.isFinite(longitude) ||
+      longitude < -180 ||
+      longitude > 180 ||
+      !Number.isFinite(radiusMeters) ||
+      radiusMeters <= 0
+    ) {
+      throw new Error(
+        "A valid traffic-flow collection scope is required when collectionScope is provided."
+      );
+    }
+
+    collectionLatitude = latitude;
+    collectionLongitude = longitude;
+    collectionRadiusMeters = radiusMeters;
+  }
+
   const rows = observations.flatMap((observation) => {
     const providerSegmentId =
       observation.providerSegmentId?.trim() || null;
@@ -68,6 +109,9 @@ export async function persistTrafficFlowObservations(
         jam_factor: observation.jamFactor,
         observed_at: normalizedObservedAt,
         collection_key: normalizedCollectionKey,
+        collection_latitude: collectionLatitude,
+        collection_longitude: collectionLongitude,
+        collection_radius_meters: collectionRadiusMeters,
       },
     ];
   });
@@ -103,3 +147,4 @@ export async function persistTrafficFlowObservations(
       observations.length - rows.length,
   };
 }
+
