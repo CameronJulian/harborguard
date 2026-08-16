@@ -16311,3 +16311,64 @@ Operational state after Phase 2B:
 Replace the live `getHereTrafficFlow()` call inside `buildTrafficIntelligence()` with `loadRecentTrafficFlowObservations()` while preserving the existing intelligence-source registry kill switch and downstream flow contract.
 
 That wiring change will establish the runtime cost-control boundary where application traffic-intelligence reads use Supabase and only the controlled collector is permitted to call HERE.
+
+## HERE Traffic Cost Control - Phase 2C: Runtime Stored-Flow Cutover
+
+**Status: COMPLETE**
+
+Completed the HarborGuard runtime traffic-flow cost-control cutover.
+
+`buildTrafficIntelligence()` no longer performs a live HERE Traffic Flow request.
+
+When the `here_traffic` intelligence source is enabled and approved, runtime traffic intelligence now reads recent persisted traffic-flow observations through:
+
+`lib/traffic/loadRecentTrafficFlowObservations.ts`
+
+The existing intelligence-source registry kill switch remains in place.
+
+Runtime behavior now:
+
+- returns the existing disabled warning when HERE Traffic is disabled in the source registry;
+- reads geographically filtered, freshness-bounded stored HERE traffic observations when the source is enabled;
+- reports a warning when no recent stored observations are available for the requested area;
+- reports the flow source as `here_flow_stored`;
+- makes no direct HERE Traffic Flow request from `buildTrafficIntelligence()`.
+
+The live HERE Traffic Flow boundary is now restricted to the controlled collection path:
+
+`collectTrafficFlowObservations()` -> `getHereTrafficFlow()`
+
+Application traffic-intelligence consumers therefore read Supabase rather than independently calling HERE.
+
+Validation completed:
+
+- targeted runtime cutover diff inspection;
+- live HERE caller audit;
+- TypeScript validation with `npx tsc --noEmit`;
+- successful Next.js production build;
+- `git diff --check`;
+- single-file staged-diff verification;
+- successful remote branch push.
+
+Implementation commit:
+
+`84500c1` - `Use stored traffic flow for runtime intelligence`
+
+Operational state after Phase 2C:
+
+- HERE remains disabled;
+- scheduled traffic-flow collection remains paused;
+- the Phase 1 and Phase 2A database migrations remain unapplied;
+- runtime code is now prepared to consume stored observations once the required database schema is deployed and fresh observations are collected.
+
+### Next step
+
+Complete deployment sequencing:
+
+1. apply the pending traffic-flow schema migrations;
+2. deploy the cost-control branch/code;
+3. verify the database columns and runtime reader behavior;
+4. perform a controlled traffic-flow collection test;
+5. only after successful validation, decide whether to re-enable HERE Traffic and resume scheduled collection at a deliberate low-cost cadence.
+
+Until those steps are complete, HERE Traffic and scheduled collection must remain disabled/paused.
