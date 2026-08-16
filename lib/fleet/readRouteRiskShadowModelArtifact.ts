@@ -26,7 +26,147 @@ export type RouteRiskShadowModelArtifact = {
   datasetFingerprint: string;
   trainingRunCreatedAt: string;
   model: RouteRiskLogisticBaselineModel;
+  evidence: RouteRiskShadowModelEvidence;
 };
+
+export type RouteRiskShadowModelEvidence = {
+  datasetManifest: {
+    manifestVersion: string | null;
+    splitVersion: string | null;
+    generatedAt: string | null;
+    window: {
+      startOutcomeCompletedAt: string | null;
+      endOutcomeCompletedAt: string | null;
+    };
+    counts: {
+      total: number | null;
+      train: number | null;
+      validation: number | null;
+      test: number | null;
+    };
+  } | null;
+  validationExampleCount: number | null;
+  testExampleCount: number | null;
+};
+
+function optionalRecord(
+  value: unknown
+): Record<string, unknown> | null {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value)
+  ) {
+    return null;
+  }
+
+  return value as Record<string, unknown>;
+}
+
+function optionalNonBlankString(
+  value: unknown
+): string | null {
+  return typeof value === "string" &&
+    value.trim()
+    ? value
+    : null;
+}
+
+function optionalNonNegativeInteger(
+  value: unknown
+): number | null {
+  return Number.isInteger(value) &&
+    (value as number) >= 0
+    ? value as number
+    : null;
+}
+
+function readModelEvidence(
+  manifestValue: unknown,
+  validationEvaluationValue: unknown,
+  testEvaluationValue: unknown
+): RouteRiskShadowModelEvidence {
+  const manifest =
+    optionalRecord(
+      manifestValue
+    );
+
+  const counts =
+    optionalRecord(
+      manifest?.counts
+    );
+
+  const window =
+    optionalRecord(
+      manifest?.window
+    );
+
+  const validationEvaluation =
+    optionalRecord(
+      validationEvaluationValue
+    );
+
+  const testEvaluation =
+    optionalRecord(
+      testEvaluationValue
+    );
+
+  return {
+    datasetManifest:
+      manifest
+        ? {
+            manifestVersion:
+              optionalNonBlankString(
+                manifest.manifestVersion
+              ),
+            splitVersion:
+              optionalNonBlankString(
+                manifest.splitVersion
+              ),
+            generatedAt:
+              optionalNonBlankString(
+                manifest.generatedAt
+              ),
+            window: {
+              startOutcomeCompletedAt:
+                optionalNonBlankString(
+                  window?.startOutcomeCompletedAt
+                ),
+              endOutcomeCompletedAt:
+                optionalNonBlankString(
+                  window?.endOutcomeCompletedAt
+                ),
+            },
+            counts: {
+              total:
+                optionalNonNegativeInteger(
+                  counts?.total
+                ),
+              train:
+                optionalNonNegativeInteger(
+                  counts?.train
+                ),
+              validation:
+                optionalNonNegativeInteger(
+                  counts?.validation
+                ),
+              test:
+                optionalNonNegativeInteger(
+                  counts?.test
+                ),
+            },
+          }
+        : null,
+    validationExampleCount:
+      optionalNonNegativeInteger(
+        validationEvaluation?.exampleCount
+      ),
+    testExampleCount:
+      optionalNonNegativeInteger(
+        testEvaluation?.exampleCount
+      ),
+  };
+}
 
 function requireNonBlankString(
   value: unknown,
@@ -207,7 +347,7 @@ export async function readRouteRiskShadowModelArtifact({
         "route_risk_training_runs"
       )
       .select(
-        "id, organization_id, run_version, dataset_fingerprint, model, created_at"
+        "id, organization_id, run_version, dataset_fingerprint, manifest, model, validation_evaluation, test_evaluation, created_at"
       )
       .eq(
         "id",
@@ -284,6 +424,13 @@ export async function readRouteRiskShadowModelArtifact({
       trainingRun.model
     );
 
+  const evidence =
+    readModelEvidence(
+      trainingRun.manifest,
+      trainingRun.validation_evaluation,
+      trainingRun.test_evaluation
+    );
+
   return {
     registryId,
     organizationId:
@@ -294,5 +441,6 @@ export async function readRouteRiskShadowModelArtifact({
     datasetFingerprint,
     trainingRunCreatedAt,
     model,
+    evidence,
   };
 }

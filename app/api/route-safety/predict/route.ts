@@ -19,6 +19,7 @@ import { resolveRouteKoebergRadiiPlanningContext } from "@/lib/route-safety/reso
 import { resolveRouteKoebergEvacuationDirectionContext } from "@/lib/route-safety/resolveRouteKoebergEvacuationDirectionContext";
 import { readRouteRiskShadowModelArtifact } from "@/lib/fleet/readRouteRiskShadowModelArtifact";
 import { scoreRouteRiskLogisticModel } from "@/lib/fleet/scoreRouteRiskLogisticModel";
+import { assessRouteRiskShadowEvidence } from "@/lib/fleet/assessRouteRiskShadowEvidence";
 import { persistRouteRiskShadowPrediction } from "@/lib/fleet/persistRouteRiskShadowPrediction";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
@@ -2130,12 +2131,21 @@ const koebergEvacuationDirectionContext =
                     features,
                   });
 
+                const evidenceSufficiency =
+                  assessRouteRiskShadowEvidence({
+                    artifact,
+                    features,
+                  });
+
                 await persistRouteRiskShadowPrediction({
                   supabase: supabaseAdmin,
                   productionSnapshotId: snapshot.id,
                   artifact,
                   features,
                   prediction,
+                  metadata: {
+                    evidenceSufficiency,
+                  },
                 });
               }
             } catch (shadowInferenceError) {
