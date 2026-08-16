@@ -17,6 +17,10 @@ import { resolveRoutePoliceStationContext } from "@/lib/route-safety/resolveRout
 import { resolveRouteKoebergProtectiveActionZoneContext } from "@/lib/route-safety/resolveRouteKoebergProtectiveActionZoneContext";
 import { resolveRouteKoebergRadiiPlanningContext } from "@/lib/route-safety/resolveRouteKoebergRadiiPlanningContext";
 import { resolveRouteKoebergEvacuationDirectionContext } from "@/lib/route-safety/resolveRouteKoebergEvacuationDirectionContext";
+import { readRouteRiskShadowModelArtifact } from "@/lib/fleet/readRouteRiskShadowModelArtifact";
+import { scoreRouteRiskLogisticModel } from "@/lib/fleet/scoreRouteRiskLogisticModel";
+import { persistRouteRiskShadowPrediction } from "@/lib/fleet/persistRouteRiskShadowPrediction";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 const TRAFFIC_DIAGNOSTIC_COMPOSITE_CONFIG = {
   weights: {
@@ -2057,7 +2061,7 @@ const koebergEvacuationDirectionContext =
             "Route prediction snapshot skipped: trip does not belong to the current organization or vehicle."
           );
         } else {
-          const { error: snapshotError } = await supabase
+          const { data: snapshot, error: snapshotError } = await supabase
             .from("route_prediction_snapshots")
             .insert({
             organization_id: organizationId,
@@ -2095,13 +2099,51 @@ const koebergEvacuationDirectionContext =
               },
               threatCount: routeThreats.length,
             },
-          });
+          })
+            .select("id")
+            .single();
 
           if (snapshotError) {
             console.error(
               "Route prediction snapshot logging failed:",
               snapshotError
             );
+          } else if (snapshot?.id) {
+            try {
+              const artifact =
+                await readRouteRiskShadowModelArtifact({
+                  supabase: supabaseAdmin,
+                  organizationId,
+                });
+
+              if (artifact) {
+                const features = {
+                  overallRiskScore: riskScore,
+                  threatRiskScore,
+                  weatherRiskScore,
+                  trafficRiskScore,
+                };
+
+                const prediction =
+                  scoreRouteRiskLogisticModel({
+                    model: artifact.model,
+                    features,
+                  });
+
+                await persistRouteRiskShadowPrediction({
+                  supabase: supabaseAdmin,
+                  productionSnapshotId: snapshot.id,
+                  artifact,
+                  features,
+                  prediction,
+                });
+              }
+            } catch (shadowInferenceError) {
+              console.error(
+                "Route-risk shadow inference failed:",
+                shadowInferenceError
+              );
+            }
           }
         }
       } catch (snapshotLoggingError) {
