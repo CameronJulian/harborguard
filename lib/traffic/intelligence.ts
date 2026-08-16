@@ -1,4 +1,4 @@
-import { getHereTrafficFlow } from "@/lib/here/traffic";
+import { loadRecentTrafficFlowObservations } from "@/lib/traffic/loadRecentTrafficFlowObservations";
 import { routeIncidentSeverityWeight, routeIncidentTypeWeight } from "@/lib/route-safety/incidentWeights";
 
 function riskLevel(score: number) {
@@ -435,17 +435,27 @@ export async function buildTrafficIntelligence(
       "HERE Traffic Flow is disabled by the intelligence source registry.";
   } else {
     try {
-      const traffic = await getHereTrafficFlow({
-        latitude,
-        longitude,
-        radiusMeters,
-      });
+      const traffic =
+        await loadRecentTrafficFlowObservations(
+          supabase,
+          organizationId,
+          {
+            latitude,
+            longitude,
+            radiusMeters,
+          }
+        );
 
       flow = traffic.flow;
+
+      if (flow.length === 0) {
+        flowWarning =
+          "No recent stored HERE Traffic Flow observations are available for this area.";
+      }
     } catch (error: any) {
       flowWarning =
         error.message ||
-        "HERE Traffic Flow unavailable.";
+        "Stored HERE Traffic Flow observations unavailable.";
     }
   }
 
@@ -582,7 +592,7 @@ export async function buildTrafficIntelligence(
       flow,
       sources: {
         incidents: "route_safety_alerts_provider_incidents",
-        flow: flow.length > 0 ? "here_flow_live" : "unavailable",
+        flow: flow.length > 0 ? "here_flow_stored" : "unavailable",
       },
       warnings: flowWarning ? [flowWarning] : [],
     },
