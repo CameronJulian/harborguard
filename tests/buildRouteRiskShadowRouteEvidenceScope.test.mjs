@@ -226,7 +226,7 @@ test("route persists scope with existing evidence metadata and unchanged predict
   );
   assert.match(
     route,
-    /metadata:\s*\{\s*evidenceSufficiency,\s*routeEvidenceScope,\s*advisoryRouteForecast,\s*travelCostProvenance,\s*\}/
+    /metadata:\s*\{\s*evidenceSufficiency,\s*routeEvidenceScope,\s*candidateRouteIdentity,\s*advisoryRouteForecast,\s*travelCostProvenance,\s*\}/
   );
   assert.match(
     route,

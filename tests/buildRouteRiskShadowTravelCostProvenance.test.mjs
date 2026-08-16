@@ -264,7 +264,7 @@ test("remains pure while persistence stays inside the isolated shadow path", () 
   );
   assert.match(
     productionRoute,
-    /metadata:\s*\{\s*evidenceSufficiency,\s*routeEvidenceScope,\s*advisoryRouteForecast,\s*travelCostProvenance,\s*\}/
+    /metadata:\s*\{\s*evidenceSufficiency,\s*routeEvidenceScope,\s*candidateRouteIdentity,\s*advisoryRouteForecast,\s*travelCostProvenance,\s*\}/
   );
   assert.match(
     productionRoute,

@@ -200,16 +200,11 @@ test("does not mutate canonical route scope input", () => {
   assert.deepEqual(scope, before);
 });
 
-test("uses only route identity evidence and remains pure and unintegrated", () => {
+test("uses only route identity evidence and remains pure", () => {
   const helper = fs.readFileSync(
     "lib/fleet/buildRouteRiskShadowCandidateRouteIdentity.ts",
     "utf8"
   );
-  const productionRoute = fs.readFileSync(
-    "app/api/route-safety/predict/route.ts",
-    "utf8"
-  );
-
   const inputContractStart = helper.indexOf(
     "export type BuildRouteRiskShadowCandidateRouteIdentityInput"
   );
@@ -264,13 +259,6 @@ test("uses only route identity evidence and remains pure and unintegrated", () =
     );
   }
 
-  assert.equal(
-    productionRoute.includes(
-      "buildRouteRiskShadowCandidateRouteIdentity"
-    ),
-    false
-  );
-
   const result =
     buildRouteRiskShadowCandidateRouteIdentity({
       routeEvidenceScope: routeScope(),
@@ -293,6 +281,97 @@ test("uses only route identity evidence and remains pure and unintegrated", () =
   ]) {
     assert.equal(
       forbiddenField in result,
+      false
+    );
+  }
+});
+
+test("persists exact candidate-route identity inside the isolated shadow metadata path", () => {
+  const productionRoute = fs.readFileSync(
+    "app/api/route-safety/predict/route.ts",
+    "utf8"
+  );
+  const persistence = fs.readFileSync(
+    "lib/fleet/persistRouteRiskShadowPrediction.ts",
+    "utf8"
+  );
+
+  const scopeIndex =
+    productionRoute.indexOf(
+      "buildRouteRiskShadowRouteEvidenceScope({"
+    );
+  const candidateIdentityIndex =
+    productionRoute.indexOf(
+      "buildRouteRiskShadowCandidateRouteIdentity({"
+    );
+  const persistenceIndex =
+    productionRoute.indexOf(
+      "await persistRouteRiskShadowPrediction({"
+    );
+  const shadowCatchIndex =
+    productionRoute.indexOf(
+      "} catch (shadowInferenceError)",
+      persistenceIndex
+    );
+
+  assert.ok(scopeIndex >= 0);
+  assert.ok(candidateIdentityIndex > scopeIndex);
+  assert.ok(persistenceIndex > candidateIdentityIndex);
+  assert.ok(shadowCatchIndex > persistenceIndex);
+  assert.match(
+    productionRoute,
+    /const candidateRouteIdentity =\s*buildRouteRiskShadowCandidateRouteIdentity\(\{\s*routeEvidenceScope,\s*\}\)/
+  );
+  assert.match(
+    productionRoute,
+    /metadata:\s*\{\s*evidenceSufficiency,\s*routeEvidenceScope,\s*candidateRouteIdentity,\s*advisoryRouteForecast,\s*travelCostProvenance,\s*\}/
+  );
+  assert.match(
+    productionRoute,
+    /const features = \{\s*overallRiskScore: riskScore,\s*threatRiskScore,\s*weatherRiskScore,\s*trafficRiskScore,\s*\}/
+  );
+  assert.match(
+    productionRoute,
+    /persistRouteRiskShadowPrediction\(\{\s*supabase: supabaseAdmin,\s*productionSnapshotId: snapshot\.id,\s*artifact,\s*features,\s*prediction,/
+  );
+  assert.doesNotMatch(
+    persistence,
+    /buildRouteRiskShadowCandidateRouteIdentity/
+  );
+
+  const responseIndex =
+    productionRoute.indexOf(
+      "return NextResponse.json({",
+      persistenceIndex
+    );
+
+  assert.ok(responseIndex > persistenceIndex);
+  assert.doesNotMatch(
+    productionRoute.slice(responseIndex),
+    /candidateRouteIdentity/
+  );
+
+  const candidateComposition =
+    productionRoute.slice(
+      candidateIdentityIndex,
+      persistenceIndex
+    );
+
+  for (const forbiddenSemantics of [
+    "candidateSet",
+    "forecastSet",
+    "rank",
+    "recommendation",
+    "selectedRoute",
+    "recommendedRoute",
+    "operationalRiskScore",
+    "uncertaintyPenalty",
+    "calibratedRisk",
+  ]) {
+    assert.equal(
+      candidateComposition.includes(
+        forbiddenSemantics
+      ),
       false
     );
   }

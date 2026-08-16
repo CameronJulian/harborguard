@@ -21,6 +21,7 @@ import { readRouteRiskShadowModelArtifact } from "@/lib/fleet/readRouteRiskShado
 import { scoreRouteRiskLogisticModel } from "@/lib/fleet/scoreRouteRiskLogisticModel";
 import { assessRouteRiskShadowEvidence } from "@/lib/fleet/assessRouteRiskShadowEvidence";
 import { buildRouteRiskShadowRouteEvidenceScope } from "@/lib/fleet/buildRouteRiskShadowRouteEvidenceScope";
+import { buildRouteRiskShadowCandidateRouteIdentity } from "@/lib/fleet/buildRouteRiskShadowCandidateRouteIdentity";
 import { buildRouteRiskShadowAdvisoryForecast } from "@/lib/fleet/buildRouteRiskShadowAdvisoryForecast";
 import { buildRouteRiskShadowTravelCostProvenance } from "@/lib/fleet/buildRouteRiskShadowTravelCostProvenance";
 import { persistRouteRiskShadowPrediction } from "@/lib/fleet/persistRouteRiskShadowPrediction";
@@ -2154,6 +2155,11 @@ const koebergEvacuationDirectionContext =
                       snapshot.created_at,
                   });
 
+                const candidateRouteIdentity =
+                  buildRouteRiskShadowCandidateRouteIdentity({
+                    routeEvidenceScope,
+                  });
+
                 const advisoryRouteForecast =
                   buildRouteRiskShadowAdvisoryForecast({
                     artifact,
@@ -2179,6 +2185,7 @@ const koebergEvacuationDirectionContext =
                   metadata: {
                     evidenceSufficiency,
                     routeEvidenceScope,
+                    candidateRouteIdentity,
                     advisoryRouteForecast,
                     travelCostProvenance,
                   },
