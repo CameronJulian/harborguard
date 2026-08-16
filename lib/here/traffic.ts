@@ -131,6 +131,7 @@ export async function getHereTrafficFlow(options: {
       return {
         id: item.location?.id || `here-flow-${index + 1}`,
         providerSegmentId,
+        providerGeometry: item?.location?.shape ?? null,
         road: roadName(item, index),
         currentSpeed,
         freeFlowSpeed,
@@ -152,3 +153,4 @@ export async function getHereTrafficFlow(options: {
     flow,
   };
 }
+

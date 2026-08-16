@@ -1,5 +1,6 @@
 export type TrafficFlowObservationInput = {
   providerSegmentId: string | null;
+  providerGeometry: unknown;
   road: string | null;
   currentSpeed: number;
   freeFlowSpeed: number;
@@ -100,6 +101,7 @@ export async function persistTrafficFlowObservations(
         organization_id: normalizedOrganizationId,
         provider: "here",
         provider_segment_id: providerSegmentId,
+        provider_geometry: observation.providerGeometry ?? null,
         road_name: observation.road?.trim() || null,
         current_speed_kmh: observation.currentSpeed,
         free_flow_speed_kmh: observation.freeFlowSpeed,
