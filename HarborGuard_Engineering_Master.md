@@ -16498,3 +16498,94 @@ Perform a final cost-control closure audit before changing the production operat
 3. confirm QStash traffic-flow scheduling remains paused;
 4. determine the deliberate low-cost collection cadence and re-enable procedure;
 5. only then decide whether production scheduled HERE Traffic Flow collection should be enabled.
+
+## HERE Traffic Cost Control - Phase 2F: Controlled Production Activation
+
+**Status: COMPLETE**
+
+Completed the final production activation of the HERE Traffic Flow cost-control architecture.
+
+Final closure audit confirmed:
+
+- `getHereTrafficFlow()` is called only by the controlled traffic-flow collector;
+- the HERE Traffic Flow provider URL exists only in `lib/here/traffic.ts`;
+- the collector registry guard executes before collection scope resolution and before the HERE provider call;
+- the tracked working tree had no pending changes;
+- production Vercel deployment for commit `c8263b3` was Ready;
+- implementation commit `2aebdfb` was also deployed successfully.
+
+Production source-registry state was deliberately changed to:
+
+- `here_traffic.enabled = true`;
+- `here_traffic.approved_for_ingestion = true`.
+
+The recurring QStash traffic-flow schedule was changed from:
+
+`*/10 * * * *`
+
+to:
+
+`0 * * * *`
+
+reducing scheduled collection from every 10 minutes to once per hour.
+
+The schedule remained paused while the new cadence and production behavior were validated.
+
+A controlled production collection was then executed with fresh legitimate vehicle telemetry.
+
+Controlled activation validation result:
+
+- `success = true`;
+- `scopeResolved = true`;
+- source vehicle = `152119a0-6497-4692-a40f-4ced454d722e`;
+- `received = 20`;
+- `persisted = 6`;
+- `skippedWithoutProviderSegmentId = 14`.
+
+This confirmed that the deployed registry gate permits collection when the source is explicitly enabled and approved.
+
+After successful controlled validation, the QStash schedule for:
+
+`/api/traffic-flow/cron`
+
+was resumed.
+
+Production traffic-flow scheduling is now:
+
+- active;
+- hourly;
+- protected by the intelligence-source registry;
+- scoped by recent vehicle telemetry;
+- retry-safe through the existing QStash message identity / receipt lifecycle;
+- persisted to stored traffic-flow observations for runtime consumption.
+
+### Final production architecture
+
+`QStash hourly schedule`
+`-> authenticated /api/traffic-flow/cron`
+`-> collection receipt lifecycle`
+`-> here_traffic registry gate`
+`-> recent vehicle collection scope`
+`-> HERE Traffic Flow`
+`-> persisted traffic_flow_observations`
+`-> stored traffic-flow reader`
+`-> runtime traffic intelligence`
+
+The previous direct-runtime HERE Traffic Flow request path remains removed.
+
+The registry remains the operational kill switch for paid HERE Traffic Flow collection.
+
+### Operational state
+
+**HERE Traffic Flow cost-control remediation: COMPLETE**
+
+Current production posture:
+
+- source registry: enabled and approved;
+- QStash traffic-flow schedule: active;
+- cadence: once per hour;
+- runtime traffic intelligence: stored-observation based;
+- collection kill switch: active and validated;
+- uncontrolled direct HERE Flow callers: none identified.
+
+Future cadence changes should remain deliberate and evidence-driven rather than restoring the previous 10-minute schedule by default.
