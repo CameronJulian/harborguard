@@ -13,6 +13,9 @@ import {
   evaluateCompletedTripPrediction,
 } from "@/lib/fleet/evaluateCompletedTripPrediction";
 import {
+  evaluateCompletedTripRouteRiskShadowPredictions,
+} from "@/lib/fleet/evaluateCompletedTripRouteRiskShadowPredictions";
+import {
   createAnonymousJourneyExposure,
 } from "@/lib/fleet/createAnonymousJourneyExposure";
 import {
@@ -22,6 +25,7 @@ import {
   updateVehicleStopLifecycle,
 } from "@/lib/fleet/updateVehicleStopLifecycle";
 import { detectFleetRisks } from "@/lib/fleet/risk-detection";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export type RunPostLocationUpdateLifecycleInput = {
   supabase: any;
@@ -152,6 +156,20 @@ export async function runTripStatusLifecycle(
         console.error(
           "Completed-trip prediction evaluation failed:",
           evaluationError
+        );
+      }
+
+      try {
+        await evaluateCompletedTripRouteRiskShadowPredictions({
+          supabase: supabaseAdmin,
+          organizationId,
+          vehicleId,
+          tripId: activeTripId,
+        });
+      } catch (shadowEvaluationError) {
+        console.error(
+          "Completed-trip route-risk shadow evaluation failed:",
+          shadowEvaluationError
         );
       }
     }
