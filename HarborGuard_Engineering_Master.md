@@ -16140,3 +16140,73 @@ Production Crowd-derived scoring must remain disabled until a separate audited m
 HarborGuard now has the operational hardening required to collect, observe, diagnose, replay, rebuild, validate, retain, and evaluate privacy-separated Crowd Intelligence evidence without silently promoting that evidence into production Route Safety scoring.
 
 The next Crowd Intelligence phase should be selected only after reviewing the post-C-1D roadmap and the real-world evidence requirements.
+
+## 2026-08-16 - HERE Traffic cost-control remediation phase 1
+
+**Status: COMPLETE**
+
+Completed the first HarborGuard HERE Traffic cost-control remediation work item.
+
+The July HERE billing audit identified that historical HarborGuard runtime paths could trigger uncached live HERE Traffic Flow requests from multiple application services without a centralized persistence/read boundary.
+
+As the first remediation step, HarborGuard now persists the geographic scope used for each centrally collected HERE Traffic Flow observation.
+
+The traffic-flow observation persistence layer now records:
+
+- `collection_latitude`
+- `collection_longitude`
+- `collection_radius_meters`
+
+The controlled traffic-flow collector propagates the resolved collection scope into each persisted observation.
+
+This makes future stored traffic-flow evidence geographically self-describing and provides the foundation required for a safe runtime reader that can match stored observations to requested traffic-intelligence locations without making fresh HERE requests.
+
+### Database migration
+
+Added:
+
+`supabase/migrations/20260816100000_add_traffic_flow_collection_scope.sql`
+
+The migration adds nullable geographic collection-scope columns to `traffic_flow_observations` together with validation constraints for:
+
+- latitude range;
+- longitude range;
+- positive collection radius.
+
+The migration has been committed but has **not yet been applied to Supabase production**.
+
+### Runtime safety state
+
+HERE Traffic remains intentionally disabled in the intelligence source registry:
+
+- `enabled = false`
+- `approved_for_ingestion = false`
+
+The QStash `/api/traffic-flow/cron` schedule also remains paused.
+
+No HERE Traffic re-enable or traffic-flow collection resumption was performed as part of this work item.
+
+### Validation
+
+Validation completed successfully:
+
+- targeted Git diff review;
+- `npx tsc --noEmit`;
+- Next.js production build with `npm run build`;
+- staged-diff verification;
+- focused three-file commit;
+- remote branch push.
+
+Implementation commit:
+
+`cb03757` - `Persist traffic flow collection scope`
+
+Branch:
+
+`fix/here-traffic-cost-control`
+
+### Next work item
+
+The next remediation step is to add a geographically safe recent-observation reader for `traffic_flow_observations` and replace the live HERE Traffic Flow call inside `buildTrafficIntelligence()` with stored observation reads.
+
+HERE Traffic and the QStash traffic-flow collector must remain disabled/paused until that runtime-reader change is implemented, verified, and deployment/migration sequencing is complete.
