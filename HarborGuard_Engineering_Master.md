@@ -16372,3 +16372,60 @@ Complete deployment sequencing:
 5. only after successful validation, decide whether to re-enable HERE Traffic and resume scheduled collection at a deliberate low-cost cadence.
 
 Until those steps are complete, HERE Traffic and scheduled collection must remain disabled/paused.
+
+## HERE Traffic Cost Control - Phase 2D: Production Stored-Flow Validation
+
+**Status: COMPLETE**
+
+Completed controlled production validation of the HERE Traffic cost-control architecture.
+
+Validation sequence:
+
+- confirmed production schema migrations were applied and migration history was synchronized;
+- deployed the cost-control implementation to production;
+- confirmed `here_traffic` remained disabled and unapproved in the intelligence-source registry;
+- generated one legitimate fresh vehicle-location observation through HarborGuard's normal authenticated location-update API;
+- executed exactly one controlled traffic-flow collection while QStash remained paused;
+- confirmed the collector resolved the intended vehicle scope;
+- HERE returned 20 traffic-flow items;
+- 5 observations with stable provider segment identities were persisted;
+- 15 observations without stable provider segment identities were intentionally skipped;
+- all 5 persisted observations contained:
+  - collection latitude;
+  - collection longitude;
+  - 10,000 metre collection radius;
+  - provider road geometry;
+  - stable provider segment identity;
+- directly executed `loadRecentTrafficFlowObservations()` against production Supabase;
+- the stored reader returned exactly 5 current geographically relevant segments;
+- all returned items reported `source = here_flow_stored`;
+- reader validation made no HERE provider request;
+- temporary validation tooling was deleted after execution.
+
+Controlled collection result:
+
+- `scopeResolved = true`;
+- `received = 20`;
+- `persisted = 5`;
+- `skippedWithoutProviderSegmentId = 15`.
+
+Stored-reader result:
+
+- `rawCount = 5`;
+- `latestSegmentCount = 5`;
+- `flowCount = 5`.
+
+Production validation therefore confirms:
+
+`HERE controlled collection -> Supabase persistence -> stored observation reader`
+
+works end-to-end.
+
+### Remaining cost-control gap
+
+The scheduled `/api/traffic-flow/cron` collection path does not currently enforce the `here_traffic` intelligence-source registry before calling HERE.
+
+Therefore `enabled = false` / `approved_for_ingestion = false` is not currently a complete kill switch for paid traffic-flow collection.
+
+QStash must remain paused and HERE must remain disabled until that collection-side guard is implemented and validated.
+
