@@ -16210,3 +16210,51 @@ Branch:
 The next remediation step is to add a geographically safe recent-observation reader for `traffic_flow_observations` and replace the live HERE Traffic Flow call inside `buildTrafficIntelligence()` with stored observation reads.
 
 HERE Traffic and the QStash traffic-flow collector must remain disabled/paused until that runtime-reader change is implemented, verified, and deployment/migration sequencing is complete.
+
+## HERE Traffic Cost Control - Phase 2A: Provider Geometry Persistence
+
+**Status: COMPLETE**
+
+Extended persisted traffic-flow observations to retain the provider road geometry returned by HERE Traffic Flow.
+
+The implementation now:
+
+- preserves `location.shape` from each selected HERE Traffic Flow result as `providerGeometry`;
+- persists that geometry as `provider_geometry`;
+- introduces a nullable `jsonb` database column for provider geometry;
+- preserves the existing traffic-flow collection and scoring behavior;
+- does not yet replace runtime HERE Traffic Flow reads;
+- does not enable HERE or resume scheduled traffic-flow collection.
+
+Provider geometry is retained so a future stored-observation reader can determine whether an observation is geographically relevant to a requested traffic-intelligence location/radius without making a fresh HERE request.
+
+The existing HarborGuard geometry model already supports HERE `links[].points[]` geometry, allowing the future reader to use actual road geometry rather than approximating a traffic segment using only the collection-circle center.
+
+Migration added:
+
+`supabase/migrations/20260816110000_add_traffic_flow_provider_geometry.sql`
+
+The migration remains intentionally unapplied while the HERE traffic cost-control implementation is incomplete.
+
+Validation completed:
+
+- focused diff inspection;
+- TypeScript validation with `npx tsc --noEmit`;
+- successful Next.js production build;
+- targeted staging verification;
+- successful remote push.
+
+Implementation commit:
+
+`bfdc06d` - `Persist traffic flow provider geometry`
+
+Operational state after Phase 2A:
+
+- HERE remains disabled;
+- scheduled traffic-flow collection remains paused;
+- the Phase 1 and Phase 2A database migrations remain unapplied;
+- no runtime traffic-intelligence caller has yet been switched from live HERE Flow to persisted observations.
+
+### Next step
+
+Audit and implement a geographically filtered, freshness-bounded stored traffic-flow observation reader before removing the live `getHereTrafficFlow()` call from `buildTrafficIntelligence()`.
