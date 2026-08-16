@@ -200,29 +200,56 @@ const routeSafety =
     "utf8"
   );
 
-const forbiddenRouteSafetyFragments = [
+const requiredRouteSafetyFragments = [
   "persistRouteRiskShadowPrediction",
-  "route_risk_shadow_predictions",
   "readRouteRiskShadowModelArtifact",
   "scoreRouteRiskLogisticModel",
+  "buildRouteRiskShadowAdvisoryForecast",
+  "advisoryRouteForecast",
 ];
 
 for (
   const fragment of
-  forbiddenRouteSafetyFragments
+  requiredRouteSafetyFragments
 ) {
-  if (routeSafety.includes(fragment)) {
+  if (!routeSafety.includes(fragment)) {
     fail(
-      `Route Safety unexpectedly references ML shadow execution: ${fragment}`
+      `Route Safety shadow integration fragment missing: ${fragment}`
     );
   }
 }
 
+const forecastIndex =
+  routeSafety.indexOf(
+    "buildRouteRiskShadowAdvisoryForecast({"
+  );
+
+const persistenceIndex =
+  routeSafety.indexOf(
+    "await persistRouteRiskShadowPrediction({"
+  );
+
+const shadowCatchIndex =
+  routeSafety.indexOf(
+    "} catch (shadowInferenceError)",
+    persistenceIndex
+  );
+
+if (
+  forecastIndex < 0 ||
+  persistenceIndex <= forecastIndex ||
+  shadowCatchIndex <= persistenceIndex
+) {
+  fail(
+    "advisory forecast persistence is not ordered inside the isolated shadow boundary"
+  );
+}
+
 pass(
-  "Route Safety remains ML shadow disconnected"
+  "advisory forecast persistence remains inside the isolated shadow boundary"
 );
 
 console.log("");
 console.log(
-  "C-1E9B5D3 STATIC CONTRACT VERIFICATION PASS"
+  "ROUTE-RISK SHADOW PERSISTENCE STATIC CONTRACT VERIFICATION PASS"
 );

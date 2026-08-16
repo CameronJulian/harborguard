@@ -21,6 +21,7 @@ import { readRouteRiskShadowModelArtifact } from "@/lib/fleet/readRouteRiskShado
 import { scoreRouteRiskLogisticModel } from "@/lib/fleet/scoreRouteRiskLogisticModel";
 import { assessRouteRiskShadowEvidence } from "@/lib/fleet/assessRouteRiskShadowEvidence";
 import { buildRouteRiskShadowRouteEvidenceScope } from "@/lib/fleet/buildRouteRiskShadowRouteEvidenceScope";
+import { buildRouteRiskShadowAdvisoryForecast } from "@/lib/fleet/buildRouteRiskShadowAdvisoryForecast";
 import { persistRouteRiskShadowPrediction } from "@/lib/fleet/persistRouteRiskShadowPrediction";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
@@ -2152,6 +2153,15 @@ const koebergEvacuationDirectionContext =
                       snapshot.created_at,
                   });
 
+                const advisoryRouteForecast =
+                  buildRouteRiskShadowAdvisoryForecast({
+                    artifact,
+                    prediction,
+                    evidenceAssessment:
+                      evidenceSufficiency,
+                    routeEvidenceScope,
+                  });
+
                 await persistRouteRiskShadowPrediction({
                   supabase: supabaseAdmin,
                   productionSnapshotId: snapshot.id,
@@ -2161,6 +2171,7 @@ const koebergEvacuationDirectionContext =
                   metadata: {
                     evidenceSufficiency,
                     routeEvidenceScope,
+                    advisoryRouteForecast,
                   },
                 });
               }

@@ -281,7 +281,7 @@ test("rejects an invalid required raw model output without mutating inputs", () 
   assert.deepEqual(input, before);
 });
 
-test("introduces no persistence, production response, route ranking, or external query", () => {
+test("keeps the builder pure while persistence remains inside the isolated shadow path", () => {
   const helper = fs.readFileSync(
     "lib/fleet/buildRouteRiskShadowAdvisoryForecast.ts",
     "utf8"
@@ -310,7 +310,50 @@ test("introduces no persistence, production response, route ranking, or external
     productionRoute.includes(
       "buildRouteRiskShadowAdvisoryForecast"
     ),
-    false
+    true
+  );
+
+  const scopeIndex =
+    productionRoute.indexOf(
+      "buildRouteRiskShadowRouteEvidenceScope({"
+    );
+  const forecastIndex =
+    productionRoute.indexOf(
+      "buildRouteRiskShadowAdvisoryForecast({"
+    );
+  const persistenceIndex =
+    productionRoute.indexOf(
+      "await persistRouteRiskShadowPrediction({"
+    );
+  const shadowCatchIndex =
+    productionRoute.indexOf(
+      "} catch (shadowInferenceError)",
+      persistenceIndex
+    );
+
+  assert.ok(scopeIndex >= 0);
+  assert.ok(forecastIndex > scopeIndex);
+  assert.ok(persistenceIndex > forecastIndex);
+  assert.ok(shadowCatchIndex > persistenceIndex);
+  assert.match(
+    productionRoute,
+    /buildRouteRiskShadowAdvisoryForecast\(\{\s*artifact,\s*prediction,\s*evidenceAssessment:\s*evidenceSufficiency,\s*routeEvidenceScope,\s*\}\)/
+  );
+  assert.match(
+    productionRoute,
+    /metadata:\s*\{\s*evidenceSufficiency,\s*routeEvidenceScope,\s*advisoryRouteForecast,\s*\}/
+  );
+
+  const responseIndex =
+    productionRoute.indexOf(
+      "return NextResponse.json({",
+      persistenceIndex
+    );
+
+  assert.ok(responseIndex > persistenceIndex);
+  assert.doesNotMatch(
+    productionRoute.slice(responseIndex),
+    /advisoryRouteForecast/
   );
 
   const result =
