@@ -2,6 +2,9 @@ import {
   getHereTrafficFlow,
 } from "@/lib/here/traffic";
 import {
+  getIntelligenceSourceConfiguration,
+} from "@/lib/route-safety/providers/getIntelligenceSourceConfiguration";
+import {
   persistTrafficFlowObservations,
 } from "@/lib/traffic/persistTrafficFlowObservations";
 import {
@@ -28,6 +31,35 @@ export async function collectTrafficFlowObservations(
   if (!normalizedOrganizationId) {
     throw new Error(
       "organizationId is required to collect traffic-flow observations."
+    );
+  }
+
+  const {
+    configuration: hereTrafficConfiguration,
+    error: hereTrafficConfigurationError,
+  } = await getIntelligenceSourceConfiguration(
+    supabase,
+    "here_traffic"
+  );
+
+  if (hereTrafficConfigurationError) {
+    throw new Error(
+      `HERE Traffic source configuration could not be loaded: ${hereTrafficConfigurationError}`
+    );
+  }
+
+  if (!hereTrafficConfiguration) {
+    throw new Error(
+      "HERE Traffic source configuration was not found."
+    );
+  }
+
+  if (
+    !hereTrafficConfiguration.enabled ||
+    !hereTrafficConfiguration.approvedForIngestion
+  ) {
+    throw new Error(
+      "HERE Traffic Flow collection is disabled by the intelligence source registry."
     );
   }
 
