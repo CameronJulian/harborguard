@@ -341,7 +341,7 @@ test("keeps the builder pure while persistence remains inside the isolated shado
   );
   assert.match(
     productionRoute,
-    /metadata:\s*\{\s*evidenceSufficiency,\s*routeEvidenceScope,\s*advisoryRouteForecast,\s*\}/
+    /metadata:\s*\{\s*evidenceSufficiency,\s*routeEvidenceScope,\s*advisoryRouteForecast,\s*travelCostProvenance,\s*\}/
   );
 
   const responseIndex =

@@ -22,6 +22,7 @@ import { scoreRouteRiskLogisticModel } from "@/lib/fleet/scoreRouteRiskLogisticM
 import { assessRouteRiskShadowEvidence } from "@/lib/fleet/assessRouteRiskShadowEvidence";
 import { buildRouteRiskShadowRouteEvidenceScope } from "@/lib/fleet/buildRouteRiskShadowRouteEvidenceScope";
 import { buildRouteRiskShadowAdvisoryForecast } from "@/lib/fleet/buildRouteRiskShadowAdvisoryForecast";
+import { buildRouteRiskShadowTravelCostProvenance } from "@/lib/fleet/buildRouteRiskShadowTravelCostProvenance";
 import { persistRouteRiskShadowPrediction } from "@/lib/fleet/persistRouteRiskShadowPrediction";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
@@ -2162,6 +2163,13 @@ const koebergEvacuationDirectionContext =
                     routeEvidenceScope,
                   });
 
+                const travelCostProvenance =
+                  buildRouteRiskShadowTravelCostProvenance({
+                    routeEstimate,
+                    predictionCreatedAt:
+                      snapshot.created_at,
+                  });
+
                 await persistRouteRiskShadowPrediction({
                   supabase: supabaseAdmin,
                   productionSnapshotId: snapshot.id,
@@ -2172,6 +2180,7 @@ const koebergEvacuationDirectionContext =
                     evidenceSufficiency,
                     routeEvidenceScope,
                     advisoryRouteForecast,
+                    travelCostProvenance,
                   },
                 });
               }

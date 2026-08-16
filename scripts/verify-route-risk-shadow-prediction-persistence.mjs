@@ -205,7 +205,9 @@ const requiredRouteSafetyFragments = [
   "readRouteRiskShadowModelArtifact",
   "scoreRouteRiskLogisticModel",
   "buildRouteRiskShadowAdvisoryForecast",
+  "buildRouteRiskShadowTravelCostProvenance",
   "advisoryRouteForecast",
+  "travelCostProvenance",
 ];
 
 for (
@@ -224,6 +226,11 @@ const forecastIndex =
     "buildRouteRiskShadowAdvisoryForecast({"
   );
 
+const travelCostIndex =
+  routeSafety.indexOf(
+    "buildRouteRiskShadowTravelCostProvenance({"
+  );
+
 const persistenceIndex =
   routeSafety.indexOf(
     "await persistRouteRiskShadowPrediction({"
@@ -237,16 +244,17 @@ const shadowCatchIndex =
 
 if (
   forecastIndex < 0 ||
-  persistenceIndex <= forecastIndex ||
+  travelCostIndex <= forecastIndex ||
+  persistenceIndex <= travelCostIndex ||
   shadowCatchIndex <= persistenceIndex
 ) {
   fail(
-    "advisory forecast persistence is not ordered inside the isolated shadow boundary"
+    "advisory forecast and travel-cost provenance persistence are not ordered inside the isolated shadow boundary"
   );
 }
 
 pass(
-  "advisory forecast persistence remains inside the isolated shadow boundary"
+  "advisory forecast and travel-cost provenance persistence remain inside the isolated shadow boundary"
 );
 
 console.log("");

@@ -198,13 +198,17 @@ test("does not mutate provider input or use current time", () => {
   );
 });
 
-test("remains pure, unpersisted, and incapable of production route decisions", () => {
+test("remains pure while persistence stays inside the isolated shadow path", () => {
   const helper = fs.readFileSync(
     "lib/fleet/buildRouteRiskShadowTravelCostProvenance.ts",
     "utf8"
   );
   const productionRoute = fs.readFileSync(
     "app/api/route-safety/predict/route.ts",
+    "utf8"
+  );
+  const persistence = fs.readFileSync(
+    "lib/fleet/persistRouteRiskShadowPrediction.ts",
     "utf8"
   );
 
@@ -229,7 +233,62 @@ test("remains pure, unpersisted, and incapable of production route decisions", (
     productionRoute.includes(
       "buildRouteRiskShadowTravelCostProvenance"
     ),
-    false
+    true
+  );
+
+  const forecastIndex =
+    productionRoute.indexOf(
+      "buildRouteRiskShadowAdvisoryForecast({"
+    );
+  const travelCostIndex =
+    productionRoute.indexOf(
+      "buildRouteRiskShadowTravelCostProvenance({"
+    );
+  const persistenceIndex =
+    productionRoute.indexOf(
+      "await persistRouteRiskShadowPrediction({"
+    );
+  const shadowCatchIndex =
+    productionRoute.indexOf(
+      "} catch (shadowInferenceError)",
+      persistenceIndex
+    );
+
+  assert.ok(forecastIndex >= 0);
+  assert.ok(travelCostIndex > forecastIndex);
+  assert.ok(persistenceIndex > travelCostIndex);
+  assert.ok(shadowCatchIndex > persistenceIndex);
+  assert.match(
+    productionRoute,
+    /buildRouteRiskShadowTravelCostProvenance\(\{\s*routeEstimate,\s*predictionCreatedAt:\s*snapshot\.created_at,\s*\}\)/
+  );
+  assert.match(
+    productionRoute,
+    /metadata:\s*\{\s*evidenceSufficiency,\s*routeEvidenceScope,\s*advisoryRouteForecast,\s*travelCostProvenance,\s*\}/
+  );
+  assert.match(
+    productionRoute,
+    /const features = \{\s*overallRiskScore: riskScore,\s*threatRiskScore,\s*weatherRiskScore,\s*trafficRiskScore,\s*\}/
+  );
+  assert.match(
+    productionRoute,
+    /persistRouteRiskShadowPrediction\(\{\s*supabase: supabaseAdmin,\s*productionSnapshotId: snapshot\.id,\s*artifact,\s*features,\s*prediction,/
+  );
+  assert.doesNotMatch(
+    persistence,
+    /buildRouteRiskShadowTravelCostProvenance/
+  );
+
+  const responseIndex =
+    productionRoute.indexOf(
+      "return NextResponse.json({",
+      persistenceIndex
+    );
+
+  assert.ok(responseIndex > persistenceIndex);
+  assert.doesNotMatch(
+    productionRoute.slice(responseIndex),
+    /travelCostProvenance/
   );
 
   const result =
