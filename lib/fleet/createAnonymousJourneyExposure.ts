@@ -2,6 +2,10 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import {
   createCrowdAnonymousTripToken,
 } from "@/lib/fleet/createCrowdAnonymousTripToken";
+import {
+  buildCrowdSegmentKey,
+  resolveCrowdDirectionBucket,
+} from "@/lib/fleet/crowdSegmentIdentity";
 
 type CreateAnonymousJourneyExposureInput = {
   supabase: any;
@@ -69,62 +73,6 @@ function validCoordinate(
     !(latitude === 0 && longitude === 0)
   );
 }
-
-function segmentKey(
-  latitude: number,
-  longitude: number
-): string {
-  return `${latitude.toFixed(3)}:${longitude.toFixed(3)}`;
-}
-
-function movementBearingDegrees(
-  previousLatitude: number,
-  previousLongitude: number,
-  latitude: number,
-  longitude: number
-): number {
-  const toRadians = (degrees: number) =>
-    (degrees * Math.PI) / 180;
-
-  const toDegrees = (radians: number) =>
-    (radians * 180) / Math.PI;
-
-  const previousLatRadians =
-    toRadians(previousLatitude);
-
-  const latitudeRadians =
-    toRadians(latitude);
-
-  const deltaLongitude =
-    toRadians(longitude - previousLongitude);
-
-  const y =
-    Math.sin(deltaLongitude) *
-    Math.cos(latitudeRadians);
-
-  const x =
-    Math.cos(previousLatRadians) *
-      Math.sin(latitudeRadians) -
-    Math.sin(previousLatRadians) *
-      Math.cos(latitudeRadians) *
-      Math.cos(deltaLongitude);
-
-  const bearing =
-    toDegrees(Math.atan2(y, x));
-
-  return (bearing + 360) % 360;
-}
-
-function directionBucket(
-  bearingDegrees: number
-): number {
-  return (
-    Math.floor(
-      ((bearingDegrees + 22.5) % 360) / 45
-    ) % 8
-  );
-}
-
 
 export async function createAnonymousJourneyExposure({
   supabase,
@@ -271,19 +219,20 @@ export async function createAnonymousJourneyExposure({
       continue;
     }
 
-    const bearing =
-      movementBearingDegrees(
+    const direction =
+      resolveCrowdDirectionBucket(
         previous.latitude,
         previous.longitude,
         current.latitude,
         current.longitude
       );
 
-    const direction =
-      directionBucket(bearing);
+    if (direction === null) {
+      continue;
+    }
 
     const key =
-      segmentKey(
+      buildCrowdSegmentKey(
         current.latitude,
         current.longitude
       );

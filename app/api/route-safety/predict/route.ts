@@ -20,6 +20,7 @@ import { resolveRouteKoebergEvacuationDirectionContext } from "@/lib/route-safet
 import { readRouteRiskShadowModelArtifact } from "@/lib/fleet/readRouteRiskShadowModelArtifact";
 import { scoreRouteRiskLogisticModel } from "@/lib/fleet/scoreRouteRiskLogisticModel";
 import { assessRouteRiskShadowEvidence } from "@/lib/fleet/assessRouteRiskShadowEvidence";
+import { buildRouteRiskShadowRouteEvidenceScope } from "@/lib/fleet/buildRouteRiskShadowRouteEvidenceScope";
 import { persistRouteRiskShadowPrediction } from "@/lib/fleet/persistRouteRiskShadowPrediction";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
@@ -667,6 +668,11 @@ if (roadRiskSegmentsError) {
       ...decodedRoutePoints,
       [destinationLat, destinationLng] as [number, number],
     ];
+
+    const routeEvidenceScopeSource =
+      decodedRoutePoints.length > 0
+        ? "provider_geometry"
+        : "endpoint_only";
 
     const openWatercourseContext =
       await resolveRouteOpenWatercourseContext({
@@ -2101,7 +2107,7 @@ const koebergEvacuationDirectionContext =
               threatCount: routeThreats.length,
             },
           })
-            .select("id")
+            .select("id, created_at")
             .single();
 
           if (snapshotError) {
@@ -2137,6 +2143,15 @@ const koebergEvacuationDirectionContext =
                     features,
                   });
 
+                const routeEvidenceScope =
+                  buildRouteRiskShadowRouteEvidenceScope({
+                    routePoints,
+                    scopeSource:
+                      routeEvidenceScopeSource,
+                    predictionCreatedAt:
+                      snapshot.created_at,
+                  });
+
                 await persistRouteRiskShadowPrediction({
                   supabase: supabaseAdmin,
                   productionSnapshotId: snapshot.id,
@@ -2145,6 +2160,7 @@ const koebergEvacuationDirectionContext =
                   prediction,
                   metadata: {
                     evidenceSufficiency,
+                    routeEvidenceScope,
                   },
                 });
               }

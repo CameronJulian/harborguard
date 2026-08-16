@@ -222,7 +222,7 @@ test("route persists the versioned assessment as metadata without changing predi
   assert.ok(persistenceIndex > assessmentIndex);
   assert.match(
     route,
-    /metadata:\s*\{\s*evidenceSufficiency,\s*\}/
+    /metadata:\s*\{\s*evidenceSufficiency,/
   );
   assert.match(
     persistence,
