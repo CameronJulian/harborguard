@@ -16429,3 +16429,72 @@ Therefore `enabled = false` / `approved_for_ingestion = false` is not currently 
 
 QStash must remain paused and HERE must remain disabled until that collection-side guard is implemented and validated.
 
+
+## HERE Traffic Cost Control - Phase 2E: Collection Kill Switch
+
+**Status: COMPLETE**
+
+Closed the remaining HERE Traffic Flow collection-side cost-control gap.
+
+`collectTrafficFlowObservations()` now loads the `here_traffic` intelligence-source configuration before resolving collection scope or calling the HERE Traffic Flow provider.
+
+Collection is permitted only when the registry configuration exists and both:
+
+- `enabled = true`;
+- `approved_for_ingestion = true`.
+
+The collector now fails closed when:
+
+- the source configuration cannot be loaded;
+- the `here_traffic` source configuration does not exist;
+- the source is disabled;
+- the source is not approved for ingestion.
+
+When disabled or unapproved, collection stops with:
+
+`HERE Traffic Flow collection is disabled by the intelligence source registry.`
+
+This establishes the collection-side paid-provider kill switch at the controlled HERE Traffic Flow boundary:
+
+`/api/traffic-flow/cron -> collectTrafficFlowObservations() -> registry guard -> getHereTrafficFlow()`
+
+Validation completed:
+
+- `git diff --check` passed;
+- TypeScript validation with `npx tsc --noEmit` passed;
+- Next.js production build passed;
+- controlled direct execution of `collectTrafficFlowObservations()` with the production registry disabled was blocked before HERE collection;
+- temporary validation tooling was removed;
+- staged diff contained only `lib/traffic/collectTrafficFlowObservations.ts`;
+- implementation was committed and pushed successfully.
+
+Kill-switch validation result:
+
+- `blocked = true`;
+- message = `HERE Traffic Flow collection is disabled by the intelligence source registry.`
+
+Implementation commit:
+
+`2aebdfb` - `Gate traffic flow collection by source registry`
+
+### Cost-control state after Phase 2E
+
+The previously identified collection-side cost-control gap is closed.
+
+Both application traffic-intelligence consumption and controlled HERE Traffic Flow collection are now governed by the intended architecture:
+
+`HERE controlled collection -> Supabase persistence -> stored observation reader`
+
+with the intelligence-source registry acting as the collection kill switch before paid HERE Traffic Flow access.
+
+HERE Traffic and scheduled collection should remain disabled/paused until an explicit controlled re-enable decision is made.
+
+### Next step
+
+Perform a final cost-control closure audit before changing the production operational state:
+
+1. confirm there are no remaining direct HERE Traffic Flow callers outside the controlled collector;
+2. confirm the production `here_traffic` registry remains disabled/unapproved;
+3. confirm QStash traffic-flow scheduling remains paused;
+4. determine the deliberate low-cost collection cadence and re-enable procedure;
+5. only then decide whether production scheduled HERE Traffic Flow collection should be enabled.
