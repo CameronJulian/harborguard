@@ -9,6 +9,9 @@ import {
   persistRouteRiskTrainingRun,
 } from "@/lib/fleet/persistRouteRiskTrainingRun";
 import {
+  registerRouteRiskModelCandidate,
+} from "@/lib/fleet/registerRouteRiskModelCandidate";
+import {
   runRouteRiskOfflineTraining,
 } from "@/lib/fleet/runRouteRiskOfflineTraining";
 
@@ -68,8 +71,11 @@ function parseEvaluationThreshold(
  * - uses a server-controlled organization ID;
  * - runs the deterministic offline training pipeline;
  * - persists the completed immutable training artifact;
+ * - registers the persisted artifact as a lifecycle candidate;
+ * - does not approve or reject a candidate;
+ * - does not enter shadow mode;
+ * - does not activate or retire a model;
  * - does not select a threshold;
- * - does not approve or activate a model;
  * - does not modify live route-risk scoring;
  * - is not automatically scheduled by this implementation.
  */
@@ -220,6 +226,14 @@ export async function GET(
         run,
       });
 
+    const registered =
+      await registerRouteRiskModelCandidate({
+        supabase,
+        organizationId,
+        trainingRunId:
+          persisted.id,
+      });
+
     return NextResponse.json({
       success:
         true,
@@ -228,6 +242,12 @@ export async function GET(
 
       trainingRunId:
         persisted.id,
+
+      registryId:
+        registered.registryId,
+
+      lifecycleStatus:
+        registered.lifecycleStatus,
 
       createdAt:
         persisted.createdAt,
