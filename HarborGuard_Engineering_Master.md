@@ -16682,3 +16682,48 @@ package, or documentation-integrated provider activation was introduced.
 The next dependency is a separately reviewed controlled shadow traffic
 activation/configuration milestone. It must determine actual enablement,
 configuration values, and rollout scope; it has not started.
+
+## Route-risk shadow ML - C-1E9B7B19: Shadow Activation Telemetry and Failure Visibility
+
+**Status: COMPLETE — OBSERVABILITY ONLY**
+
+Added a versioned, structured, non-authoritative telemetry boundary for the
+existing B16-B18 controlled shadow path. Events cover eligibility, deferred
+registration, B17 reservation outcomes, B14 orchestration attempt/outcome,
+and B17 release outcomes. Safe organization and reservation identifiers are
+one-way hashed tokens; credentials, authorization material, raw provider
+payloads, coordinates, route geometry, and unnecessary request data are not
+emitted.
+
+Telemetry is best-effort: sink failures are swallowed and cannot alter shadow
+control flow or production Route Safety behavior. The event contract is
+versioned as `harborguard-route-risk-shadow-telemetry-v1` and carries the
+`route_risk_shadow` event name, non-authoritative authority marker, stage,
+sanitized outcome/reason, environment, safe tokens, provider status,
+duration, and observation time. It adds no persistence, retries, quota or
+concurrency policy, provider execution, or activation.
+
+Implementation files:
+
+- `lib/fleet/recordRouteRiskShadowTelemetry.ts`;
+- `tests/recordRouteRiskShadowTelemetry.test.mjs`;
+- instrumentation in `lib/fleet/integrateRouteRiskShadowAlternativeRoutes.ts`;
+- environment wiring in `app/api/route-safety/predict/route.ts`.
+
+Verification completed:
+
+- focused B19 tests: 8 passing;
+- B14-B18 regression tests: 22 passing;
+- B8-B13 regression tests: 51 passing;
+- `npx tsc --noEmit` passed;
+- `npm run build` passed;
+- `git diff --check` passed;
+- implementation commit: `ebbc6bcada5dad27dfbd00c3f2f6308d7b5a6aad`.
+
+Shadow traffic remains disabled. Production `computeAlternativeRoutes: false`
+and Route Safety authority remain unchanged. Remaining prerequisites, in
+order, are: owner-confirmed Vercel environment configuration and Google
+Cloud quota/billing confirmation; owner-approved sampling, allowlist,
+call-limit, concurrency, and timeout values; zero-traffic deployment
+verification while activation remains disabled; and a separately reviewed
+narrow activation/rollout and rollback procedure. None has started.
