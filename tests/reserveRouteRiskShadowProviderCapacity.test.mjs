@@ -116,6 +116,21 @@ test("releases temporary capacity and fails closed when release is unavailable",
   assert.equal(unavailable.releaseState, "UNAVAILABLE");
 });
 
+test("defensively parses only the first release row while the RPC contract remains single-row", async () => {
+  const released = await releaseRouteRiskShadowProviderCapacity({
+    rpc: async () => ({
+      data: [
+        { release_state: "RELEASED" },
+        { release_state: "NOT_FOUND" },
+      ],
+      error: null,
+    }),
+    reservationKey: "snapshot-1",
+  });
+
+  assert.equal(released.releaseState, "RELEASED");
+});
+
 test("preserves organization and reservation identity in RPC inputs", async () => {
   const fake = rpcReturning([
     {
@@ -145,6 +160,10 @@ test("contains no provider execution or production integration", () => {
     "supabase/migrations/20260817090000_create_route_risk_shadow_provider_capacity.sql",
     "utf8"
   );
+  const correctionMigration = fs.readFileSync(
+    "supabase/migrations/20260817100000_fix_route_risk_shadow_provider_capacity_release.sql",
+    "utf8"
+  );
   const routeSource = fs.readFileSync(
     "app/api/route-safety/predict/route.ts",
     "utf8"
@@ -159,6 +178,21 @@ test("contains no provider execution or production integration", () => {
   assert.match(migration, /security definer/i);
   assert.match(migration, /reserve_route_risk_shadow_provider_capacity/);
   assert.match(migration, /release_route_risk_shadow_provider_capacity/);
+  assert.match(
+    correctionMigration,
+    /if found then\s+return query select 'RELEASED'::text;\s+return;\s+end if;/s
+  );
+  assert.match(correctionMigration, /security definer/i);
+  assert.match(correctionMigration, /search_path = public/);
+  assert.match(correctionMigration, /pg_advisory_xact_lock/);
+  assert.match(
+    correctionMigration,
+    /revoke all on function public\.release_route_risk_shadow_provider_capacity\(text\)/
+  );
+  assert.match(
+    correctionMigration,
+    /grant execute on function public\.release_route_risk_shadow_provider_capacity\(text\)\s+to service_role/s
+  );
   assert.doesNotMatch(
     routeSource,
     /reserveRouteRiskShadowProviderCapacity|releaseRouteRiskShadowProviderCapacity/
