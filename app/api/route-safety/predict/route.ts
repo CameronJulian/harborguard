@@ -26,6 +26,7 @@ import { buildRouteRiskShadowAdvisoryForecast } from "@/lib/fleet/buildRouteRisk
 import { buildRouteRiskShadowTravelCostProvenance } from "@/lib/fleet/buildRouteRiskShadowTravelCostProvenance";
 import { persistRouteRiskShadowPrediction } from "@/lib/fleet/persistRouteRiskShadowPrediction";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { integrateRouteRiskShadowAlternativeRoutes } from "@/lib/fleet/integrateRouteRiskShadowAlternativeRoutes";
 
 const TRAFFIC_DIAGNOSTIC_COMPOSITE_CONFIG = {
   weights: {
@@ -2190,6 +2191,83 @@ const koebergEvacuationDirectionContext =
                     travelCostProvenance,
                   },
                 });
+
+                if (
+                  process.env.ENABLE_ROUTE_RISK_SHADOW_ALTERNATIVE_ROUTES ===
+                  "true"
+                ) {
+                  const allowedOrganizationIds = (
+                    process.env.ROUTE_RISK_SHADOW_ALLOWED_ORGANIZATION_IDS ?? ""
+                  )
+                    .split(",")
+                    .map((value) => value.trim())
+                    .filter(Boolean);
+                  const toNumber = (value: string | undefined): number =>
+                    value === undefined ? Number.NaN : Number(value);
+
+                  integrateRouteRiskShadowAlternativeRoutes({
+                    policy: {
+                      enabled: true,
+                      allowedOrganizationIds,
+                      samplingPercentage: toNumber(
+                        process.env.ROUTE_RISK_SHADOW_SAMPLING_PERCENTAGE
+                      ),
+                    },
+                    context: {
+                      organizationId,
+                      samplingIdentity: snapshot.id,
+                      providerCredentialAvailable:
+                        typeof process.env.GOOGLE_ROUTES_API_KEY === "string" &&
+                        process.env.GOOGLE_ROUTES_API_KEY.length > 0,
+                    },
+                    reservation: {
+                      reservationKey: `${organizationId}:${snapshot.id}`,
+                      organizationId,
+                      configuration: {
+                        windowSeconds: toNumber(
+                          process.env.ROUTE_RISK_SHADOW_CAPACITY_WINDOW_SECONDS
+                        ),
+                        leaseSeconds: toNumber(
+                          process.env.ROUTE_RISK_SHADOW_CAPACITY_LEASE_SECONDS
+                        ),
+                        globalCallLimit: toNumber(
+                          process.env.ROUTE_RISK_SHADOW_GLOBAL_CALL_LIMIT
+                        ),
+                        organizationCallLimit: toNumber(
+                          process.env.ROUTE_RISK_SHADOW_ORGANIZATION_CALL_LIMIT
+                        ),
+                        globalConcurrencyLimit: toNumber(
+                          process.env.ROUTE_RISK_SHADOW_GLOBAL_CONCURRENCY_LIMIT
+                        ),
+                        organizationConcurrencyLimit: toNumber(
+                          process.env.ROUTE_RISK_SHADOW_ORGANIZATION_CONCURRENCY_LIMIT
+                        ),
+                      },
+                    },
+                    release: {
+                      reservationKey: `${organizationId}:${snapshot.id}`,
+                    },
+                    rpc: async (functionName, args) =>
+                      await supabaseAdmin.rpc(functionName, args),
+                    orchestration: {
+                      origin: {
+                        latitude: originLat,
+                        longitude: originLng,
+                      },
+                      destination: {
+                        latitude: destinationLat,
+                        longitude: destinationLng,
+                      },
+                      apiKey: process.env.GOOGLE_ROUTES_API_KEY,
+                      fetcher: fetch,
+                      timeoutMs: toNumber(
+                        process.env.ROUTE_RISK_SHADOW_PROVIDER_TIMEOUT_MS
+                      ),
+                      scopeSource: routeEvidenceScopeSource,
+                      predictionCreatedAt: snapshot.created_at,
+                    },
+                  });
+                }
               }
             } catch (shadowInferenceError) {
               console.error(
