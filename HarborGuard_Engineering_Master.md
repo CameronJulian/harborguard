@@ -16635,3 +16635,50 @@ No provider execution was implemented. The next audited dependency is a
 shadow-only provider execution boundary with explicit timeout, abort, quota
 and error isolation, without coupling provider failure to production Route
 Safety response success.
+
+## Route-risk shadow ML - C-1E9B7B18: Controlled Production Shadow Integration
+
+**Status: COMPLETE — INTEGRATION ONLY**
+
+Added the controlled, default-disabled production integration boundary for
+shadow alternative-route work. The verified execution order is:
+
+`B16 eligibility`
+`-> B15 deferred post-response registration`
+`-> B17 atomic capacity reservation inside the deferred callback`
+`-> B14 orchestration only after RESERVED`
+`-> B17 release in finally`
+`-> lease expiry as the final safety net`
+
+The integration remains descriptive and non-authoritative. It cannot change
+production Route Safety response status or payload, route selection, scoring,
+ranking, recommendation, rerouting, escalation, or model authority.
+
+Production shadow execution is gated by explicit configuration and remains
+disabled by default. Missing, malformed, unsupported, ineligible, denied, or
+unavailable states fail closed before shadow provider execution. Production
+`computeAlternativeRoutes: false` remains unchanged; B14 continues to own its
+separate shadow request contract.
+
+Implementation files:
+
+- `lib/fleet/integrateRouteRiskShadowAlternativeRoutes.ts`;
+- `tests/integrateRouteRiskShadowAlternativeRoutes.test.mjs`;
+- minimal wiring in `app/api/route-safety/predict/route.ts`.
+
+Verification completed:
+
+- focused B18 tests: 8 passing;
+- B14-B17 regression tests: 22 passing;
+- B8-B13 regression tests: 51 passing;
+- `npx tsc --noEmit` passed;
+- `npm run build` passed;
+- `git diff --check` passed;
+- implementation commit: `760b3b4435cdc2bb9cf1fba03bdc136c90375a47`.
+
+No production shadow traffic was activated. No migration, schema, API, UI,
+package, or documentation-integrated provider activation was introduced.
+
+The next dependency is a separately reviewed controlled shadow traffic
+activation/configuration milestone. It must determine actual enablement,
+configuration values, and rollout scope; it has not started.
