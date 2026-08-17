@@ -16727,3 +16727,42 @@ Cloud quota/billing confirmation; owner-approved sampling, allowlist,
 call-limit, concurrency, and timeout values; zero-traffic deployment
 verification while activation remains disabled; and a separately reviewed
 narrow activation/rollout and rollback procedure. None has started.
+
+## Route-risk shadow ML - Zero-shadow-traffic deployment verification
+
+**Status: PASSED — ZERO SHADOW TRAFFIC**
+
+Production verification was completed against the B19-complete deployment
+commit `02dcf053fa222ca856d07f89f228db9283e5f32d`.
+
+Verified evidence:
+
+- `ENABLE_ROUTE_RISK_SHADOW_ALTERNATIVE_ROUTES` is absent from Vercel;
+- an authenticated production `POST /api/route-safety/predict` returned HTTP
+  `200`;
+- no B19 shadow telemetry signatures were observed in Vercel logs;
+- no B17 reservation activity was observed;
+- repository inspection confirms that the absent exact-`"true"` activation
+  gate prevents the production path from reaching B17 or B19;
+- production `computeAlternativeRoutes: false` remains unchanged.
+
+The final verification verdict is **ZERO-TRAFFIC VERIFICATION PASS**. This
+proves disabled-gate production safety only; it does not authorize shadow
+traffic activation.
+
+### Activation blocker: B17 production database deployment
+
+Shadow activation is **BLOCKED**. The production Supabase database currently
+does not contain `public.route_risk_shadow_provider_capacity_reservations`,
+and the expected B17 provider-capacity RPCs are not deployed:
+
+- `public.reserve_route_risk_shadow_provider_capacity(...)`;
+- `public.release_route_risk_shadow_provider_capacity(text)`.
+
+Therefore `ENABLE_ROUTE_RISK_SHADOW_ALTERNATIVE_ROUTES` MUST NOT be enabled
+until the B17 migration/functions are deployed and independently verified.
+The B17 migration remains repository-only at this point; no production
+database changes were made during this verification.
+
+The next roadmap item is the separately controlled B17 production database
+deployment and verification prerequisite. It has not started.
