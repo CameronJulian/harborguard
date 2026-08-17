@@ -5,6 +5,10 @@ import {
   type RouteRiskShadowModelHealthEvaluation,
 } from "@/lib/fleet/analyzeRouteRiskShadowModelHealth";
 
+import {
+  assessRouteRiskShadowModelHealthEvidence,
+} from "@/lib/fleet/assessRouteRiskShadowModelHealthEvidence";
+
 type RouteRiskShadowModelHealthRow = {
   predicted_probability: unknown;
   observed_adverse_event: unknown;
@@ -260,6 +264,11 @@ export async function GET(req: Request) {
         recent: recentEvaluations,
       });
 
+    const evidenceAssessment =
+      assessRouteRiskShadowModelHealthEvidence(
+        modelHealth
+      );
+
     return NextResponse.json({
       success: true,
 
@@ -287,6 +296,7 @@ export async function GET(req: Request) {
       },
 
       modelHealth,
+      evidenceAssessment,
     });
   } catch (error: unknown) {
     console.error(

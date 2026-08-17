@@ -95,3 +95,40 @@ test("model-health API delegates interpretation to the descriptive-only analyzer
     /\.insert\(|\.update\(|\.delete\(/
   );
 });
+
+test("model-health API exposes structural evidence assessment without creating statistical or lifecycle authority", () => {
+  assert.match(
+    source,
+    /assessRouteRiskShadowModelHealthEvidence/
+  );
+
+  assert.match(
+    source,
+    /const evidenceAssessment\s*=\s*assessRouteRiskShadowModelHealthEvidence\(\s*modelHealth\s*\)/
+  );
+
+  assert.match(
+    source,
+    /modelHealth,\s*evidenceAssessment,/
+  );
+
+  assert.doesNotMatch(
+    source,
+    /STATISTICALLY_SUFFICIENT/
+  );
+
+  assert.doesNotMatch(
+    source,
+    /DRIFTED|DEGRADED|HEALTHY/
+  );
+
+  assert.doesNotMatch(
+    source,
+    /retrainingDecision|activationDecision|rolloutReady/
+  );
+
+  assert.doesNotMatch(
+    source,
+    /\.insert\(|\.update\(|\.delete\(/
+  );
+});
