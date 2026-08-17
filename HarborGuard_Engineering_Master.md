@@ -16589,3 +16589,49 @@ Current production posture:
 - uncontrolled direct HERE Flow callers: none identified.
 
 Future cadence changes should remain deliberate and evidence-driven rather than restoring the previous 10-minute schedule by default.
+
+## Route-risk shadow ML - C-1E9B7B12: Versioned Shadow Google Alternative-Route Request Contract
+
+**Status: COMPLETE**
+
+Added a pure, deterministic request-description boundary for a future
+shadow-only Google Routes alternative-route request. The contract describes
+the request without performing provider execution and preserves the current
+production comparison semantics:
+
+- `travelMode = DRIVE`;
+- `routingPreference = TRAFFIC_AWARE`;
+- `units = METRIC`;
+- `computeAlternativeRoutes = true` only in the descriptive shadow request;
+- the existing route field mask for duration, static duration, distance and
+  encoded polyline.
+
+The request contract is explicitly versioned as:
+
+`harborguard-route-risk-shadow-google-alternative-route-request-v1`
+
+It validates origin and destination coordinates deterministically, returns an
+explicit unavailable result for malformed coordinates, contains no credentials
+or environment access, and does not create timestamps or perform network,
+database, Crowd, scoring, persistence, ranking, recommendation, or routing
+operations. Production `computeAlternativeRoutes: false` and the production
+Route Safety path remain unchanged.
+
+Implementation files:
+
+- `lib/fleet/buildRouteRiskShadowGoogleAlternativeRouteRequest.ts`;
+- `tests/buildRouteRiskShadowGoogleAlternativeRouteRequest.test.mjs`.
+
+Verification completed:
+
+- focused B12 tests: 4 passing;
+- B8-B11 regression tests: 41 passing;
+- `npx tsc --noEmit` passed;
+- `npm run build` passed;
+- `git diff --check` passed;
+- implementation commit: `7bcf0f557556345d903ada699724ddccd6e2d929`.
+
+No provider execution was implemented. The next audited dependency is a
+shadow-only provider execution boundary with explicit timeout, abort, quota
+and error isolation, without coupling provider failure to production Route
+Safety response success.
