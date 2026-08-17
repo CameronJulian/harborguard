@@ -2247,6 +2247,8 @@ const koebergEvacuationDirectionContext =
                     release: {
                       reservationKey: `${organizationId}:${snapshot.id}`,
                     },
+                    telemetryEnvironment:
+                      process.env.VERCEL_ENV ?? process.env.NODE_ENV,
                     rpc: async (functionName, args) =>
                       await supabaseAdmin.rpc(functionName, args),
                     orchestration: {
