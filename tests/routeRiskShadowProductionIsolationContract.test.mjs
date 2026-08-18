@@ -71,7 +71,7 @@ test("shadow model consumes the same prediction-time risk values persisted by pr
 
   assert.match(
     source,
-    /scoreRouteRiskLogisticModel\(\{\s*model:\s*artifact\.model,\s*features,\s*\}\)/
+    /scoreRouteRiskModel\(\{\s*model:\s*artifact\.model,\s*features,\s*\}\)/
   );
 });
 

@@ -5,12 +5,12 @@ import type {
 } from "@supabase/supabase-js";
 
 import {
-  parseRouteRiskLogisticBaselineModel,
-} from "@/lib/fleet/parseRouteRiskLogisticBaselineModel";
+  parseRouteRiskModelArtifact,
+} from "@/lib/fleet/parseRouteRiskModelArtifact";
 
 import type {
-  RouteRiskLogisticBaselineModel,
-} from "@/lib/fleet/trainRouteRiskLogisticBaseline";
+  RouteRiskModelArtifact,
+} from "@/lib/fleet/routeRiskModelArtifact";
 
 export type ReadRouteRiskShadowModelArtifactInput = {
   supabase: SupabaseClient;
@@ -25,7 +25,7 @@ export type RouteRiskShadowModelArtifact = {
   runVersion: string;
   datasetFingerprint: string;
   trainingRunCreatedAt: string;
-  model: RouteRiskLogisticBaselineModel;
+  model: RouteRiskModelArtifact;
   evidence: RouteRiskShadowModelEvidence;
 };
 
@@ -420,7 +420,7 @@ export async function readRouteRiskShadowModelArtifact({
     );
 
   const model =
-    parseRouteRiskLogisticBaselineModel(
+    parseRouteRiskModelArtifact(
       trainingRun.model
     );
 

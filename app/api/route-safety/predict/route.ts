@@ -18,7 +18,7 @@ import { resolveRouteKoebergProtectiveActionZoneContext } from "@/lib/route-safe
 import { resolveRouteKoebergRadiiPlanningContext } from "@/lib/route-safety/resolveRouteKoebergRadiiPlanningContext";
 import { resolveRouteKoebergEvacuationDirectionContext } from "@/lib/route-safety/resolveRouteKoebergEvacuationDirectionContext";
 import { readRouteRiskShadowModelArtifact } from "@/lib/fleet/readRouteRiskShadowModelArtifact";
-import { scoreRouteRiskLogisticModel } from "@/lib/fleet/scoreRouteRiskLogisticModel";
+import { scoreRouteRiskModel } from "@/lib/fleet/scoreRouteRiskModel";
 import { assessRouteRiskShadowEvidence } from "@/lib/fleet/assessRouteRiskShadowEvidence";
 import { buildRouteRiskShadowRouteEvidenceScope } from "@/lib/fleet/buildRouteRiskShadowRouteEvidenceScope";
 import { buildRouteRiskShadowCandidateRouteIdentity } from "@/lib/fleet/buildRouteRiskShadowCandidateRouteIdentity";
@@ -2136,7 +2136,7 @@ const koebergEvacuationDirectionContext =
                 };
 
                 const prediction =
-                  scoreRouteRiskLogisticModel({
+                  scoreRouteRiskModel({
                     model: artifact.model,
                     features,
                   });
