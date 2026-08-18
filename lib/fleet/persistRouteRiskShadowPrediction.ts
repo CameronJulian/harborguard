@@ -28,6 +28,7 @@ export type PersistedRouteRiskShadowPrediction = {
   productionSnapshotId: string;
   modelRegistryId: string;
   trainingRunId: string;
+  evidenceCycleId: string;
   featureSchemaVersion: string;
   trainingContractVersion: string;
   labelSchemaVersion: string;
@@ -56,6 +57,7 @@ type ShadowPredictionRow = {
   production_snapshot_id: unknown;
   model_registry_id: unknown;
   training_run_id: unknown;
+  evidence_cycle_id: unknown;
   feature_schema_version: unknown;
   training_contract_version: unknown;
   label_schema_version: unknown;
@@ -72,7 +74,7 @@ type ShadowPredictionRow = {
 };
 
 const SHADOW_PREDICTION_SELECT =
-  "id, organization_id, production_snapshot_id, model_registry_id, training_run_id, feature_schema_version, training_contract_version, label_schema_version, algorithm_version, run_version, dataset_fingerprint, overall_risk_score, threat_risk_score, weather_risk_score, traffic_risk_score, predicted_probability, metadata, created_at";
+  "id, organization_id, production_snapshot_id, model_registry_id, training_run_id, evidence_cycle_id, feature_schema_version, training_contract_version, label_schema_version, algorithm_version, run_version, dataset_fingerprint, overall_risk_score, threat_risk_score, weather_risk_score, traffic_risk_score, predicted_probability, metadata, created_at";
 
 function requireNonBlankString(
   value: unknown,
@@ -229,6 +231,11 @@ function parsePersistedRow(
         row.training_run_id,
         "persisted prediction training_run_id"
       ),
+    evidenceCycleId:
+      requireNonBlankString(
+        row.evidence_cycle_id,
+        "persisted prediction evidence_cycle_id"
+      ),
     featureSchemaVersion:
       requireNonBlankString(
         row.feature_schema_version,
@@ -301,6 +308,7 @@ function assertPersistedIdentity(
     productionSnapshotId: string;
     modelRegistryId: string;
     trainingRunId: string;
+    evidenceCycleId: string;
   }
 ) {
   if (
@@ -336,6 +344,15 @@ function assertPersistedIdentity(
   ) {
     throw new Error(
       "Persisted route-risk shadow prediction training-run identity mismatch."
+    );
+  }
+
+  if (
+    persisted.evidenceCycleId !==
+    expected.evidenceCycleId
+  ) {
+    throw new Error(
+      "Persisted route-risk shadow prediction evidence-cycle identity mismatch."
     );
   }
 }
@@ -459,12 +476,68 @@ export async function persistRouteRiskShadowPrediction({
       metadata
     );
 
+  /*
+   * Resolve the single currently open evidence cycle for the exact
+   * organization/model/training artifact identity.
+   *
+   * The cycle schema permits at most one open cycle per model registry.
+   * Prediction persistence fails closed if that prerequisite is absent.
+   */
+  const {
+    data: openEvidenceCycleRow,
+    error: openEvidenceCycleError,
+  } =
+    await supabase
+      .from(
+        "route_risk_shadow_evidence_cycles"
+      )
+      .select(
+        "id"
+      )
+      .eq(
+        "organization_id",
+        organizationId
+      )
+      .eq(
+        "model_registry_id",
+        modelRegistryId
+      )
+      .eq(
+        "training_run_id",
+        trainingRunId
+      )
+      .is(
+        "ended_at",
+        null
+      )
+      .maybeSingle();
+
+  if (openEvidenceCycleError) {
+    throw new Error(
+      "Failed to resolve open evidence cycle for route-risk shadow prediction: " +
+        openEvidenceCycleError.message
+    );
+  }
+
+  if (!openEvidenceCycleRow) {
+    throw new Error(
+      "Route-risk shadow prediction requires an open evidence cycle for the exact model artifact identity."
+    );
+  }
+
+  const evidenceCycleId =
+    requireNonBlankString(
+      openEvidenceCycleRow.id,
+      "open evidence cycle id"
+    );
+
   const expectedIdentity = {
     organizationId,
     productionSnapshotId:
       normalizedProductionSnapshotId,
     modelRegistryId,
     trainingRunId,
+    evidenceCycleId,
   };
 
   const {
@@ -487,6 +560,9 @@ export async function persistRouteRiskShadowPrediction({
 
         training_run_id:
           trainingRunId,
+
+        evidence_cycle_id:
+          evidenceCycleId,
 
         feature_schema_version:
           featureSchemaVersion,
