@@ -6,13 +6,25 @@ import {
 } from "next/server";
 
 import {
+  assessRouteRiskRetrainingReadiness,
+} from "@/lib/fleet/assessRouteRiskRetrainingReadiness";
+import {
   persistRouteRiskTrainingRun,
 } from "@/lib/fleet/persistRouteRiskTrainingRun";
+import {
+  prepareRouteRiskOfflineTrainingDataset,
+} from "@/lib/fleet/prepareRouteRiskOfflineTrainingDataset";
+import {
+  readLatestRouteRiskTrainingRunIdentity,
+} from "@/lib/fleet/readLatestRouteRiskTrainingRunIdentity";
+import {
+  readRouteRiskRetrainingReadinessPolicy,
+} from "@/lib/fleet/readRouteRiskRetrainingReadinessPolicy";
 import {
   registerRouteRiskModelCandidate,
 } from "@/lib/fleet/registerRouteRiskModelCandidate";
 import {
-  runRouteRiskOfflineTraining,
+  runPreparedRouteRiskOfflineTraining,
 } from "@/lib/fleet/runRouteRiskOfflineTraining";
 
 export const dynamic =
@@ -69,8 +81,13 @@ function parseEvaluationThreshold(
  * - requires HarborGuard cron authorization;
  * - uses a non-persistent service-role Supabase client;
  * - uses a server-controlled organization ID;
- * - runs the deterministic offline training pipeline;
- * - persists the completed immutable training artifact;
+ * - prepares deterministic current training evidence;
+ * - reads the latest immutable training-run identity;
+ * - reads the explicit server-controlled retraining policy;
+ * - assesses retraining readiness before model optimization;
+ * - returns a successful no-op when retraining is not ready;
+ * - runs model optimization only when readiness permits training;
+ * - persists the completed immutable training artifact only after training;
  * - registers the persisted artifact as a lifecycle candidate;
  * - does not approve or reject a candidate;
  * - does not enter shadow mode;
@@ -158,11 +175,6 @@ export async function GET(
       );
     }
 
-    const evaluationThreshold =
-      parseEvaluationThreshold(
-        process.env
-          .ROUTE_RISK_TRAINING_EVALUATION_THRESHOLD
-      );
 
     const supabase =
       createClient(
@@ -211,11 +223,95 @@ export async function GET(
     const generatedAt =
       new Date().toISOString();
 
-    const run =
-      await runRouteRiskOfflineTraining({
+    const prepared =
+      await prepareRouteRiskOfflineTrainingDataset({
         supabase,
         organizationId,
         generatedAt,
+      });
+
+    const previousTraining =
+      await readLatestRouteRiskTrainingRunIdentity({
+        supabase,
+        organizationId,
+      });
+
+    const policy =
+      readRouteRiskRetrainingReadinessPolicy();
+
+    const readiness =
+      assessRouteRiskRetrainingReadiness({
+        dataset: {
+          datasetFingerprint:
+            prepared.manifest
+              .datasetFingerprint,
+
+          counts: {
+            total:
+              prepared.dataset.train.length +
+              prepared.dataset.validation.length +
+              prepared.dataset.test.length,
+
+            train:
+              prepared.dataset.train.length,
+
+            validation:
+              prepared.dataset.validation.length,
+
+            test:
+              prepared.dataset.test.length,
+          },
+
+          trainingClassCounts:
+            prepared.trainingClassCounts,
+        },
+
+        previousTraining,
+
+        policy,
+      });
+
+    if (
+      readiness.state ===
+        "NOT_READY_FOR_TRAINING"
+    ) {
+      return NextResponse.json({
+        success:
+          true,
+
+        trained:
+          false,
+
+        organizationId,
+
+        datasetFingerprint:
+          prepared.manifest
+            .datasetFingerprint,
+
+        generatedAt:
+          prepared.manifest.generatedAt,
+
+        counts:
+          prepared.manifest.counts,
+
+        trainingClassCounts:
+          prepared.trainingClassCounts,
+
+        previousTraining,
+
+        readiness,
+      });
+    }
+
+    const evaluationThreshold =
+      parseEvaluationThreshold(
+        process.env
+          .ROUTE_RISK_TRAINING_EVALUATION_THRESHOLD
+      );
+
+    const run =
+      runPreparedRouteRiskOfflineTraining({
+        prepared,
         evaluationThreshold,
       });
 
@@ -238,7 +334,12 @@ export async function GET(
       success:
         true,
 
+      trained:
+        true,
+
       organizationId,
+
+      readiness,
 
       trainingRunId:
         persisted.id,
@@ -264,6 +365,9 @@ export async function GET(
 
       counts:
         run.manifest.counts,
+
+      trainingClassCounts:
+        prepared.trainingClassCounts,
 
       evaluationThreshold,
 
