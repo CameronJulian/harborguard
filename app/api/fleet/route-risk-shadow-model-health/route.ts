@@ -63,6 +63,19 @@ function parseRequiredIdentity(
   };
 }
 
+function nonBlankString(
+  value: unknown
+): string | null {
+  if (
+    typeof value !== "string" ||
+    value.trim().length === 0
+  ) {
+    return null;
+  }
+
+  return value.trim();
+}
+
 function mapEvaluations(
   rows: RouteRiskShadowModelHealthRow[]
 ): RouteRiskShadowModelHealthEvaluation[] {
@@ -198,6 +211,63 @@ export async function GET(req: Request) {
       );
     }
 
+    /*
+     * Resolve the single currently open evidence cycle for this exact
+     * organization/model/training identity.
+     *
+     * Standalone model health describes the current shadow episode only.
+     * Historical and re-validation episodes must remain isolated.
+     */
+    const {
+      data: openEvidenceCycleRow,
+      error: openEvidenceCycleError,
+    } =
+      await supabase
+        .from(
+          "route_risk_shadow_evidence_cycles"
+        )
+        .select(
+          "id"
+        )
+        .eq(
+          "organization_id",
+          organizationId
+        )
+        .eq(
+          "model_registry_id",
+          modelRegistryId.value
+        )
+        .eq(
+          "training_run_id",
+          trainingRunId.value
+        )
+        .is(
+          "ended_at",
+          null
+        )
+        .maybeSingle();
+
+    if (openEvidenceCycleError) {
+      throw openEvidenceCycleError;
+    }
+
+    const evidenceCycleId =
+      nonBlankString(
+        openEvidenceCycleRow?.id
+      );
+
+    if (!evidenceCycleId) {
+      return NextResponse.json(
+        {
+          error:
+            "Route-risk shadow model does not have an open evidence cycle.",
+        },
+        {
+          status: 409,
+        }
+      );
+    }
+
     const readWindow = async (
       start: Date,
       end: Date
@@ -221,6 +291,10 @@ export async function GET(req: Request) {
           .eq(
             "training_run_id",
             trainingRunId.value
+          )
+          .eq(
+            "evidence_cycle_id",
+            evidenceCycleId
           )
           .gte(
             "outcome_completed_at",
@@ -277,6 +351,7 @@ export async function GET(req: Request) {
           modelRegistryId.value,
         trainingRunId:
           trainingRunId.value,
+        evidenceCycleId,
       },
 
       windows: {
