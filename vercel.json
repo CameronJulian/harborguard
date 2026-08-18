@@ -11,6 +11,14 @@
     {
       "path": "/api/route-safety/cron/providers",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/fleet/cron/route-risk-training",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/fleet/cron/route-risk-shadow-model-health",
+      "schedule": "30 2 * * *"
     }
   ]
 }
