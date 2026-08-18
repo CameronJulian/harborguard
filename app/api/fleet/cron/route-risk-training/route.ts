@@ -9,6 +9,9 @@ import {
   assessRouteRiskRetrainingReadiness,
 } from "@/lib/fleet/assessRouteRiskRetrainingReadiness";
 import {
+  persistRouteRiskRetrainingReadinessObservation,
+} from "@/lib/fleet/persistRouteRiskRetrainingReadinessObservation";
+import {
   persistRouteRiskTrainingRun,
 } from "@/lib/fleet/persistRouteRiskTrainingRun";
 import {
@@ -271,6 +274,21 @@ export async function GET(
         policy,
       });
 
+    const readinessObservation =
+      await persistRouteRiskRetrainingReadinessObservation({
+        supabase,
+
+        organizationId,
+
+        datasetGeneratedAt:
+          prepared.manifest.generatedAt,
+
+        previousTraining,
+
+        assessment:
+          readiness,
+      });
+
     if (
       readiness.state ===
         "NOT_READY_FOR_TRAINING"
@@ -300,6 +318,12 @@ export async function GET(
         previousTraining,
 
         readiness,
+
+        readinessObservation:
+          readinessObservation.observation,
+
+        readinessObservationStatus:
+          readinessObservation.status,
       });
     }
 
@@ -340,6 +364,12 @@ export async function GET(
       organizationId,
 
       readiness,
+
+      readinessObservation:
+        readinessObservation.observation,
+
+      readinessObservationStatus:
+        readinessObservation.status,
 
       trainingRunId:
         persisted.id,
