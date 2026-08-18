@@ -2,9 +2,8 @@ import type {
   SupabaseClient,
 } from "@supabase/supabase-js";
 
-import {
-  buildRouteRiskDatasetManifest,
-  type RouteRiskDatasetManifest,
+import type {
+  RouteRiskDatasetManifest,
 } from "@/lib/fleet/buildRouteRiskDatasetManifest";
 
 import {
@@ -13,12 +12,8 @@ import {
 } from "@/lib/fleet/evaluateRouteRiskLogisticBaseline";
 
 import {
-  readRouteRiskTrainingExamples,
-} from "@/lib/fleet/readRouteRiskTrainingExamples";
-
-import {
-  splitRouteRiskTrainingDataset,
-} from "@/lib/fleet/splitRouteRiskTrainingDataset";
+  prepareRouteRiskOfflineTrainingDataset,
+} from "@/lib/fleet/prepareRouteRiskOfflineTrainingDataset";
 
 import {
   trainRouteRiskLogisticBaseline,
@@ -92,27 +87,17 @@ export async function runRouteRiskOfflineTraining({
 }: RunRouteRiskOfflineTrainingInput): Promise<
   RouteRiskOfflineTrainingRun
 > {
-  const examples =
-    await readRouteRiskTrainingExamples({
+  const {
+    dataset,
+    manifest,
+  } =
+    await prepareRouteRiskOfflineTrainingDataset({
       supabase,
       organizationId,
       pageSize,
       startOutcomeCompletedAt,
       endOutcomeCompletedAt,
-    });
-
-  const dataset =
-    splitRouteRiskTrainingDataset(
-      examples
-    );
-
-  const manifest =
-    buildRouteRiskDatasetManifest({
-      organizationId,
-      startOutcomeCompletedAt,
-      endOutcomeCompletedAt,
       generatedAt,
-      dataset,
     });
 
   const model =
