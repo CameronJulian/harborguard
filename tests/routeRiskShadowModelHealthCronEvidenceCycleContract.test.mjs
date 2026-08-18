@@ -57,7 +57,7 @@ test(
   () => {
     assert.match(
       source,
-      /await Promise\.all\(\s*\[\s*readWindow\([\s\S]*?referenceStart\.date[\s\S]*?referenceEnd\.date[\s\S]*?\)[\s\S]*?readWindow\([\s\S]*?recentStart\.date[\s\S]*?recentEnd\.date/
+      /await Promise\.all\(\s*\[\s*readWindow\([\s\S]*?referenceStart[\s\S]*?referenceEnd[\s\S]*?\)[\s\S]*?readWindow\([\s\S]*?recentStart[\s\S]*?recentEnd/
     );
   }
 );

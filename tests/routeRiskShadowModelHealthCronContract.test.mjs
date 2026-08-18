@@ -86,40 +86,45 @@ test("model-health cron resolves the current shadow model rather than accepting 
   );
 });
 
-test("model-health cron requires explicit non-overlapping evidence windows", () => {
+test("model-health cron derives deterministic scheduled evidence windows server-side", () => {
   assert.match(
+    source,
+    /deriveRouteRiskShadowModelHealthScheduledWindows/
+  );
+
+  assert.match(
+    source,
+    /const scheduledWindows\s*=\s*deriveRouteRiskShadowModelHealthScheduledWindows\(\)/
+  );
+
+  assert.match(
+    source,
+    /referenceStart,[\s\S]*referenceEnd,[\s\S]*recentStart,[\s\S]*recentEnd,[\s\S]*scheduledWindows/
+  );
+
+  assert.doesNotMatch(
     source,
     /searchParams\.get\(\s*"referenceStart"\s*\)/
   );
 
-  assert.match(
+  assert.doesNotMatch(
     source,
     /searchParams\.get\(\s*"referenceEnd"\s*\)/
   );
 
-  assert.match(
+  assert.doesNotMatch(
     source,
     /searchParams\.get\(\s*"recentStart"\s*\)/
   );
 
-  assert.match(
+  assert.doesNotMatch(
     source,
     /searchParams\.get\(\s*"recentEnd"\s*\)/
   );
 
   assert.match(
     source,
-    /referenceStart must be earlier than or equal to referenceEnd/
-  );
-
-  assert.match(
-    source,
-    /recentStart must be earlier than or equal to recentEnd/
-  );
-
-  assert.match(
-    source,
-    /referenceEnd must be earlier than or equal to recentStart/
+    /windowPolicy:\s*\{[\s\S]*version:[\s\S]*scheduledWindows\.policyVersion[\s\S]*anchorUtcDayStart:[\s\S]*scheduledWindows\.anchorUtcDayStart\.toISOString\(\)/
   );
 });
 

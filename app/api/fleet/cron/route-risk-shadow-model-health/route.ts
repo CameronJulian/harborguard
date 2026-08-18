@@ -16,6 +16,10 @@ import {
 } from "@/lib/fleet/assessRouteRiskShadowModelHealthEvidence";
 
 import {
+  deriveRouteRiskShadowModelHealthScheduledWindows,
+} from "@/lib/fleet/deriveRouteRiskShadowModelHealthScheduledWindows";
+
+import {
   persistRouteRiskShadowModelHealthObservation,
 } from "@/lib/fleet/persistRouteRiskShadowModelHealthObservation";
 
@@ -46,41 +50,6 @@ function errorMessage(
           error ||
             "Route-risk shadow model-health observation failed."
         );
-}
-
-function parseRequiredDate(
-  value: string | null,
-  fieldName: string
-):
-  | { ok: true; date: Date }
-  | { ok: false; error: string } {
-  if (!value) {
-    return {
-      ok: false,
-      error:
-        `${fieldName} is required.`,
-    };
-  }
-
-  const date =
-    new Date(value);
-
-  if (
-    Number.isNaN(
-      date.getTime()
-    )
-  ) {
-    return {
-      ok: false,
-      error:
-        `Invalid ${fieldName} date.`,
-    };
-  }
-
-  return {
-    ok: true,
-    date,
-  };
 }
 
 function nonBlankString(
@@ -118,7 +87,7 @@ function mapEvaluations(
  * - uses a non-persistent service-role Supabase client;
  * - uses a server-controlled organization ID;
  * - resolves the organization's current shadow model from registry state;
- * - requires explicit reference/recent evidence windows;
+ * - derives deterministic completed-UTC-day reference/recent evidence windows from explicit server-side policy;
  * - reads immutable shadow evaluations;
  * - calculates descriptive model-health evidence;
  * - persists one immutable observation;
@@ -208,138 +177,17 @@ export async function GET(
       );
     }
 
+    const scheduledWindows =
+      deriveRouteRiskShadowModelHealthScheduledWindows();
+
     const {
-      searchParams,
+      referenceStart,
+      referenceEnd,
+
+      recentStart,
+      recentEnd,
     } =
-      new URL(
-        request.url
-      );
-
-    const referenceStart =
-      parseRequiredDate(
-        searchParams.get(
-          "referenceStart"
-        ),
-        "referenceStart"
-      );
-
-    if (!referenceStart.ok) {
-      return NextResponse.json(
-        {
-          error:
-            referenceStart.error,
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    const referenceEnd =
-      parseRequiredDate(
-        searchParams.get(
-          "referenceEnd"
-        ),
-        "referenceEnd"
-      );
-
-    if (!referenceEnd.ok) {
-      return NextResponse.json(
-        {
-          error:
-            referenceEnd.error,
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    const recentStart =
-      parseRequiredDate(
-        searchParams.get(
-          "recentStart"
-        ),
-        "recentStart"
-      );
-
-    if (!recentStart.ok) {
-      return NextResponse.json(
-        {
-          error:
-            recentStart.error,
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    const recentEnd =
-      parseRequiredDate(
-        searchParams.get(
-          "recentEnd"
-        ),
-        "recentEnd"
-      );
-
-    if (!recentEnd.ok) {
-      return NextResponse.json(
-        {
-          error:
-            recentEnd.error,
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    if (
-      referenceStart.date.getTime() >
-      referenceEnd.date.getTime()
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "referenceStart must be earlier than or equal to referenceEnd.",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    if (
-      recentStart.date.getTime() >
-      recentEnd.date.getTime()
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "recentStart must be earlier than or equal to recentEnd.",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    if (
-      referenceEnd.date.getTime() >
-      recentStart.date.getTime()
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "referenceEnd must be earlier than or equal to recentStart.",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
+      scheduledWindows;
     const supabase =
       createClient(
         supabaseUrl,
@@ -538,13 +386,13 @@ export async function GET(
     ] =
       await Promise.all([
         readWindow(
-          referenceStart.date,
-          referenceEnd.date
+          referenceStart,
+          referenceEnd
         ),
 
         readWindow(
-          recentStart.date,
-          recentEnd.date
+          recentStart,
+          recentEnd
         ),
       ]);
 
@@ -575,16 +423,16 @@ export async function GET(
           artifact.trainingRunId,
 
         referenceStart:
-          referenceStart.date,
+          referenceStart,
 
         referenceEnd:
-          referenceEnd.date,
+          referenceEnd,
 
         recentStart:
-          recentStart.date,
+          recentStart,
 
         recentEnd:
-          recentEnd.date,
+          recentEnd,
 
         modelHealth,
         evidenceAssessment,
@@ -608,21 +456,29 @@ export async function GET(
         evidenceCycleId,
       },
 
+      windowPolicy: {
+        version:
+          scheduledWindows.policyVersion,
+
+        anchorUtcDayStart:
+          scheduledWindows.anchorUtcDayStart.toISOString(),
+      },
+
       windows: {
         reference: {
           start:
-            referenceStart.date.toISOString(),
+            referenceStart.toISOString(),
 
           end:
-            referenceEnd.date.toISOString(),
+            referenceEnd.toISOString(),
         },
 
         recent: {
           start:
-            recentStart.date.toISOString(),
+            recentStart.toISOString(),
 
           end:
-            recentEnd.date.toISOString(),
+            recentEnd.toISOString(),
         },
       },
 
