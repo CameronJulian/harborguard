@@ -83,6 +83,19 @@ function parseRequiredDate(
   };
 }
 
+function nonBlankString(
+  value: unknown
+): string | null {
+  if (
+    typeof value !== "string" ||
+    value.trim().length === 0
+  ) {
+    return null;
+  }
+
+  return value.trim();
+}
+
 function mapEvaluations(
   rows: RouteRiskShadowModelHealthRow[]
 ): RouteRiskShadowModelHealthEvaluation[] {
@@ -393,6 +406,75 @@ export async function GET(
       });
     }
 
+    /*
+     * Resolve the single currently open evidence cycle for the exact
+     * shadow artifact selected from registry state.
+     *
+     * Scheduled model-health observations must describe the current
+     * shadow episode only and must not mix historical/re-validation cycles.
+     */
+    const {
+      data: openEvidenceCycleRow,
+      error: openEvidenceCycleError,
+    } =
+      await supabase
+        .from(
+          "route_risk_shadow_evidence_cycles"
+        )
+        .select(
+          "id"
+        )
+        .eq(
+          "organization_id",
+          organizationId
+        )
+        .eq(
+          "model_registry_id",
+          artifact.registryId
+        )
+        .eq(
+          "training_run_id",
+          artifact.trainingRunId
+        )
+        .is(
+          "ended_at",
+          null
+        )
+        .maybeSingle();
+
+    if (openEvidenceCycleError) {
+      throw openEvidenceCycleError;
+    }
+
+    const evidenceCycleId =
+      nonBlankString(
+        openEvidenceCycleRow?.id
+      );
+
+    if (!evidenceCycleId) {
+      return NextResponse.json(
+        {
+          success: true,
+
+          status:
+            "no_open_evidence_cycle",
+
+          organizationId,
+
+          modelIdentity: {
+            modelRegistryId:
+              artifact.registryId,
+
+            trainingRunId:
+              artifact.trainingRunId,
+          },
+
+          persisted:
+            false,
+        }
+      );
+    }
+
     const readWindow = async (
       start: Date,
       end: Date
@@ -421,6 +503,10 @@ export async function GET(
           .eq(
             "training_run_id",
             artifact.trainingRunId
+          )
+          .eq(
+            "evidence_cycle_id",
+            evidenceCycleId
           )
           .gte(
             "outcome_completed_at",
@@ -518,6 +604,8 @@ export async function GET(
 
         trainingRunId:
           artifact.trainingRunId,
+
+        evidenceCycleId,
       },
 
       windows: {
