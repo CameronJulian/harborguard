@@ -215,7 +215,7 @@ export async function evaluateCompletedTripRouteRiskShadowPredictions({
         "route_risk_shadow_predictions"
       )
       .select(
-        "id, organization_id, production_snapshot_id, model_registry_id, training_run_id, predicted_probability, created_at"
+        "id, organization_id, production_snapshot_id, model_registry_id, training_run_id, evidence_cycle_id, predicted_probability, created_at"
       )
       .eq(
         "organization_id",
@@ -351,6 +351,11 @@ export async function evaluateCompletedTripRouteRiskShadowPredictions({
             requireNonBlankString(
               prediction.training_run_id,
               "prediction.training_run_id"
+            ),
+          evidence_cycle_id:
+            requireNonBlankString(
+              prediction.evidence_cycle_id,
+              "prediction.evidence_cycle_id"
             ),
           prediction_created_at:
             predictionCreatedAt,
