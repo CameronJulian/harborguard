@@ -28,6 +28,7 @@ type ShadowPredictionRow = {
   production_snapshot_id: unknown;
   model_registry_id: unknown;
   training_run_id: unknown;
+  evidence_cycle_id: unknown;
   created_at: unknown;
 };
 
@@ -430,18 +431,23 @@ export async function GET(req: Request) {
     }
 
     /*
-     * Read every persisted shadow prediction for this exact candidate.
+     * Resolve the single currently open evidence cycle for this exact
+     * organization/model/training identity.
+     *
+     * Promotion readiness describes the current shadow episode only.
+     * Evidence from historical or later re-validation cycles must never
+     * be silently mixed into this assessment.
      */
     const {
-      data: predictionData,
-      error: predictionError,
+      data: openEvidenceCycleRow,
+      error: openEvidenceCycleError,
     } =
       await supabase
         .from(
-          "route_risk_shadow_predictions"
+          "route_risk_shadow_evidence_cycles"
         )
         .select(
-          "id, production_snapshot_id, model_registry_id, training_run_id, created_at"
+          "id"
         )
         .eq(
           "organization_id",
@@ -454,6 +460,63 @@ export async function GET(req: Request) {
         .eq(
           "training_run_id",
           validatedTrainingRunId
+        )
+        .is(
+          "ended_at",
+          null
+        )
+        .maybeSingle();
+
+    if (openEvidenceCycleError) {
+      throw openEvidenceCycleError;
+    }
+
+    const evidenceCycleId =
+      nonBlankString(
+        openEvidenceCycleRow?.id
+      );
+
+    if (!evidenceCycleId) {
+      return NextResponse.json(
+        {
+          error:
+            "Route-risk shadow candidate does not have an open evidence cycle.",
+        },
+        {
+          status: 409,
+        }
+      );
+    }
+
+    /*
+     * Read persisted shadow predictions only from this exact evidence cycle.
+     */
+    const {
+      data: predictionData,
+      error: predictionError,
+    } =
+      await supabase
+        .from(
+          "route_risk_shadow_predictions"
+        )
+        .select(
+          "id, production_snapshot_id, model_registry_id, training_run_id, evidence_cycle_id, created_at"
+        )
+        .eq(
+          "organization_id",
+          organizationId
+        )
+        .eq(
+          "model_registry_id",
+          validatedModelRegistryId
+        )
+        .eq(
+          "training_run_id",
+          validatedTrainingRunId
+        )
+        .eq(
+          "evidence_cycle_id",
+          evidenceCycleId
         )
         .order(
           "created_at",
@@ -686,6 +749,10 @@ export async function GET(req: Request) {
             "training_run_id",
             validatedTrainingRunId
           )
+          .eq(
+            "evidence_cycle_id",
+            evidenceCycleId
+          )
           .in(
             "shadow_prediction_id",
             shadowPredictionIds
@@ -755,6 +822,11 @@ export async function GET(req: Request) {
           row.training_run_id
         );
 
+      const rowEvidenceCycleId =
+        nonBlankString(
+          row.evidence_cycle_id
+        );
+
       const predictionCreatedAt =
         validTimestamp(
           row.created_at
@@ -765,6 +837,8 @@ export async function GET(req: Request) {
         !productionSnapshotId ||
         !rowModelRegistryId ||
         !rowTrainingRunId ||
+        !rowEvidenceCycleId ||
+        rowEvidenceCycleId !== evidenceCycleId ||
         !predictionCreatedAt
       ) {
         continue;
@@ -864,6 +938,10 @@ export async function GET(req: Request) {
               "training_run_id",
               validatedTrainingRunId
             )
+            .eq(
+              "evidence_cycle_id",
+              evidenceCycleId
+            )
             .gte(
               "outcome_completed_at",
               start.toISOString()
@@ -941,6 +1019,8 @@ export async function GET(req: Request) {
 
         trainingRunId:
           validatedTrainingRunId,
+
+        evidenceCycleId,
       },
 
       windows: {
