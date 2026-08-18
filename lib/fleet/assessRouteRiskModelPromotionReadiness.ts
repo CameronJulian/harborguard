@@ -1,6 +1,6 @@
 import type {
-  analyzeRouteSoftCapShadowEvidence,
-} from "@/lib/fleet/analyzeRouteSoftCapShadowEvidence";
+  analyzeRouteRiskModelPromotionEvidence,
+} from "@/lib/fleet/analyzeRouteRiskModelPromotionEvidence";
 
 import type {
   RouteRiskShadowModelHealthEvidenceAssessment,
@@ -16,23 +16,21 @@ export type RouteRiskModelPromotionReadinessState =
 export type RouteRiskModelPromotionReadinessPolicy = {
   policyVersion: string;
 
-  minimumValidShadowEvaluations: number;
+  minimumEvaluatedPredictions: number;
 
   minimumUniqueVehicles: number;
 
   minimumEvidenceSpanDays: number;
 
-  minimumShadowEvidenceCoverageRate: number;
-
-  minimumExplicitVersionCoverageRate: number;
+  minimumEvaluationCoverageRate: number;
 
   maximumLargestVehicleShare: number;
 };
 
 export type RouteRiskModelPromotionReadinessInput = {
-  shadowEvidence:
+  promotionEvidence:
     ReturnType<
-      typeof analyzeRouteSoftCapShadowEvidence
+      typeof analyzeRouteRiskModelPromotionEvidence
     >;
 
   modelHealthEvidence:
@@ -57,7 +55,7 @@ export type RouteRiskModelPromotionReadinessAssessment = {
   reasonCodes: string[];
 
   checks: {
-    validShadowEvaluations: {
+    evaluatedPredictions: {
       observed: number;
       requiredMinimum: number;
       satisfied: boolean;
@@ -75,13 +73,7 @@ export type RouteRiskModelPromotionReadinessAssessment = {
       satisfied: boolean;
     };
 
-    shadowEvidenceCoverageRate: {
-      observed: number | null;
-      requiredMinimum: number;
-      satisfied: boolean;
-    };
-
-    explicitVersionCoverageRate: {
+    evaluationCoverageRate: {
       observed: number | null;
       requiredMinimum: number;
       satisfied: boolean;
@@ -205,7 +197,7 @@ function requirePolicyVersion(
  * - modify production Route Safety behavior.
  */
 export function assessRouteRiskModelPromotionReadiness({
-  shadowEvidence,
+  promotionEvidence,
   modelHealthEvidence,
   policy,
 }: RouteRiskModelPromotionReadinessInput): RouteRiskModelPromotionReadinessAssessment {
@@ -214,10 +206,10 @@ export function assessRouteRiskModelPromotionReadiness({
       policy.policyVersion
     );
 
-  const minimumValidShadowEvaluations =
+  const minimumEvaluatedPredictions =
     requireNonNegativeInteger(
-      policy.minimumValidShadowEvaluations,
-      "policy.minimumValidShadowEvaluations"
+      policy.minimumEvaluatedPredictions,
+      "policy.minimumEvaluatedPredictions"
     );
 
   const minimumUniqueVehicles =
@@ -232,16 +224,10 @@ export function assessRouteRiskModelPromotionReadiness({
       "policy.minimumEvidenceSpanDays"
     );
 
-  const minimumShadowEvidenceCoverageRate =
+  const minimumEvaluationCoverageRate =
     requireRate(
-      policy.minimumShadowEvidenceCoverageRate,
-      "policy.minimumShadowEvidenceCoverageRate"
-    );
-
-  const minimumExplicitVersionCoverageRate =
-    requireRate(
-      policy.minimumExplicitVersionCoverageRate,
-      "policy.minimumExplicitVersionCoverageRate"
+      policy.minimumEvaluationCoverageRate,
+      "policy.minimumEvaluationCoverageRate"
     );
 
   const maximumLargestVehicleShare =
@@ -250,37 +236,27 @@ export function assessRouteRiskModelPromotionReadiness({
       "policy.maximumLargestVehicleShare"
     );
 
-  const validShadowEvaluationsSatisfied =
-    shadowEvidence.validShadowEvaluationCount >=
-      minimumValidShadowEvaluations;
+  const evaluatedPredictionsSatisfied =
+    promotionEvidence.evaluatedPredictionCount >=
+      minimumEvaluatedPredictions;
 
   const uniqueVehiclesSatisfied =
-    shadowEvidence.uniqueVehicleCount >=
+    promotionEvidence.uniqueVehicleCount >=
       minimumUniqueVehicles;
 
   const evidenceSpanDaysSatisfied =
-    shadowEvidence.evidenceSpanDays !== null &&
-    shadowEvidence.evidenceSpanDays >=
+    promotionEvidence.evidenceSpanDays !== null &&
+    promotionEvidence.evidenceSpanDays >=
       minimumEvidenceSpanDays;
 
-  const shadowEvidenceCoverageRateSatisfied =
-    shadowEvidence.shadowEvidenceCoverageRate !== null &&
-    shadowEvidence.shadowEvidenceCoverageRate >=
-      minimumShadowEvidenceCoverageRate;
-
-  const explicitVersionCoverageRate =
-    shadowEvidence
-      .scoringVersionDistribution
-      .explicitVersionCoverageRate;
-
-  const explicitVersionCoverageRateSatisfied =
-    explicitVersionCoverageRate !== null &&
-    explicitVersionCoverageRate >=
-      minimumExplicitVersionCoverageRate;
+  const evaluationCoverageRateSatisfied =
+    promotionEvidence.evaluationCoverageRate !== null &&
+    promotionEvidence.evaluationCoverageRate >=
+      minimumEvaluationCoverageRate;
 
   const largestVehicleShareSatisfied =
-    shadowEvidence.largestVehicleShare !== null &&
-    shadowEvidence.largestVehicleShare <=
+    promotionEvidence.largestVehicleShare !== null &&
+    promotionEvidence.largestVehicleShare <=
       maximumLargestVehicleShare;
 
   const modelHealthStructuralEvidenceSatisfied =
@@ -289,9 +265,9 @@ export function assessRouteRiskModelPromotionReadiness({
 
   const reasonCodes: string[] = [];
 
-  if (!validShadowEvaluationsSatisfied) {
+  if (!evaluatedPredictionsSatisfied) {
     reasonCodes.push(
-      "MINIMUM_VALID_SHADOW_EVALUATIONS_NOT_MET"
+      "MINIMUM_EVALUATED_PREDICTIONS_NOT_MET"
     );
   }
 
@@ -307,15 +283,9 @@ export function assessRouteRiskModelPromotionReadiness({
     );
   }
 
-  if (!shadowEvidenceCoverageRateSatisfied) {
+  if (!evaluationCoverageRateSatisfied) {
     reasonCodes.push(
-      "MINIMUM_SHADOW_EVIDENCE_COVERAGE_NOT_MET"
-    );
-  }
-
-  if (!explicitVersionCoverageRateSatisfied) {
-    reasonCodes.push(
-      "MINIMUM_EXPLICIT_VERSION_COVERAGE_NOT_MET"
+      "MINIMUM_EVALUATION_COVERAGE_NOT_MET"
     );
   }
 
@@ -332,11 +302,10 @@ export function assessRouteRiskModelPromotionReadiness({
   }
 
   const readyForHumanReview =
-    validShadowEvaluationsSatisfied &&
+    evaluatedPredictionsSatisfied &&
     uniqueVehiclesSatisfied &&
     evidenceSpanDaysSatisfied &&
-    shadowEvidenceCoverageRateSatisfied &&
-    explicitVersionCoverageRateSatisfied &&
+    evaluationCoverageRateSatisfied &&
     largestVehicleShareSatisfied &&
     modelHealthStructuralEvidenceSatisfied;
 
@@ -357,20 +326,20 @@ export function assessRouteRiskModelPromotionReadiness({
     reasonCodes,
 
     checks: {
-      validShadowEvaluations: {
+      evaluatedPredictions: {
         observed:
-          shadowEvidence.validShadowEvaluationCount,
+          promotionEvidence.evaluatedPredictionCount,
 
         requiredMinimum:
-          minimumValidShadowEvaluations,
+          minimumEvaluatedPredictions,
 
         satisfied:
-          validShadowEvaluationsSatisfied,
+          evaluatedPredictionsSatisfied,
       },
 
       uniqueVehicles: {
         observed:
-          shadowEvidence.uniqueVehicleCount,
+          promotionEvidence.uniqueVehicleCount,
 
         requiredMinimum:
           minimumUniqueVehicles,
@@ -381,7 +350,7 @@ export function assessRouteRiskModelPromotionReadiness({
 
       evidenceSpanDays: {
         observed:
-          shadowEvidence.evidenceSpanDays,
+          promotionEvidence.evidenceSpanDays,
 
         requiredMinimum:
           minimumEvidenceSpanDays,
@@ -390,31 +359,20 @@ export function assessRouteRiskModelPromotionReadiness({
           evidenceSpanDaysSatisfied,
       },
 
-      shadowEvidenceCoverageRate: {
+      evaluationCoverageRate: {
         observed:
-          shadowEvidence.shadowEvidenceCoverageRate,
+          promotionEvidence.evaluationCoverageRate,
 
         requiredMinimum:
-          minimumShadowEvidenceCoverageRate,
+          minimumEvaluationCoverageRate,
 
         satisfied:
-          shadowEvidenceCoverageRateSatisfied,
-      },
-
-      explicitVersionCoverageRate: {
-        observed:
-          explicitVersionCoverageRate,
-
-        requiredMinimum:
-          minimumExplicitVersionCoverageRate,
-
-        satisfied:
-          explicitVersionCoverageRateSatisfied,
+          evaluationCoverageRateSatisfied,
       },
 
       largestVehicleShare: {
         observed:
-          shadowEvidence.largestVehicleShare,
+          promotionEvidence.largestVehicleShare,
 
         allowedMaximum:
           maximumLargestVehicleShare,

@@ -7,46 +7,56 @@ import {
   ROUTE_RISK_MODEL_PROMOTION_READINESS_ASSESSMENT_VERSION,
 } from "../lib/fleet/assessRouteRiskModelPromotionReadiness.ts";
 
-function shadowEvidence(overrides = {}) {
+function promotionEvidence(overrides = {}) {
   return {
-    totalEvaluationCount: 120,
-    validShadowEvaluationCount: 100,
-    shadowEvidenceCoverageRate: 100 / 120,
-    uniqueVehicleCount: 20,
-    largestVehicleEvaluationCount: 8,
-    largestVehicleShare: 0.08,
-    byVehicle: [],
-    byVehicleUtcDay: [],
-    byVehicleScoringVersion: [],
-    scoringVersionDistribution: {
-      explicitVersionedEvaluationCount: 100,
-      unknownVersionEvaluationCount: 0,
-      explicitVersionCoverageRate: 1,
-      byVersion: [],
+    evidenceVersion:
+      "harborguard-route-risk-model-promotion-evidence-v1",
+
+    modelIdentity: {
+      modelRegistryId:
+        "registry-a",
+      trainingRunId:
+        "training-a",
     },
+
+    semantics:
+      "MODEL_SCOPED_COMPLETED_JOURNEY_SHADOW_EVIDENCE",
+
+    totalInputPredictionCount:
+      120,
+
+    eligiblePredictionCount:
+      120,
+
+    evaluatedPredictionCount:
+      100,
+
+    unevaluatedPredictionCount:
+      20,
+
+    evaluationCoverageRate:
+      100 / 120,
+
+    uniqueVehicleCount:
+      20,
+
+    largestVehicleEvaluationCount:
+      8,
+
+    largestVehicleShare:
+      0.08,
+
+    byVehicle: [],
+
     oldestEvidenceCompletedAt:
       "2026-07-01T00:00:00.000Z",
+
     newestEvidenceCompletedAt:
       "2026-07-31T00:00:00.000Z",
-    evidenceSpanDays: 30,
-    byUtcDay: [],
-    classifiedEvaluationCount: 120,
-    classifiedValidShadowEvaluationCount: 100,
-    classificationAgreementCount: 90,
-    classificationDisagreementCount: 10,
-    classificationAgreementRate: 0.9,
-    positiveStateAgreementCount: 92,
-    positiveStateChangeCount: 8,
-    scoreDelta: {
-      positiveCount: 40,
-      zeroCount: 20,
-      negativeCount: 40,
-      mean: 0,
-      median: 0,
-      min: -10,
-      max: 10,
-    },
-    byProductionClassification: [],
+
+    evidenceSpanDays:
+      30,
+
     ...overrides,
   };
 }
@@ -102,7 +112,7 @@ const policy = {
   policyVersion:
     "test-promotion-evidence-policy-v1",
 
-  minimumValidShadowEvaluations:
+  minimumEvaluatedPredictions:
     100,
 
   minimumUniqueVehicles:
@@ -111,11 +121,8 @@ const policy = {
   minimumEvidenceSpanDays:
     30,
 
-  minimumShadowEvidenceCoverageRate:
+  minimumEvaluationCoverageRate:
     0.8,
-
-  minimumExplicitVersionCoverageRate:
-    0.95,
 
   maximumLargestVehicleShare:
     0.1,
@@ -123,7 +130,7 @@ const policy = {
 
 test("promotion readiness is deterministic and explicitly versioned", () => {
   const input = {
-    shadowEvidence: shadowEvidence(),
+    promotionEvidence: promotionEvidence(),
     modelHealthEvidence: modelHealthEvidence(),
     policy,
   };
@@ -155,7 +162,7 @@ test("promotion readiness is deterministic and explicitly versioned", () => {
 test("promotion readiness reports human-review readiness when every explicit evidence check passes", () => {
   const result =
     assessRouteRiskModelPromotionReadiness({
-      shadowEvidence: shadowEvidence(),
+      promotionEvidence: promotionEvidence(),
       modelHealthEvidence: modelHealthEvidence(),
       policy,
     });
@@ -184,19 +191,13 @@ test("promotion readiness reports human-review readiness when every explicit evi
 test("promotion readiness fails closed when descriptive evidence policy checks are not met", () => {
   const result =
     assessRouteRiskModelPromotionReadiness({
-      shadowEvidence:
-        shadowEvidence({
-          validShadowEvaluationCount: 20,
+      promotionEvidence:
+        promotionEvidence({
+          evaluatedPredictionCount: 20,
           uniqueVehicleCount: 2,
           evidenceSpanDays: 4,
-          shadowEvidenceCoverageRate: 0.4,
+          evaluationCoverageRate: 0.4,
           largestVehicleShare: 0.7,
-          scoringVersionDistribution: {
-            explicitVersionedEvaluationCount: 5,
-            unknownVersionEvaluationCount: 15,
-            explicitVersionCoverageRate: 0.25,
-            byVersion: [],
-          },
         }),
 
       modelHealthEvidence:
@@ -216,11 +217,10 @@ test("promotion readiness fails closed when descriptive evidence policy checks a
   assert.deepEqual(
     result.reasonCodes,
     [
-      "MINIMUM_VALID_SHADOW_EVALUATIONS_NOT_MET",
+      "MINIMUM_EVALUATED_PREDICTIONS_NOT_MET",
       "MINIMUM_UNIQUE_VEHICLES_NOT_MET",
       "MINIMUM_EVIDENCE_SPAN_NOT_MET",
-      "MINIMUM_SHADOW_EVIDENCE_COVERAGE_NOT_MET",
-      "MINIMUM_EXPLICIT_VERSION_COVERAGE_NOT_MET",
+      "MINIMUM_EVALUATION_COVERAGE_NOT_MET",
       "MAXIMUM_VEHICLE_CONCENTRATION_EXCEEDED",
       "MODEL_HEALTH_DESCRIPTIVE_EVIDENCE_NOT_AVAILABLE",
     ]
@@ -233,7 +233,7 @@ test("promotion readiness preserves unresolved statistical evidence rather than 
 
   const result =
     assessRouteRiskModelPromotionReadiness({
-      shadowEvidence: shadowEvidence(),
+      promotionEvidence: promotionEvidence(),
       modelHealthEvidence: health,
       policy,
     });
@@ -261,7 +261,7 @@ test("promotion readiness requires an explicit policy and validates policy value
   assert.throws(
     () =>
       assessRouteRiskModelPromotionReadiness({
-        shadowEvidence: shadowEvidence(),
+        promotionEvidence: promotionEvidence(),
         modelHealthEvidence:
           modelHealthEvidence(),
         policy: {
@@ -276,12 +276,12 @@ test("promotion readiness requires an explicit policy and validates policy value
   assert.throws(
     () =>
       assessRouteRiskModelPromotionReadiness({
-        shadowEvidence: shadowEvidence(),
+        promotionEvidence: promotionEvidence(),
         modelHealthEvidence:
           modelHealthEvidence(),
         policy: {
           ...policy,
-          minimumValidShadowEvaluations:
+          minimumEvaluatedPredictions:
             -1,
         },
       }),
@@ -291,12 +291,12 @@ test("promotion readiness requires an explicit policy and validates policy value
   assert.throws(
     () =>
       assessRouteRiskModelPromotionReadiness({
-        shadowEvidence: shadowEvidence(),
+        promotionEvidence: promotionEvidence(),
         modelHealthEvidence:
           modelHealthEvidence(),
         policy: {
           ...policy,
-          minimumShadowEvidenceCoverageRate:
+          minimumEvaluationCoverageRate:
             1.5,
         },
       }),
@@ -306,7 +306,7 @@ test("promotion readiness requires an explicit policy and validates policy value
   assert.throws(
     () =>
       assessRouteRiskModelPromotionReadiness({
-        shadowEvidence: shadowEvidence(),
+        promotionEvidence: promotionEvidence(),
         modelHealthEvidence:
           modelHealthEvidence(),
         policy: {
@@ -321,7 +321,7 @@ test("promotion readiness requires an explicit policy and validates policy value
 
 test("promotion readiness records observed and required evidence without mutating inputs", () => {
   const shadow =
-    shadowEvidence();
+    promotionEvidence();
 
   const health =
     modelHealthEvidence();
@@ -341,13 +341,13 @@ test("promotion readiness records observed and required evidence without mutatin
 
   const result =
     assessRouteRiskModelPromotionReadiness({
-      shadowEvidence: shadow,
+      promotionEvidence: shadow,
       modelHealthEvidence: health,
       policy: policyInput,
     });
 
   assert.deepEqual(
-    result.checks.validShadowEvaluations,
+    result.checks.evaluatedPredictions,
     {
       observed: 100,
       requiredMinimum: 100,

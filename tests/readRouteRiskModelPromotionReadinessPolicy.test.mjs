@@ -14,11 +14,10 @@ const source =
 test("promotion policy configuration names every required explicit policy input", () => {
   const expectedKeys = [
     "ROUTE_RISK_PROMOTION_POLICY_VERSION",
-    "ROUTE_RISK_PROMOTION_MIN_VALID_SHADOW_EVALUATIONS",
+    "ROUTE_RISK_PROMOTION_MIN_EVALUATED_PREDICTIONS",
     "ROUTE_RISK_PROMOTION_MIN_UNIQUE_VEHICLES",
     "ROUTE_RISK_PROMOTION_MIN_EVIDENCE_SPAN_DAYS",
-    "ROUTE_RISK_PROMOTION_MIN_SHADOW_EVIDENCE_COVERAGE_RATE",
-    "ROUTE_RISK_PROMOTION_MIN_EXPLICIT_VERSION_COVERAGE_RATE",
+    "ROUTE_RISK_PROMOTION_MIN_EVALUATION_COVERAGE_RATE",
     "ROUTE_RISK_PROMOTION_MAX_LARGEST_VEHICLE_SHARE",
   ];
 
@@ -70,7 +69,7 @@ test("promotion policy loader validates integer count policy fields", () => {
 
   assert.match(
     source,
-    /keys\.minimumValidShadowEvaluations/
+    /keys\.minimumEvaluatedPredictions/
   );
 
   assert.match(
@@ -104,12 +103,7 @@ test("promotion policy loader validates every rate inside the closed zero-to-one
 
   assert.match(
     source,
-    /keys\.minimumShadowEvidenceCoverageRate/
-  );
-
-  assert.match(
-    source,
-    /keys\.minimumExplicitVersionCoverageRate/
+    /keys\.minimumEvaluationCoverageRate/
   );
 
   assert.match(
@@ -131,7 +125,7 @@ test("promotion policy loader returns the existing assessor policy contract", ()
 
   assert.match(
     source,
-    /minimumValidShadowEvaluations:/
+    /minimumEvaluatedPredictions:/
   );
 
   assert.match(
@@ -146,12 +140,7 @@ test("promotion policy loader returns the existing assessor policy contract", ()
 
   assert.match(
     source,
-    /minimumShadowEvidenceCoverageRate:/
-  );
-
-  assert.match(
-    source,
-    /minimumExplicitVersionCoverageRate:/
+    /minimumEvaluationCoverageRate:/
   );
 
   assert.match(

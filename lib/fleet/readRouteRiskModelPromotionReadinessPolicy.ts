@@ -9,8 +9,8 @@ export const ROUTE_RISK_MODEL_PROMOTION_POLICY_ENVIRONMENT_KEYS =
     policyVersion:
       "ROUTE_RISK_PROMOTION_POLICY_VERSION",
 
-    minimumValidShadowEvaluations:
-      "ROUTE_RISK_PROMOTION_MIN_VALID_SHADOW_EVALUATIONS",
+    minimumEvaluatedPredictions:
+      "ROUTE_RISK_PROMOTION_MIN_EVALUATED_PREDICTIONS",
 
     minimumUniqueVehicles:
       "ROUTE_RISK_PROMOTION_MIN_UNIQUE_VEHICLES",
@@ -18,11 +18,8 @@ export const ROUTE_RISK_MODEL_PROMOTION_POLICY_ENVIRONMENT_KEYS =
     minimumEvidenceSpanDays:
       "ROUTE_RISK_PROMOTION_MIN_EVIDENCE_SPAN_DAYS",
 
-    minimumShadowEvidenceCoverageRate:
-      "ROUTE_RISK_PROMOTION_MIN_SHADOW_EVIDENCE_COVERAGE_RATE",
-
-    minimumExplicitVersionCoverageRate:
-      "ROUTE_RISK_PROMOTION_MIN_EXPLICIT_VERSION_COVERAGE_RATE",
+    minimumEvaluationCoverageRate:
+      "ROUTE_RISK_PROMOTION_MIN_EVALUATION_COVERAGE_RATE",
 
     maximumLargestVehicleShare:
       "ROUTE_RISK_PROMOTION_MAX_LARGEST_VEHICLE_SHARE",
@@ -165,10 +162,10 @@ export function readRouteRiskModelPromotionReadinessPolicy(
         keys.policyVersion
       ),
 
-    minimumValidShadowEvaluations:
+    minimumEvaluatedPredictions:
       parseNonNegativeInteger(
         environment,
-        keys.minimumValidShadowEvaluations
+        keys.minimumEvaluatedPredictions
       ),
 
     minimumUniqueVehicles:
@@ -183,16 +180,10 @@ export function readRouteRiskModelPromotionReadinessPolicy(
         keys.minimumEvidenceSpanDays
       ),
 
-    minimumShadowEvidenceCoverageRate:
+    minimumEvaluationCoverageRate:
       parseRate(
         environment,
-        keys.minimumShadowEvidenceCoverageRate
-      ),
-
-    minimumExplicitVersionCoverageRate:
-      parseRate(
-        environment,
-        keys.minimumExplicitVersionCoverageRate
+        keys.minimumEvaluationCoverageRate
       ),
 
     maximumLargestVehicleShare:
