@@ -337,11 +337,11 @@ test("keeps the builder pure while persistence remains inside the isolated shado
   assert.ok(shadowCatchIndex > persistenceIndex);
   assert.match(
     productionRoute,
-    /buildRouteRiskShadowAdvisoryForecast\(\{\s*artifact,\s*prediction,\s*evidenceAssessment:\s*evidenceSufficiency,\s*routeEvidenceScope,\s*\}\)/
+    /buildRouteRiskShadowAdvisoryForecast\(\{\s*artifact,\s*prediction,\s*evidenceAssessment:\s*evidenceSufficiency,\s*routeEvidenceScope,\s*forecastSufficiency,\s*\}\)/
   );
   assert.match(
     productionRoute,
-    /metadata:\s*\{\s*evidenceSufficiency,\s*routeEvidenceScope,\s*candidateRouteIdentity,\s*advisoryRouteForecast,\s*travelCostProvenance,\s*\}/
+    /metadata:\s*\{\s*evidenceSufficiency,\s*forecastSufficiency,\s*routeEvidenceScope,\s*candidateRouteIdentity,\s*advisoryRouteForecast,\s*travelCostProvenance,\s*\}/
   );
 
   const responseIndex =
@@ -374,3 +374,5 @@ test("keeps the builder pure while persistence remains inside the isolated shado
     );
   }
 });
+
+

@@ -83,7 +83,7 @@ test("shadow prediction is bound to the exact production snapshot and immutable 
 
   assert.match(
     source,
-    /metadata:\s*\{\s*evidenceSufficiency,\s*routeEvidenceScope,\s*candidateRouteIdentity,\s*advisoryRouteForecast,\s*travelCostProvenance,\s*\}/
+    /metadata:\s*\{\s*evidenceSufficiency,\s*forecastSufficiency,\s*routeEvidenceScope,\s*candidateRouteIdentity,\s*advisoryRouteForecast,\s*travelCostProvenance,\s*\}/
   );
 });
 
@@ -263,3 +263,4 @@ test("shadow inference itself creates no production escalation or reroute decisi
     /riskLevel\s*=\s*prediction/
   );
 });
+

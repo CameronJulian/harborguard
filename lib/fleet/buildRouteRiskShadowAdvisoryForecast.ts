@@ -7,6 +7,10 @@ import type {
 } from "@/lib/fleet/buildRouteRiskShadowRouteEvidenceScope";
 
 import type {
+  RouteRiskShadowForecastSufficiency,
+} from "@/lib/fleet/assessRouteRiskShadowForecastSufficiency";
+
+import type {
   RouteRiskShadowModelArtifact,
 } from "@/lib/fleet/readRouteRiskShadowModelArtifact";
 
@@ -24,6 +28,8 @@ export type BuildRouteRiskShadowAdvisoryForecastInput = {
     RouteRiskShadowEvidenceAssessment;
   routeEvidenceScope:
     RouteRiskShadowRouteEvidenceScope;
+  forecastSufficiency:
+    RouteRiskShadowForecastSufficiency;
 };
 
 export type RouteRiskShadowAdvisoryForecast = {
@@ -55,6 +61,8 @@ export type RouteRiskShadowAdvisoryForecast = {
     RouteRiskShadowEvidenceAssessment;
   routeEvidenceScope:
     RouteRiskShadowRouteEvidenceScope;
+  forecastSufficiency:
+    RouteRiskShadowForecastSufficiency;
 };
 
 function requireProbability(
@@ -83,6 +91,7 @@ export function buildRouteRiskShadowAdvisoryForecast({
   prediction,
   evidenceAssessment,
   routeEvidenceScope,
+  forecastSufficiency,
 }: BuildRouteRiskShadowAdvisoryForecastInput): RouteRiskShadowAdvisoryForecast {
   const predictedProbability =
     requireProbability(
@@ -130,6 +139,10 @@ export function buildRouteRiskShadowAdvisoryForecast({
     routeEvidenceScope:
       structuredClone(
         routeEvidenceScope
+      ),
+    forecastSufficiency:
+      structuredClone(
+        forecastSufficiency
       ),
   };
 }
