@@ -73,7 +73,7 @@ test(
   () => {
     assert.match(
       source,
-      /runPreparedRouteRiskOfflineTraining[\s\S]*?trainRouteRiskLogisticBaseline\(\s*dataset\.train,\s*training\s*\)/
+      /runPreparedRouteRiskOfflineTraining[\s\S]*?trainRouteRiskModel\(\{\s*examples:\s*dataset\.train,\s*training,\s*\}\)/
     );
   }
 );

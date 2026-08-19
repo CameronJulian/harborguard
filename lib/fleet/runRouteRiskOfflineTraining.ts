@@ -7,9 +7,9 @@ import type {
 } from "@/lib/fleet/buildRouteRiskDatasetManifest";
 
 import {
-  evaluateRouteRiskLogisticBaseline,
-  type RouteRiskLogisticEvaluationResult,
-} from "@/lib/fleet/evaluateRouteRiskLogisticBaseline";
+  evaluateRouteRiskModel,
+  type RouteRiskModelEvaluation,
+} from "@/lib/fleet/evaluateRouteRiskModel";
 
 import {
   prepareRouteRiskOfflineTrainingDataset,
@@ -17,10 +17,13 @@ import {
 } from "@/lib/fleet/prepareRouteRiskOfflineTrainingDataset";
 
 import {
-  trainRouteRiskLogisticBaseline,
-  type RouteRiskLogisticBaselineModel,
-  type TrainRouteRiskLogisticBaselineOptions,
-} from "@/lib/fleet/trainRouteRiskLogisticBaseline";
+  trainRouteRiskModel,
+  type RouteRiskModelTrainingOptions,
+} from "@/lib/fleet/trainRouteRiskModel";
+
+import type {
+  RouteRiskModelArtifact,
+} from "@/lib/fleet/routeRiskModelArtifact";
 
 export const ROUTE_RISK_OFFLINE_TRAINING_RUN_VERSION =
   "harborguard-route-risk-offline-training-run-v1" as const;
@@ -39,7 +42,7 @@ export type RunRouteRiskOfflineTrainingInput = {
   evaluationThreshold: number;
 
   training?:
-    TrainRouteRiskLogisticBaselineOptions;
+    RouteRiskModelTrainingOptions;
 };
 
 export type RunPreparedRouteRiskOfflineTrainingInput = {
@@ -49,7 +52,7 @@ export type RunPreparedRouteRiskOfflineTrainingInput = {
   evaluationThreshold: number;
 
   training?:
-    TrainRouteRiskLogisticBaselineOptions;
+    RouteRiskModelTrainingOptions;
 };
 
 export type RouteRiskOfflineTrainingRun = {
@@ -60,13 +63,13 @@ export type RouteRiskOfflineTrainingRun = {
     RouteRiskDatasetManifest;
 
   model:
-    RouteRiskLogisticBaselineModel;
+    RouteRiskModelArtifact;
 
   validationEvaluation:
-    RouteRiskLogisticEvaluationResult;
+    RouteRiskModelEvaluation;
 
   testEvaluation:
-    RouteRiskLogisticEvaluationResult;
+    RouteRiskModelEvaluation;
 };
 
 /**
@@ -105,13 +108,15 @@ export function runPreparedRouteRiskOfflineTraining({
     prepared;
 
   const model =
-    trainRouteRiskLogisticBaseline(
-      dataset.train,
-      training
-    );
+    trainRouteRiskModel({
+      examples:
+        dataset.train,
+
+      training,
+    });
 
   const validationEvaluation =
-    evaluateRouteRiskLogisticBaseline({
+    evaluateRouteRiskModel({
       model,
       examples:
         dataset.validation,
@@ -120,7 +125,7 @@ export function runPreparedRouteRiskOfflineTraining({
     });
 
   const testEvaluation =
-    evaluateRouteRiskLogisticBaseline({
+    evaluateRouteRiskModel({
       model,
       examples:
         dataset.test,
