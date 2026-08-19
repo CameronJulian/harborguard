@@ -1,4 +1,4 @@
-﻿import {
+import {
   ROUTE_RISK_FEATURE_SCHEMA_VERSION,
   ROUTE_RISK_LABEL_SCHEMA_VERSION,
   ROUTE_RISK_TRAINING_CONTRACT_VERSION,
@@ -8,6 +8,11 @@ import {
   ROUTE_RISK_LOGISTIC_BASELINE_VERSION,
   type RouteRiskLogisticBaselineModel,
 } from "@/lib/fleet/trainRouteRiskLogisticBaseline";
+
+import {
+  ROUTE_RISK_NEURAL_CANDIDATE_VERSION,
+  type RouteRiskNeuralCandidateModel,
+} from "@/lib/fleet/trainRouteRiskNeuralCandidate";
 
 export type RouteRiskPredictionFeatures = {
   overallRiskScore: number;
@@ -31,7 +36,8 @@ export type RouteRiskModelArtifactBase = {
 };
 
 export type RouteRiskModelArtifact =
-  RouteRiskLogisticBaselineModel;
+  | RouteRiskLogisticBaselineModel
+  | RouteRiskNeuralCandidateModel;
 
 export type RouteRiskModelAlgorithmVersion =
   RouteRiskModelArtifact["algorithmVersion"];
@@ -39,6 +45,7 @@ export type RouteRiskModelAlgorithmVersion =
 export const SUPPORTED_ROUTE_RISK_MODEL_ALGORITHM_VERSIONS =
   [
     ROUTE_RISK_LOGISTIC_BASELINE_VERSION,
+    ROUTE_RISK_NEURAL_CANDIDATE_VERSION,
   ] as const;
 
 export function isSupportedRouteRiskModelAlgorithmVersion(

@@ -7,6 +7,14 @@ import {
 } from "@/lib/fleet/scoreRouteRiskLogisticModel";
 
 import {
+  scoreRouteRiskNeuralCandidate,
+} from "@/lib/fleet/scoreRouteRiskNeuralCandidate";
+
+import {
+  ROUTE_RISK_NEURAL_CANDIDATE_VERSION,
+} from "@/lib/fleet/trainRouteRiskNeuralCandidate";
+
+import {
   parseRouteRiskModelArtifact,
 } from "@/lib/fleet/parseRouteRiskModelArtifact";
 
@@ -44,6 +52,13 @@ export function scoreRouteRiskModel({
   switch (validatedModel.algorithmVersion) {
     case ROUTE_RISK_LOGISTIC_BASELINE_VERSION:
       return scoreRouteRiskLogisticModel({
+        model:
+          validatedModel,
+
+        features,
+      });
+    case ROUTE_RISK_NEURAL_CANDIDATE_VERSION:
+      return scoreRouteRiskNeuralCandidate({
         model:
           validatedModel,
 

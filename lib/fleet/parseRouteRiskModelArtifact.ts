@@ -1,10 +1,18 @@
-﻿import {
+import {
   ROUTE_RISK_LOGISTIC_BASELINE_VERSION,
 } from "@/lib/fleet/trainRouteRiskLogisticBaseline";
 
 import {
   parseRouteRiskLogisticBaselineModel,
 } from "@/lib/fleet/parseRouteRiskLogisticBaselineModel";
+
+import {
+  parseRouteRiskNeuralCandidateModel,
+} from "@/lib/fleet/parseRouteRiskNeuralCandidateModel";
+
+import {
+  ROUTE_RISK_NEURAL_CANDIDATE_VERSION,
+} from "@/lib/fleet/trainRouteRiskNeuralCandidate";
 
 import type {
   RouteRiskModelArtifact,
@@ -49,6 +57,11 @@ export function parseRouteRiskModelArtifact(
   switch (algorithmVersion) {
     case ROUTE_RISK_LOGISTIC_BASELINE_VERSION:
       return parseRouteRiskLogisticBaselineModel(
+        value
+      );
+
+    case ROUTE_RISK_NEURAL_CANDIDATE_VERSION:
+      return parseRouteRiskNeuralCandidateModel(
         value
       );
 

@@ -8,6 +8,12 @@ import {
   type TrainRouteRiskLogisticBaselineOptions,
 } from "@/lib/fleet/trainRouteRiskLogisticBaseline";
 
+import {
+  ROUTE_RISK_NEURAL_CANDIDATE_VERSION,
+  trainRouteRiskNeuralCandidate,
+  type TrainRouteRiskNeuralCandidateOptions,
+} from "@/lib/fleet/trainRouteRiskNeuralCandidate";
+
 import type {
   RouteRiskModelArtifact,
   RouteRiskModelAlgorithmVersion,
@@ -24,10 +30,14 @@ import type {
  * discriminated configuration union keyed by algorithmVersion.
  */
 export type RouteRiskModelTrainingOptions =
-  TrainRouteRiskLogisticBaselineOptions & {
-    algorithmVersion?:
-      RouteRiskModelAlgorithmVersion;
-  };
+  | (TrainRouteRiskLogisticBaselineOptions & {
+      algorithmVersion?:
+        typeof ROUTE_RISK_LOGISTIC_BASELINE_VERSION;
+    })
+  | (TrainRouteRiskNeuralCandidateOptions & {
+      algorithmVersion:
+        typeof ROUTE_RISK_NEURAL_CANDIDATE_VERSION;
+    });
 
 export type TrainRouteRiskModelInput = {
   examples:
@@ -57,6 +67,18 @@ export function trainRouteRiskModel({
   switch (algorithmVersion) {
     case ROUTE_RISK_LOGISTIC_BASELINE_VERSION:
       return trainRouteRiskLogisticBaseline(
+        examples,
+        {
+          epochs:
+            training.epochs,
+
+          learningRate:
+            training.learningRate,
+        }
+      );
+
+    case ROUTE_RISK_NEURAL_CANDIDATE_VERSION:
+      return trainRouteRiskNeuralCandidate(
         examples,
         {
           epochs:
