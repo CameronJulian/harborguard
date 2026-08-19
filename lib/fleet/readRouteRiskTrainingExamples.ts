@@ -137,7 +137,11 @@ export async function readRouteRiskTrainingExamples({
   const examples:
     RouteRiskTrainingExample[] = [];
 
-  let offset = 0;
+  let cursorOutcomeCompletedAt:
+    string | undefined;
+
+  let cursorId:
+    string | undefined;
 
   while (true) {
     let evaluationsQuery =
@@ -164,11 +168,27 @@ export async function readRouteRiskTrainingExamples({
             ascending: true,
           }
         )
-        .range(
-          offset,
-          offset + pageSize - 1
+        .limit(
+          pageSize
         );
 
+    if (
+      cursorOutcomeCompletedAt !== undefined &&
+      cursorId !== undefined
+    ) {
+      evaluationsQuery =
+        evaluationsQuery.or(
+          [
+            `outcome_completed_at.gt.${cursorOutcomeCompletedAt}`,
+            [
+              "and(",
+              `outcome_completed_at.eq.${cursorOutcomeCompletedAt},`,
+              `id.gt.${cursorId}`,
+              ")",
+            ].join(""),
+          ].join(",")
+        );
+    }
     if (normalizedStart !== undefined) {
       evaluationsQuery =
         evaluationsQuery.gte(
@@ -317,7 +337,16 @@ export async function readRouteRiskTrainingExamples({
       break;
     }
 
-    offset += pageSize;
+    const finalEvaluation =
+      evaluations[
+        evaluations.length - 1
+      ];
+
+    cursorOutcomeCompletedAt =
+      finalEvaluation.outcome_completed_at;
+
+    cursorId =
+      finalEvaluation.id;
   }
 
   return examples;
