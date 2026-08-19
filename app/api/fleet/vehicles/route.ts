@@ -68,15 +68,37 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    const { data: profiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id, email, full_name, role")
+      .eq("organization_id", organizationId)
+      .eq("role", "operator")
+      .order("full_name", { ascending: true });
+
+    if (profilesError) {
+      return NextResponse.json(
+        { error: profilesError.message },
+        { status: 500 }
+      );
+    }
+
+    const profileMap = new Map(
+      (profiles || []).map((profile) => [profile.id, profile])
+    );
+
     const vehicles = (data || []).map((vehicle) => ({
       ...vehicle,
       maintenanceProfile: buildMaintenanceProfile(vehicle),
+      assigned_user: vehicle.assigned_user_id
+        ? profileMap.get(vehicle.assigned_user_id) || null
+        : null,
     }));
 
     return NextResponse.json({
       success: true,
       organizationId,
       vehicles,
+      profiles: profiles || [],
     });
   } catch (err: any) {
     const message = err.message || "Failed to load vehicles.";

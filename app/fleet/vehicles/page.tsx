@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { fetchWithAuth } from "@/lib/auth-fetch";
 
@@ -14,15 +14,30 @@ type Vehicle = {
   make?: string | null;
   model?: string | null;
   driver_id?: string | null;
+  assigned_user_id?: string | null;
+  assigned_user?: {
+    id: string;
+    email: string | null;
+    full_name: string | null;
+    role: string | null;
+  } | null;
   is_active?: boolean | null;
   status?: string | null;
   created_at?: string | null;
+};
+
+type ProfileRow = {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  role: string | null;
 };
 
 type VehiclesResponse = {
   success?: boolean;
   vehicles?: Vehicle[];
   vehicle?: Vehicle;
+  profiles?: ProfileRow[];
   error?: string;
 };
 
@@ -52,6 +67,8 @@ export default function VehiclesPage() {
   const [editRegistrationNumber, setEditRegistrationNumber] = useState("");
   const [editMake, setEditMake] = useState("");
   const [editModel, setEditModel] = useState("");
+  const [editAssignedUserId, setEditAssignedUserId] = useState("");
+  const [roadUsers, setRoadUsers] = useState<ProfileRow[]>([]);
 
   const [name, setName] = useState("");
   const [registrationNumber, setRegistrationNumber] = useState("");
@@ -74,6 +91,11 @@ export default function VehiclesPage() {
       }
 
       setVehicles(Array.isArray(result.vehicles) ? result.vehicles : []);
+      setRoadUsers(
+        Array.isArray(result.profiles)
+          ? result.profiles
+          : []
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load vehicles");
     } finally {
@@ -134,6 +156,7 @@ export default function VehiclesPage() {
     setEditRegistrationNumber(vehicle.registration_number || vehicle.registrationNumber || "");
     setEditMake(vehicle.make || "");
     setEditModel(vehicle.model || "");
+    setEditAssignedUserId(vehicle.assigned_user_id || "");
   }
 
   async function handleUpdateVehicle(event: FormEvent) {
@@ -145,7 +168,7 @@ export default function VehiclesPage() {
       setError("");
       setSuccess("");
 
-      const response = await fetch(`/api/fleet/vehicles/${editingVehicle.id}`, {
+      const response = await fetchWithAuth(`/api/fleet/vehicles/${editingVehicle.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -153,6 +176,7 @@ export default function VehiclesPage() {
           registration_number: editRegistrationNumber,
           make: editMake,
           model: editModel,
+          assigned_user_id: editAssignedUserId || null,
         }),
       });
 
@@ -303,6 +327,51 @@ export default function VehiclesPage() {
               onChange={(event) => setEditModel(event.target.value)}
             />
 
+            <div>
+              <label
+                htmlFor="assigned-road-user"
+                style={{
+                  display: "block",
+                  marginBottom: 6,
+                  fontWeight: 700,
+                  color: "#334155",
+                }}
+              >
+                Assigned Road User
+              </label>
+
+              <select
+                id="assigned-road-user"
+                style={inputStyle}
+                value={editAssignedUserId}
+                onChange={(event) => setEditAssignedUserId(event.target.value)}
+              >
+                <option value="">Unassigned</option>
+
+                {roadUsers.map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.full_name || profile.email || profile.id}
+                    {profile.email && profile.full_name
+                      ? ` - ${profile.email}`
+                      : ""}
+                    {" (operator)"}
+                  </option>
+                ))}
+              </select>
+
+              {roadUsers.length === 0 && (
+                <div
+                  style={{
+                    marginTop: 6,
+                    color: "#64748b",
+                    fontSize: 13,
+                  }}
+                >
+                  No operator profiles are currently available for assignment.
+                </div>
+              )}
+            </div>
+
             <div style={{ display: "flex", gap: 10 }}>
               <button
                 type="submit"
@@ -394,6 +463,7 @@ export default function VehiclesPage() {
     setEditRegistrationNumber(vehicle.registration_number || vehicle.registrationNumber || "");
     setEditMake(vehicle.make || "");
     setEditModel(vehicle.model || "");
+    setEditAssignedUserId(vehicle.assigned_user_id || "");
   }
 
   async function handleUpdateVehicle(event: FormEvent) {
@@ -405,7 +475,7 @@ export default function VehiclesPage() {
       setError("");
       setSuccess("");
 
-      const response = await fetch(`/api/fleet/vehicles/${editingVehicle.id}`, {
+      const response = await fetchWithAuth(`/api/fleet/vehicles/${editingVehicle.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -413,6 +483,7 @@ export default function VehiclesPage() {
           registration_number: editRegistrationNumber,
           make: editMake,
           model: editModel,
+          assigned_user_id: editAssignedUserId || null,
         }),
       });
 
@@ -500,6 +571,15 @@ export default function VehiclesPage() {
 
                 <div style={{ color: "#334155", marginBottom: 6 }}>
                   <strong>Driver ID:</strong> {vehicle.driver_id || "-"}
+                </div>
+
+                <div style={{ color: "#334155", marginBottom: 6 }}>
+                  <strong>Assigned Road User:</strong>{" "}
+                  {vehicle.assigned_user
+                    ? vehicle.assigned_user.full_name ||
+                      vehicle.assigned_user.email ||
+                      vehicle.assigned_user.id
+                    : "Unassigned"}
                 </div>
 
                 <div style={{ color: "#64748b", fontSize: 14 }}>
