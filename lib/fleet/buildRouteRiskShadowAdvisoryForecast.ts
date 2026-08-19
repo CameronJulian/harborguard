@@ -11,15 +11,15 @@ import type {
 } from "@/lib/fleet/readRouteRiskShadowModelArtifact";
 
 import type {
-  RouteRiskLogisticPrediction,
-} from "@/lib/fleet/scoreRouteRiskLogisticModel";
+  RouteRiskModelPrediction,
+} from "@/lib/fleet/routeRiskModelArtifact";
 
 export const ROUTE_RISK_SHADOW_ADVISORY_FORECAST_VERSION =
   "harborguard-route-risk-shadow-advisory-forecast-v1" as const;
 
 export type BuildRouteRiskShadowAdvisoryForecastInput = {
   artifact: RouteRiskShadowModelArtifact;
-  prediction: RouteRiskLogisticPrediction;
+  prediction: RouteRiskModelPrediction;
   evidenceAssessment:
     RouteRiskShadowEvidenceAssessment;
   routeEvidenceScope:

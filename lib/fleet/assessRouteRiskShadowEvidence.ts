@@ -3,8 +3,8 @@ import type {
 } from "@/lib/fleet/readRouteRiskShadowModelArtifact";
 
 import type {
-  RouteRiskLogisticPredictionFeatures,
-} from "@/lib/fleet/scoreRouteRiskLogisticModel";
+  RouteRiskPredictionFeatures,
+} from "@/lib/fleet/routeRiskModelArtifact";
 
 export const ROUTE_RISK_SHADOW_EVIDENCE_ASSESSMENT_VERSION =
   "harborguard-route-risk-shadow-evidence-assessment-v1" as const;
@@ -15,7 +15,7 @@ export type RouteRiskShadowEvidenceAssessmentState =
 
 export type AssessRouteRiskShadowEvidenceInput = {
   artifact: RouteRiskShadowModelArtifact;
-  features: RouteRiskLogisticPredictionFeatures;
+  features: RouteRiskPredictionFeatures;
 };
 
 export type RouteRiskShadowEvidenceAssessment = {

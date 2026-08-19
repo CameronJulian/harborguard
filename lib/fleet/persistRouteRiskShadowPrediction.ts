@@ -9,16 +9,16 @@ import type {
 } from "@/lib/fleet/readRouteRiskShadowModelArtifact";
 
 import type {
-  RouteRiskLogisticPrediction,
-  RouteRiskLogisticPredictionFeatures,
-} from "@/lib/fleet/scoreRouteRiskLogisticModel";
+  RouteRiskModelPrediction,
+  RouteRiskPredictionFeatures,
+} from "@/lib/fleet/routeRiskModelArtifact";
 
 export type PersistRouteRiskShadowPredictionInput = {
   supabase: SupabaseClient;
   productionSnapshotId: string;
   artifact: RouteRiskShadowModelArtifact;
-  features: RouteRiskLogisticPredictionFeatures;
-  prediction: RouteRiskLogisticPrediction;
+  features: RouteRiskPredictionFeatures;
+  prediction: RouteRiskModelPrediction;
   metadata?: Record<string, unknown>;
 };
 
