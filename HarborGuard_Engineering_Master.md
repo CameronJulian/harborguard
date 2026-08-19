@@ -16766,3 +16766,167 @@ database changes were made during this verification.
 
 The next roadmap item is the separately controlled B17 production database
 deployment and verification prerequisite. It has not started.
+
+# 2026-08-19 - Road User Vehicle Assignment and Pilot Boundary
+
+## Status
+
+**COMPLETE AND PUSHED**
+
+HarborGuard now has an explicit organization-scoped road-user-to-vehicle
+assignment boundary and a Fleet Vehicles administration UI for managing that
+assignment.
+
+This milestone establishes the identity boundary required before controlled
+real-road-user journey collection. A road user can be associated with a
+specific vehicle rather than relying only on organization-wide vehicle access.
+
+## Implementation sequence
+
+### 1. Road-user vehicle assignment boundary
+
+Implementation commit:
+
+`2c4aa20 feat: add road user vehicle assignment boundary`
+
+The implementation introduced the road-user vehicle authorization boundary,
+including:
+
+- persistent vehicle-to-user assignment through `assigned_user_id`;
+- organization-scoped assignment validation;
+- server-side authorization for road-user vehicle access;
+- a road-user-specific vehicle endpoint;
+- mobile tracker vehicle filtering;
+- start-trip enforcement;
+- location-update enforcement.
+
+Implementation files included:
+
+- `supabase/migrations/20260819210000_add_vehicle_assigned_user.sql`;
+- `lib/fleet/authorizeRoadUserVehicle.ts`;
+- `app/api/fleet/road-user-vehicles/route.ts`;
+- `app/api/fleet/vehicles/[id]/route.ts`;
+- `app/api/fleet/start-trip/route.ts`;
+- `app/api/fleet/update-location/route.ts`;
+- `app/mobile-tracker/page.tsx`.
+
+The database relationship uses `assigned_user_id` to associate a fleet vehicle
+with the appropriate road-user profile.
+
+The authorization boundary prevents a road user from starting trips or
+submitting vehicle-location updates for an arbitrary organization vehicle that
+is not assigned to that user.
+
+### 2. Fleet vehicle assignment UI
+
+Implementation commit:
+
+`3bdcd1c Add fleet vehicle road user assignment UI`
+
+Updated:
+
+- `app/api/fleet/vehicles/route.ts`;
+- `app/fleet/vehicles/page.tsx`.
+
+The Fleet Vehicles administration surface now exposes organization-scoped road
+users and allows an authorized fleet administrator/operator workflow to select
+the road user assigned to a vehicle.
+
+The UI supports:
+
+- viewing the currently assigned road user;
+- selecting an organization road user;
+- explicitly leaving a vehicle unassigned;
+- editing an existing vehicle assignment;
+- persisting `assigned_user_id` through the existing vehicle update boundary.
+
+The vehicle API enriches the organization-scoped fleet response with assignment
+information required by the Fleet Vehicles UI.
+
+## Verification
+
+The road-user assignment boundary passed:
+
+- structural verification;
+- `git diff --check`;
+- TypeScript `npx tsc --noEmit`;
+- Next.js production build.
+
+The Fleet Vehicles assignment UI separately passed:
+
+- focused diff verification;
+- `git diff --check`;
+- TypeScript `npx tsc --noEmit`;
+- Next.js production build.
+
+The UI implementation committed exactly two tracked files and was pushed to
+`origin/main`.
+
+## Current main state
+
+Current implementation HEAD before this documentation update:
+
+`3bdcd1c Add fleet vehicle road user assignment UI`
+
+Relevant implementation commits:
+
+- `2c4aa20` - road-user vehicle assignment boundary;
+- `3bdcd1c` - Fleet Vehicles road-user assignment UI.
+
+## Operational meaning
+
+HarborGuard now has the core identity chain required for a controlled road-user
+pilot:
+
+`organization`
+`-> road-user account/profile`
+`-> organization vehicle`
+`-> assigned_user_id`
+`-> authenticated road user`
+`-> assigned vehicle`
+`-> mobile tracker`
+`-> trip start`
+`-> telemetry/location collection`
+
+This is an important prerequisite for trustworthy ML training data because
+journey observations can be associated with an authorized organization,
+vehicle, and road-user boundary rather than accepting arbitrary client-side
+vehicle selection.
+
+## Production-readiness boundary
+
+This milestone does **not** by itself establish readiness for millions of road
+users or millions of journeys.
+
+The next phase must validate the complete controlled pilot path end to end
+before broad collection or ML training-scale rollout.
+
+That validation should establish:
+
+- organization creation and membership;
+- road-user account/profile creation;
+- vehicle creation;
+- vehicle-to-road-user assignment;
+- road-user authentication;
+- visibility of only the assigned vehicle where required;
+- successful trip start from the intended road-user/mobile surface;
+- telemetry and location persistence;
+- trip completion and outcome persistence;
+- external intelligence enrichment where applicable;
+- ML feature/training-example eligibility;
+- tenant isolation;
+- authorization failure behavior;
+- consent/privacy and production operational requirements.
+
+## Next recommended step
+
+**Run a controlled real-road-user pilot readiness and end-to-end validation.**
+
+Do not begin by targeting large-scale journey collection.
+
+Start with a deliberately small test cohort and prove the complete chain from
+organization and road-user setup through vehicle assignment, trip collection,
+stored journey evidence, and eventual ML-training eligibility.
+
+The next implementation item, if a gap is discovered, must be selected from
+that end-to-end audit rather than assumed in advance.
