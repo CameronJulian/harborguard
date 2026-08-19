@@ -7,14 +7,19 @@ import {
   processVehicleLocationUpdate,
 } from "@/lib/fleet/processVehicleLocationUpdate";
 
-import { requireOrganization, requireRole } from "@/lib/server-auth";
+import { requireOrganization } from "@/lib/server-auth";
+import {
+  authorizeRoadUserVehicle,
+} from "@/lib/fleet/authorizeRoadUserVehicle";
 
 export async function POST(req: Request) {
   try {
-    const { supabase, organizationId, role } =
-      await requireOrganization();
-
-    requireRole(role, ["owner", "admin", "operator"]);
+    const {
+      supabase,
+      organizationId,
+      user,
+      role,
+    } = await requireOrganization();
 
     const body =
       (await req.json()) as UpdateLocationBody;
@@ -26,6 +31,22 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: parsedInput.error },
         { status: 400 }
+      );
+    }
+
+    const vehicleAuthorization =
+      await authorizeRoadUserVehicle({
+        supabase,
+        organizationId,
+        userId: user.id,
+        role,
+        vehicleId: parsedInput.value.vehicleId,
+      });
+
+    if (!vehicleAuthorization.ok) {
+      return NextResponse.json(
+        { error: vehicleAuthorization.error },
+        { status: vehicleAuthorization.status }
       );
     }
 

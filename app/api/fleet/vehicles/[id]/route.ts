@@ -8,6 +8,7 @@ const VehicleUpdateSchema = z.object({
   registration_number: z.string().min(1).max(50).optional(),
   make: z.string().max(100).optional().nullable(),
   model: z.string().max(100).optional().nullable(),
+  assigned_user_id: z.string().uuid().optional().nullable(),
 });
 
 export async function PATCH(
@@ -23,6 +24,35 @@ export async function PATCH(
 
     const { id } = await context.params;
     const body = VehicleUpdateSchema.parse(await req.json());
+
+    if (body.assigned_user_id) {
+      const {
+        data: assignedProfile,
+        error: assignedProfileError,
+      } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", body.assigned_user_id)
+        .eq("organization_id", organizationId)
+        .maybeSingle();
+
+      if (assignedProfileError) {
+        return NextResponse.json(
+          { error: assignedProfileError.message },
+          { status: 500 }
+        );
+      }
+
+      if (!assignedProfile) {
+        return NextResponse.json(
+          {
+            error:
+              "Assigned road user must belong to the same organization.",
+          },
+          { status: 400 }
+        );
+      }
+    }
 
     const { data, error } = await supabase
       .from("vehicles")

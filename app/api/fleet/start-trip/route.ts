@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
+import {
+  authorizeRoadUserVehicle,
+} from "@/lib/fleet/authorizeRoadUserVehicle";
 
 type StartTripBody = {
   vehicleId?: string;
@@ -13,7 +16,7 @@ type StartTripBody = {
 
 export async function POST(req: Request) {
   try {
-    const { supabase, organizationId } = await requireOrganization();
+    const { supabase, organizationId, user, role } = await requireOrganization();
 
     const body = (await req.json()) as StartTripBody;
 
@@ -28,19 +31,23 @@ export async function POST(req: Request) {
       );
     }
 
-    const { data: vehicle, error: vehicleError } = await supabase
-      .from("vehicles")
-      .select("id, driver_id")
-      .eq("id", vehicleId)
-      .eq("organization_id", organizationId)
-      .single();
+    const vehicleAuthorization =
+      await authorizeRoadUserVehicle({
+        supabase,
+        organizationId,
+        userId: user.id,
+        role,
+        vehicleId,
+      });
 
-    if (vehicleError || !vehicle) {
+    if (!vehicleAuthorization.ok) {
       return NextResponse.json(
-        { error: vehicleError?.message || "Vehicle not found." },
-        { status: 404 }
+        { error: vehicleAuthorization.error },
+        { status: vehicleAuthorization.status }
       );
     }
+
+    const vehicle = vehicleAuthorization.vehicle;
 
     const { data: existingTrip, error: existingTripError } =
       await supabase

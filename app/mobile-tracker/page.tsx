@@ -55,7 +55,7 @@ export default function MobileTrackerPage() {
         setVehiclesLoading(true);
         setVehicleLoadError("");
 
-        const response = await fetch("/api/fleet/vehicles", {
+        const response = await fetch("/api/fleet/road-user-vehicles", {
           cache: "no-store",
         });
 
