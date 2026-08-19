@@ -116,7 +116,12 @@ test("offline trainer consumes the reusable prepared dataset", () => {
 test("offline trainer still trains only on dataset.train", () => {
   assert.match(
     runnerSource,
-    /trainRouteRiskLogisticBaseline\(\s*dataset\.train,\s*training\s*\)/
+    /trainRouteRiskModel\(\{[\s\S]*examples:\s*dataset\.train[\s\S]*training[\s\S]*\}\)/
+  );
+
+  assert.doesNotMatch(
+    runnerSource,
+    /trainRouteRiskLogisticBaseline\(/
   );
 });
 
