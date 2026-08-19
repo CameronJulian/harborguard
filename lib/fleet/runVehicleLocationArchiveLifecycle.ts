@@ -380,12 +380,30 @@ export async function runVehicleLocationArchiveLifecycle(
       throw verifiedManifestError;
     }
 
+    const persistedVerifiedAt =
+      verifiedManifest?.verified_at;
+
+    const persistedVerifiedAtMs =
+      typeof persistedVerifiedAt === "string"
+        ? Date.parse(
+            persistedVerifiedAt
+          )
+        : Number.NaN;
+
+    const expectedVerifiedAtMs =
+      Date.parse(
+        verifiedAt
+      );
+
     if (
       !verifiedManifest ||
       verifiedManifest.status !==
         "verified" ||
-      verifiedManifest.verified_at !==
-        verifiedAt
+      !Number.isFinite(
+        persistedVerifiedAtMs
+      ) ||
+      persistedVerifiedAtMs !==
+        expectedVerifiedAtMs
     ) {
       throw new Error(
         "Archive manifest could not transition from pending to verified."
@@ -410,7 +428,8 @@ export async function runVehicleLocationArchiveLifecycle(
       compressedByteCount:
         verified.compressedByteCount,
 
-      verifiedAt,
+      verifiedAt:
+        persistedVerifiedAt,
     };
   }
   catch (error: unknown) {

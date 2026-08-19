@@ -272,3 +272,33 @@ test(
     }
   }
 );
+
+test(
+  "verified transition compares timestamp instants rather than database timestamp text",
+  () => {
+    assert.match(
+      source,
+      /Date\.parse\(\s*persistedVerifiedAt\s*\)/
+    );
+
+    assert.match(
+      source,
+      /Date\.parse\(\s*verifiedAt\s*\)/
+    );
+
+    assert.match(
+      source,
+      /persistedVerifiedAtMs !==\s*expectedVerifiedAtMs/
+    );
+
+    assert.doesNotMatch(
+      source,
+      /verifiedManifest\.verified_at !==\s*verifiedAt/
+    );
+
+    assert.match(
+      source,
+      /verifiedAt:\s*persistedVerifiedAt/
+    );
+  }
+);
