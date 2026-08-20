@@ -1,4 +1,4 @@
-﻿# HarborGuard Safety Provenance Protocol (HSPP) v0.1
+# HarborGuard Safety Provenance Protocol (HSPP) v0.1
 
 **Status:** Draft
 **Protocol:** HarborGuard Safety Provenance Protocol
@@ -186,14 +186,22 @@ The v0.1 canonical evidence input is conceptually:
 
 ```text
 protocol_version
-evidence_id
+canonicalization_version
 source_class
 source_provider
+source_stream
 source_message_id
 observed_at
 payload_schema_version
 normalized_payload
 ```
+
+
+The HarborGuard-generated `evidence_id` is intentionally excluded from the integrity fingerprint.
+
+The fingerprint identifies the canonical evidence content and source provenance rather than an arbitrary database identity.
+
+`received_at` is also excluded from the fingerprint so deterministic evidence received more than once does not acquire a different content fingerprint solely because HarborGuard observed it at a different ingestion time.
 
 The exact canonicalization algorithm MUST be versioned.
 
