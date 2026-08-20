@@ -10,6 +10,7 @@ export type CreateVehicleLocationInput = {
   recordedAt: string;
   source: "mobile" | "hardware" | "manual";
   roadSpeedLimitKmh: number | null;
+  hsppEvidenceId?: string | null;
 };
 
 export type CreateVehicleLocationResult = {
@@ -31,6 +32,7 @@ export async function createVehicleLocation(
     recordedAt,
     source,
     roadSpeedLimitKmh,
+    hsppEvidenceId = null,
   } = input;
 
   const { error } = await supabase
@@ -46,6 +48,7 @@ export async function createVehicleLocation(
       recorded_at: recordedAt,
       source,
       road_speed_limit_kmh: roadSpeedLimitKmh,
+      hspp_evidence_id: hsppEvidenceId,
     });
 
   return {

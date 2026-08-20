@@ -56,6 +56,7 @@ export type ProcessVehicleLocationUpdateInput = {
   supabase: any;
   organizationId: string;
   location: ParsedUpdateLocationInput;
+  hsppEvidenceId?: string | null;
 };
 
 export type ProcessVehicleLocationUpdateResult =
@@ -95,6 +96,7 @@ export async function processVehicleLocationUpdate({
   supabase,
   organizationId,
   location,
+  hsppEvidenceId = null,
 }: ProcessVehicleLocationUpdateInput): Promise<ProcessVehicleLocationUpdateResult> {
   const {
     vehicleId,
@@ -245,6 +247,7 @@ export async function processVehicleLocationUpdate({
     recordedAt: occurredAt,
     source,
     roadSpeedLimitKmh,
+    hsppEvidenceId,
   });
 
   if (locationError) {

@@ -185,6 +185,8 @@ export async function processTelematicsPosition({
       await processVehicleLocationUpdate({
         supabase,
         organizationId,
+        hsppEvidenceId:
+          persistedHsppEvidence.id,
         location: {
           vehicleId:
             resolved.vehicle.id,
