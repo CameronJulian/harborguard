@@ -1,12 +1,15 @@
-import { createHash } from "crypto";
-
 import {
-  canonicalizeHsppEvidence,
+  createHsppIntegrityFingerprint,
   HSPP_CANONICALIZATION_VERSION,
-} from "@/lib/hspp/canonicalizeHsppEvidence";
+  HSPP_INTEGRITY_ALGORITHM,
+  HSPP_PROTOCOL_VERSION,
+} from "@/lib/hspp/createHsppIntegrityFingerprint";
 
-export const HSPP_PROTOCOL_VERSION = "0.1" as const;
-export const HSPP_INTEGRITY_ALGORITHM = "sha256" as const;
+export {
+  HSPP_CANONICALIZATION_VERSION,
+  HSPP_INTEGRITY_ALGORITHM,
+  HSPP_PROTOCOL_VERSION,
+};
 
 export type HsppIntegrityState =
   | "RECEIVED"
@@ -60,19 +63,6 @@ export type BuiltHsppEvidence = {
   validationEligible: false;
 };
 
-function requireNonBlank(
-  value: string,
-  fieldName: string
-): string {
-  const normalized = value.trim();
-
-  if (!normalized) {
-    throw new Error(`${fieldName} is required.`);
-  }
-
-  return normalized;
-}
-
 function requireTimestamp(
   value: string,
   fieldName: string
@@ -91,86 +81,70 @@ function requireTimestamp(
 export function buildHsppEvidence(
   input: BuildHsppEvidenceInput
 ): BuiltHsppEvidence {
-  const sourceClass = requireNonBlank(
-    input.sourceClass,
-    "sourceClass"
-  );
-
-  const sourceProvider = requireNonBlank(
-    input.sourceProvider,
-    "sourceProvider"
-  );
-
-  const sourceStream = requireNonBlank(
-    input.sourceStream,
-    "sourceStream"
-  );
-
-  const sourceMessageId = requireNonBlank(
-    input.sourceMessageId,
-    "sourceMessageId"
-  );
-
-  const payloadSchemaVersion = requireNonBlank(
-    input.payloadSchemaVersion,
-    "payloadSchemaVersion"
-  );
-
-  const observedAt = requireTimestamp(
-    input.observedAt,
-    "observedAt"
-  );
+  const fingerprint =
+    createHsppIntegrityFingerprint({
+      protocolVersion:
+        HSPP_PROTOCOL_VERSION,
+      canonicalizationVersion:
+        HSPP_CANONICALIZATION_VERSION,
+      sourceClass:
+        input.sourceClass,
+      sourceProvider:
+        input.sourceProvider,
+      sourceStream:
+        input.sourceStream,
+      sourceMessageId:
+        input.sourceMessageId,
+      observedAt:
+        input.observedAt,
+      payloadSchemaVersion:
+        input.payloadSchemaVersion,
+      normalizedPayload:
+        input.normalizedPayload,
+    });
 
   const receivedAt = requireTimestamp(
     input.receivedAt ?? new Date().toISOString(),
     "receivedAt"
   );
 
-  const canonicalInput = {
-    protocol_version: HSPP_PROTOCOL_VERSION,
-    canonicalization_version:
-      HSPP_CANONICALIZATION_VERSION,
-    source_class: sourceClass,
-    source_provider: sourceProvider,
-    source_stream: sourceStream,
-    source_message_id: sourceMessageId,
-    observed_at: observedAt,
-    payload_schema_version:
-      payloadSchemaVersion,
-    normalized_payload:
-      input.normalizedPayload,
-  };
-
-  const canonical =
-    canonicalizeHsppEvidence(canonicalInput);
-
-  const integrityFingerprint =
-    createHash(HSPP_INTEGRITY_ALGORITHM)
-      .update(canonical, "utf8")
-      .digest("hex");
-
   return {
-    protocolVersion: HSPP_PROTOCOL_VERSION,
+    protocolVersion:
+      HSPP_PROTOCOL_VERSION,
     canonicalizationVersion:
       HSPP_CANONICALIZATION_VERSION,
-    sourceClass,
-    sourceProvider,
-    sourceStream,
-    sourceMessageId,
-    observedAt,
+    sourceClass:
+      fingerprint.sourceClass,
+    sourceProvider:
+      fingerprint.sourceProvider,
+    sourceStream:
+      fingerprint.sourceStream,
+    sourceMessageId:
+      fingerprint.sourceMessageId,
+    observedAt:
+      fingerprint.observedAt,
     receivedAt,
-    payloadSchemaVersion,
+    payloadSchemaVersion:
+      fingerprint.payloadSchemaVersion,
     normalizedPayload:
-      input.normalizedPayload,
+      fingerprint.normalizedPayload,
     integrityAlgorithm:
       HSPP_INTEGRITY_ALGORITHM,
-    integrityFingerprint,
-    integrityState: "INTEGRITY_SEALED",
-    validationState: "VALIDATED",
-    trustState: "UNASSESSED",
-    operationalEligible: true,
-    crowdEligible: false,
-    trainingEligible: false,
-    validationEligible: false,
+    integrityFingerprint:
+      fingerprint.integrityFingerprint,
+    integrityState:
+      "INTEGRITY_SEALED",
+    validationState:
+      "VALIDATED",
+    trustState:
+      "UNASSESSED",
+    operationalEligible:
+      true,
+    crowdEligible:
+      false,
+    trainingEligible:
+      false,
+    validationEligible:
+      false,
   };
 }

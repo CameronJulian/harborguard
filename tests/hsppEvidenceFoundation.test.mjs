@@ -16,6 +16,10 @@ const builder = fs.readFileSync(
   "lib/hspp/buildHsppEvidence.ts",
   "utf8"
 );
+const fingerprint = fs.readFileSync(
+  "lib/hspp/createHsppIntegrityFingerprint.ts",
+  "utf8"
+);
 
 const persistence = fs.readFileSync(
   "lib/hspp/persistHsppEvidence.ts",
@@ -49,12 +53,12 @@ test("HSPP v0.1 requires lowercase SHA-256 fingerprints", () => {
   );
 
   assert.match(
-    builder,
+    fingerprint,
     /createHash\(HSPP_INTEGRITY_ALGORITHM\)/
   );
 
   assert.match(
-    builder,
+    fingerprint,
     /\.digest\("hex"\)/
   );
 });
@@ -72,7 +76,7 @@ test("HSPP canonicalization sorts object keys deterministically", () => {
 });
 
 test("HSPP fingerprint excludes evidence id and receipt time", () => {
-  const canonicalInputMatch = builder.match(
+  const canonicalInputMatch = fingerprint.match(
     /const canonicalInput = \{([\s\S]*?)\n  \};/
   );
 
