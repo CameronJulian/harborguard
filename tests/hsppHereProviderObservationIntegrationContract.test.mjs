@@ -107,16 +107,25 @@ test(
 );
 
 test(
-  "HERE integration still does not assess HSPP evidence yet",
+  "HERE provider observation persistence still precedes assessment and mutable Route Safety persistence",
   () => {
-    assert.doesNotMatch(
-      source,
-      /await\s+assessHsppExternalIntelligenceEvidence\s*\(/
-    );
+    const providerObservation =
+      source.indexOf(
+        "persistRouteSafetyProviderObservation({"
+      );
 
-    assert.doesNotMatch(
-      source,
-      /applyHsppAssessmentDecision/
-    );
+    const routeSafety =
+      source.indexOf(
+        "insertNewProviderAlerts("
+      );
+
+    const assessment =
+      source.indexOf(
+        "assessHsppExternalIntelligenceEvidence({"
+      );
+
+    assert.ok(providerObservation >= 0);
+    assert.ok(routeSafety > providerObservation);
+    assert.ok(assessment > routeSafety);
   }
 );

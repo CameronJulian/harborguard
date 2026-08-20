@@ -9,9 +9,25 @@ import { resolveRoadContext } from "@/lib/road-context/provider";
 import { persistRouteSafetyProviderObservation } from "@/lib/hspp/persistRouteSafetyProviderObservation";
 import { buildHsppEvidence } from "@/lib/hspp/buildHsppEvidence";
 import { persistHsppEvidenceForProviderObservation } from "@/lib/hspp/persistHsppEvidenceForProviderObservation";
-import { HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION } from "@/lib/hspp/assessHsppExternalIntelligenceEvidence";
+import {
+  assessHsppExternalIntelligenceEvidence,
+  HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION,
+} from "@/lib/hspp/assessHsppExternalIntelligenceEvidence";
+import { applyHsppAssessmentDecision } from "@/lib/hspp/applyHsppAssessmentDecision";
+import { verifyHsppEvidenceIntegrity } from "@/lib/hspp/verifyHsppEvidenceIntegrity";
 
 
+
+const HSPP_PROVIDER_FRESHNESS_HOURS = 48;
+
+type HereHsppAssessmentContext = {
+  evidence: ReturnType<typeof buildHsppEvidence>;
+  persistedEvidence: Awaited<
+    ReturnType<
+      typeof persistHsppEvidenceForProviderObservation
+    >
+  >;
+} | null;
 
 function mapHereSeverity(criticality?: string) {
   const value = String(criticality || "").toLowerCase();
@@ -331,10 +347,23 @@ export async function importHereIncidents(
           item !== null
       );
 
+    const hsppAssessmentContexts:
+      HereHsppAssessmentContext[] =
+        Array.from(
+          {
+            length:
+              normalizedIncidents.length,
+          },
+          () => null
+        );
+
     for (
-      const normalized
-      of normalizedIncidents
+      let inputIndex = 0;
+      inputIndex < normalizedIncidents.length;
+      inputIndex += 1
     ) {
+      const normalized =
+        normalizedIncidents[inputIndex];
       if (
         !normalized.providerMessageId ||
         !normalized.observedAt
@@ -390,13 +419,19 @@ export async function importHereIncidents(
             providerObservation.normalizedPayload,
         });
 
-      await persistHsppEvidenceForProviderObservation({
+      const persistedEvidence =
+        await persistHsppEvidenceForProviderObservation({
         supabase,
         organizationId,
         providerObservationId:
           providerObservation.id,
         evidence,
       });
+
+      hsppAssessmentContexts[inputIndex] = {
+        evidence,
+        persistedEvidence,
+      };
     }
 
     const normalizedRows =
@@ -427,6 +462,148 @@ export async function importHereIncidents(
       sourceConfiguration.baseConfidence,
       rows
     );
+
+    if (
+      result.resolutions.length !==
+      rows.length
+    ) {
+      throw new Error(
+        "HERE Route Safety upsert did not return one resolution per input row."
+      );
+    }
+
+    const staleBeforeMs =
+      Date.now() -
+      HSPP_PROVIDER_FRESHNESS_HOURS *
+        60 * 60 * 1000;
+
+    for (
+      let inputIndex = 0;
+      inputIndex < rows.length;
+      inputIndex += 1
+    ) {
+      const context =
+        hsppAssessmentContexts[inputIndex];
+
+      if (!context) {
+        continue;
+      }
+
+      const resolution =
+        result.resolutions[inputIndex];
+
+      if (
+        !resolution ||
+        resolution.inputIndex !== inputIndex
+      ) {
+        throw new Error(
+          `HERE Route Safety resolution index mismatch at ${inputIndex}.`
+        );
+      }
+
+      const providerLastSeenValue =
+        resolution.providerLastSeen[
+          "here_traffic"
+        ];
+
+      const providerLastSeenTime =
+        new Date(
+          String(providerLastSeenValue)
+        ).getTime();
+
+      const providerLastSeenValid =
+        Number.isFinite(
+          providerLastSeenTime
+        );
+
+      const providerObservationFresh =
+        providerLastSeenValid &&
+        providerLastSeenTime >=
+          staleBeforeMs;
+
+      const verification =
+        verifyHsppEvidenceIntegrity({
+          protocolVersion:
+            context.evidence.protocolVersion,
+          canonicalizationVersion:
+            context.evidence
+              .canonicalizationVersion,
+          sourceClass:
+            context.evidence.sourceClass,
+          sourceProvider:
+            context.evidence.sourceProvider,
+          sourceStream:
+            context.evidence.sourceStream,
+          sourceMessageId:
+            context.evidence.sourceMessageId,
+          observedAt:
+            context.evidence.observedAt,
+          receivedAt:
+            context.evidence.receivedAt,
+          payloadSchemaVersion:
+            context.evidence
+              .payloadSchemaVersion,
+          normalizedPayload:
+            context.evidence
+              .normalizedPayload,
+          integrityAlgorithm:
+            context.evidence
+              .integrityAlgorithm,
+          integrityFingerprint:
+            context.evidence
+              .integrityFingerprint,
+          trustState:
+            context.evidence.trustState,
+          derivationLineage:
+            context.evidence
+              .derivationLineage,
+        });
+
+      const assessment =
+        assessHsppExternalIntelligenceEvidence({
+          verification,
+          validationState:
+            context.evidence
+              .validationState,
+          sourceClass:
+            context.evidence.sourceClass,
+          sourceProvider:
+            context.evidence
+              .sourceProvider,
+          sourceKey:
+            "here_traffic",
+          payloadSchemaVersion:
+            context.evidence
+              .payloadSchemaVersion,
+          sourceEnabled:
+            sourceConfiguration.enabled,
+          sourceApprovedForIngestion:
+            sourceConfiguration
+              .approvedForIngestion,
+          alertStatus:
+            rows[inputIndex].status,
+          providerSources:
+            resolution.providerSources,
+          providerConfirmationCount:
+            resolution
+              .providerConfirmationCount,
+          providerConfidence:
+            resolution.providerConfidence,
+          providerObservationFresh,
+          providerLastSeenValid,
+        });
+
+      await applyHsppAssessmentDecision({
+        supabase,
+        organizationId,
+        evidenceId:
+          context.persistedEvidence.id,
+        integrityFingerprint:
+          context.persistedEvidence
+            .integrityFingerprint,
+        assessment,
+      });
+    }
 
     return {
       provider: "here",

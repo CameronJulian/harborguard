@@ -59,12 +59,27 @@ test("evidence sealing precedes mutable Route Safety persistence", () => {
   assert.ok(projection > evidence);
 });
 
-test("B8B does not assess or promote evidence", () => {
+test("B8B sealing boundary remains before mutable Route Safety persistence", () => {
+  const evidence =
+    source.indexOf(
+      "persistHsppEvidenceForProviderObservation({"
+    );
+
+  const routeSafety =
+    source.indexOf(
+      "insertNewProviderAlerts("
+    );
+
+  assert.ok(evidence >= 0);
+  assert.ok(routeSafety > evidence);
+
   assert.doesNotMatch(
     source,
-    /await\s+assessHsppExternalIntelligenceEvidence\s*\(/
+    /crowdEligible:\s*true/
   );
-  assert.doesNotMatch(source, /applyHsppAssessmentDecision/);
-  assert.doesNotMatch(source, /crowdEligible:\s*true/);
-  assert.doesNotMatch(source, /trainingEligible:\s*true/);
+
+  assert.doesNotMatch(
+    source,
+    /trainingEligible:\s*true/
+  );
 });
