@@ -6,6 +6,10 @@ import { requireOrganization } from "@/lib/server-auth";
 import { createCommandCenterNotification } from "@/lib/command-center/notifications";
 import { correlateVehicleAlertToIncident } from "@/lib/incidents/correlation";
 
+import {
+  readHsppEvidenceForOperationalUse,
+} from "@/lib/hspp/readHsppEvidenceForOperationalUse";
+
 
 
 
@@ -331,6 +335,24 @@ export async function detectFleetRisks(params: {
         "Driver fatigue detection failed:",
         driverFatigueError
       );
+    }
+
+    const hsppEvidenceId =
+      typeof latest.hspp_evidence_id === "string"
+        ? latest.hspp_evidence_id.trim()
+        : "";
+
+    if (hsppEvidenceId) {
+      const operationalRead =
+        await readHsppEvidenceForOperationalUse({
+          supabase,
+          organizationId,
+          evidenceId: hsppEvidenceId,
+        });
+
+      if (!operationalRead.decision.allowed) {
+        continue;
+      }
     }
 
     if (
