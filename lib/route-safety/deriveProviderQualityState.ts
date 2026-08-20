@@ -7,6 +7,7 @@ export type ProviderQualityState = {
 
 export type DeriveProviderQualityStateInput = {
   providerLastSeen: Record<string, unknown>;
+  providerSources?: string[];
   primarySource: string;
   primarySourceBaseConfidence: number;
   staleBefore?: string;
@@ -50,6 +51,7 @@ function requireValidBaseConfidence(
 
 export function deriveProviderQualityState({
   providerLastSeen,
+  providerSources: inputProviderSources,
   primarySource,
   primarySourceBaseConfidence,
   staleBefore,
@@ -117,19 +119,48 @@ export function deriveProviderQualityState({
           entry !== null
       );
 
-  const providerLastSeenResult =
+  const validProviderLastSeen =
     Object.fromEntries(
       retainedEntries
     );
 
-  const providerSources =
-    Array.from(
-      new Set(
-        retainedEntries.map(
-          ([provider]) => provider
-        )
+  const validLastSeenSources =
+    new Set(
+      retainedEntries.map(
+        ([provider]) => provider
       )
     );
+
+  const requestedProviderSources =
+    inputProviderSources === undefined
+      ? Array.from(validLastSeenSources)
+      : Array.from(
+          new Set(
+            inputProviderSources
+              .map((provider) =>
+                provider.trim()
+              )
+              .filter(Boolean)
+          )
+        );
+
+  const providerSources =
+    staleBoundary === null
+      ? requestedProviderSources
+      : requestedProviderSources.filter(
+          (provider) =>
+            validLastSeenSources.has(provider)
+        );
+
+  const providerLastSeenResult =
+    staleBoundary === null
+      ? validProviderLastSeen
+      : Object.fromEntries(
+          retainedEntries.filter(
+            ([provider]) =>
+              providerSources.includes(provider)
+          )
+        );
 
   const providerConfirmationCount =
     providerSources.length;

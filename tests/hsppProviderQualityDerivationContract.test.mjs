@@ -48,3 +48,33 @@ test("B9A1 remains independent of HERE TomTom and HSPP assessment", () => {
   assert.doesNotMatch(source, /tomtom/);
   assert.doesNotMatch(source, /assessHsppExternalIntelligenceEvidence/);
 });
+
+test(
+  "explicit provider sources are authoritative for active confirmations",
+  () => {
+    assert.match(
+      source,
+      /providerSources\?: string\[\]/
+    );
+
+    assert.match(
+      source,
+      /inputProviderSources === undefined/
+    );
+  }
+);
+
+test(
+  "freshness filters explicit active confirmations without clock access",
+  () => {
+    assert.match(
+      source,
+      /validLastSeenSources\.has\(provider\)/
+    );
+
+    assert.doesNotMatch(
+      source,
+      /Date\.now/
+    );
+  }
+);

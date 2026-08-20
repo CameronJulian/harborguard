@@ -137,3 +137,105 @@ test("invalid stale boundary fails closed", () => {
     /staleBefore must be a valid timestamp/
   );
 });
+
+test(
+  "explicit active provider set can exclude historical last-seen providers",
+  () => {
+    const result =
+      deriveProviderQualityState({
+        providerLastSeen: {
+          here_traffic:
+            "2026-08-20T12:00:00.000Z",
+          tomtom:
+            "2026-08-19T12:00:00.000Z",
+        },
+
+        providerSources: [
+          "here_traffic",
+        ],
+
+        primarySource:
+          "here_traffic",
+
+        primarySourceBaseConfidence:
+          65,
+      });
+
+    assert.deepEqual(
+      result.providerSources,
+      ["here_traffic"]
+    );
+
+    assert.equal(
+      result.providerConfirmationCount,
+      1
+    );
+
+    assert.equal(
+      result.providerConfidence,
+      65
+    );
+
+    assert.deepEqual(
+      result.providerLastSeen,
+      {
+        here_traffic:
+          "2026-08-20T12:00:00.000Z",
+        tomtom:
+          "2026-08-19T12:00:00.000Z",
+      }
+    );
+  }
+);
+
+test(
+  "freshness removes stale members from explicit active provider set",
+  () => {
+    const result =
+      deriveProviderQualityState({
+        providerLastSeen: {
+          here_traffic:
+            "2026-08-20T12:00:00.000Z",
+          tomtom:
+            "2026-08-18T11:59:59.000Z",
+        },
+
+        providerSources: [
+          "here_traffic",
+          "tomtom",
+        ],
+
+        primarySource:
+          "here_traffic",
+
+        primarySourceBaseConfidence:
+          65,
+
+        staleBefore:
+          "2026-08-18T12:00:00.000Z",
+      });
+
+    assert.deepEqual(
+      result.providerSources,
+      ["here_traffic"]
+    );
+
+    assert.deepEqual(
+      result.providerLastSeen,
+      {
+        here_traffic:
+          "2026-08-20T12:00:00.000Z",
+      }
+    );
+
+    assert.equal(
+      result.providerConfirmationCount,
+      1
+    );
+
+    assert.equal(
+      result.providerConfidence,
+      65
+    );
+  }
+);
