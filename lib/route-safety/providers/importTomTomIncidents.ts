@@ -6,6 +6,8 @@ import type { RouteSafetyAlertRow } from "@/lib/route-safety/types";
 import { insertNewProviderAlerts } from "@/lib/route-safety/upsertRouteSafetyAlerts";
 import { enrichRouteSafetyAlertsWithRoadContext } from "@/lib/route-safety/enrichRouteSafetyAlertsWithRoadContext";
 import { resolveRoadContext } from "@/lib/road-context/provider";
+import { persistRouteSafetyProviderObservation } from "@/lib/hspp/persistRouteSafetyProviderObservation";
+import { HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION } from "@/lib/hspp/assessHsppExternalIntelligenceEvidence";
 
 function mapTomTomType(
   category: number | string | null,
@@ -147,7 +149,7 @@ export async function importTomTomIncidents(
 
     const fields =
       "{incidents{type,geometry{type,coordinates}," +
-      "properties{iconCategory,magnitudeOfDelay," +
+      "properties{id,lastReportTime,iconCategory,magnitudeOfDelay," +
       "events{description,code},from,to,length,delay}}}";
 
     const url =
@@ -176,8 +178,12 @@ export async function importTomTomIncidents(
       ? data.incidents
       : [];
 
-    const normalizedRows = incidents
-      .map((incident: any): RouteSafetyAlertRow | null => {
+    const normalizedIncidents = incidents
+      .map((incident: any): {
+        row: RouteSafetyAlertRow;
+        providerMessageId: string;
+        observedAt: string | null;
+      } | null => {
         const coordinates = incident?.geometry?.coordinates;
 
         const firstPoint = Array.isArray(coordinates?.[0])
@@ -202,7 +208,7 @@ export async function importTomTomIncidents(
             "Traffic incident reported"
         );
 
-        return {
+        const row: RouteSafetyAlertRow = {
           organization_id: organizationId,
           type: mapTomTomType(
             properties?.iconCategory,
@@ -243,8 +249,89 @@ export async function importTomTomIncidents(
     incident?.geometry ??
     null,
 };
+
+        const providerMessageId =
+          typeof properties?.id === "string"
+            ? properties.id.trim()
+            : "";
+
+        const observedAtCandidate =
+          typeof properties?.lastReportTime === "string"
+            ? properties.lastReportTime.trim()
+            : "";
+
+        const observedAtMilliseconds =
+          Date.parse(observedAtCandidate);
+
+        const observedAt =
+          observedAtCandidate &&
+          Number.isFinite(observedAtMilliseconds)
+            ? new Date(
+                observedAtMilliseconds
+              ).toISOString()
+            : null;
+
+        return {
+          row,
+          providerMessageId,
+          observedAt,
+        };
       })
-      .filter((row: RouteSafetyAlertRow | null): row is RouteSafetyAlertRow => row !== null);
+      .filter(
+        (
+          item: {
+            row: RouteSafetyAlertRow;
+            providerMessageId: string;
+            observedAt: string | null;
+          } | null
+        ): item is {
+          row: RouteSafetyAlertRow;
+          providerMessageId: string;
+          observedAt: string | null;
+        } =>
+          item !== null
+      );
+
+    for (
+      const normalized
+      of normalizedIncidents
+    ) {
+      if (
+        !normalized.providerMessageId ||
+        !normalized.observedAt
+      ) {
+        continue;
+      }
+
+      await persistRouteSafetyProviderObservation({
+        supabase,
+        organizationId,
+        provider:
+          "tomtom",
+        sourceStream:
+          "tomtom",
+        providerMessageId:
+          normalized.providerMessageId,
+        observedAt:
+          normalized.observedAt,
+        payloadSchemaVersion:
+          HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION,
+        normalizedPayload:
+          normalized.row as unknown as Record<
+            string,
+            unknown
+          >,
+      });
+    }
+
+    const normalizedRows =
+      normalizedIncidents.map(
+        (item: {
+          row: RouteSafetyAlertRow;
+          providerMessageId: string;
+          observedAt: string | null;
+        }) => item.row
+      );
 
     const roadContextEnrichment =
 
