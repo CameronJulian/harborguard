@@ -12,6 +12,18 @@ import {
 } from "@/lib/hspp/persistHsppEvidence";
 
 import {
+  assessHsppTraccarEvidence,
+} from "@/lib/hspp/assessHsppTraccarEvidence";
+
+import {
+  applyHsppAssessmentDecision,
+} from "@/lib/hspp/applyHsppAssessmentDecision";
+
+import {
+  verifyHsppEvidenceIntegrity,
+} from "@/lib/hspp/verifyHsppEvidenceIntegrity";
+
+import {
   claimTelematicsMessage,
   completeTelematicsMessage,
   failTelematicsMessage,
@@ -155,18 +167,19 @@ export async function processTelematicsPosition({
         },
       });
 
-    await persistHsppEvidence({
-      supabase,
-      organizationId,
-      evidence:
-        hsppEvidence,
-      telematicsReceiptId:
-        claim.receiptId,
-      vehicleId:
-        resolved.vehicle.id,
-      tripId:
-        null,
-    });
+    const persistedHsppEvidence =
+      await persistHsppEvidence({
+        supabase,
+        organizationId,
+        evidence:
+          hsppEvidence,
+        telematicsReceiptId:
+          claim.receiptId,
+        vehicleId:
+          resolved.vehicle.id,
+        tripId:
+          null,
+      });
 
     const result =
       await processVehicleLocationUpdate({
@@ -189,6 +202,91 @@ export async function processTelematicsPosition({
             position.recordedAt,
         },
       });
+
+    const hsppVerification =
+      verifyHsppEvidenceIntegrity({
+        protocolVersion:
+          hsppEvidence.protocolVersion,
+
+        canonicalizationVersion:
+          hsppEvidence.canonicalizationVersion,
+
+        sourceClass:
+          hsppEvidence.sourceClass,
+
+        sourceProvider:
+          hsppEvidence.sourceProvider,
+
+        sourceStream:
+          hsppEvidence.sourceStream,
+
+        sourceMessageId:
+          hsppEvidence.sourceMessageId,
+
+        observedAt:
+          hsppEvidence.observedAt,
+
+        receivedAt:
+          hsppEvidence.receivedAt,
+
+        payloadSchemaVersion:
+          hsppEvidence.payloadSchemaVersion,
+
+        normalizedPayload:
+          hsppEvidence.normalizedPayload,
+
+        integrityAlgorithm:
+          hsppEvidence.integrityAlgorithm,
+
+        integrityFingerprint:
+          hsppEvidence.integrityFingerprint,
+
+        trustState:
+          hsppEvidence.trustState,
+
+        derivationLineage:
+          hsppEvidence.derivationLineage,
+      });
+
+    const processingOutcome =
+      !result.ok
+        ? "failed"
+        : result.skipped === "gps_spike"
+          ? "gps_spike"
+          : result.skipped === "jitter"
+            ? "jitter"
+            : "accepted";
+
+    const hsppAssessment =
+      assessHsppTraccarEvidence({
+        verification:
+          hsppVerification,
+
+        validationState:
+          hsppEvidence.validationState,
+
+        sourceClass:
+          hsppEvidence.sourceClass,
+
+        sourceProvider:
+          hsppEvidence.sourceProvider,
+
+        payloadSchemaVersion:
+          hsppEvidence.payloadSchemaVersion,
+
+        processingOutcome,
+      });
+
+    await applyHsppAssessmentDecision({
+      supabase,
+      organizationId,
+      evidenceId:
+        persistedHsppEvidence.id,
+      integrityFingerprint:
+        persistedHsppEvidence.integrityFingerprint,
+      assessment:
+        hsppAssessment,
+    });
 
     if (!result.ok) {
       await failTelematicsMessage({
