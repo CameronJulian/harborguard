@@ -42,6 +42,12 @@ export type PersistedHsppEvidenceRecord = {
   validationState: string;
   trustState: string;
 
+  operationalEligible: boolean;
+
+  assessmentPolicyVersion: string | null;
+  assessmentReason: string | null;
+  assessedAt: string | null;
+
   derivationLineage:
     HsppDerivationLineage | null;
 };
@@ -84,6 +90,12 @@ type HsppEvidenceRow = {
   validation_state: unknown;
   trust_state: unknown;
 
+  operational_eligible: unknown;
+
+  assessment_policy_version: unknown;
+  assessment_reason: unknown;
+  assessed_at: unknown;
+
   parent_evidence_id: unknown;
   parent_integrity_fingerprint: unknown;
   derivation_type: unknown;
@@ -108,6 +120,10 @@ const HSPP_EVIDENCE_SELECT = [
   "integrity_state",
   "validation_state",
   "trust_state",
+  "operational_eligible",
+  "assessment_policy_version",
+  "assessment_reason",
+  "assessed_at",
   "parent_evidence_id",
   "parent_integrity_fingerprint",
   "derivation_type",
@@ -159,6 +175,90 @@ function requirePayload(
   return value as Record<string, unknown>;
 }
 
+function requireBoolean(
+  value: unknown,
+  fieldName: string
+): boolean {
+  if (typeof value !== "boolean") {
+    throw new Error(
+      `Persisted HSPP ${fieldName} must be boolean.`
+    );
+  }
+
+  return value;
+}
+
+function optionalString(
+  value: unknown,
+  fieldName: string
+): string | null {
+  if (value === null) {
+    return null;
+  }
+
+  return requireString(
+    value,
+    fieldName
+  );
+}
+
+function mapAssessmentProvenance(
+  row: HsppEvidenceRow
+): {
+  policyVersion: string | null;
+  reason: string | null;
+  assessedAt: string | null;
+} {
+  const values = [
+    row.assessment_policy_version,
+    row.assessment_reason,
+    row.assessed_at,
+  ];
+
+  if (
+    values.every(
+      (value) => value === null
+    )
+  ) {
+    return {
+      policyVersion: null,
+      reason: null,
+      assessedAt: null,
+    };
+  }
+
+  if (
+    values.some(
+      (value) =>
+        value === null ||
+        value === undefined
+    )
+  ) {
+    throw new Error(
+      "Persisted HSPP assessment provenance must be either entirely null or complete."
+    );
+  }
+
+  return {
+    policyVersion:
+      optionalString(
+        row.assessment_policy_version,
+        "assessment_policy_version"
+      ),
+
+    reason:
+      optionalString(
+        row.assessment_reason,
+        "assessment_reason"
+      ),
+
+    assessedAt:
+      optionalString(
+        row.assessed_at,
+        "assessed_at"
+      ),
+  };
+}
 function mapDerivationLineage(
   row: HsppEvidenceRow
 ): HsppDerivationLineage | null {
@@ -250,6 +350,9 @@ function mapPersistedHsppEvidence(
       "Persisted HSPP evidence organization does not match the requested organization."
     );
   }
+
+  const assessment =
+    mapAssessmentProvenance(row);
 
   return {
     id,
@@ -343,6 +446,21 @@ function mapPersistedHsppEvidence(
         row.trust_state,
         "trust_state"
       ),
+
+    operationalEligible:
+      requireBoolean(
+        row.operational_eligible,
+        "operational_eligible"
+      ),
+
+    assessmentPolicyVersion:
+      assessment.policyVersion,
+
+    assessmentReason:
+      assessment.reason,
+
+    assessedAt:
+      assessment.assessedAt,
 
     derivationLineage:
       mapDerivationLineage(row),

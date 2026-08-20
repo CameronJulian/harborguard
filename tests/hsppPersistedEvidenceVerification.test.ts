@@ -63,6 +63,17 @@ function buildRow() {
     trust_state:
       evidence.trustState,
 
+    operational_eligible:
+      evidence.operationalEligible,
+
+    assessment_policy_version:
+      null,
+
+    assessment_reason:
+      null,
+
+    assessed_at:
+      null,
     parent_evidence_id:
       null,
 
