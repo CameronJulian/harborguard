@@ -6,6 +6,10 @@ import { requireOrganization } from "@/lib/server-auth";
 import { requirePremiumAccess } from "@/lib/require-premium";
 import { ratelimit } from "@/lib/ratelimit";
 
+import {
+  readHsppEvidenceForOperationalUse,
+} from "@/lib/hspp/readHsppEvidenceForOperationalUse";
+
 function calculateThreatProbability(params: {
   speed: number;
   openAlerts: number;
@@ -130,6 +134,37 @@ export async function GET(request: NextRequest) {
       }
     }
 
+
+    const deniedHsppVehicleIds =
+      new Set<string>();
+
+    for (
+      const [vehicleId, location]
+      of latestByVehicle.entries()
+    ) {
+      const evidenceId =
+        typeof location.hspp_evidence_id === "string"
+          ? location.hspp_evidence_id.trim()
+          : "";
+
+      if (!evidenceId) {
+        continue;
+      }
+
+      const operationalRead =
+        await readHsppEvidenceForOperationalUse({
+          supabase,
+          organizationId,
+          evidenceId,
+        });
+
+      if (!operationalRead.decision.allowed) {
+        deniedHsppVehicleIds.add(
+          vehicleId
+        );
+      }
+    }
+
     const alertsByVehicle = new Map<string, any[]>();
 
     for (const alert of alertsResult.data || []) {
@@ -141,6 +176,15 @@ export async function GET(request: NextRequest) {
     const predictions: any[] = [];
 
     for (const vehicle of vehicles || []) {
+
+      if (
+        deniedHsppVehicleIds.has(
+          vehicle.id
+        )
+      ) {
+        continue;
+      }
+
       const latest = latestByVehicle.get(vehicle.id);
       if (!latest) continue;
 
