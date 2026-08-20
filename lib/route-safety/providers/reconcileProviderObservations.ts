@@ -1,6 +1,7 @@
 import type {
   IntelligenceSourceConfigurationLoader,
 } from "@/lib/route-safety/providers/getIntelligenceSourceConfiguration";
+import { deriveProviderQualityState } from "@/lib/route-safety/deriveProviderQualityState";
 
 export type ProviderReconciliationMetrics = {
   staleProviderObservations: number;
@@ -148,8 +149,6 @@ export async function reconcileProviderObservations(
           ? existingSource
           : freshProviderSources[0];
 
-      const providerConfirmationCount =
-        freshProviderSources.length;
 
       const sourceConfigurationResult =
         await getSourceConfiguration(
@@ -164,19 +163,24 @@ export async function reconcileProviderObservations(
         );
       }
 
+      const providerQuality =
+        deriveProviderQualityState({
+          providerLastSeen:
+            freshProviderLastSeen,
+          providerSources:
+            freshProviderSources,
+          primarySource,
+          primarySourceBaseConfidence:
+            sourceConfigurationResult.configuration
+              .baseConfidence,
+        });
+
+      const providerConfirmationCount =
+        providerQuality.providerConfirmationCount;
+
       const providerConfidence =
-        providerConfirmationCount === 1
-          ? sourceConfigurationResult.configuration
-              .baseConfidence
-          : Math.min(
-              100,
-              60 +
-                Math.max(
-                  0,
-                  providerConfirmationCount - 1
-                ) *
-                  20
-            );
+        providerQuality.providerConfidence;
+
 
       partiallyStaleAlertUpdates.push({
         id: String(alert.id),
