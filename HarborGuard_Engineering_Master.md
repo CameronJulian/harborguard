@@ -5,10 +5,10 @@
 **Project owner:** Cameron Julian Hendrick
 **Repository:** `C:\Users\cameron\harborguard`
 **Primary branch:** `main`
-**Current active development branch:** `feature/road-risk-layer-controls`
-**Latest verified feature commit:** `5e32b8a`
-**Last updated:** 2026-07-28
-**Current status:** Live weather intelligence is integrated into Route Safety prediction and displayed in the Command Center. The latest verified feature is complete and pushed.
+**Current active development branch:** `main`
+**Latest verified feature commit:** `c133e45`
+**Last updated:** 2026-08-20
+**Current status:** HarborGuard Safety Provenance Protocol (HSPP) is implemented through HSPP-007C. Traccar telemetry can now be sealed as cryptographic evidence, verified, assessed under versioned policy, linked exactly to persisted vehicle locations, and enforced by the Fleet Digital Twin through a fail-closed operational-use boundary. HSPP-linked telemetry denied by the trust policy is excluded from Digital Twin operational intelligence, while unlinked legacy/mobile/manual location behavior remains unchanged.
 
 ---
 
@@ -16930,3 +16930,241 @@ stored journey evidence, and eventual ML-training eligibility.
 
 The next implementation item, if a gap is discovered, must be selected from
 that end-to-end audit rather than assumed in advance.
+
+---
+
+## 2026-08-20 - HarborGuard Safety Provenance Protocol through HSPP-007C
+
+### Status
+
+Implemented, verified, deployed where database changes were required, committed, and pushed to `origin/main`.
+
+Current implementation HEAD:
+
+`c133e45 feat(hspp): enforce evidence trust in fleet digital twin`
+
+### Purpose
+
+HarborGuard now has a formal safety-provenance layer for telemetry-derived operational evidence.
+
+The protocol separates:
+
+- evidence integrity;
+- validation state;
+- trust state;
+- operational eligibility;
+- Crowd Intelligence eligibility;
+- ML training eligibility;
+- ML validation eligibility.
+
+Cryptographic integrity alone does not imply operational trust, and existence of an HSPP linkage alone does not authorize operational use.
+
+### Completed HSPP sequence
+
+- HSPP-001 - evidence foundation.
+- HSPP-002 - Traccar evidence sealing.
+- HSPP-003 - integrity verification.
+- HSPP-004 - persisted evidence verification.
+- HSPP-005A - versioned derivation-lineage contract.
+- HSPP-005B - derivation-lineage persistence/read round trip.
+- HSPP-006A - versioned Traccar assessment policy.
+- HSPP-006B - persisted assessment decisions and provenance.
+- HSPP-007A - fail-closed operational-use enforcement boundary.
+- HSPP-007B - exact vehicle-location-to-HSPP-evidence provenance linkage.
+- HSPP-007C - first controlled production consumer enforcement in Fleet Digital Twin.
+
+### Evidence foundation and cryptographic integrity
+
+HSPP evidence uses deterministic canonicalization and lowercase SHA-256 integrity fingerprints.
+
+The evidence fingerprint intentionally excludes identity and receipt-time fields whose inclusion would make logically identical deterministic evidence acquire different fingerprints solely because it was received again.
+
+Persisted evidence can be read back and independently reverified against its stored fingerprint.
+
+Integrity verification remains separate from operational trust and eligibility.
+
+### Derivation lineage
+
+HSPP supports explicit versioned derivation lineage.
+
+Derived evidence can retain:
+
+- parent evidence identity;
+- parent integrity fingerprint;
+- derivation type;
+- derivation version.
+
+Lineage persistence and read-back behavior are covered by executable and contract tests.
+
+### Assessment policy
+
+Traccar evidence is assessed only after HarborGuard's normalized vehicle-location processing result is known.
+
+The versioned assessment policy distinguishes accepted/plausible telemetry from GPS-spike or failed processing outcomes.
+
+Assessment persistence records:
+
+- trust state;
+- operational eligibility;
+- Crowd Intelligence eligibility;
+- training eligibility;
+- validation eligibility;
+- assessment policy version;
+- assessment reason;
+- assessment timestamp.
+
+The current conservative Traccar policy does not automatically enable Crowd Intelligence, training, or validation eligibility.
+
+### Operational-use enforcement
+
+HSPP-007A added a reusable fail-closed decision boundary.
+
+Operational use requires all of the following:
+
+1. persisted evidence exists;
+2. integrity verification returns `MATCH`;
+3. validation state is `VALIDATED`;
+4. assessment provenance is complete;
+5. trust state is operationally acceptable;
+6. `operational_eligible` is explicitly `true`.
+
+An `operational_eligible = true` database value by itself is not sufficient.
+
+Unassessed or partially assessed evidence therefore cannot silently become operational authority.
+
+### Exact vehicle-location provenance
+
+HSPP-007B added optional `vehicle_locations.hspp_evidence_id` provenance.
+
+For Traccar telemetry:
+
+`telematics receipt`
+`-> HSPP evidence`
+`-> persisted HSPP evidence ID`
+`-> processVehicleLocationUpdate()`
+`-> createVehicleLocation()`
+`-> vehicle_locations.hspp_evidence_id`
+
+The relationship is organization scoped.
+
+The linkage is nullable so historical, mobile, manual, and other non-HSPP location paths remain backward compatible.
+
+Presence of `hspp_evidence_id` does not itself authorize operational use.
+
+Database migration deployed:
+
+`20260820130000_link_vehicle_locations_to_hspp_evidence.sql`
+
+Local and remote Supabase migration histories were verified aligned after deployment.
+
+### First production consumer - Fleet Digital Twin
+
+HSPP-007C introduced:
+
+`lib/hspp/readHsppEvidenceForOperationalUse.ts`
+
+This wrapper combines:
+
+`readAndVerifyHsppEvidence()`
+`-> decideHsppOperationalUse()`
+
+Fleet Digital Twin now selects `hspp_evidence_id` with recent vehicle locations.
+
+For the latest location of each vehicle:
+
+- an unlinked location preserves the existing Digital Twin behavior;
+- an HSPP-linked location is read and cryptographically verified;
+- the HSPP operational-use policy is applied;
+- if the decision denies operational use, that vehicle is excluded from the Digital Twin active operational set.
+
+This is deliberately limited to Fleet Digital Twin as the first controlled consumer.
+
+Fleet Live, Dispatch Tracking, Crowd Intelligence, Route Safety production scoring, and ML authority were not changed by HSPP-007C.
+
+### Verification
+
+The completed HSPP regression gate passed:
+
+- 79 / 79 HSPP source-contract tests;
+- 58 / 58 HSPP executable tests;
+- `npx tsc --noEmit`;
+- full Next.js production build;
+- all 132 / 132 static pages generated;
+- `git diff --check`.
+
+The HSPP-007B database change additionally passed:
+
+- Supabase dry run;
+- Supabase database lint;
+- real migration deployment;
+- local/remote migration-history verification.
+
+### Relevant implementation commits
+
+Recent consumer-side HSPP implementation commits:
+
+- `c3208d2` - persist HSPP assessment decisions;
+- `e7b3a9a` - add HSPP operational use boundary;
+- `6fd3cb0` - link vehicle locations to HSPP evidence;
+- `c133e45` - enforce evidence trust in Fleet Digital Twin.
+
+Earlier HSPP foundation, sealing, verification, lineage, and assessment-policy work was implemented and committed before this consumer-side sequence.
+
+### Operational meaning
+
+HarborGuard now has an end-to-end provenance and operational-consumption chain:
+
+`Traccar observation`
+`-> normalized evidence`
+`-> deterministic canonicalization`
+`-> SHA-256 evidence fingerprint`
+`-> persisted private HSPP evidence`
+`-> HarborGuard telemetry plausibility processing`
+`-> versioned HSPP trust assessment`
+`-> exact vehicle-location provenance linkage`
+`-> persisted evidence read and integrity verification`
+`-> fail-closed operational-use decision`
+`-> Fleet Digital Twin controlled consumption`
+
+This is the first HarborGuard SaaS feature that actively uses HSPP to prevent HSPP-linked telemetry that fails provenance/integrity/trust policy from influencing an operational intelligence surface.
+
+### Safety boundaries intentionally preserved
+
+HSPP does not yet automatically:
+
+- promote telemetry into Crowd Intelligence;
+- authorize ML training data;
+- authorize ML validation data;
+- change Route Safety production scoring;
+- change Fleet Live behavior;
+- change Dispatch Tracking or mission state;
+- treat cryptographic integrity as semantic truth;
+- treat provenance linkage as operational authorization.
+
+Those boundaries require separate audit-first work items.
+
+### Next recommended step
+
+Begin with a fresh audit of HSPP's next highest-value controlled consumer.
+
+Do not automatically extend HSPP enforcement across every location reader.
+
+The next consumer should be selected by inspecting:
+
+- operational consequence;
+- blast radius;
+- latency and query cost;
+- failure behavior;
+- compatibility with unlinked legacy/mobile/manual locations;
+- whether exclusion, fallback, warning, or hard denial is the correct behavior.
+
+Any future HSPP expansion must preserve the sequence:
+
+audit
+-> identify one precise consumer gap
+-> focused implementation
+-> HSPP regression
+-> TypeScript
+-> production build
+-> commit/push
+-> Engineering Master update.
