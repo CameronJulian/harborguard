@@ -1,6 +1,28 @@
 import type { RouteSafetyAlertRow } from "@/lib/route-safety/types";
 import { deriveProviderQualityState } from "@/lib/route-safety/deriveProviderQualityState";
 
+export type ProviderAlertResolution = {
+  inputIndex: number;
+  outcome:
+    | "inserted"
+    | "refreshed_existing"
+    | "merged_cross_provider"
+    | "skipped_duplicate";
+  alertId: string | null;
+  providerSources: string[];
+  providerLastSeen: Record<string, string>;
+  providerConfirmationCount: number;
+  providerConfidence: number;
+};
+
+export type InsertNewProviderAlertsResult = {
+  imported: number;
+  refreshedExisting: number;
+  skippedDuplicates: number;
+  mergedDuplicates: number;
+  resolutions: ProviderAlertResolution[];
+};
+
 function areCrossProviderEventsCompatible(
   existingType: string,
   existingTitle: string,
@@ -228,13 +250,14 @@ export async function insertNewProviderAlerts(
   source: string,
   baseConfidence: number,
   rows: RouteSafetyAlertRow[]
-) {
+): Promise<InsertNewProviderAlertsResult> {
   if (rows.length === 0) {
     return {
       imported: 0,
       refreshedExisting: 0,
       skippedDuplicates: 0,
       mergedDuplicates: 0,
+      resolutions: [],
     };
   }
 
@@ -289,6 +312,8 @@ provider_sources,
       provider_confirmation_count: number;
       provider_confidence: number;
       last_provider_confirmation_at: string;
+      __inputIndex: number;
+      __resolutionKey: string;
     }
   > = [];
 
@@ -296,11 +321,39 @@ provider_sources,
   let skippedDuplicates = 0;
   let mergedDuplicates = 0;
 
-  for (const row of rows) {
+  const resolutions: ProviderAlertResolution[] = [];
+
+  const pendingInsertedByKey =
+    new Map<
+      string,
+      Array<{
+        inputIndex: number;
+        outcome:
+          | "inserted"
+          | "skipped_duplicate";
+      }>
+    >();
+
+  for (let inputIndex = 0; inputIndex < rows.length; inputIndex += 1) {
+    const row = rows[inputIndex];
     const key = buildAlertKey(row);
 
     if (queuedSameProviderKeys.has(key)) {
       skippedDuplicates += 1;
+
+      const pendingForKey =
+        pendingInsertedByKey.get(key);
+
+      if (!pendingForKey) {
+        throw new Error(
+          `Missing pending inserted resolution for duplicate key ${key}.`
+        );
+      }
+
+      pendingForKey.push({
+        inputIndex,
+        outcome: "skipped_duplicate",
+      });
       continue;
     }
 
@@ -395,6 +448,20 @@ provider_sources,
       sameProviderMatch.road_name = refreshedRoadName;
 
       refreshedExisting += 1;
+
+      resolutions.push({
+        inputIndex,
+        outcome: "refreshed_existing",
+        alertId:
+          String(sameProviderMatch.id),
+        providerSources:
+          providerQuality.providerSources,
+        providerLastSeen,
+        providerConfirmationCount:
+          providerQuality.providerConfirmationCount,
+        providerConfidence:
+          providerQuality.providerConfidence,
+      });
       continue;
     }
 
@@ -607,6 +674,17 @@ provider_sources,
       crossProviderMatch.expires_at = mergedExpiresAt;
 
       mergedDuplicates += 1;
+
+      resolutions.push({
+        inputIndex,
+        outcome: "merged_cross_provider",
+        alertId:
+          String(crossProviderMatch.id),
+        providerSources,
+        providerLastSeen,
+        providerConfirmationCount,
+        providerConfidence,
+      });
       continue;
     }
 
@@ -635,9 +713,19 @@ provider_sources,
         confirmedAt,
       provider_last_seen:
         providerQuality.providerLastSeen,
+      __inputIndex: inputIndex,
+      __resolutionKey: key,
     };
 
     uniqueRows.push(providerAlert);
+
+    pendingInsertedByKey.set(
+      key,
+      [{
+        inputIndex,
+        outcome: "inserted",
+      }]
+    );
 
     normalizedExistingAlerts.push({
       id: null,
@@ -667,23 +755,132 @@ provider_sources,
       refreshedExisting,
       skippedDuplicates,
       mergedDuplicates,
+      resolutions,
     };
   }
+
+  const rowsToInsert =
+    uniqueRows.map((
+      {
+        __inputIndex: _inputIndex,
+        __resolutionKey: _resolutionKey,
+        ...persistedRow
+      }
+    ) => persistedRow);
 
   const { data: inserted, error: insertError } =
     await supabase
       .from("route_safety_alerts")
-      .insert(uniqueRows)
-      .select("id");
+      .insert(rowsToInsert)
+      .select(`
+        id,
+        title,
+        latitude,
+        longitude,
+        provider_sources,
+        provider_last_seen,
+        provider_confirmation_count,
+        provider_confidence
+      `);
 
   if (insertError) {
     throw insertError;
   }
+
+  const insertedByKey =
+    new Map<string, any>();
+
+  for (const insertedRow of inserted || []) {
+    const insertedKey =
+      buildAlertKey({
+        title:
+          String(insertedRow.title || ""),
+        latitude:
+          Number(insertedRow.latitude),
+        longitude:
+          Number(insertedRow.longitude),
+      });
+
+    insertedByKey.set(
+      insertedKey,
+      insertedRow
+    );
+  }
+
+  for (const [key, pending] of pendingInsertedByKey) {
+    const insertedRow =
+      insertedByKey.get(key);
+
+    if (!insertedRow) {
+      throw new Error(
+        `Inserted Route Safety alert could not be resolved for key ${key}.`
+      );
+    }
+
+    const providerSources =
+      Array.isArray(insertedRow.provider_sources)
+        ? insertedRow.provider_sources.map(String)
+        : [];
+
+    const providerLastSeen =
+      insertedRow.provider_last_seen &&
+      typeof insertedRow.provider_last_seen === "object"
+        ? Object.fromEntries(
+            Object.entries(
+              insertedRow.provider_last_seen
+            ).map(([provider, observedAt]) => [
+              String(provider),
+              String(observedAt),
+            ])
+          )
+        : {};
+
+    const providerConfirmationCount =
+      Number(
+        insertedRow.provider_confirmation_count
+      );
+
+    const providerConfidence =
+      Number(
+        insertedRow.provider_confidence
+      );
+
+    if (
+      !Number.isInteger(providerConfirmationCount) ||
+      providerConfirmationCount < 0 ||
+      !Number.isFinite(providerConfidence)
+    ) {
+      throw new Error(
+        `Inserted Route Safety provider quality is invalid for key ${key}.`
+      );
+    }
+
+    for (const pendingResolution of pending) {
+      resolutions.push({
+        inputIndex:
+          pendingResolution.inputIndex,
+        outcome:
+          pendingResolution.outcome,
+        alertId:
+          String(insertedRow.id),
+        providerSources,
+        providerLastSeen,
+        providerConfirmationCount,
+        providerConfidence,
+      });
+    }
+  }
+
+  resolutions.sort(
+    (a, b) =>
+      a.inputIndex - b.inputIndex
+  );
 
   return {
     imported: inserted?.length || 0,
     refreshedExisting,
     skippedDuplicates,
     mergedDuplicates,
+    resolutions,
   };
 }
