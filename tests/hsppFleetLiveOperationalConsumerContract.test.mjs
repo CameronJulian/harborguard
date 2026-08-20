@@ -104,14 +104,56 @@ test("Fleet Live preserves active trip stops and existing alerts", () => {
   assert.match(route, /activeTrip:/);
   assert.match(route, /\bstops,\s*[\r\n]+\s*openAlerts:\s*alerts/);
 });
-
-test("HSPP-007G does not attempt per-history-point HSPP verification", () => {
+test("HSPP-007G keeps one latest-location operational read", () => {
   const calls =
     route.match(
       /readHsppEvidenceForOperationalUse\s*\(/g
     ) || [];
 
   assert.equal(calls.length, 1);
+});
+
+test("HSPP-007H batch-verifies historical linked telemetry", () => {
+  assert.match(
+    route,
+    /readHsppEvidenceBatchForOperationalUse/
+  );
+
+  assert.match(
+    route,
+    /historicalHsppEvidenceIds/
+  );
+
+  assert.match(
+    route,
+    /deniedHistoricalHsppEvidenceIds/
+  );
+});
+
+test("HSPP-007H filters denied history before route construction", () => {
+  const denyIndex =
+    route.indexOf(
+      "deniedHistoricalHsppEvidenceIds.has"
+    );
+
+  const reverseIndex =
+    route.indexOf(
+      ".reverse()"
+    );
+
+  assert.notEqual(denyIndex, -1);
+  assert.notEqual(reverseIndex, -1);
+
+  assert.ok(
+    denyIndex < reverseIndex
+  );
+});
+
+test("HSPP-007H preserves unlinked historical telemetry", () => {
+  assert.match(
+    route,
+    /if\s*\(\s*!evidenceId\s*\)\s*\{\s*return true;/
+  );
 });
 
 test("Fleet UI no longer trusts raw realtime location inserts directly", () => {

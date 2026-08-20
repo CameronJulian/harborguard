@@ -3,6 +3,7 @@ import { requireOrganization } from "@/lib/server-auth";
 
 import {
   readHsppEvidenceForOperationalUse,
+  readHsppEvidenceBatchForOperationalUse,
 } from "@/lib/hspp/readHsppEvidenceForOperationalUse";
 
 type LocationPoint = {
@@ -205,6 +206,47 @@ export async function GET() {
         locationsByVehicle.set(location.vehicle_id, points);
       }
     }
+    const historicalHsppEvidenceIds =
+      Array.from(
+        new Set(
+          Array.from(
+            locationsByVehicle.values()
+          )
+            .flat()
+            .map((location) =>
+              typeof location.hspp_evidence_id ===
+                "string"
+                ? location.hspp_evidence_id.trim()
+                : ""
+            )
+            .filter(Boolean)
+        )
+      );
+
+    const historicalOperationalReads =
+      await readHsppEvidenceBatchForOperationalUse({
+        supabase,
+        organizationId,
+        evidenceIds:
+          historicalHsppEvidenceIds,
+      });
+
+    const deniedHistoricalHsppEvidenceIds =
+      new Set<string>();
+
+    for (
+      const [
+        evidenceId,
+        operationalRead,
+      ]
+      of historicalOperationalReads.entries()
+    ) {
+      if (!operationalRead.decision.allowed) {
+        deniedHistoricalHsppEvidenceIds.add(
+          evidenceId
+        );
+      }
+    }
 
     const deniedLatestHsppVehicleIds =
       new Set<string>();
@@ -290,8 +332,22 @@ export async function GET() {
         !deniedLatestHsppVehicleIds.has(
           vehicle.id
         );
-
       const routePoints = [...recentLocations]
+        .filter((point) => {
+          const evidenceId =
+            typeof point.hspp_evidence_id ===
+              "string"
+              ? point.hspp_evidence_id.trim()
+              : "";
+
+          if (!evidenceId) {
+            return true;
+          }
+
+          return !deniedHistoricalHsppEvidenceIds.has(
+            evidenceId
+          );
+        })
         .reverse()
         .map((point) => {
           const latitude = toNumber(point.latitude);

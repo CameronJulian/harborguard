@@ -102,7 +102,7 @@ type HsppEvidenceRow = {
   derivation_version: unknown;
 };
 
-const HSPP_EVIDENCE_SELECT = [
+export const HSPP_EVIDENCE_SELECT = [
   "id",
   "organization_id",
   "protocol_version",
@@ -467,6 +467,197 @@ function mapPersistedHsppEvidence(
   };
 }
 
+function verifyPersistedHsppEvidence(
+  evidence: PersistedHsppEvidenceRecord
+): HsppIntegrityVerificationResult {
+  return verifyHsppEvidenceIntegrity({
+    protocolVersion:
+      evidence.protocolVersion,
+
+    canonicalizationVersion:
+      evidence.canonicalizationVersion,
+
+    sourceClass:
+      evidence.sourceClass,
+
+    sourceProvider:
+      evidence.sourceProvider,
+
+    sourceStream:
+      evidence.sourceStream,
+
+    sourceMessageId:
+      evidence.sourceMessageId,
+
+    observedAt:
+      evidence.observedAt,
+
+    receivedAt:
+      evidence.receivedAt,
+
+    payloadSchemaVersion:
+      evidence.payloadSchemaVersion,
+
+    normalizedPayload:
+      evidence.normalizedPayload,
+
+    integrityAlgorithm:
+      evidence.integrityAlgorithm,
+
+    integrityFingerprint:
+      evidence.integrityFingerprint,
+
+    trustState:
+      evidence.trustState,
+
+    derivationLineage:
+      evidence.derivationLineage,
+  });
+}
+
+export type ReadAndVerifyHsppEvidenceBatchInput = {
+  supabase: SupabaseClient;
+  organizationId: string;
+  evidenceIds: string[];
+};
+
+export type ReadAndVerifyHsppEvidenceBatchResult =
+  Map<string, ReadAndVerifyHsppEvidenceResult>;
+
+export async function readAndVerifyHsppEvidenceBatch({
+  supabase,
+  organizationId,
+  evidenceIds,
+}: ReadAndVerifyHsppEvidenceBatchInput): Promise<ReadAndVerifyHsppEvidenceBatchResult> {
+  const normalizedOrganizationId =
+    requireNonBlank(
+      organizationId,
+      "organizationId"
+    );
+
+  const normalizedEvidenceIds =
+    Array.from(
+      new Set(
+        evidenceIds.map(
+          (evidenceId) =>
+            requireNonBlank(
+              evidenceId,
+              "evidenceId"
+            )
+        )
+      )
+    );
+
+  const results =
+    new Map<
+      string,
+      ReadAndVerifyHsppEvidenceResult
+    >();
+
+  if (normalizedEvidenceIds.length === 0) {
+    return results;
+  }
+  const HSPP_EVIDENCE_BATCH_SIZE =
+    100;
+
+  const rows:
+    HsppEvidenceRow[] = [];
+
+  for (
+    let offset = 0;
+    offset < normalizedEvidenceIds.length;
+    offset += HSPP_EVIDENCE_BATCH_SIZE
+  ) {
+    const evidenceIdChunk =
+      normalizedEvidenceIds.slice(
+        offset,
+        offset + HSPP_EVIDENCE_BATCH_SIZE
+      );
+
+    const { data, error } =
+      await supabase
+        .from("hspp_evidence")
+        .select(HSPP_EVIDENCE_SELECT)
+        .eq(
+          "organization_id",
+          normalizedOrganizationId
+        )
+        .in(
+          "id",
+          evidenceIdChunk
+        );
+
+    if (error) {
+      throw error;
+    }
+
+    rows.push(
+      ...(
+        (data || []) as unknown as
+          HsppEvidenceRow[]
+      )
+    );
+  }
+
+  const rowsById =
+    new Map<string, HsppEvidenceRow>();
+
+  for (const row of rows) {
+    const rowId =
+      requireString(
+        row.id,
+        "id"
+      );
+
+    rowsById.set(
+      rowId,
+      row
+    );
+  }
+
+  for (const evidenceId of normalizedEvidenceIds) {
+    const row =
+      rowsById.get(
+        evidenceId
+      );
+
+    if (!row) {
+      results.set(
+        evidenceId,
+        {
+          found: false,
+          evidence: null,
+          verification: null,
+        }
+      );
+
+      continue;
+    }
+
+    const evidence =
+      mapPersistedHsppEvidence(
+        row,
+        normalizedOrganizationId,
+        evidenceId
+      );
+
+    const verification =
+      verifyPersistedHsppEvidence(
+        evidence
+      );
+
+    results.set(
+      evidenceId,
+      {
+        found: true,
+        evidence,
+        verification,
+      }
+    );
+  }
+
+  return results;
+}
 export async function readAndVerifyHsppEvidence({
   supabase,
   organizationId,
@@ -516,51 +707,10 @@ export async function readAndVerifyHsppEvidence({
       normalizedOrganizationId,
       normalizedEvidenceId
     );
-
   const verification =
-    verifyHsppEvidenceIntegrity({
-      protocolVersion:
-        evidence.protocolVersion,
-
-      canonicalizationVersion:
-        evidence.canonicalizationVersion,
-
-      sourceClass:
-        evidence.sourceClass,
-
-      sourceProvider:
-        evidence.sourceProvider,
-
-      sourceStream:
-        evidence.sourceStream,
-
-      sourceMessageId:
-        evidence.sourceMessageId,
-
-      observedAt:
-        evidence.observedAt,
-
-      receivedAt:
-        evidence.receivedAt,
-
-      payloadSchemaVersion:
-        evidence.payloadSchemaVersion,
-
-      normalizedPayload:
-        evidence.normalizedPayload,
-
-      integrityAlgorithm:
-        evidence.integrityAlgorithm,
-
-      integrityFingerprint:
-        evidence.integrityFingerprint,
-
-      trustState:
-        evidence.trustState,
-
-      derivationLineage:
-        evidence.derivationLineage,
-    });
+    verifyPersistedHsppEvidence(
+      evidence
+    );
 
   return {
     found: true,
