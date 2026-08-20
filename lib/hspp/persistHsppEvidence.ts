@@ -6,6 +6,7 @@ export type PersistHsppEvidenceInput = {
   supabase: any;
   organizationId: string;
   evidence: BuiltHsppEvidence;
+  providerObservationId?: string | null;
   telematicsReceiptId?: string | null;
   vehicleId?: string | null;
   tripId?: string | null;
@@ -33,6 +34,7 @@ export async function persistHsppEvidence({
   supabase,
   organizationId,
   evidence,
+  providerObservationId = null,
   telematicsReceiptId = null,
   vehicleId = null,
   tripId = null,
@@ -125,6 +127,9 @@ export async function persistHsppEvidence({
         derivation_version:
           lineage?.derivationVersion ??
           null,
+
+        provider_observation_id:
+          providerObservationId,
 
         telematics_receipt_id:
           telematicsReceiptId,
