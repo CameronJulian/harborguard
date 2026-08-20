@@ -107,13 +107,8 @@ test(
 );
 
 test(
-  "HSPP-008B7 does not create HSPP evidence or assessment yet",
+  "HERE integration still does not assess HSPP evidence yet",
   () => {
-    assert.doesNotMatch(
-      source,
-      /persistHsppEvidence/
-    );
-
     assert.doesNotMatch(
       source,
       /await\s+assessHsppExternalIntelligenceEvidence\s*\(/

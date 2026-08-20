@@ -7,6 +7,8 @@ import { insertNewProviderAlerts } from "@/lib/route-safety/upsertRouteSafetyAle
 import { enrichRouteSafetyAlertsWithRoadContext } from "@/lib/route-safety/enrichRouteSafetyAlertsWithRoadContext";
 import { resolveRoadContext } from "@/lib/road-context/provider";
 import { persistRouteSafetyProviderObservation } from "@/lib/hspp/persistRouteSafetyProviderObservation";
+import { buildHsppEvidence } from "@/lib/hspp/buildHsppEvidence";
+import { persistHsppEvidenceForProviderObservation } from "@/lib/hspp/persistHsppEvidenceForProviderObservation";
 import { HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION } from "@/lib/hspp/assessHsppExternalIntelligenceEvidence";
 
 
@@ -340,24 +342,60 @@ export async function importHereIncidents(
         continue;
       }
 
-      await persistRouteSafetyProviderObservation({
+      const providerObservation =
+        await persistRouteSafetyProviderObservation({
+          supabase,
+          organizationId,
+          provider:
+            "here",
+          sourceStream:
+            "here_traffic",
+          providerMessageId:
+            normalized.providerMessageId,
+          observedAt:
+            normalized.observedAt,
+          payloadSchemaVersion:
+            HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION,
+          normalizedPayload:
+            normalized.row as unknown as Record<
+              string,
+              unknown
+            >,
+        });
+
+      const evidence =
+        buildHsppEvidence({
+          sourceClass:
+            "external_intelligence",
+
+          sourceProvider:
+            providerObservation.provider,
+
+          sourceStream:
+            providerObservation.sourceStream,
+
+          sourceMessageId:
+            providerObservation.providerMessageId,
+
+          observedAt:
+            providerObservation.observedAt,
+
+          receivedAt:
+            providerObservation.receivedAt,
+
+          payloadSchemaVersion:
+            providerObservation.payloadSchemaVersion,
+
+          normalizedPayload:
+            providerObservation.normalizedPayload,
+        });
+
+      await persistHsppEvidenceForProviderObservation({
         supabase,
         organizationId,
-        provider:
-          "here",
-        sourceStream:
-          "here_traffic",
-        providerMessageId:
-          normalized.providerMessageId,
-        observedAt:
-          normalized.observedAt,
-        payloadSchemaVersion:
-          HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION,
-        normalizedPayload:
-          normalized.row as unknown as Record<
-            string,
-            unknown
-          >,
+        providerObservationId:
+          providerObservation.id,
+        evidence,
       });
     }
 
