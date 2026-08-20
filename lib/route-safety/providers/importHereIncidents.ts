@@ -6,6 +6,8 @@ import type { RouteSafetyAlertRow } from "@/lib/route-safety/types";
 import { insertNewProviderAlerts } from "@/lib/route-safety/upsertRouteSafetyAlerts";
 import { enrichRouteSafetyAlertsWithRoadContext } from "@/lib/route-safety/enrichRouteSafetyAlertsWithRoadContext";
 import { resolveRoadContext } from "@/lib/road-context/provider";
+import { persistRouteSafetyProviderObservation } from "@/lib/hspp/persistRouteSafetyProviderObservation";
+import { HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION } from "@/lib/hspp/assessHsppExternalIntelligenceEvidence";
 
 
 
@@ -212,58 +214,161 @@ export async function importHereIncidents(
       ? data.results
       : [];
 
-    const normalizedRows = incidents
-      .map((incident: any): RouteSafetyAlertRow | null => {
-        const details = incident?.incidentDetails || {};
+    const normalizedIncidents = incidents
+      .map((incident: any) => {
+        const details =
+          incident?.incidentDetails || {};
 
-        const description = String(
-          details?.description?.value ||
-            details?.summary?.value ||
-            details?.type ||
-            "HERE traffic incident"
-        );
+        const description =
+          String(
+            details?.description?.value ||
+              details?.summary?.value ||
+              details?.type ||
+              "HERE traffic incident"
+          );
 
-        const coordinates = getHereLatLng(incident);
+        const coordinates =
+          getHereLatLng(incident);
 
         if (!coordinates) {
           return null;
         }
-		
-		const firstLink =
-  incident?.location?.shape?.links?.[0] ??
-  incident?.location?.polyline?.links?.[0];
 
-const roadName =
-  firstLink?.name ??
-  firstLink?.roadName ??
-  details?.roadName ??
-  null;
+        const firstLink =
+          incident?.location?.shape?.links?.[0] ??
+          incident?.location?.polyline?.links?.[0];
+
+        const roadName =
+          firstLink?.name ??
+          firstLink?.roadName ??
+          details?.roadName ??
+          null;
+
+        const row: RouteSafetyAlertRow = {
+          organization_id:
+            organizationId,
+          type:
+            mapHereType(description),
+          title:
+            description.slice(0, 120),
+          description,
+          latitude:
+            coordinates.latitude,
+          longitude:
+            coordinates.longitude,
+          radius_meters:
+            1000,
+          severity:
+            mapHereSeverity(
+              details?.criticality
+            ),
+          source:
+            "here_traffic",
+          status:
+            "active",
+          expires_at:
+            details?.endTime || null,
+          verified_at:
+            new Date().toISOString(),
+          road_name:
+            roadName,
+          road_from:
+            null,
+          road_to:
+            null,
+          provider_geometry:
+            incident?.location?.shape ??
+            incident?.location?.polyline ??
+            null,
+        };
+
+        const providerMessageId =
+          typeof details?.originalId === "string"
+            ? details.originalId.trim()
+            : typeof details?.id === "string"
+              ? details.id.trim()
+              : "";
+
+        const observedAtCandidate =
+          typeof details?.entryTime === "string"
+            ? details.entryTime
+            : typeof details?.startTime === "string"
+              ? details.startTime
+              : "";
+
+        const observedAt =
+          observedAtCandidate &&
+          Number.isFinite(
+            Date.parse(observedAtCandidate)
+          )
+            ? new Date(
+                Date.parse(
+                  observedAtCandidate
+                )
+              ).toISOString()
+            : null;
 
         return {
-          organization_id: organizationId,
-          type: mapHereType(description),
-          title: description.slice(0, 120),
-          description,
-          latitude: coordinates.latitude,
-          longitude: coordinates.longitude,
-          radius_meters: 1000,
-          severity: mapHereSeverity(details?.criticality),
-          source: "here_traffic",
-          status: "active",
-          expires_at: details?.endTime || null,
-verified_at: new Date().toISOString(),
-
-road_name: roadName,
-road_from: null,
-road_to: null,
-provider_geometry:
-  incident?.location?.shape ??
-  incident?.location?.polyline ??
-  null,
+          row,
+          providerMessageId,
+          observedAt,
         };
       })
-      .filter((row: RouteSafetyAlertRow | null): row is RouteSafetyAlertRow => row !== null);
+      .filter(
+        (
+          item: {
+            row: RouteSafetyAlertRow;
+            providerMessageId: string;
+            observedAt: string | null;
+          } | null
+        ): item is {
+          row: RouteSafetyAlertRow;
+          providerMessageId: string;
+          observedAt: string | null;
+        } =>
+          item !== null
+      );
 
+    for (
+      const normalized
+      of normalizedIncidents
+    ) {
+      if (
+        !normalized.providerMessageId ||
+        !normalized.observedAt
+      ) {
+        continue;
+      }
+
+      await persistRouteSafetyProviderObservation({
+        supabase,
+        organizationId,
+        provider:
+          "here",
+        sourceStream:
+          "here_traffic",
+        providerMessageId:
+          normalized.providerMessageId,
+        observedAt:
+          normalized.observedAt,
+        payloadSchemaVersion:
+          HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION,
+        normalizedPayload:
+          normalized.row as unknown as Record<
+            string,
+            unknown
+          >,
+      });
+    }
+
+    const normalizedRows =
+      normalizedIncidents.map(
+        (item: {
+          row: RouteSafetyAlertRow;
+          providerMessageId: string;
+          observedAt: string | null;
+        }) => item.row
+      );
     const roadContextEnrichment =
 
       await enrichRouteSafetyAlertsWithRoadContext(
