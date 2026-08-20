@@ -1,21 +1,23 @@
 import type {
-  HsppTraccarAssessmentResult,
-} from "@/lib/hspp/assessHsppTraccarEvidence";
+  HsppAssessmentDecision,
+} from "@/lib/hspp/hsppAssessmentDecision";
+
+import type {
+  HsppTrustState,
+} from "@/lib/hspp/buildHsppEvidence";
 
 export type ApplyHsppAssessmentDecisionInput = {
   supabase: any;
   organizationId: string;
   evidenceId: string;
   integrityFingerprint: string;
-  assessment: HsppTraccarAssessmentResult;
+  assessment: HsppAssessmentDecision;
   assessedAt?: string;
 };
 
 export type AppliedHsppAssessmentDecision = {
   evidenceId: string;
-  trustState:
-    | "UNASSESSED"
-    | "PLAUSIBLE";
+  trustState: HsppTrustState;
   operationalEligible: boolean;
   policyVersion: string;
   reason: string;
@@ -161,9 +163,7 @@ export async function applyHsppAssessmentDecision({
       data.id,
 
     trustState:
-      data.trust_state as
-        | "UNASSESSED"
-        | "PLAUSIBLE",
+      data.trust_state as HsppTrustState,
 
     operationalEligible:
       data.operational_eligible,

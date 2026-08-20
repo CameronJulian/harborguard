@@ -1,4 +1,7 @@
 import type {
+  HsppAssessmentDecision,
+} from "@/lib/hspp/hsppAssessmentDecision";
+import type {
   HsppIntegrityVerificationResult,
 } from "@/lib/hspp/verifyHsppEvidenceIntegrity";
 
@@ -20,28 +23,28 @@ export type AssessHsppTraccarEvidenceInput = {
   processingOutcome: HsppTraccarProcessingOutcome;
 };
 
-export type HsppTraccarAssessmentResult = {
-  policyVersion:
-    typeof HSPP_TRACCAR_ASSESSMENT_POLICY_VERSION;
+export type HsppTraccarAssessmentResult =
+  HsppAssessmentDecision & {
+    policyVersion:
+      typeof HSPP_TRACCAR_ASSESSMENT_POLICY_VERSION;
 
-  trustState:
-    | "UNASSESSED"
-    | "PLAUSIBLE";
+    trustState:
+      | "UNASSESSED"
+      | "PLAUSIBLE";
 
-  operationalEligible: boolean;
-  crowdEligible: false;
-  trainingEligible: false;
-  validationEligible: false;
+    crowdEligible: false;
+    trainingEligible: false;
+    validationEligible: false;
 
-  reason:
-    | "integrity_not_verified"
-    | "validation_not_validated"
-    | "unsupported_source"
-    | "unsupported_schema"
-    | "location_processing_failed"
-    | "gps_spike_rejected"
-    | "plausibility_passed";
-};
+    reason:
+      | "integrity_not_verified"
+      | "validation_not_validated"
+      | "unsupported_source"
+      | "unsupported_schema"
+      | "location_processing_failed"
+      | "gps_spike_rejected"
+      | "plausibility_passed";
+  };
 
 export function assessHsppTraccarEvidence(
   input: AssessHsppTraccarEvidenceInput
