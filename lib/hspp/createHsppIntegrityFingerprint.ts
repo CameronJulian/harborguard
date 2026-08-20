@@ -2,11 +2,34 @@ import { createHash } from "crypto";
 
 import {
   canonicalizeHsppEvidence,
-  HSPP_CANONICALIZATION_VERSION,
 } from "@/lib/hspp/canonicalizeHsppEvidence";
 
-export const HSPP_PROTOCOL_VERSION = "0.1" as const;
-export const HSPP_INTEGRITY_ALGORITHM = "sha256" as const;
+export const HSPP_PROTOCOL_VERSION =
+  "0.1" as const;
+
+export const HSPP_INTEGRITY_ALGORITHM =
+  "sha256" as const;
+
+export const HSPP_CANONICALIZATION_VERSION_V1 =
+  "hspp-canonical-json-v1" as const;
+
+export const HSPP_CANONICALIZATION_VERSION_V2 =
+  "hspp-canonical-json-lineage-v2" as const;
+
+/*
+ * Backward-compatible alias.
+ *
+ * Existing/root HSPP evidence continues to use v1.
+ */
+export const HSPP_CANONICALIZATION_VERSION =
+  HSPP_CANONICALIZATION_VERSION_V1;
+
+export type HsppDerivationLineage = {
+  parentEvidenceId: string;
+  parentIntegrityFingerprint: string;
+  derivationType: string;
+  derivationVersion: string;
+};
 
 export type HsppFingerprintInput = {
   protocolVersion: string;
@@ -18,6 +41,7 @@ export type HsppFingerprintInput = {
   observedAt: string;
   payloadSchemaVersion: string;
   normalizedPayload: Record<string, unknown>;
+  derivationLineage?: HsppDerivationLineage | null;
 };
 
 export type HsppFingerprintResult = {
@@ -30,6 +54,7 @@ export type HsppFingerprintResult = {
   observedAt: string;
   payloadSchemaVersion: string;
   normalizedPayload: Record<string, unknown>;
+  derivationLineage: HsppDerivationLineage | null;
   canonicalEvidence: string;
   integrityFingerprint: string;
 };
@@ -62,76 +87,206 @@ function requireTimestamp(
   return parsed.toISOString();
 }
 
+function requireSha256(
+  value: string,
+  fieldName: string
+): string {
+  const normalized =
+    requireNonBlank(value, fieldName);
+
+  if (!/^[0-9a-f]{64}$/.test(normalized)) {
+    throw new Error(
+      `${fieldName} must be a lowercase SHA-256 hexadecimal fingerprint.`
+    );
+  }
+
+  return normalized;
+}
+
+function normalizeLineage(
+  lineage: HsppDerivationLineage
+): HsppDerivationLineage {
+  return {
+    parentEvidenceId:
+      requireNonBlank(
+        lineage.parentEvidenceId,
+        "derivationLineage.parentEvidenceId"
+      ),
+    parentIntegrityFingerprint:
+      requireSha256(
+        lineage.parentIntegrityFingerprint,
+        "derivationLineage.parentIntegrityFingerprint"
+      ),
+    derivationType:
+      requireNonBlank(
+        lineage.derivationType,
+        "derivationLineage.derivationType"
+      ),
+    derivationVersion:
+      requireNonBlank(
+        lineage.derivationVersion,
+        "derivationLineage.derivationVersion"
+      ),
+  };
+}
+
 export function createHsppIntegrityFingerprint(
   input: HsppFingerprintInput
 ): HsppFingerprintResult {
-  const protocolVersion = requireNonBlank(
-    input.protocolVersion,
-    "protocolVersion"
-  );
+  const protocolVersion =
+    requireNonBlank(
+      input.protocolVersion,
+      "protocolVersion"
+    );
 
-  const canonicalizationVersion = requireNonBlank(
-    input.canonicalizationVersion,
-    "canonicalizationVersion"
-  );
+  const canonicalizationVersion =
+    requireNonBlank(
+      input.canonicalizationVersion,
+      "canonicalizationVersion"
+    );
 
-  const sourceClass = requireNonBlank(
-    input.sourceClass,
-    "sourceClass"
-  );
+  const sourceClass =
+    requireNonBlank(
+      input.sourceClass,
+      "sourceClass"
+    );
 
-  const sourceProvider = requireNonBlank(
-    input.sourceProvider,
-    "sourceProvider"
-  );
+  const sourceProvider =
+    requireNonBlank(
+      input.sourceProvider,
+      "sourceProvider"
+    );
 
-  const sourceStream = requireNonBlank(
-    input.sourceStream,
-    "sourceStream"
-  );
+  const sourceStream =
+    requireNonBlank(
+      input.sourceStream,
+      "sourceStream"
+    );
 
-  const sourceMessageId = requireNonBlank(
-    input.sourceMessageId,
-    "sourceMessageId"
-  );
+  const sourceMessageId =
+    requireNonBlank(
+      input.sourceMessageId,
+      "sourceMessageId"
+    );
 
-  const payloadSchemaVersion = requireNonBlank(
-    input.payloadSchemaVersion,
-    "payloadSchemaVersion"
-  );
+  const payloadSchemaVersion =
+    requireNonBlank(
+      input.payloadSchemaVersion,
+      "payloadSchemaVersion"
+    );
 
-  const observedAt = requireTimestamp(
-    input.observedAt,
-    "observedAt"
-  );
+  const observedAt =
+    requireTimestamp(
+      input.observedAt,
+      "observedAt"
+    );
 
-  const canonicalInput = {
-    protocol_version:
-      protocolVersion,
-    canonicalization_version:
-      canonicalizationVersion,
-    source_class:
-      sourceClass,
-    source_provider:
-      sourceProvider,
-    source_stream:
-      sourceStream,
-    source_message_id:
-      sourceMessageId,
-    observed_at:
-      observedAt,
-    payload_schema_version:
-      payloadSchemaVersion,
-    normalized_payload:
-      input.normalizedPayload,
-  };
+  let derivationLineage:
+    HsppDerivationLineage | null = null;
+
+  let canonicalInput:
+    Record<string, unknown>;
+
+  if (
+    canonicalizationVersion ===
+    HSPP_CANONICALIZATION_VERSION_V1
+  ) {
+    if (input.derivationLineage) {
+      throw new Error(
+        "HSPP canonical JSON v1 does not support derivation lineage."
+      );
+    }
+
+    /*
+     * Preserve the original HSPP v0.1 canonical representation
+     * byte-for-byte for previously sealed/root evidence.
+     */
+    canonicalInput = {
+      protocol_version:
+        protocolVersion,
+      canonicalization_version:
+        canonicalizationVersion,
+      source_class:
+        sourceClass,
+      source_provider:
+        sourceProvider,
+      source_stream:
+        sourceStream,
+      source_message_id:
+        sourceMessageId,
+      observed_at:
+        observedAt,
+      payload_schema_version:
+        payloadSchemaVersion,
+      normalized_payload:
+        input.normalizedPayload,
+    };
+  }
+  else if (
+    canonicalizationVersion ===
+    HSPP_CANONICALIZATION_VERSION_V2
+  ) {
+    if (!input.derivationLineage) {
+      throw new Error(
+        "HSPP lineage canonicalization requires complete derivation lineage."
+      );
+    }
+
+    derivationLineage =
+      normalizeLineage(
+        input.derivationLineage
+      );
+
+    canonicalInput = {
+      protocol_version:
+        protocolVersion,
+      canonicalization_version:
+        canonicalizationVersion,
+      source_class:
+        sourceClass,
+      source_provider:
+        sourceProvider,
+      source_stream:
+        sourceStream,
+      source_message_id:
+        sourceMessageId,
+      observed_at:
+        observedAt,
+      payload_schema_version:
+        payloadSchemaVersion,
+      normalized_payload:
+        input.normalizedPayload,
+      derivation_lineage: {
+        parent_evidence_id:
+          derivationLineage.parentEvidenceId,
+        parent_integrity_fingerprint:
+          derivationLineage.parentIntegrityFingerprint,
+        derivation_type:
+          derivationLineage.derivationType,
+        derivation_version:
+          derivationLineage.derivationVersion,
+      },
+    };
+  }
+  else {
+    throw new Error(
+      `Unsupported HSPP canonicalization version: ${canonicalizationVersion}`
+    );
+  }
 
   const canonicalEvidence =
-    canonicalizeHsppEvidence(canonicalInput);
+    canonicalizeHsppEvidence(
+      canonicalInput
+    );
 
   const integrityFingerprint =
-    createHash(HSPP_INTEGRITY_ALGORITHM)
-      .update(canonicalEvidence, "utf8")
+    createHash(
+      HSPP_INTEGRITY_ALGORITHM
+    )
+      .update(
+        canonicalEvidence,
+        "utf8"
+      )
       .digest("hex");
 
   return {
@@ -145,9 +300,8 @@ export function createHsppIntegrityFingerprint(
     payloadSchemaVersion,
     normalizedPayload:
       input.normalizedPayload,
+    derivationLineage,
     canonicalEvidence,
     integrityFingerprint,
   };
 }
-
-export { HSPP_CANONICALIZATION_VERSION };

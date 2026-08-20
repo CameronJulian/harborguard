@@ -1,10 +1,14 @@
-import { timingSafeEqual } from "crypto";
+import {
+  timingSafeEqual,
+} from "crypto";
 
 import {
   createHsppIntegrityFingerprint,
-  HSPP_CANONICALIZATION_VERSION,
+  HSPP_CANONICALIZATION_VERSION_V1,
+  HSPP_CANONICALIZATION_VERSION_V2,
   HSPP_INTEGRITY_ALGORITHM,
   HSPP_PROTOCOL_VERSION,
+  type HsppDerivationLineage,
 } from "@/lib/hspp/createHsppIntegrityFingerprint";
 
 export type VerifyHsppEvidenceIntegrityInput = {
@@ -21,6 +25,7 @@ export type VerifyHsppEvidenceIntegrityInput = {
   integrityAlgorithm: string;
   integrityFingerprint: string;
   trustState?: string;
+  derivationLineage?: HsppDerivationLineage | null;
 };
 
 export type HsppIntegrityVerificationResult =
@@ -45,6 +50,9 @@ export type HsppIntegrityVerificationResult =
   | {
       status: "UNSUPPORTED_INTEGRITY_ALGORITHM";
       integrityAlgorithm: string;
+    }
+  | {
+      status: "INVALID_DERIVATION_LINEAGE";
     };
 
 function fingerprintsMatch(
@@ -64,7 +72,10 @@ function fingerprintsMatch(
   const actualBuffer =
     Buffer.from(actual, "hex");
 
-  if (expectedBuffer.length !== actualBuffer.length) {
+  if (
+    expectedBuffer.length !==
+    actualBuffer.length
+  ) {
     return false;
   }
 
@@ -91,7 +102,9 @@ export function verifyHsppEvidenceIntegrity(
 
   if (
     input.canonicalizationVersion !==
-    HSPP_CANONICALIZATION_VERSION
+      HSPP_CANONICALIZATION_VERSION_V1 &&
+    input.canonicalizationVersion !==
+      HSPP_CANONICALIZATION_VERSION_V2
   ) {
     return {
       status:
@@ -113,27 +126,64 @@ export function verifyHsppEvidenceIntegrity(
     };
   }
 
-  const actual =
-    createHsppIntegrityFingerprint({
-      protocolVersion:
-        input.protocolVersion,
-      canonicalizationVersion:
-        input.canonicalizationVersion,
-      sourceClass:
-        input.sourceClass,
-      sourceProvider:
-        input.sourceProvider,
-      sourceStream:
-        input.sourceStream,
-      sourceMessageId:
-        input.sourceMessageId,
-      observedAt:
-        input.observedAt,
-      payloadSchemaVersion:
-        input.payloadSchemaVersion,
-      normalizedPayload:
-        input.normalizedPayload,
-    });
+  const hasLineage =
+    input.derivationLineage != null;
+
+  if (
+    input.canonicalizationVersion ===
+      HSPP_CANONICALIZATION_VERSION_V1 &&
+    hasLineage
+  ) {
+    return {
+      status:
+        "INVALID_DERIVATION_LINEAGE",
+    };
+  }
+
+  if (
+    input.canonicalizationVersion ===
+      HSPP_CANONICALIZATION_VERSION_V2 &&
+    !hasLineage
+  ) {
+    return {
+      status:
+        "INVALID_DERIVATION_LINEAGE",
+    };
+  }
+
+  let actual;
+
+  try {
+    actual =
+      createHsppIntegrityFingerprint({
+        protocolVersion:
+          input.protocolVersion,
+        canonicalizationVersion:
+          input.canonicalizationVersion,
+        sourceClass:
+          input.sourceClass,
+        sourceProvider:
+          input.sourceProvider,
+        sourceStream:
+          input.sourceStream,
+        sourceMessageId:
+          input.sourceMessageId,
+        observedAt:
+          input.observedAt,
+        payloadSchemaVersion:
+          input.payloadSchemaVersion,
+        normalizedPayload:
+          input.normalizedPayload,
+        derivationLineage:
+          input.derivationLineage ?? null,
+      });
+  }
+  catch {
+    return {
+      status:
+        "INVALID_DERIVATION_LINEAGE",
+    };
+  }
 
   const expectedFingerprint =
     input.integrityFingerprint;

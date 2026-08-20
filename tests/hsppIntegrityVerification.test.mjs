@@ -47,12 +47,25 @@ test("shared HSPP fingerprint preserves the v0.1 canonical contract", () => {
 });
 
 test("receipt time remains outside the integrity fingerprint", () => {
-  const canonicalInput = fingerprint.match(
-    /const canonicalInput = \{([\s\S]*?)\n  \};/
+  assert.doesNotMatch(
+    fingerprint,
+    /received_at\s*:/
   );
 
-  assert.ok(canonicalInput);
-  assert.doesNotMatch(canonicalInput[1], /receivedAt|received_at/);
+  assert.doesNotMatch(
+    fingerprint,
+    /receivedAt\s*:/
+  );
+
+  assert.match(
+    fingerprint,
+    /observed_at\s*:/
+  );
+
+  assert.match(
+    fingerprint,
+    /normalized_payload\s*:/
+  );
 });
 
 test("HSPP verification returns explicit integrity outcomes", () => {
@@ -157,12 +170,17 @@ test("HSPP verifier performs no database writes", () => {
 test("HSPP canonical hashing remains SHA-256", () => {
   assert.match(
     fingerprint,
-    /HSPP_INTEGRITY_ALGORITHM = "sha256"/
+    /HSPP_INTEGRITY_ALGORITHM\s*=\s*[\s\S]*?"sha256"/
   );
 
   assert.match(
     fingerprint,
-    /createHash\(HSPP_INTEGRITY_ALGORITHM\)/
+    /createHash\(\s*HSPP_INTEGRITY_ALGORITHM\s*\)/
+  );
+
+  assert.match(
+    fingerprint,
+    /\.update\(\s*canonicalEvidence,\s*"utf8"\s*\)/
   );
 
   assert.match(

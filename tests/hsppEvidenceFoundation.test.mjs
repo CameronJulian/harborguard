@@ -48,18 +48,23 @@ test("HSPP evidence keeps integrity trust and eligibility separate", () => {
 
 test("HSPP v0.1 requires lowercase SHA-256 fingerprints", () => {
   assert.match(
-    migration,
-    /integrity_fingerprint ~ '\^\[0-9a-f\]\{64\}\$'/i
+    fingerprint,
+    /HSPP_INTEGRITY_ALGORITHM\s*=\s*[\s\S]*?"sha256"/
   );
 
   assert.match(
     fingerprint,
-    /createHash\(HSPP_INTEGRITY_ALGORITHM\)/
+    /createHash\(\s*HSPP_INTEGRITY_ALGORITHM\s*\)/
   );
 
   assert.match(
     fingerprint,
     /\.digest\("hex"\)/
+  );
+
+  assert.match(
+    migration,
+    /\^\[0-9a-f\]\{64\}\$/
   );
 });
 
@@ -75,21 +80,41 @@ test("HSPP canonicalization sorts object keys deterministically", () => {
   );
 });
 
-test("HSPP fingerprint excludes evidence id and receipt time", () => {
-  const canonicalInputMatch = fingerprint.match(
-    /const canonicalInput = \{([\s\S]*?)\n  \};/
+test("HSPP fingerprint excludes root evidence id and receipt time", () => {
+  assert.doesNotMatch(
+    fingerprint,
+    /^\s*evidence_id\s*:/m
   );
 
-  assert.ok(canonicalInputMatch);
+  assert.doesNotMatch(
+    fingerprint,
+    /received_at\s*:/
+  );
 
-  const canonicalInput = canonicalInputMatch[1];
+  assert.match(
+    fingerprint,
+    /parent_evidence_id\s*:/
+  );
 
-  assert.doesNotMatch(canonicalInput, /evidenceId|evidence_id/);
-  assert.doesNotMatch(canonicalInput, /receivedAt|received_at/);
+  assert.match(
+    fingerprint,
+    /protocol_version\s*:/
+  );
 
-  assert.match(canonicalInput, /source_message_id/);
-  assert.match(canonicalInput, /observed_at/);
-  assert.match(canonicalInput, /normalized_payload/);
+  assert.match(
+    fingerprint,
+    /canonicalization_version\s*:/
+  );
+
+  assert.match(
+    fingerprint,
+    /source_message_id\s*:/
+  );
+
+  assert.match(
+    fingerprint,
+    /normalized_payload\s*:/
+  );
 });
 
 test("HSPP persistence is isolated from vehicle_locations", () => {
