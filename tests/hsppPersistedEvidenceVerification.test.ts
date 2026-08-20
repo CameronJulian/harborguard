@@ -62,6 +62,18 @@ function buildRow() {
       evidence.validationState,
     trust_state:
       evidence.trustState,
+
+    parent_evidence_id:
+      null,
+
+    parent_integrity_fingerprint:
+      null,
+
+    derivation_type:
+      null,
+
+    derivation_version:
+      null,
   };
 }
 

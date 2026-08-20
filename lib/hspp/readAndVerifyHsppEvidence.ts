@@ -2,6 +2,10 @@ import type {
   SupabaseClient,
 } from "@supabase/supabase-js";
 
+import type {
+  HsppDerivationLineage,
+} from "@/lib/hspp/createHsppIntegrityFingerprint";
+
 import {
   verifyHsppEvidenceIntegrity,
   type HsppIntegrityVerificationResult,
@@ -16,21 +20,30 @@ export type ReadAndVerifyHsppEvidenceInput = {
 export type PersistedHsppEvidenceRecord = {
   id: string;
   organizationId: string;
+
   protocolVersion: string;
   canonicalizationVersion: string;
+
   sourceClass: string;
   sourceProvider: string;
   sourceStream: string;
   sourceMessageId: string;
+
   observedAt: string;
   receivedAt: string;
+
   payloadSchemaVersion: string;
   normalizedPayload: Record<string, unknown>;
+
   integrityAlgorithm: string;
   integrityFingerprint: string;
+
   integrityState: string;
   validationState: string;
   trustState: string;
+
+  derivationLineage:
+    HsppDerivationLineage | null;
 };
 
 export type ReadAndVerifyHsppEvidenceResult =
@@ -49,21 +62,32 @@ export type ReadAndVerifyHsppEvidenceResult =
 type HsppEvidenceRow = {
   id: unknown;
   organization_id: unknown;
+
   protocol_version: unknown;
   canonicalization_version: unknown;
+
   source_class: unknown;
   source_provider: unknown;
   source_stream: unknown;
   source_message_id: unknown;
+
   observed_at: unknown;
   received_at: unknown;
+
   payload_schema_version: unknown;
   normalized_payload: unknown;
+
   integrity_algorithm: unknown;
   integrity_fingerprint: unknown;
+
   integrity_state: unknown;
   validation_state: unknown;
   trust_state: unknown;
+
+  parent_evidence_id: unknown;
+  parent_integrity_fingerprint: unknown;
+  derivation_type: unknown;
+  derivation_version: unknown;
 };
 
 const HSPP_EVIDENCE_SELECT = [
@@ -84,6 +108,10 @@ const HSPP_EVIDENCE_SELECT = [
   "integrity_state",
   "validation_state",
   "trust_state",
+  "parent_evidence_id",
+  "parent_integrity_fingerprint",
+  "derivation_type",
+  "derivation_version",
 ].join(", ");
 
 function requireNonBlank(
@@ -131,28 +159,93 @@ function requirePayload(
   return value as Record<string, unknown>;
 }
 
+function mapDerivationLineage(
+  row: HsppEvidenceRow
+): HsppDerivationLineage | null {
+  const values = [
+    row.parent_evidence_id,
+    row.parent_integrity_fingerprint,
+    row.derivation_type,
+    row.derivation_version,
+  ];
+
+  if (
+    values.every(
+      (value) => value === null
+    )
+  ) {
+    return null;
+  }
+
+  if (
+    values.some(
+      (value) =>
+        value === null ||
+        value === undefined
+    )
+  ) {
+    throw new Error(
+      "Persisted HSPP derivation lineage must be either entirely null or complete."
+    );
+  }
+
+  return {
+    parentEvidenceId:
+      requireString(
+        row.parent_evidence_id,
+        "parent_evidence_id"
+      ),
+
+    parentIntegrityFingerprint:
+      requireString(
+        row.parent_integrity_fingerprint,
+        "parent_integrity_fingerprint"
+      ),
+
+    derivationType:
+      requireString(
+        row.derivation_type,
+        "derivation_type"
+      ),
+
+    derivationVersion:
+      requireString(
+        row.derivation_version,
+        "derivation_version"
+      ),
+  };
+}
+
 function mapPersistedHsppEvidence(
   row: HsppEvidenceRow,
   expectedOrganizationId: string,
   expectedEvidenceId: string
 ): PersistedHsppEvidenceRecord {
-  const id = requireString(
-    row.id,
-    "id"
-  );
+  const id =
+    requireString(
+      row.id,
+      "id"
+    );
 
-  const organizationId = requireString(
-    row.organization_id,
-    "organization_id"
-  );
+  const organizationId =
+    requireString(
+      row.organization_id,
+      "organization_id"
+    );
 
-  if (id !== expectedEvidenceId) {
+  if (
+    id !==
+    expectedEvidenceId
+  ) {
     throw new Error(
       "Persisted HSPP evidence id does not match the requested evidence."
     );
   }
 
-  if (organizationId !== expectedOrganizationId) {
+  if (
+    organizationId !==
+    expectedOrganizationId
+  ) {
     throw new Error(
       "Persisted HSPP evidence organization does not match the requested organization."
     );
@@ -161,80 +254,98 @@ function mapPersistedHsppEvidence(
   return {
     id,
     organizationId,
+
     protocolVersion:
       requireString(
         row.protocol_version,
         "protocol_version"
       ),
+
     canonicalizationVersion:
       requireString(
         row.canonicalization_version,
         "canonicalization_version"
       ),
+
     sourceClass:
       requireString(
         row.source_class,
         "source_class"
       ),
+
     sourceProvider:
       requireString(
         row.source_provider,
         "source_provider"
       ),
+
     sourceStream:
       requireString(
         row.source_stream,
         "source_stream"
       ),
+
     sourceMessageId:
       requireString(
         row.source_message_id,
         "source_message_id"
       ),
+
     observedAt:
       requireString(
         row.observed_at,
         "observed_at"
       ),
+
     receivedAt:
       requireString(
         row.received_at,
         "received_at"
       ),
+
     payloadSchemaVersion:
       requireString(
         row.payload_schema_version,
         "payload_schema_version"
       ),
+
     normalizedPayload:
       requirePayload(
         row.normalized_payload
       ),
+
     integrityAlgorithm:
       requireString(
         row.integrity_algorithm,
         "integrity_algorithm"
       ),
+
     integrityFingerprint:
       requireString(
         row.integrity_fingerprint,
         "integrity_fingerprint"
       ),
+
     integrityState:
       requireString(
         row.integrity_state,
         "integrity_state"
       ),
+
     validationState:
       requireString(
         row.validation_state,
         "validation_state"
       ),
+
     trustState:
       requireString(
         row.trust_state,
         "trust_state"
       ),
+
+    derivationLineage:
+      mapDerivationLineage(row),
   };
 }
 
@@ -292,30 +403,45 @@ export async function readAndVerifyHsppEvidence({
     verifyHsppEvidenceIntegrity({
       protocolVersion:
         evidence.protocolVersion,
+
       canonicalizationVersion:
         evidence.canonicalizationVersion,
+
       sourceClass:
         evidence.sourceClass,
+
       sourceProvider:
         evidence.sourceProvider,
+
       sourceStream:
         evidence.sourceStream,
+
       sourceMessageId:
         evidence.sourceMessageId,
+
       observedAt:
         evidence.observedAt,
+
       receivedAt:
         evidence.receivedAt,
+
       payloadSchemaVersion:
         evidence.payloadSchemaVersion,
+
       normalizedPayload:
         evidence.normalizedPayload,
+
       integrityAlgorithm:
         evidence.integrityAlgorithm,
+
       integrityFingerprint:
         evidence.integrityFingerprint,
+
       trustState:
         evidence.trustState,
+
+      derivationLineage:
+        evidence.derivationLineage,
     });
 
   return {
