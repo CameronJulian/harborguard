@@ -8,6 +8,8 @@ import { enrichRouteSafetyAlertsWithRoadContext } from "@/lib/route-safety/enric
 import { resolveRoadContext } from "@/lib/road-context/provider";
 import { persistRouteSafetyProviderObservation } from "@/lib/hspp/persistRouteSafetyProviderObservation";
 import { HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION } from "@/lib/hspp/assessHsppExternalIntelligenceEvidence";
+import { buildHsppEvidence } from "@/lib/hspp/buildHsppEvidence";
+import { persistHsppEvidenceForProviderObservation } from "@/lib/hspp/persistHsppEvidenceForProviderObservation";
 
 function mapTomTomType(
   category: number | string | null,
@@ -303,7 +305,8 @@ export async function importTomTomIncidents(
         continue;
       }
 
-      await persistRouteSafetyProviderObservation({
+      const providerObservation =
+        await persistRouteSafetyProviderObservation({
         supabase,
         organizationId,
         provider:
@@ -321,6 +324,41 @@ export async function importTomTomIncidents(
             string,
             unknown
           >,
+      });
+
+      const evidence =
+        buildHsppEvidence({
+          sourceClass:
+            "external_intelligence",
+
+          sourceProvider:
+            providerObservation.provider,
+
+          sourceStream:
+            providerObservation.sourceStream,
+
+          sourceMessageId:
+            providerObservation.providerMessageId,
+
+          observedAt:
+            providerObservation.observedAt,
+
+          receivedAt:
+            providerObservation.receivedAt,
+
+          payloadSchemaVersion:
+            providerObservation.payloadSchemaVersion,
+
+          normalizedPayload:
+            providerObservation.normalizedPayload,
+        });
+
+      await persistHsppEvidenceForProviderObservation({
+        supabase,
+        organizationId,
+        providerObservationId:
+          providerObservation.id,
+        evidence,
       });
     }
 

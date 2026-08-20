@@ -116,12 +116,26 @@ test(
 );
 
 test(
-  "B10B1 does not create evidence or assessment",
+  "B10B1 provider-observation boundary remains before evidence and mutable Route Safety persistence",
   () => {
-    assert.doesNotMatch(
-      source,
-      /persistHsppEvidenceForProviderObservation/
-    );
+    const observation =
+      source.indexOf(
+        "persistRouteSafetyProviderObservation({"
+      );
+
+    const evidence =
+      source.indexOf(
+        "persistHsppEvidenceForProviderObservation({"
+      );
+
+    const routeSafety =
+      source.indexOf(
+        "insertNewProviderAlerts("
+      );
+
+    assert.ok(observation >= 0);
+    assert.ok(evidence > observation);
+    assert.ok(routeSafety > evidence);
 
     assert.doesNotMatch(
       source,
