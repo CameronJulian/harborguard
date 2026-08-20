@@ -1,5 +1,9 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
+
+import {
+  readHsppEvidenceForOperationalUse,
+} from "@/lib/hspp/readHsppEvidenceForOperationalUse";
 
 const OFFLINE_MINUTES = 15;
 const CLUSTER_DISTANCE_METERS = 750;
@@ -43,7 +47,9 @@ export async function GET() {
 
         supabase
           .from("vehicle_locations")
-          .select("vehicle_id, latitude, longitude, speed_kmh, recorded_at")
+          .select(
+            "vehicle_id, latitude, longitude, speed_kmh, recorded_at, hspp_evidence_id"
+          )
           .eq("organization_id", organizationId)
           .order("recorded_at", { ascending: false })
           .limit(1000),
@@ -79,6 +85,36 @@ export async function GET() {
       }
     }
 
+    const deniedHsppVehicleIds =
+      new Set<string>();
+
+    for (
+      const [vehicleId, location]
+      of latestLocationByVehicle.entries()
+    ) {
+      const evidenceId =
+        typeof location.hspp_evidence_id === "string"
+          ? location.hspp_evidence_id.trim()
+          : "";
+
+      if (!evidenceId) {
+        continue;
+      }
+
+      const operationalRead =
+        await readHsppEvidenceForOperationalUse({
+          supabase,
+          organizationId,
+          evidenceId,
+        });
+
+      if (!operationalRead.decision.allowed) {
+        deniedHsppVehicleIds.add(
+          vehicleId
+        );
+      }
+    }
+
     const alertsByVehicle = new Map<string, any[]>();
 
     for (const alert of alerts) {
@@ -89,7 +125,18 @@ export async function GET() {
 
     const activeVehicles = vehicles
       .map((vehicle: any) => {
-        const location = latestLocationByVehicle.get(vehicle.id);
+        if (
+          deniedHsppVehicleIds.has(
+            vehicle.id
+          )
+        ) {
+          return null;
+        }
+
+        const location =
+          latestLocationByVehicle.get(
+            vehicle.id
+          );
         const lat = toNumber(location?.latitude);
         const lng = toNumber(location?.longitude);
 
