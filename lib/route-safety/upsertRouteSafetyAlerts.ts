@@ -1,4 +1,5 @@
 import type { RouteSafetyAlertRow } from "@/lib/route-safety/types";
+import { deriveProviderQualityState } from "@/lib/route-safety/deriveProviderQualityState";
 
 function areCrossProviderEventsCompatible(
   existingType: string,
@@ -314,6 +315,15 @@ provider_sources,
         [source]: confirmedAt,
       };
 
+      const providerQuality =
+        deriveProviderQualityState({
+          providerLastSeen,
+          providerSources: [source],
+          primarySource: source,
+          primarySourceBaseConfidence:
+            baseConfidence,
+        });
+
       const existingExpiryTime = sameProviderMatch.expires_at
         ? new Date(sameProviderMatch.expires_at).getTime()
         : Number.NaN;
@@ -352,9 +362,12 @@ provider_sources,
       const { error: refreshError } = await supabase
         .from("route_safety_alerts")
         .update({
-          provider_sources: [source],
-          provider_confirmation_count: 1,
-          provider_confidence: baseConfidence,
+          provider_sources:
+            providerQuality.providerSources,
+          provider_confirmation_count:
+            providerQuality.providerConfirmationCount,
+          provider_confidence:
+            providerQuality.providerConfidence,
           last_provider_confirmation_at: confirmedAt,
           provider_last_seen: providerLastSeen,
           verified_at: confirmedAt,
@@ -369,10 +382,12 @@ provider_sources,
         throw refreshError;
       }
 
-      sameProviderMatch.provider_sources = [source];
-      sameProviderMatch.provider_confirmation_count = 1;
+      sameProviderMatch.provider_sources =
+        providerQuality.providerSources;
+      sameProviderMatch.provider_confirmation_count =
+        providerQuality.providerConfirmationCount;
       sameProviderMatch.provider_confidence =
-        baseConfidence;
+        providerQuality.providerConfidence;
       sameProviderMatch.last_provider_confirmation_at =
         confirmedAt;
       sameProviderMatch.provider_last_seen = providerLastSeen;
@@ -506,21 +521,42 @@ provider_sources,
         [source]: confirmedAt,
       };
 
-      const providerSources = Array.from(
-        new Set([
-          ...(Array.isArray(crossProviderMatch.provider_sources)
-            ? crossProviderMatch.provider_sources.map(String)
-            : [String(crossProviderMatch.source || "")]),
-          source,
-        ])
-      ).filter(Boolean);
+      const requestedProviderSources =
+        Array.from(
+          new Set([
+            ...(Array.isArray(
+              crossProviderMatch.provider_sources
+            )
+              ? crossProviderMatch.provider_sources.map(
+                  String
+                )
+              : [
+                  String(
+                    crossProviderMatch.source || ""
+                  ),
+                ]),
+            source,
+          ])
+        ).filter(Boolean);
 
-      const providerConfirmationCount = providerSources.length;
+      const providerQuality =
+        deriveProviderQualityState({
+          providerLastSeen,
+          providerSources:
+            requestedProviderSources,
+          primarySource: source,
+          primarySourceBaseConfidence:
+            baseConfidence,
+        });
 
-      const providerConfidence = Math.min(
-        100,
-        60 + Math.max(0, providerConfirmationCount - 1) * 20
-      );
+      const providerSources =
+        providerQuality.providerSources;
+
+      const providerConfirmationCount =
+        providerQuality.providerConfirmationCount;
+
+      const providerConfidence =
+        providerQuality.providerConfidence;
 
       const existingExpiryTime = crossProviderMatch.expires_at
         ? new Date(crossProviderMatch.expires_at).getTime()
@@ -576,13 +612,29 @@ provider_sources,
 
 
     const confirmedAt = new Date().toISOString();
+
+    const providerQuality =
+      deriveProviderQualityState({
+        providerLastSeen: {
+          [source]: confirmedAt,
+        },
+        providerSources: [source],
+        primarySource: source,
+        primarySourceBaseConfidence:
+          baseConfidence,
+      });
     const providerAlert = {
       ...row,
-      provider_sources: [source],
-      provider_confirmation_count: 1,
-      provider_confidence: baseConfidence,
-      last_provider_confirmation_at: confirmedAt,
-      provider_last_seen: { [source]: confirmedAt },
+      provider_sources:
+        providerQuality.providerSources,
+      provider_confirmation_count:
+        providerQuality.providerConfirmationCount,
+      provider_confidence:
+        providerQuality.providerConfidence,
+      last_provider_confirmation_at:
+        confirmedAt,
+      provider_last_seen:
+        providerQuality.providerLastSeen,
     };
 
     uniqueRows.push(providerAlert);
@@ -595,9 +647,12 @@ provider_sources,
       latitude: row.latitude,
       longitude: row.longitude,
       expires_at: row.expires_at,
-      provider_sources: [source],
-      provider_confirmation_count: 1,
-      provider_confidence: baseConfidence,
+      provider_sources:
+        providerQuality.providerSources,
+      provider_confirmation_count:
+        providerQuality.providerConfirmationCount,
+      provider_confidence:
+        providerQuality.providerConfidence,
       last_provider_confirmation_at:
         providerAlert.last_provider_confirmation_at,
       provider_last_seen: providerAlert.provider_last_seen,
