@@ -4,6 +4,14 @@ import {
 } from "@/lib/fleet/processVehicleLocationUpdate";
 
 import {
+  buildHsppEvidence,
+} from "@/lib/hspp/buildHsppEvidence";
+
+import {
+  persistHsppEvidence,
+} from "@/lib/hspp/persistHsppEvidence";
+
+import {
   claimTelematicsMessage,
   completeTelematicsMessage,
   failTelematicsMessage,
@@ -118,6 +126,48 @@ export async function processTelematicsPosition({
   }
 
   try {
+    const hsppEvidence =
+      buildHsppEvidence({
+        sourceClass: "telematics",
+        sourceProvider: provider,
+        sourceStream: stream,
+        sourceMessageId:
+          position.providerMessageId,
+        observedAt:
+          position.recordedAt,
+        payloadSchemaVersion:
+          "normalized-telematics-position-v1",
+        normalizedPayload: {
+          providerDeviceId:
+            position.providerDeviceId,
+          vehicleId:
+            resolved.vehicle.id,
+          latitude:
+            position.latitude,
+          longitude:
+            position.longitude,
+          speedKmh:
+            position.speedKmh,
+          heading:
+            position.heading,
+          recordedAt:
+            position.recordedAt,
+        },
+      });
+
+    await persistHsppEvidence({
+      supabase,
+      organizationId,
+      evidence:
+        hsppEvidence,
+      telematicsReceiptId:
+        claim.receiptId,
+      vehicleId:
+        resolved.vehicle.id,
+      tripId:
+        null,
+    });
+
     const result =
       await processVehicleLocationUpdate({
         supabase,
