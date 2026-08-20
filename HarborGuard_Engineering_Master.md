@@ -6,7 +6,7 @@
 **Repository:** `C:\Users\cameron\harborguard`
 **Primary branch:** `main`
 **Current active development branch:** `main`
-**Latest verified feature commit:** `c133e45`
+**Latest verified feature commit:** `ab9d923`
 **Last updated:** 2026-08-20
 **Current status:** HarborGuard Safety Provenance Protocol (HSPP) is implemented through HSPP-007C. Traccar telemetry can now be sealed as cryptographic evidence, verified, assessed under versioned policy, linked exactly to persisted vehicle locations, and enforced by the Fleet Digital Twin through a fail-closed operational-use boundary. HSPP-linked telemetry denied by the trust policy is excluded from Digital Twin operational intelligence, while unlinked legacy/mobile/manual location behavior remains unchanged.
 
@@ -17168,3 +17168,148 @@ audit
 -> production build
 -> commit/push
 -> Engineering Master update.
+
+---
+
+## 2026-08-20 - HSPP-007D Threat Prediction Operational Enforcement
+
+### Status
+
+Implemented, verified, committed, and pushed to `origin/main`.
+
+Implementation commit:
+
+`ab9d923 feat(hspp): enforce evidence trust in threat prediction`
+
+### Purpose
+
+HSPP-007D extends HarborGuard's fail-closed operational evidence boundary to Fleet Predict Threats.
+
+The threat-prediction endpoint previously selected the latest persisted vehicle location and immediately used that location for:
+
+- speed-based threat scoring;
+- offline-state scoring;
+- incident proximity;
+- geofence proximity;
+- predicted geofence risk;
+- predicted breach;
+- final threat probability and risk level.
+
+HSPP-linked telemetry can no longer influence those calculations unless the linked evidence passes HarborGuard's existing HSPP operational-use policy.
+
+### Implementation
+
+`app/api/fleet/predict-threats/route.ts` now uses:
+
+`readHsppEvidenceForOperationalUse()`
+
+After the route constructs the latest location for each vehicle:
+
+1. the selected latest location is inspected for `hspp_evidence_id`;
+2. a missing or empty HSPP link preserves existing legacy/mobile/manual behavior;
+3. a linked location is read and cryptographically verified through the existing HSPP persisted-evidence verification path;
+4. the centralized HSPP operational-use policy evaluates validation, assessment provenance, trust and operational eligibility;
+5. a denied HSPP decision records the vehicle in the denied set;
+6. denied vehicles are skipped before threat scoring begins.
+
+Therefore a denied HSPP-linked location cannot contribute to:
+
+- `calculateThreatProbability`;
+- `predictedGeofenceRisk`;
+- `predictedBreach`;
+- incident proximity;
+- adjusted probability;
+- adjusted threat level.
+
+### Compatibility boundary
+
+HSPP-007D intentionally preserves existing behavior for location rows without an HSPP evidence link.
+
+This maintains compatibility with historical, mobile, manual and other currently unlinked location sources.
+
+HSPP-007D does not:
+
+- change Fleet Live;
+- change Dispatch Tracking;
+- change mission state;
+- create alerts;
+- write HSPP evidence;
+- change the threat-scoring formula;
+- change the API response shape;
+- change Route Safety production scoring;
+- authorize Crowd Intelligence or ML usage;
+- introduce a database migration.
+
+### Verification
+
+Focused HSPP-007D verification passed:
+
+- 9 / 9 predict-threats HSPP operational-consumer contract tests;
+- `npx tsc --noEmit`;
+- `git diff --check`.
+
+Full HSPP regression passed:
+
+- 88 / 88 HSPP source-contract tests;
+- 58 / 58 HSPP executable tests;
+- TypeScript validation;
+- full Next.js production build;
+- 132 / 132 static pages generated;
+- `/api/fleet/predict-threats` included successfully in the production build.
+
+The contract specifically verifies that the HSPP denial check occurs before the actual per-vehicle call to:
+
+`const basePrediction = calculateThreatProbability(...)`
+
+### Operational meaning
+
+HarborGuard now has two production intelligence consumers enforcing HSPP operational trust:
+
+1. Fleet Digital Twin - HSPP-007C.
+2. Fleet Predict Threats - HSPP-007D.
+
+The effective chain is now:
+
+`Traccar telemetry`
+`-> sealed HSPP evidence`
+`-> persisted provenance`
+`-> integrity verification`
+`-> versioned assessment`
+`-> exact vehicle-location linkage`
+`-> HSPP operational-use decision`
+`-> controlled operational consumer`
+
+For Predict Threats specifically:
+
+`latest vehicle location`
+`-> no HSPP link: preserve existing behavior`
+
+or:
+
+`latest vehicle location`
+`-> HSPP evidence link`
+`-> read + verify`
+`-> operational policy`
+`-> ALLOW: existing threat prediction`
+`-> DENY: no threat prediction from that location`
+
+### Safety boundary preserved
+
+HSPP evidence linkage remains provenance, not authority.
+
+Operational use still requires the centralized HSPP policy to allow the evidence.
+
+Cryptographic integrity alone does not imply that telemetry is semantically trustworthy.
+
+### Next step
+
+Do not extend HSPP enforcement broadly without another audit.
+
+HSPP-007E should begin by identifying the next highest-value consumer and comparing:
+
+- operational consequence;
+- consumer blast radius;
+- failure behavior;
+- latency/query cost;
+- compatibility with unlinked locations;
+- whether denial, exclusion, fallback or warning is appropriate.
