@@ -1,5 +1,6 @@
 ﻿import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
+import { readHsppEvidenceForOperationalUse } from "@/lib/hspp/readHsppEvidenceForOperationalUse";
 
 const ARRIVAL_RADIUS_METERS = 120;
 const MOVING_SPEED_KMH = 5;
@@ -69,6 +70,67 @@ export async function GET() {
     for (const mission of missions || []) {
       const location = latest.get(mission.assigned_vehicle_id);
       if (!location) continue;
+
+      const evidenceId =
+        typeof location.hspp_evidence_id === "string"
+          ? location.hspp_evidence_id.trim()
+          : "";
+
+      if (!evidenceId) {
+        // Preserve existing behavior for unlinked legacy/mobile/manual telemetry.
+      } else {
+        const operationalRead =
+          await readHsppEvidenceForOperationalUse({
+            supabase,
+            organizationId,
+            evidenceId,
+          });
+
+        if (!operationalRead.decision.allowed) {
+          const destinationLat =
+            toNumber(mission.destination_lat);
+
+          const destinationLng =
+            toNumber(mission.destination_lng);
+
+          const plannedDistanceMeters =
+            toNumber(
+              mission.route_data?.selectedRoute?.distanceMeters
+            ) ||
+            toNumber(
+              mission.route_data?.selectedRoute?.length
+            ) ||
+            null;
+
+          tracking.push({
+            missionId: mission.id,
+            vehicle:
+              mission.vehicles?.registration_number ||
+              mission.vehicles?.nickname ||
+              mission.assigned_vehicle_id,
+            status: mission.status,
+            latitude: null,
+            longitude: null,
+            speedKmh: null,
+            destination: {
+              lat: destinationLat,
+              lng: destinationLng,
+            },
+            remainingMeters: null,
+            remainingKm: null,
+            plannedDistanceMeters,
+            progressPercent: null,
+            etaMinutes: null,
+            arrivalRadiusMeters:
+              ARRIVAL_RADIUS_METERS,
+            arrived: null,
+            autoTransition: null,
+            lastSeen: null,
+          });
+
+          continue;
+        }
+      }
 
       const currentLat = toNumber(location.latitude);
       const currentLng = toNumber(location.longitude);
