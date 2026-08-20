@@ -1,6 +1,10 @@
 ﻿import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 
+import {
+  readHsppEvidenceForOperationalUse,
+} from "@/lib/hspp/readHsppEvidenceForOperationalUse";
+
 type LocationPoint = {
   vehicle_id: string;
   latitude: number | string | null;
@@ -8,6 +12,7 @@ type LocationPoint = {
   speed_kmh?: number | string | null;
   heading?: number | string | null;
   recorded_at?: string | null;
+  hspp_evidence_id?: string | null;
 };
 
 type VehicleStop = {
@@ -138,7 +143,7 @@ export async function GET() {
       supabase
         .from("vehicle_locations")
         .select(
-          "vehicle_id, latitude, longitude, speed_kmh, heading, recorded_at"
+          "vehicle_id, latitude, longitude, speed_kmh, heading, recorded_at, hspp_evidence_id"
         )
         .in("vehicle_id", vehicleIds)
         .order("recorded_at", { ascending: false })
@@ -201,6 +206,39 @@ export async function GET() {
       }
     }
 
+    const deniedLatestHsppVehicleIds =
+      new Set<string>();
+
+    for (
+      const [vehicleId, recentLocations]
+      of locationsByVehicle.entries()
+    ) {
+      const latest =
+        recentLocations[0] || null;
+
+      const evidenceId =
+        typeof latest?.hspp_evidence_id === "string"
+          ? latest.hspp_evidence_id.trim()
+          : "";
+
+      if (!evidenceId) {
+        continue;
+      }
+
+      const operationalRead =
+        await readHsppEvidenceForOperationalUse({
+          supabase,
+          organizationId,
+          evidenceId,
+        });
+
+      if (!operationalRead.decision.allowed) {
+        deniedLatestHsppVehicleIds.add(
+          vehicleId
+        );
+      }
+    }
+
     const stopsByVehicle =
       new Map<string, VehicleStop[]>();
 
@@ -248,6 +286,11 @@ export async function GET() {
 
       const latest = recentLocations[0] || null;
 
+      const latestOperationallyAllowed =
+        !deniedLatestHsppVehicleIds.has(
+          vehicle.id
+        );
+
       const routePoints = [...recentLocations]
         .reverse()
         .map((point) => {
@@ -285,7 +328,10 @@ export async function GET() {
       const activeTrip =
         activeTripByVehicle.get(vehicle.id) || null;
 
-      const speedKmh = Number(latest?.speed_kmh || 0);
+      const speedKmh =
+        latestOperationallyAllowed
+          ? Number(latest?.speed_kmh || 0)
+          : 0;
 
       const criticalAlertCount = alerts.filter(
         (alert) => alert.severity === "critical"
@@ -303,11 +349,26 @@ export async function GET() {
         id: vehicle.id,
         nickname: vehicle.nickname,
         registrationNumber: vehicle.registration_number,
-        latitude: latest?.latitude ?? null,
-        longitude: latest?.longitude ?? null,
-        speedKmh: latest?.speed_kmh ?? null,
-        heading: latest?.heading ?? null,
-        lastSeen: latest?.recorded_at ?? null,
+        latitude:
+          latestOperationallyAllowed
+            ? latest?.latitude ?? null
+            : null,
+        longitude:
+          latestOperationallyAllowed
+            ? latest?.longitude ?? null
+            : null,
+        speedKmh:
+          latestOperationallyAllowed
+            ? latest?.speed_kmh ?? null
+            : null,
+        heading:
+          latestOperationallyAllowed
+            ? latest?.heading ?? null
+            : null,
+        lastSeen:
+          latestOperationallyAllowed
+            ? latest?.recorded_at ?? null
+            : null,
 
         activeTrip: activeTrip
           ? {

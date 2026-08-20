@@ -616,7 +616,7 @@ export default function FleetDashboardPage() {
     };
   }, [mapVehicles]);
 
-  
+
 
   useEffect(() => {
   let channel: any;
@@ -636,34 +636,8 @@ export default function FleetDashboardPage() {
             schema: "public",
             table: "vehicle_locations",
           },
-          (payload) => {
-            const row = payload.new as VehicleLocationInsert;
-
-            setFleet((current) => {
-              const exists = current.some(
-                (vehicle) => vehicle.id === row.vehicle_id
-              );
-
-              if (!exists) return current;
-
-              return current.map((vehicle) => {
-                if (vehicle.id !== row.vehicle_id)
-                  return vehicle;
-
-                return {
-                  ...vehicle,
-                  latitude: row.latitude,
-                  longitude: row.longitude,
-                  speedKmh: row.speed_kmh ?? 0,
-                  heading: row.heading ?? 0,
-                  source: row.source ?? null,
-                  lastSeen: row.recorded_at,
-                  isOffline: computeOffline(
-                    row.recorded_at
-                  ),
-                };
-              });
-            });
+          () => {
+            void loadFleet();
           }
         )
         .subscribe();
