@@ -4,6 +4,10 @@ import { buildTrafficIntelligence } from "@/lib/traffic/intelligence";
 import { loadWeather } from "@/lib/weather/provider";
 import { predictETA } from "@/lib/fleet/etaPrediction";
 
+import {
+  readHsppEvidenceForOperationalUse,
+} from "@/lib/hspp/readHsppEvidenceForOperationalUse";
+
 export async function GET() {
   try {
     const { supabase, organizationId } = await requireOrganization();
@@ -40,15 +44,65 @@ export async function GET() {
     if (locationError) {
       throw locationError;
     }
+    const latestLocation =
+      new Map<string, any>();
 
-    const trafficCenter = (locations || []).find(
-      (location: any) =>
-        location.latitude !== null &&
-        location.latitude !== undefined &&
-        location.longitude !== null &&
-        location.longitude !== undefined
-    );
+    for (const location of locations || []) {
+      if (
+        !latestLocation.has(
+          location.vehicle_id
+        )
+      ) {
+        latestLocation.set(
+          location.vehicle_id,
+          location
+        );
+      }
+    }
 
+    const deniedHsppVehicleIds =
+      new Set<string>();
+
+    for (
+      const [vehicleId, location]
+      of latestLocation.entries()
+    ) {
+      const evidenceId =
+        typeof location.hspp_evidence_id === "string"
+          ? location.hspp_evidence_id.trim()
+          : "";
+
+      if (!evidenceId) {
+        continue;
+      }
+
+      const operationalRead =
+        await readHsppEvidenceForOperationalUse({
+          supabase,
+          organizationId,
+          evidenceId,
+        });
+
+      if (!operationalRead.decision.allowed) {
+        deniedHsppVehicleIds.add(
+          vehicleId
+        );
+      }
+    }
+
+    const trafficCenter =
+      Array.from(
+        latestLocation.values()
+      ).find(
+        (location: any) =>
+          !deniedHsppVehicleIds.has(
+            location.vehicle_id
+          ) &&
+          location.latitude !== null &&
+          location.latitude !== undefined &&
+          location.longitude !== null &&
+          location.longitude !== undefined
+      );
     let trafficSummary: any = null;
     let trafficWarning: string | null = null;
 
@@ -109,15 +163,6 @@ export async function GET() {
       weatherWarning =
         "Weather intelligence unavailable because no live vehicle location was found.";
     }
-
-    const latestLocation = new Map<string, any>();
-
-    for (const location of locations || []) {
-      if (!latestLocation.has(location.vehicle_id)) {
-        latestLocation.set(location.vehicle_id, location);
-      }
-    }
-
     const trafficRiskLevel =
       trafficSummary?.riskLevel || "unknown";
 
@@ -147,6 +192,15 @@ export async function GET() {
     const predictions = [];
 
     for (const trip of trips || []) {
+
+      if (
+        deniedHsppVehicleIds.has(
+          trip.vehicle_id
+        )
+      ) {
+        continue;
+      }
+
       const location = latestLocation.get(trip.vehicle_id);
 
       if (!location) {
