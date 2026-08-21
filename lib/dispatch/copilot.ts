@@ -1,4 +1,5 @@
 ﻿import { buildFleetOptimization } from "@/lib/fleet/optimizationEngine";
+import { rankFleetCandidatesByETA } from "@/lib/dispatch/etaRanking";
 import { buildTrafficIntelligence } from "@/lib/traffic/intelligence";
 import { buildDispatcherRecommendations } from "@/lib/dispatcher/recommendations";
 
@@ -25,6 +26,8 @@ export async function buildDispatchCopilot(
         intelligence_score,
         behavioral_risk,
         created_at,
+        latitude,
+        longitude,
         vehicles (
           id,
           nickname,
@@ -50,7 +53,8 @@ export async function buildDispatchCopilot(
   const trafficWarning = trafficResult.intelligence?.warnings?.[0] || null;
   const bestCandidate = optimizationResult.summary?.bestCandidate || null;
 
-  const recommendations = alerts.map((alert: any) => {
+  const recommendations = await Promise.all(
+    alerts.map(async (alert: any) => {
     const baseRecommendation = buildDispatcherRecommendations({
       alertType: alert.alert_type,
       severity: alert.severity,
@@ -85,6 +89,37 @@ export async function buildDispatchCopilot(
           ]
         : [];
 
+    const hasCoordinates =
+      alert.latitude != null && alert.longitude != null;
+
+    const alertLatitude = Number(alert.latitude);
+    const alertLongitude = Number(alert.longitude);
+
+    const hasValidTarget =
+      hasCoordinates &&
+      Number.isFinite(alertLatitude) &&
+      Number.isFinite(alertLongitude) &&
+      alertLatitude >= -90 &&
+      alertLatitude <= 90 &&
+      alertLongitude >= -180 &&
+      alertLongitude <= 180 &&
+      !(alertLatitude === 0 && alertLongitude === 0);
+
+    let recommendedResponder = bestCandidate;
+
+    if (hasValidTarget) {
+      const etaCandidates = await rankFleetCandidatesByETA(
+        optimizationResult.candidates || [],
+        {
+          latitude: alertLatitude,
+          longitude: alertLongitude,
+        },
+        3,
+      );
+
+      recommendedResponder = etaCandidates[0] || bestCandidate;
+    }
+
     return {
       alertId: alert.id,
       vehicleId: alert.vehicle_id,
@@ -98,7 +133,7 @@ export async function buildDispatchCopilot(
       intelligenceScore: alert.intelligence_score,
       behavioralRisk: alert.behavioral_risk,
       createdAt: alert.created_at,
-      recommendedResponder: bestCandidate,
+      recommendedResponder,
       recommendation: {
         ...baseRecommendation,
         priority:
@@ -118,7 +153,8 @@ export async function buildDispatchCopilot(
         trafficPriority: trafficPriority(trafficRiskLevel),
       },
     };
-  });
+    })
+  );
 
   return {
     summary: {

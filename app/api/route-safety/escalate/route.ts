@@ -169,6 +169,8 @@ export async function POST(req: NextRequest) {
         alert_type: "route_safety_threat",
         severity,
         message,
+        latitude: Number(routeAlert.latitude),
+        longitude: Number(routeAlert.longitude),
         is_resolved: false,
       })
       .select("id")
