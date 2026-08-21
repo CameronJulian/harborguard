@@ -1,6 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { HSPP_ASSEMBLY_MEMBERSHIP_POLICY_VERSION } from "@/lib/hspp/evaluateHsppAssemblyMembership";
+import {
+  HSPP_ASSEMBLY_MEMBERSHIP_POLICY_VERSION,
+  type HsppAssemblyMembershipReason,
+} from "@/lib/hspp/evaluateHsppAssemblyMembership";
 
 export const HSPP_EVIDENCE_ASSEMBLY_PERSISTENCE_VERSION =
   "hspp-evidence-assembly-persistence-v1" as const;
@@ -16,6 +19,20 @@ export type HsppEvidenceAssemblyPersistenceMember = {
   integrityFingerprint: string;
 };
 
+export type HsppEvidenceAssemblyMembershipRelationPersistence = {
+  firstEvidenceId: string;
+  secondEvidenceId: string;
+
+  membershipEligible: boolean;
+
+  membershipPolicyVersion: typeof HSPP_ASSEMBLY_MEMBERSHIP_POLICY_VERSION;
+
+  membershipReason: HsppAssemblyMembershipReason;
+
+  distanceMeters: number | null;
+  timeDeltaMs: number | null;
+};
+
 export type PersistHsppEvidenceAssemblyInput = {
   supabase: SupabaseClient;
   organizationId: string;
@@ -23,6 +40,8 @@ export type PersistHsppEvidenceAssemblyInput = {
   membershipPolicyVersion?: typeof HSPP_ASSEMBLY_MEMBERSHIP_POLICY_VERSION;
 
   members: HsppEvidenceAssemblyPersistenceMember[];
+
+  membershipRelation?: HsppEvidenceAssemblyMembershipRelationPersistence;
 };
 
 export type PersistedHsppEvidenceAssemblyMember = {
@@ -43,6 +62,8 @@ export type PersistedHsppEvidenceAssembly = {
   assemblyState: "OPEN";
 
   members: PersistedHsppEvidenceAssemblyMember[];
+
+  membershipRelation: HsppEvidenceAssemblyMembershipRelationPersistence | null;
 };
 
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
@@ -132,6 +153,99 @@ export async function persistHsppEvidenceAssembly(
     evidenceIds.add(member.evidenceId);
   }
 
+  const normalizedMembershipRelation = input.membershipRelation
+    ? (() => {
+        const firstEvidenceId = requireNonBlank(
+          input.membershipRelation.firstEvidenceId,
+          "membershipRelation.firstEvidenceId",
+        );
+
+        const secondEvidenceId = requireNonBlank(
+          input.membershipRelation.secondEvidenceId,
+          "membershipRelation.secondEvidenceId",
+        );
+
+        if (firstEvidenceId === secondEvidenceId) {
+          throw new Error(
+            "HSPP assembly membership relation requires two distinct evidence identities.",
+          );
+        }
+
+        if (
+          !evidenceIds.has(firstEvidenceId) ||
+          !evidenceIds.has(secondEvidenceId)
+        ) {
+          throw new Error(
+            "HSPP assembly membership relation must reference persisted assembly members.",
+          );
+        }
+
+        if (normalizedMembers.length !== 2) {
+          throw new Error(
+            "B7490-07K5 membership-relation persistence currently requires exactly two assembly members.",
+          );
+        }
+
+        if (input.membershipRelation.membershipEligible !== true) {
+          throw new Error(
+            "Persisted HSPP assembly membership relation must be membership eligible.",
+          );
+        }
+
+        if (
+          input.membershipRelation.membershipPolicyVersion !==
+          membershipPolicyVersion
+        ) {
+          throw new Error(
+            "HSPP assembly membership relation policy version does not match the assembly policy version.",
+          );
+        }
+
+        if (input.membershipRelation.membershipReason !== "ELIGIBLE") {
+          throw new Error(
+            "Eligible HSPP assembly membership relation must preserve reason ELIGIBLE.",
+          );
+        }
+
+        const distanceMeters = input.membershipRelation.distanceMeters;
+
+        if (
+          distanceMeters !== null &&
+          (!Number.isFinite(distanceMeters) || distanceMeters < 0)
+        ) {
+          throw new Error(
+            "membershipRelation.distanceMeters must be null or a non-negative finite number.",
+          );
+        }
+
+        const timeDeltaMs = input.membershipRelation.timeDeltaMs;
+
+        if (
+          timeDeltaMs !== null &&
+          (!Number.isFinite(timeDeltaMs) || timeDeltaMs < 0)
+        ) {
+          throw new Error(
+            "membershipRelation.timeDeltaMs must be null or a non-negative finite number.",
+          );
+        }
+
+        return {
+          firstEvidenceId,
+          secondEvidenceId,
+
+          membershipEligible: true as const,
+
+          membershipPolicyVersion:
+            input.membershipRelation.membershipPolicyVersion,
+
+          membershipReason: input.membershipRelation.membershipReason,
+
+          distanceMeters,
+          timeDeltaMs,
+        };
+      })()
+    : null;
+
   const { data, error } = await input.supabase.rpc(
     HSPP_EVIDENCE_ASSEMBLY_PERSISTENCE_RPC,
     {
@@ -146,6 +260,25 @@ export async function persistHsppEvidenceAssembly(
 
         integrityFingerprint: member.integrityFingerprint,
       })),
+
+      p_membership_relation: normalizedMembershipRelation
+        ? {
+            firstEvidenceId: normalizedMembershipRelation.firstEvidenceId,
+
+            secondEvidenceId: normalizedMembershipRelation.secondEvidenceId,
+
+            membershipEligible: normalizedMembershipRelation.membershipEligible,
+
+            membershipPolicyVersion:
+              normalizedMembershipRelation.membershipPolicyVersion,
+
+            membershipReason: normalizedMembershipRelation.membershipReason,
+
+            distanceMeters: normalizedMembershipRelation.distanceMeters,
+
+            timeDeltaMs: normalizedMembershipRelation.timeDeltaMs,
+          }
+        : null,
     },
   );
 
@@ -162,7 +295,9 @@ export async function persistHsppEvidenceAssembly(
     row.assembly_version !== HSPP_EVIDENCE_ASSEMBLY_VERSION ||
     row.membership_policy_version !== membershipPolicyVersion ||
     row.assembly_state !== "OPEN" ||
-    Number(row.persisted_member_count) !== normalizedMembers.length
+    Number(row.persisted_member_count) !== normalizedMembers.length ||
+    Number(row.persisted_membership_relation_count) !==
+      (normalizedMembershipRelation ? 1 : 0)
   ) {
     throw new Error(
       "Atomic HSPP evidence assembly persistence returned an invalid result.",
@@ -183,5 +318,7 @@ export async function persistHsppEvidenceAssembly(
     assemblyState: "OPEN",
 
     members: normalizedMembers,
+
+    membershipRelation: normalizedMembershipRelation,
   };
 }

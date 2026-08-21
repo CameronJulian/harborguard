@@ -34,6 +34,7 @@ function createSupabaseMock() {
             assembly_state: "OPEN",
 
             persisted_member_count: 2,
+            persisted_membership_relation_count: 0,
           },
         ],
         error: null,

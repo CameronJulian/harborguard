@@ -176,6 +176,22 @@ export async function persistHsppReservoirAssemblyCandidate(
     membershipPolicyVersion: selected.membershipDecision.policyVersion,
 
     members,
+
+    membershipRelation: {
+      firstEvidenceId: selected.firstEvidenceId,
+
+      secondEvidenceId: selected.secondEvidenceId,
+
+      membershipEligible: selected.membershipDecision.eligible,
+
+      membershipPolicyVersion: selected.membershipDecision.policyVersion,
+
+      membershipReason: selected.membershipDecision.reason,
+
+      distanceMeters: selected.membershipDecision.distanceMeters,
+
+      timeDeltaMs: selected.membershipDecision.timeDeltaMs,
+    },
   });
 
   return {
