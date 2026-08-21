@@ -116,7 +116,7 @@ test(
 );
 
 test(
-  "B10B1 provider-observation boundary remains before evidence and mutable Route Safety persistence",
+  "B10B1 provider-observation boundary remains before evidence Route Safety and assessment",
   () => {
     const observation =
       source.indexOf(
@@ -133,18 +133,14 @@ test(
         "insertNewProviderAlerts("
       );
 
+    const assessment =
+      source.indexOf(
+        "assessHsppExternalIntelligenceEvidence({"
+      );
+
     assert.ok(observation >= 0);
     assert.ok(evidence > observation);
     assert.ok(routeSafety > evidence);
-
-    assert.doesNotMatch(
-      source,
-      /applyHsppAssessmentDecision/
-    );
-
-    assert.doesNotMatch(
-      source,
-      /assessHsppExternalIntelligenceEvidence\s*\(\s*\{/
-    );
+    assert.ok(assessment > routeSafety);
   }
 );

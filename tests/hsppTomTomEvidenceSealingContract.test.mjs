@@ -139,17 +139,26 @@ test(
 );
 
 test(
-  "B10B2 does not assess or promote TomTom evidence",
+  "B10B2 evidence boundary remains before Route Safety assessment",
   () => {
-    assert.doesNotMatch(
-      source,
-      /applyHsppAssessmentDecision/
-    );
+    const evidence =
+      source.indexOf(
+        "persistHsppEvidenceForProviderObservation({"
+      );
 
-    assert.doesNotMatch(
-      source,
-      /assessHsppExternalIntelligenceEvidence\s*\(\s*\{/
-    );
+    const upsert =
+      source.indexOf(
+        "insertNewProviderAlerts("
+      );
+
+    const assessment =
+      source.indexOf(
+        "assessHsppExternalIntelligenceEvidence({"
+      );
+
+    assert.ok(evidence >= 0);
+    assert.ok(upsert > evidence);
+    assert.ok(assessment > upsert);
 
     assert.doesNotMatch(
       source,

@@ -83,20 +83,19 @@ test(
 );
 
 test(
-  "TomTom evidence sealing remains assessment-free",
+  "TomTom evidence sealing remains before assessment",
   () => {
-    assert.equal(
-      source.includes(
-        "applyHsppAssessmentDecision"
-      ),
-      false
-    );
+    const evidence =
+      source.indexOf(
+        "persistHsppEvidenceForProviderObservation({"
+      );
 
-    assert.equal(
-      source.includes(
-        "verifyHsppEvidenceIntegrity"
-      ),
-      false
-    );
+    const verification =
+      source.indexOf(
+        "verifyHsppEvidenceIntegrity({"
+      );
+
+    assert.ok(evidence >= 0);
+    assert.ok(verification > evidence);
   }
 );
