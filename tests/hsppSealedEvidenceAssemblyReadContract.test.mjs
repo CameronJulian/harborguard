@@ -120,3 +120,59 @@ test("B07D introduces no API cron retry or scheduling implementation", () => {
     assert.doesNotMatch(source, pattern);
   }
 });
+
+test("B07D retains verified member provenance without another evidence read", () => {
+  assert.match(source, /export type HsppSealedAssemblyVerifiedMemberMetadata/);
+
+  assert.match(
+    source,
+    /verifiedMembers:\s*HsppSealedAssemblyVerifiedMemberMetadata\[\]/,
+  );
+
+  assert.match(source, /sourceProvider:\s*result\.evidence\.sourceProvider/);
+
+  assert.match(source, /sourceClass:\s*result\.evidence\.sourceClass/);
+
+  assert.match(source, /observedAt:\s*result\.evidence\.observedAt/);
+
+  assert.match(source, /integrityStatus:\s*"MATCH"/);
+
+  assert.match(source, /validationState:\s*result\.evidence\.validationState/);
+});
+
+test("B07D preserves immutable assembly identity in verified member metadata", () => {
+  assert.match(
+    source,
+    /verifiedMembers\.push\(\{[\s\S]*evidenceId:\s*member\.evidenceId/,
+  );
+
+  assert.match(
+    source,
+    /verifiedMembers\.push\(\{[\s\S]*integrityFingerprint:\s*member\.integrityFingerprint/,
+  );
+
+  assert.match(
+    source,
+    /verifiedMembers\.push\(\{[\s\S]*memberOrdinal:\s*member\.memberOrdinal/,
+  );
+});
+
+test("B07K3 introduces no B11F4 evaluation or assessment mutation", () => {
+  const executableSource = source
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+
+  assert.doesNotMatch(
+    executableSource,
+    /\bevaluateHsppMemberCorroboration\s*\(/,
+  );
+
+  assert.doesNotMatch(executableSource, /\bassessHsppCorroboratedMember\s*\(/);
+
+  assert.doesNotMatch(
+    executableSource,
+    /\bpersistHsppCorroboratedMemberAssessment\s*\(/,
+  );
+
+  assert.doesNotMatch(executableSource, /\bapplyHsppAssessmentDecision\s*\(/);
+});

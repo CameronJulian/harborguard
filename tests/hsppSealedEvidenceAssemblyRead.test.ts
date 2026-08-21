@@ -592,3 +592,40 @@ for (const [field, organizationId, assemblyId] of [
     assert.equal(mock.calls.length, 0);
   });
 }
+
+test("sealed assembly reader retains verified member metadata required by later corroboration input construction", async () => {
+  const mock = createSupabaseMock();
+
+  const result = await readHsppSealedEvidenceAssembly({
+    supabase: mock.supabase as never,
+
+    organizationId: "22222222-2222-4222-8222-222222222222",
+
+    assemblyId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  });
+
+  assert.equal(result.verifiedMembers.length, result.scanInput.members.length);
+
+  assert.deepEqual(
+    result.verifiedMembers.map((member) => ({
+      evidenceId: member.evidenceId,
+      integrityFingerprint: member.integrityFingerprint,
+      memberOrdinal: member.memberOrdinal,
+    })),
+    result.scanInput.members.map((member) => ({
+      evidenceId: member.evidenceId,
+      integrityFingerprint: member.integrityFingerprint,
+      memberOrdinal: member.memberOrdinal,
+    })),
+  );
+
+  for (const member of result.verifiedMembers) {
+    assert.ok(member.sourceProvider);
+    assert.ok(member.sourceClass);
+    assert.ok(member.observedAt);
+
+    assert.equal(member.integrityStatus, "MATCH");
+
+    assert.ok(member.validationState);
+  }
+});

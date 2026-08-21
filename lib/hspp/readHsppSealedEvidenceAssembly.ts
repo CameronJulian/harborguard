@@ -1,4 +1,4 @@
-﻿import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { readAndVerifyHsppEvidenceBatch } from "@/lib/hspp/readAndVerifyHsppEvidence";
 
@@ -18,10 +18,30 @@ export type ReadHsppSealedEvidenceAssemblyInput = {
   assemblyId: string;
 };
 
+export type HsppSealedAssemblyVerifiedMemberMetadata = {
+  evidenceId: string;
+
+  integrityFingerprint: string;
+
+  memberOrdinal: number;
+
+  sourceProvider: string;
+
+  sourceClass: string;
+
+  observedAt: string;
+
+  integrityStatus: "MATCH";
+
+  validationState: string;
+};
+
 export type ReadHsppSealedEvidenceAssemblyResult = {
   readerVersion: typeof HSPP_SEALED_ASSEMBLY_READER_VERSION;
 
   scanInput: HsppAssemblyScanInput;
+
+  verifiedMembers: HsppSealedAssemblyVerifiedMemberMetadata[];
 };
 
 type AssemblyRow = {
@@ -225,6 +245,8 @@ export async function readHsppSealedEvidenceAssembly(
 
   const members: HsppAssemblyScanMember[] = [];
 
+  const verifiedMembers: HsppSealedAssemblyVerifiedMemberMetadata[] = [];
+
   for (const member of membership) {
     const result = evidenceResults.get(member.evidenceId);
 
@@ -245,6 +267,28 @@ export async function readHsppSealedEvidenceAssembly(
         `HSPP assembly member evidence ${member.evidenceId} does not match its membership-bound integrity fingerprint.`,
       );
     }
+
+    verifiedMembers.push({
+      evidenceId: member.evidenceId,
+
+      integrityFingerprint: member.integrityFingerprint,
+
+      memberOrdinal: member.memberOrdinal,
+
+      sourceProvider: result.evidence.sourceProvider,
+
+      sourceClass: result.evidence.sourceClass,
+
+      observedAt: result.evidence.observedAt,
+
+      /*
+       * This projection is created only after B07D has required
+       * result.verification.status === "MATCH".
+       */
+      integrityStatus: "MATCH",
+
+      validationState: result.evidence.validationState,
+    });
 
     const eventType = readCanonicalEventType(result.evidence.normalizedPayload);
 
@@ -276,5 +320,7 @@ export async function readHsppSealedEvidenceAssembly(
 
       members,
     },
+
+    verifiedMembers,
   };
 }
