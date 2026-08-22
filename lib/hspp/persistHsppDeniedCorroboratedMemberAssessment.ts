@@ -4,6 +4,14 @@ import {
 } from "./applyHsppAssessmentDecision";
 
 import {
+  applyHsppAssessmentDecisionUnderExecutionLease,
+} from "./applyHsppAssessmentDecisionUnderExecutionLease";
+
+import type {
+  HsppAssessmentExecutionLeaseContext,
+} from "./hsppAssessmentExecutionLeaseContext";
+
+import {
   HSPP_MEMBER_CORROBORATION_VERSION,
   type HsppMemberCorroborationDecision,
   type HsppMemberCorroborationReason,
@@ -51,6 +59,12 @@ export type PersistHsppDeniedCorroboratedMemberAssessmentInput = {
    * This boundary never invents its own wall-clock persistence time.
    */
   assessedAt: string;
+
+  /*
+   * Optional recovery execution ownership only.
+   * Assessment and retry identity remain independently controlled.
+   */
+  executionLease?: HsppAssessmentExecutionLeaseContext;
 };
 
 export type HsppPersistedDeniedCorroboratedMemberAssessment = {
@@ -246,19 +260,53 @@ export async function persistHsppDeniedCorroboratedMemberAssessment(
     fail("B7490-07Q8 persists only the canonical fail-closed B11F5 denial.");
   }
 
-  const applied = await applyHsppAssessmentDecision({
-    supabase: input.supabase,
+  const executionLease = input.executionLease;
 
-    organizationId,
+  if (executionLease) {
+    const executionLeaseAssemblyId =
+      typeof executionLease.assemblyId === "string"
+        ? executionLease.assemblyId.trim()
+        : "";
 
-    evidenceId,
+    if (
+      !executionLeaseAssemblyId ||
+      executionLeaseAssemblyId.toLowerCase() !== assemblyId.toLowerCase()
+    ) {
+      fail("B7490-07Q8 execution lease assembly identity does not match B11F4 provenance.");
+    }
+  }
 
-    integrityFingerprint,
+  const applied = executionLease
+    ? await applyHsppAssessmentDecisionUnderExecutionLease({
+        supabase: input.supabase,
 
-    assessment,
+        organizationId,
 
-    assessedAt,
-  });
+        assemblyId,
+
+        leaseToken: executionLease.leaseToken,
+
+        evidenceId,
+
+        integrityFingerprint,
+
+        assessment,
+
+        assessedAt,
+      })
+    : await applyHsppAssessmentDecision({
+        supabase: input.supabase,
+
+        organizationId,
+
+        evidenceId,
+
+        integrityFingerprint,
+
+        assessment,
+
+        assessedAt,
+      });
 
   if (
     applied.evidenceId !== evidenceId ||

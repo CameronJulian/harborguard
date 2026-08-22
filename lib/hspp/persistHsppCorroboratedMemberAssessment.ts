@@ -4,6 +4,14 @@ import {
 } from "./applyHsppAssessmentDecision";
 
 import {
+  applyHsppAssessmentDecisionUnderExecutionLease,
+} from "./applyHsppAssessmentDecisionUnderExecutionLease";
+
+import type {
+  HsppAssessmentExecutionLeaseContext,
+} from "./hsppAssessmentExecutionLeaseContext";
+
+import {
   HSPP_MEMBER_CORROBORATION_VERSION,
   type HsppMemberCorroborationDecision,
 } from "./evaluateHsppMemberCorroboration";
@@ -35,6 +43,13 @@ export type PersistHsppCorroboratedMemberAssessmentInput = {
    */
   assessedAt:
     string;
+
+  /*
+   * Optional recovery execution ownership only.
+   * Assessment and retry identity remain independently controlled.
+   */
+  executionLease?:
+    HsppAssessmentExecutionLeaseContext;
 };
 
 export type HsppPersistedCorroboratedMemberAssessment = {
@@ -367,21 +382,60 @@ export async function persistHsppCorroboratedMemberAssessment(
     );
   }
 
+  const executionLease =
+    input.executionLease;
+
+  if (executionLease) {
+    const executionLeaseAssemblyId =
+      typeof executionLease.assemblyId === "string"
+        ? executionLease.assemblyId.trim()
+        : "";
+
+    if (
+      !executionLeaseAssemblyId ||
+      executionLeaseAssemblyId.toLowerCase() !== assemblyId.toLowerCase()
+    ) {
+      fail(
+        "B11F6 execution lease assembly identity does not match B11F4 provenance."
+      );
+    }
+  }
+
   const applied =
-    await applyHsppAssessmentDecision({
-      supabase:
-        input.supabase,
+    executionLease
+      ? await applyHsppAssessmentDecisionUnderExecutionLease({
+          supabase:
+            input.supabase,
 
-      organizationId,
+          organizationId,
 
-      evidenceId,
+          assemblyId,
 
-      integrityFingerprint,
+          leaseToken:
+            executionLease.leaseToken,
 
-      assessment,
+          evidenceId,
 
-      assessedAt,
-    });
+          integrityFingerprint,
+
+          assessment,
+
+          assessedAt,
+        })
+      : await applyHsppAssessmentDecision({
+          supabase:
+            input.supabase,
+
+          organizationId,
+
+          evidenceId,
+
+          integrityFingerprint,
+
+          assessment,
+
+          assessedAt,
+        });
 
   if (
     applied.evidenceId !==
