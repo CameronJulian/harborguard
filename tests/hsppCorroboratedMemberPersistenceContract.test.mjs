@@ -299,3 +299,69 @@ test(
     );
   }
 );
+
+test(
+  "B11F6 requires a caller-controlled deterministic assessedAt",
+  () => {
+    assert.match(
+      source,
+      /\bassessedAt\s*:\s*string\s*;/
+    );
+
+    assert.doesNotMatch(
+      source,
+      /assessedAt\?\s*:/
+    );
+
+    const executableSource =
+      source
+        .replace(
+          /\/\*[\s\S]*?\*\//g,
+          ""
+        )
+        .replace(
+          /\/\/.*$/gm,
+          ""
+        );
+
+    assert.doesNotMatch(
+      executableSource,
+      /assessedAt\s*=\s*new Date\s*\(\s*\)\s*\.toISOString/
+    );
+  }
+);
+
+test(
+  "B11F6 normalizes retry identity once before persistence",
+  () => {
+    assert.match(
+      source,
+      /function\s+normalizeAssessedAt/
+    );
+
+    assert.match(
+      source,
+      /const\s+assessedAt\s*=\s*[\r\n\s]*normalizeAssessedAt\s*\([\r\n\s]*input\.assessedAt/
+    );
+
+    assert.match(
+      source,
+      /assessedAt,\s*[\r\n\s]*\}\);/
+    );
+  }
+);
+
+test(
+  "B11F6 verifies and returns the exact persisted retry timestamp",
+  () => {
+    assert.match(
+      source,
+      /applied\.assessedAt\s*!==[\r\n\s]*assessedAt/
+    );
+
+    assert.match(
+      source,
+      /operationalEligible:[\r\n\s]*false,[\r\n\s]*assessedAt,[\r\n\s]*applied/
+    );
+  }
+);

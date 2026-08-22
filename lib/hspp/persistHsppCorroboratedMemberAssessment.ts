@@ -27,7 +27,13 @@ export type PersistHsppCorroboratedMemberAssessmentInput = {
   assessment:
     HsppCorroboratedMemberAssessment;
 
-  assessedAt?:
+  /*
+   * Deterministic retry identity.
+   *
+   * An identical B11F6 retry must reuse this exact logical
+   * persistence timestamp. B11F6 never generates wall-clock time.
+   */
+  assessedAt:
     string;
 };
 
@@ -68,6 +74,9 @@ export type HsppPersistedCorroboratedMemberAssessment = {
   operationalEligible:
     false;
 
+  assessedAt:
+    string;
+
   /*
    * B11F6 persists B11F5's controlled trust result only.
    *
@@ -94,6 +103,38 @@ function fail(
   throw new Error(
     message
   );
+}
+
+function normalizeAssessedAt(
+  value: string
+): string {
+  const normalized =
+    typeof value === "string"
+      ? value.trim()
+      : "";
+
+  if (!normalized) {
+    fail(
+      "B11F6 assessedAt is required for deterministic retry identity."
+    );
+  }
+
+  const parsed =
+    new Date(
+      normalized
+    );
+
+  if (
+    Number.isNaN(
+      parsed.getTime()
+    )
+  ) {
+    fail(
+      "B11F6 assessedAt must be a valid date-time string."
+    );
+  }
+
+  return parsed.toISOString();
 }
 
 function sameStringArray(
@@ -146,6 +187,17 @@ export async function persistHsppCorroboratedMemberAssessment(
 
   const assessment =
     input.assessment;
+
+  /*
+   * Normalize the caller-owned retry identity once.
+   *
+   * Equivalent date-time representations become one canonical
+   * ISO timestamp, and no internal wall-clock value is generated.
+   */
+  const assessedAt =
+    normalizeAssessedAt(
+      input.assessedAt
+    );
 
   if (
     corroboration.policyVersion !==
@@ -328,13 +380,14 @@ export async function persistHsppCorroboratedMemberAssessment(
 
       assessment,
 
-      assessedAt:
-        input.assessedAt,
+      assessedAt,
     });
 
   if (
     applied.evidenceId !==
       evidenceId ||
+    applied.assessedAt !==
+      assessedAt ||
     applied.trustState !==
       "CORROBORATED" ||
     applied.operationalEligible !==
@@ -380,6 +433,8 @@ export async function persistHsppCorroboratedMemberAssessment(
 
     operationalEligible:
       false,
+
+    assessedAt,
 
     applied,
   };

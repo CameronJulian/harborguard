@@ -58,6 +58,9 @@ function persisted():
     operationalEligible:
       false,
 
+    assessedAt:
+      "2026-08-21T10:45:00.000Z",
+
     applied: {
       evidenceId:
         "evidence-a",

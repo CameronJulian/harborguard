@@ -19,6 +19,9 @@ import {
 const fingerprint =
   "a".repeat(64);
 
+const stableAssessedAt =
+  "2026-08-21T10:45:00.000Z";
+
 function eligible():
   HsppMemberCorroborationDecision {
   return {
@@ -147,7 +150,11 @@ function createSupabaseMock(
   };
 }
 
-function persistedRow() {
+function persistedRow(
+  assessedAtValue:
+    string =
+      stableAssessedAt
+) {
   return {
     id:
       "evidence-a",
@@ -165,8 +172,32 @@ function persistedRow() {
       "INDEPENDENT_CORROBORATION_ACCEPTED",
 
     assessed_at:
-      "2026-08-21T10:45:00.000Z",
+      assessedAtValue,
   };
+}
+
+type PersistenceInput =
+  Parameters<
+    typeof persistHsppCorroboratedMemberAssessment
+  >[0];
+
+async function persistWithStableAssessmentTime(
+  input:
+    Omit<
+      PersistenceInput,
+      "assessedAt"
+    > & {
+      assessedAt?:
+        string;
+    }
+) {
+  return persistHsppCorroboratedMemberAssessment({
+    ...input,
+
+    assessedAt:
+      input.assessedAt ??
+      stableAssessedAt,
+  });
 }
 
 test(
@@ -187,7 +218,7 @@ test(
       );
 
     const result =
-      await persistHsppCorroboratedMemberAssessment({
+      await persistWithStableAssessmentTime({
         supabase:
           mock.supabase,
 
@@ -239,7 +270,7 @@ test(
         persistedRow()
       );
 
-    await persistHsppCorroboratedMemberAssessment({
+    await persistWithStableAssessmentTime({
       supabase:
         mock.supabase,
 
@@ -286,7 +317,7 @@ test(
         persistedRow()
       );
 
-    await persistHsppCorroboratedMemberAssessment({
+    await persistWithStableAssessmentTime({
       supabase:
         mock.supabase,
 
@@ -345,7 +376,7 @@ test(
         persistedRow()
       );
 
-    await persistHsppCorroboratedMemberAssessment({
+    await persistWithStableAssessmentTime({
       supabase:
         mock.supabase,
 
@@ -390,7 +421,7 @@ test(
       );
 
     const result =
-      await persistHsppCorroboratedMemberAssessment({
+      await persistWithStableAssessmentTime({
         supabase:
           mock.supabase,
 
@@ -475,7 +506,7 @@ test(
 
     await assert.rejects(
       () =>
-        persistHsppCorroboratedMemberAssessment({
+        persistWithStableAssessmentTime({
           supabase,
 
           corroborationDecision:
@@ -528,7 +559,7 @@ test(
 
     await assert.rejects(
       () =>
-        persistHsppCorroboratedMemberAssessment({
+        persistWithStableAssessmentTime({
           supabase,
 
           corroborationDecision:
@@ -571,7 +602,7 @@ test(
 
     await assert.rejects(
       () =>
-        persistHsppCorroboratedMemberAssessment({
+        persistWithStableAssessmentTime({
           supabase:
             {},
 
@@ -604,7 +635,7 @@ test(
 
     await assert.rejects(
       () =>
-        persistHsppCorroboratedMemberAssessment({
+        persistWithStableAssessmentTime({
           supabase:
             {},
 
@@ -641,7 +672,7 @@ test(
 
     await assert.rejects(
       () =>
-        persistHsppCorroboratedMemberAssessment({
+        persistWithStableAssessmentTime({
           supabase:
             {},
 
@@ -674,7 +705,7 @@ test(
 
     await assert.rejects(
       () =>
-        persistHsppCorroboratedMemberAssessment({
+        persistWithStableAssessmentTime({
           supabase:
             mock.supabase,
 
@@ -715,7 +746,7 @@ test(
         persistedRow()
       );
 
-    await persistHsppCorroboratedMemberAssessment({
+    await persistWithStableAssessmentTime({
       supabase:
         mock.supabase,
 
@@ -733,6 +764,212 @@ test(
     assert.deepEqual(
       assessment,
       assessmentBefore
+    );
+  }
+);
+
+test(
+  "B11F6 requires caller-controlled assessedAt before database use",
+  async () => {
+    const corroboration =
+      eligible();
+
+    const assessment =
+      assessHsppCorroboratedMember({
+        corroborationDecision:
+          corroboration,
+      });
+
+    let databaseUsed =
+      false;
+
+    const supabase = {
+      from() {
+        databaseUsed =
+          true;
+
+        throw new Error(
+          "database should not be used"
+        );
+      },
+    };
+
+    const missingTimestampInput = {
+      supabase,
+
+      corroborationDecision:
+        corroboration,
+
+      assessment,
+    } as unknown as
+      Parameters<
+        typeof persistHsppCorroboratedMemberAssessment
+      >[0];
+
+    await assert.rejects(
+      () =>
+        persistHsppCorroboratedMemberAssessment(
+          missingTimestampInput
+        ),
+
+      /assessedAt is required for deterministic retry identity/
+    );
+
+    assert.equal(
+      databaseUsed,
+      false
+    );
+  }
+);
+
+test(
+  "B11F6 canonicalizes equivalent assessedAt representations",
+  async () => {
+    const corroboration =
+      eligible();
+
+    const assessment =
+      assessHsppCorroboratedMember({
+        corroborationDecision:
+          corroboration,
+      });
+
+    const mock =
+      createSupabaseMock(
+        persistedRow(
+          stableAssessedAt
+        )
+      );
+
+    const result =
+      await persistWithStableAssessmentTime({
+        supabase:
+          mock.supabase,
+
+        corroborationDecision:
+          corroboration,
+
+        assessment,
+
+        assessedAt:
+          "2026-08-21T12:45:00+02:00",
+      });
+
+    const update =
+      mock.getUpdate();
+
+    assert.ok(update);
+
+    assert.equal(
+      update.assessed_at,
+      stableAssessedAt
+    );
+
+    assert.equal(
+      result.assessedAt,
+      stableAssessedAt
+    );
+
+    assert.equal(
+      result.applied.assessedAt,
+      stableAssessedAt
+    );
+  }
+);
+
+test(
+  "B11F6 identical retries with the same assessedAt are deterministic",
+  async () => {
+    const corroboration =
+      eligible();
+
+    const assessment =
+      assessHsppCorroboratedMember({
+        corroborationDecision:
+          corroboration,
+      });
+
+    const firstMock =
+      createSupabaseMock(
+        persistedRow()
+      );
+
+    const secondMock =
+      createSupabaseMock(
+        persistedRow()
+      );
+
+    const first =
+      await persistWithStableAssessmentTime({
+        supabase:
+          firstMock.supabase,
+
+        corroborationDecision:
+          corroboration,
+
+        assessment,
+      });
+
+    const second =
+      await persistWithStableAssessmentTime({
+        supabase:
+          secondMock.supabase,
+
+        corroborationDecision:
+          corroboration,
+
+        assessment,
+      });
+
+    assert.deepEqual(
+      firstMock.getUpdate(),
+      secondMock.getUpdate()
+    );
+
+    assert.deepEqual(
+      first,
+      second
+    );
+
+    assert.equal(
+      first.assessedAt,
+      stableAssessedAt
+    );
+  }
+);
+
+test(
+  "B11F6 rejects a persisted timestamp that differs from retry identity",
+  async () => {
+    const corroboration =
+      eligible();
+
+    const assessment =
+      assessHsppCorroboratedMember({
+        corroborationDecision:
+          corroboration,
+      });
+
+    const mock =
+      createSupabaseMock(
+        persistedRow(
+          "2026-08-21T10:45:01.000Z"
+        )
+      );
+
+    await assert.rejects(
+      () =>
+        persistWithStableAssessmentTime({
+          supabase:
+            mock.supabase,
+
+          corroborationDecision:
+            corroboration,
+
+          assessment,
+        }),
+
+      /persisted result does not match/
     );
   }
 );
