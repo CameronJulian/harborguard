@@ -225,6 +225,28 @@ function createSupabaseMock(eventTypes: [string, string]) {
         return decisionQuery();
       }
 
+      if (table === "hspp_evidence_assembly_membership_relations") {
+        const query: any = {
+          select() {
+            return query;
+          },
+
+          eq() {
+            return query;
+          },
+
+          async maybeSingle() {
+            return {
+              data: null,
+
+              error: null,
+            };
+          },
+        };
+
+        return query;
+      }
+
       throw new Error(`Unexpected table ${table}`);
     },
   };

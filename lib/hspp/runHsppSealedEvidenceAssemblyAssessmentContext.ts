@@ -6,6 +6,8 @@ import {
   type RunHsppSealedEvidenceAssemblyAuthorityResult,
 } from "@/lib/hspp/runHsppSealedEvidenceAssemblyAuthority";
 
+import type { HsppSealedAssemblyMembershipRelation } from "@/lib/hspp/readHsppSealedEvidenceAssembly";
+
 import {
   HSPP_ASSEMBLY_ASSESSMENT_INPUT_VERSION,
   buildHsppAssemblyAssessmentInput,
@@ -36,6 +38,8 @@ export type RunHsppSealedEvidenceAssemblyAssessmentContextResult = {
   assemblyId: string;
 
   authority: RunHsppSealedEvidenceAssemblyAuthorityResult;
+
+  membershipRelation: HsppSealedAssemblyMembershipRelation | null;
 
   assessmentContext: HsppAssemblyAssessmentInput;
 };
@@ -113,8 +117,17 @@ export async function runHsppSealedEvidenceAssemblyAssessmentContext(
    *
    * No second persistence snapshot is loaded here.
    */
-  const scanInput =
-    authority.decisionPersistence.decisionRun.scanRun.read.scanInput;
+  const read = authority.decisionPersistence.decisionRun.scanRun.read;
+
+  const scanInput = read.scanInput;
+
+  /*
+   * B7490-07M provenance bridge.
+   *
+   * This is the exact immutable B11A2 relation loaded by B07D.
+   * It is not recomputed, inferred, or re-read here.
+   */
+  const membershipRelation = read.membershipRelation;
 
   const members: HsppAssemblyAssessmentMember[] = scanInput.members.map(
     (member) => ({
@@ -148,6 +161,8 @@ export async function runHsppSealedEvidenceAssemblyAssessmentContext(
     assemblyId: authority.assemblyId,
 
     authority,
+
+    membershipRelation,
 
     assessmentContext,
   };

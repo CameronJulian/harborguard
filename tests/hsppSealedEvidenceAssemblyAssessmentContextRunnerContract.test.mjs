@@ -39,8 +39,10 @@ test("B07I invokes B11F2 exactly once", () => {
 test("B07I uses the exact retained B07D member provenance path", () => {
   assert.match(
     executableSource,
-    /authority\.decisionPersistence\s*\.decisionRun\s*\.scanRun\s*\.read\s*\.scanInput/s,
+    /const\s+read\s*=\s*authority\.decisionPersistence\s*\.decisionRun\s*\.scanRun\s*\.read/s,
   );
+
+  assert.match(executableSource, /const\s+scanInput\s*=\s*read\.scanInput/s);
 
   assert.match(executableSource, /scanInput\.members\.map/s);
 });
@@ -123,4 +125,63 @@ test("B07I introduces no downstream authority or scheduling behavior", () => {
   for (const pattern of forbidden) {
     assert.doesNotMatch(executableSource, pattern);
   }
+});
+
+test("B07M preserves the exact retained B07D membership relation", () => {
+  assert.match(
+    executableSource,
+    /const\s+read\s*=\s*authority\.decisionPersistence\s*\.decisionRun\s*\.scanRun\s*\.read/s,
+  );
+
+  assert.match(
+    executableSource,
+    /const\s+membershipRelation\s*=\s*read\.membershipRelation/s,
+  );
+
+  assert.match(
+    source,
+    /membershipRelation:\s*HsppSealedAssemblyMembershipRelation\s*\|\s*null/,
+  );
+
+  assert.match(
+    executableSource,
+    /membershipRelation,\s*[\r\n]+\s*assessmentContext/s,
+  );
+});
+
+test("B07M does not recompute or reload B11A2 membership provenance", () => {
+  assert.doesNotMatch(
+    executableSource,
+    /\bevaluateHsppAssemblyMembership\s*\(/,
+  );
+
+  assert.doesNotMatch(
+    executableSource,
+    /\breadHsppSealedEvidenceAssembly\s*\(/,
+  );
+
+  assert.doesNotMatch(
+    executableSource,
+    /hspp_evidence_assembly_membership_relations/,
+  );
+
+  assert.doesNotMatch(executableSource, /\.from\s*\(/);
+
+  assert.doesNotMatch(executableSource, /\.rpc\s*\(/);
+});
+
+test("B07M does not invoke B11F4", () => {
+  assert.doesNotMatch(
+    executableSource,
+    /\bevaluateHsppMemberCorroboration\s*\(/,
+  );
+
+  assert.doesNotMatch(executableSource, /\bassessHsppCorroboratedMember\s*\(/);
+
+  assert.doesNotMatch(
+    executableSource,
+    /\bpersistHsppCorroboratedMemberAssessment\s*\(/,
+  );
+
+  assert.doesNotMatch(executableSource, /\bapplyHsppAssessmentDecision\s*\(/);
 });
