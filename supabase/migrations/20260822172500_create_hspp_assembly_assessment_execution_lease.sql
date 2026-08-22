@@ -1,4 +1,4 @@
-﻿-- B7490-07Q13e3
+-- B7490-07Q13e3
 --
 -- Durable infrastructure-only execution lease for one HSPP SEALED assembly.
 --

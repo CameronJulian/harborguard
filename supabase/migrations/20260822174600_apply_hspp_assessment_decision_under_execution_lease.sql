@@ -1,4 +1,4 @@
-﻿-- B7490-07Q13e5a
+-- B7490-07Q13e5a
 --
 -- Recovery-only fenced HSPP assessment persistence boundary.
 --

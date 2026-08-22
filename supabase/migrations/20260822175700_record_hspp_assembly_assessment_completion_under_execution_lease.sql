@@ -1,4 +1,4 @@
-﻿-- B7490-07Q13e5b
+-- B7490-07Q13e5b
 --
 -- Recovery-only token-fenced immutable whole-Q12 completion writer.
 --
