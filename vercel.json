@@ -19,6 +19,10 @@
     {
       "path": "/api/fleet/cron/route-risk-shadow-model-health",
       "schedule": "30 2 * * *"
+    },
+    {
+      "path": "/api/hspp/cron/recovery",
+      "schedule": "0 3 * * *"
     }
   ]
 }
