@@ -176,3 +176,51 @@ test("B07K3 introduces no B11F4 evaluation or assessment mutation", () => {
 
   assert.doesNotMatch(executableSource, /\bapplyHsppAssessmentDecision\s*\(/);
 });
+
+test("B07L reads persisted B11A2 membership relation provenance", () => {
+  assert.match(
+    source,
+    /\.from\("hspp_evidence_assembly_membership_relations"\)/,
+  );
+
+  for (const field of [
+    "first_evidence_id",
+    "second_evidence_id",
+    "membership_eligible",
+    "membership_policy_version",
+    "membership_reason",
+    "distance_meters",
+    "time_delta_ms",
+  ]) {
+    assert.match(source, new RegExp(`\\b${field}\\b`));
+  }
+
+  assert.match(
+    source,
+    /membershipRelation:\s*HsppSealedAssemblyMembershipRelation\s*\|\s*null/,
+  );
+});
+
+test("B07L keeps historical relation provenance nullable", () => {
+  assert.match(
+    source,
+    /relationData\s+as\s+unknown\s+as\s+AssemblyMembershipRelationRow\s*\|\s*null/,
+  );
+
+  assert.match(source, /relation\s*\?\s*\{/);
+
+  assert.match(source, /:\s*null/);
+});
+
+test("B07L validates persisted relation membership without rerunning B11A2", () => {
+  assert.match(source, /references evidence outside the assembly/);
+
+  assert.match(source, /membershipRelation\.membershipEligible\s*!==\s*true/);
+
+  assert.match(
+    source,
+    /membershipRelation\.membershipReason\s*!==\s*"ELIGIBLE"/,
+  );
+
+  assert.doesNotMatch(source, /\bevaluateHsppAssemblyMembership\s*\(/);
+});

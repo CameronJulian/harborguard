@@ -13,6 +13,8 @@ type MockOptions = {
   assemblyError?: unknown;
   members?: unknown[];
   memberError?: unknown;
+  membershipRelation?: unknown;
+  membershipRelationError?: unknown;
   evidenceRows?: unknown[];
   evidenceError?: unknown;
 };
@@ -132,6 +134,16 @@ function defaultFixture() {
       },
     ],
 
+    membershipRelation: {
+      first_evidence_id: first.id,
+      second_evidence_id: second.id,
+      membership_eligible: true,
+      membership_policy_version: "hspp-assembly-membership-v1",
+      membership_reason: "ELIGIBLE",
+      distance_meters: 125.5,
+      time_delta_ms: 45000,
+    },
+
     evidenceRows: [first, second],
   };
 }
@@ -142,6 +154,11 @@ function createSupabaseMock(options: MockOptions = {}) {
   const assembly = "assembly" in options ? options.assembly : fixture.assembly;
 
   const members = "members" in options ? options.members : fixture.members;
+
+  const membershipRelation =
+    "membershipRelation" in options
+      ? options.membershipRelation
+      : fixture.membershipRelation;
 
   const evidenceRows =
     "evidenceRows" in options ? options.evidenceRows : fixture.evidenceRows;
@@ -313,6 +330,44 @@ function createSupabaseMock(options: MockOptions = {}) {
 
       if (table === "hspp_evidence") {
         return evidenceQuery();
+      }
+
+      if (table === "hspp_evidence_assembly_membership_relations") {
+        const query: any = {
+          select(columns: string) {
+            calls.push({
+              table,
+              action: "select",
+              value: columns,
+            });
+
+            return query;
+          },
+
+          eq(column: string, value: unknown) {
+            calls.push({
+              table,
+              action: `eq:${column}`,
+              value,
+            });
+
+            return query;
+          },
+
+          async maybeSingle() {
+            calls.push({
+              table,
+              action: "maybeSingle",
+            });
+
+            return {
+              data: membershipRelation,
+              error: options.membershipRelationError ?? null,
+            };
+          },
+        };
+
+        return query;
       }
 
       throw new Error(`Unexpected table: ${table}`);
@@ -628,4 +683,92 @@ test("sealed assembly reader retains verified member metadata required by later 
 
     assert.ok(member.validationState);
   }
+});
+
+test("B07L returns the immutable B11A2 assembly membership relation", async () => {
+  const mock = createSupabaseMock();
+
+  const result = await readHsppSealedEvidenceAssembly({
+    supabase: mock.supabase as any,
+
+    organizationId: "22222222-2222-4222-8222-222222222222",
+
+    assemblyId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  });
+
+  assert.deepEqual(result.membershipRelation, {
+    firstEvidenceId: mock.fixture.membershipRelation.first_evidence_id,
+
+    secondEvidenceId: mock.fixture.membershipRelation.second_evidence_id,
+
+    membershipEligible: true,
+
+    membershipPolicyVersion: "hspp-assembly-membership-v1",
+
+    membershipReason: "ELIGIBLE",
+
+    distanceMeters: 125.5,
+
+    timeDeltaMs: 45000,
+  });
+});
+
+test("B07L permits historical SEALED assemblies with no recorded relation", async () => {
+  const mock = createSupabaseMock({
+    membershipRelation: null,
+  });
+
+  const result = await readHsppSealedEvidenceAssembly({
+    supabase: mock.supabase as any,
+
+    organizationId: "22222222-2222-4222-8222-222222222222",
+
+    assemblyId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  });
+
+  assert.equal(result.membershipRelation, null);
+});
+
+test("B07L fails closed when relation provenance references non-members", async () => {
+  const fixture = defaultFixture();
+
+  const mock = createSupabaseMock({
+    membershipRelation: {
+      ...fixture.membershipRelation,
+
+      second_evidence_id: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      readHsppSealedEvidenceAssembly({
+        supabase: mock.supabase as any,
+
+        organizationId: "22222222-2222-4222-8222-222222222222",
+
+        assemblyId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      }),
+
+    /references evidence outside the assembly/,
+  );
+});
+
+test("B07L does not recompute B11A2 when reading persisted provenance", async () => {
+  const mock = createSupabaseMock();
+
+  await readHsppSealedEvidenceAssembly({
+    supabase: mock.supabase as any,
+
+    organizationId: "22222222-2222-4222-8222-222222222222",
+
+    assemblyId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  });
+
+  assert.equal(
+    mock.calls.filter(
+      (call) => call.table === "hspp_evidence_assembly_membership_relations",
+    ).length > 0,
+    true,
+  );
 });

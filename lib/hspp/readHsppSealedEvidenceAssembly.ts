@@ -36,12 +36,30 @@ export type HsppSealedAssemblyVerifiedMemberMetadata = {
   validationState: string;
 };
 
+export type HsppSealedAssemblyMembershipRelation = {
+  firstEvidenceId: string;
+
+  secondEvidenceId: string;
+
+  membershipEligible: boolean;
+
+  membershipPolicyVersion: string;
+
+  membershipReason: string;
+
+  distanceMeters: number | null;
+
+  timeDeltaMs: number | null;
+};
+
 export type ReadHsppSealedEvidenceAssemblyResult = {
   readerVersion: typeof HSPP_SEALED_ASSEMBLY_READER_VERSION;
 
   scanInput: HsppAssemblyScanInput;
 
   verifiedMembers: HsppSealedAssemblyVerifiedMemberMetadata[];
+
+  membershipRelation: HsppSealedAssemblyMembershipRelation | null;
 };
 
 type AssemblyRow = {
@@ -54,6 +72,16 @@ type AssemblyMemberRow = {
   evidence_id: unknown;
   evidence_integrity_fingerprint: unknown;
   member_ordinal: unknown;
+};
+
+type AssemblyMembershipRelationRow = {
+  first_evidence_id: unknown;
+  second_evidence_id: unknown;
+  membership_eligible: unknown;
+  membership_policy_version: unknown;
+  membership_reason: unknown;
+  distance_meters: unknown;
+  time_delta_ms: unknown;
 };
 
 function requireNonBlank(value: string, fieldName: string): string {
@@ -80,6 +108,31 @@ function requireMemberOrdinal(value: unknown): number {
   if (typeof value !== "number" || !Number.isInteger(value)) {
     throw new Error(
       "Persisted HSPP assembly member_ordinal must be an integer.",
+    );
+  }
+
+  return value;
+}
+
+function requireBoolean(value: unknown, fieldName: string): boolean {
+  if (typeof value !== "boolean") {
+    throw new Error(`Persisted HSPP assembly ${fieldName} must be a boolean.`);
+  }
+
+  return value;
+}
+
+function requireNullableNonNegativeNumber(
+  value: unknown,
+  fieldName: string,
+): number | null {
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    throw new Error(
+      `Persisted HSPP assembly ${fieldName} must be null or a non-negative finite number.`,
     );
   }
 
@@ -224,6 +277,70 @@ export async function readHsppSealedEvidenceAssembly(
     throw new Error("Persisted SEALED HSPP evidence assembly has no members.");
   }
 
+  const { data: relationData, error: relationError } = await input.supabase
+    .from("hspp_evidence_assembly_membership_relations")
+    .select(
+      [
+        "first_evidence_id",
+        "second_evidence_id",
+        "membership_eligible",
+        "membership_policy_version",
+        "membership_reason",
+        "distance_meters",
+        "time_delta_ms",
+      ].join(", "),
+    )
+    .eq("organization_id", organizationId)
+    .eq("assembly_id", assemblyId)
+    .maybeSingle();
+
+  if (relationError) {
+    throw relationError;
+  }
+
+  const relation =
+    relationData as unknown as AssemblyMembershipRelationRow | null;
+
+  const membershipRelation: HsppSealedAssemblyMembershipRelation | null =
+    relation
+      ? {
+          firstEvidenceId: requireString(
+            relation.first_evidence_id,
+            "membership relation first_evidence_id",
+          ),
+
+          secondEvidenceId: requireString(
+            relation.second_evidence_id,
+            "membership relation second_evidence_id",
+          ),
+
+          membershipEligible: requireBoolean(
+            relation.membership_eligible,
+            "membership relation membership_eligible",
+          ),
+
+          membershipPolicyVersion: requireString(
+            relation.membership_policy_version,
+            "membership relation membership_policy_version",
+          ),
+
+          membershipReason: requireString(
+            relation.membership_reason,
+            "membership relation membership_reason",
+          ),
+
+          distanceMeters: requireNullableNonNegativeNumber(
+            relation.distance_meters,
+            "membership relation distance_meters",
+          ),
+
+          timeDeltaMs: requireNullableNonNegativeNumber(
+            relation.time_delta_ms,
+            "membership relation time_delta_ms",
+          ),
+        }
+      : null;
+
   const membership = persistedMembers.map((row) => ({
     evidenceId: requireString(row.evidence_id, "member evidence_id"),
 
@@ -234,6 +351,39 @@ export async function readHsppSealedEvidenceAssembly(
 
     memberOrdinal: requireMemberOrdinal(row.member_ordinal),
   }));
+
+  if (membershipRelation) {
+    const evidenceIds = new Set(membership.map((member) => member.evidenceId));
+
+    if (
+      membershipRelation.firstEvidenceId === membershipRelation.secondEvidenceId
+    ) {
+      throw new Error(
+        "Persisted HSPP assembly membership relation must reference two distinct evidence identities.",
+      );
+    }
+
+    if (
+      !evidenceIds.has(membershipRelation.firstEvidenceId) ||
+      !evidenceIds.has(membershipRelation.secondEvidenceId)
+    ) {
+      throw new Error(
+        "Persisted HSPP assembly membership relation references evidence outside the assembly.",
+      );
+    }
+
+    if (membershipRelation.membershipEligible !== true) {
+      throw new Error(
+        "Persisted HSPP assembly membership relation is not eligible.",
+      );
+    }
+
+    if (membershipRelation.membershipReason !== "ELIGIBLE") {
+      throw new Error(
+        "Persisted eligible HSPP assembly membership relation must preserve reason ELIGIBLE.",
+      );
+    }
+  }
 
   const evidenceResults = await readAndVerifyHsppEvidenceBatch({
     supabase: input.supabase,
@@ -322,5 +472,7 @@ export async function readHsppSealedEvidenceAssembly(
     },
 
     verifiedMembers,
+
+    membershipRelation,
   };
 }
