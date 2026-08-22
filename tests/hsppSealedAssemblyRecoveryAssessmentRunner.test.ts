@@ -18,6 +18,16 @@ const COMPLETION_CREATED_AT = "2026-08-22T14:45:00.000Z";
 
 const PROPOSED_ASSESSED_AT = "2026-08-22T15:00:00.000Z";
 
+const LEASE_TOKEN = "33333333-3333-4333-8333-333333333333";
+
+const LEASE_SECONDS = 300;
+
+const LEASE_ACQUIRED_AT = "2026-08-22T15:01:00.000Z";
+
+const LEASE_RENEWED_AT = "2026-08-22T15:01:00.000Z";
+
+const LEASE_EXPIRES_AT = "2026-08-22T15:06:00.000Z";
+
 type RecordedCall =
   | {
       method: "from";
@@ -162,6 +172,10 @@ test("Q13d7 rejects a blank work-item organization before recovery I/O", async (
       }),
 
       proposedAssessedAt: PROPOSED_ASSESSED_AT,
+
+      leaseToken: LEASE_TOKEN,
+
+      leaseSeconds: LEASE_SECONDS,
     }),
     /workItem\.organizationId is required/,
   );
@@ -181,6 +195,10 @@ test("Q13d7 rejects a blank work-item assembly before recovery I/O", async () =>
       }),
 
       proposedAssessedAt: PROPOSED_ASSESSED_AT,
+
+      leaseToken: LEASE_TOKEN,
+
+      leaseSeconds: LEASE_SECONDS,
     }),
     /workItem\.assemblyId is required/,
   );
@@ -200,6 +218,10 @@ test("Q13d7 rejects a non-SEALED recovery work item before recovery I/O", async 
       }),
 
       proposedAssessedAt: PROPOSED_ASSESSED_AT,
+
+      leaseToken: LEASE_TOKEN,
+
+      leaseSeconds: LEASE_SECONDS,
     }),
     /only a persisted SEALED assembly recovery work item/,
   );
@@ -224,6 +246,10 @@ test("Q13d7 stops at ALREADY_COMPLETED before retry identity or Q12 work", async
      * consumed by Q13d2.
      */
     proposedAssessedAt: "not-a-timestamp",
+
+    leaseToken: LEASE_TOKEN,
+
+    leaseSeconds: LEASE_SECONDS,
   });
 
   assert.deepEqual(result, {
@@ -297,6 +323,10 @@ test("Q13d7 propagates completion-preflight failure before retry identity", asyn
       workItem: makeWorkItem(),
 
       proposedAssessedAt: PROPOSED_ASSESSED_AT,
+
+      leaseToken: LEASE_TOKEN,
+
+      leaseSeconds: LEASE_SECONDS,
     }),
     expectedError,
   );
@@ -307,49 +337,48 @@ test("Q13d7 propagates completion-preflight failure before retry identity", asyn
   );
 });
 
-test("Q13d7 leaves proposedAssessedAt validation to Q13d2 after completion absence", async () => {
-  const { supabase, calls } = mockSupabase({
-    completionData: null,
-  });
-
-  await assert.rejects(
-    runHsppSealedAssemblyRecoveryAssessment({
-      supabase,
-
-      workItem: makeWorkItem(),
-
-      proposedAssessedAt: "not-a-timestamp",
-    }),
-    /proposedAssessedAt must be a valid timestamp/,
-  );
-
-  assert.equal(
-    calls.some((call) => call.method === "rpc"),
-    false,
-  );
-
-  assert.equal(calls[calls.length - 1]?.method, "maybeSingle");
-});
-
-test("Q13d7 passes the exact caller proposal into Q13d2 when completion is absent", async () => {
-  const expectedError = new Error("claim stopped after argument capture");
-
+test("Q13d7 returns EXECUTION_BUSY before retry identity when completion is absent", async () => {
   const { supabase, calls } = mockSupabase({
     completionData: null,
 
-    rpcError: expectedError,
+    rpcData: [
+      {
+        acquire_state: "BUSY",
+
+        returned_lease_token: null,
+
+        lease_acquired_at: LEASE_ACQUIRED_AT,
+
+        lease_renewed_at: LEASE_RENEWED_AT,
+
+        lease_expires_at: LEASE_EXPIRES_AT,
+      },
+    ],
   });
 
-  await assert.rejects(
-    runHsppSealedAssemblyRecoveryAssessment({
-      supabase,
+  const result = await runHsppSealedAssemblyRecoveryAssessment({
+    supabase,
 
-      workItem: makeWorkItem(),
+    workItem: makeWorkItem(),
 
-      proposedAssessedAt: PROPOSED_ASSESSED_AT,
-    }),
-    expectedError,
-  );
+    proposedAssessedAt: "not-a-timestamp",
+
+    leaseToken: LEASE_TOKEN,
+
+    leaseSeconds: LEASE_SECONDS,
+  });
+
+  assert.equal(result.branch, "EXECUTION_BUSY");
+
+  if (result.branch !== "EXECUTION_BUSY") {
+    throw new Error("Expected EXECUTION_BUSY.");
+  }
+
+  assert.equal(result.completion, null);
+  assert.equal(result.retryIdentity, null);
+  assert.equal(result.terminalResult, null);
+  assert.equal(result.leaseAcquisition.state, "BUSY");
+  assert.equal(result.leaseAcquisition.leaseToken, null);
 
   const rpcCalls = calls.filter(
     (
@@ -367,6 +396,91 @@ test("Q13d7 passes the exact caller proposal into Q13d2 when completion is absen
   assert.deepEqual(rpcCalls[0], {
     method: "rpc",
 
+    name: "acquire_hspp_assembly_assessment_execution_lease",
+
+    args: {
+      p_organization_id: ORGANIZATION_ID,
+
+      p_assembly_id: ASSEMBLY_ID,
+
+      p_lease_token: LEASE_TOKEN,
+
+      p_lease_seconds: LEASE_SECONDS,
+    },
+  });
+});
+
+test("Q13d7 re-reads completion after lease acquisition before claiming retry identity", async () => {
+  const { supabase, calls } = mockSupabase({
+    completionData: null,
+
+    rpcData: [
+      {
+        acquire_state: "ACQUIRED",
+
+        returned_lease_token: LEASE_TOKEN,
+
+        lease_acquired_at: LEASE_ACQUIRED_AT,
+
+        lease_renewed_at: LEASE_RENEWED_AT,
+
+        lease_expires_at: LEASE_EXPIRES_AT,
+      },
+    ],
+  });
+
+  await assert.rejects(
+    runHsppSealedAssemblyRecoveryAssessment({
+      supabase,
+
+      workItem: makeWorkItem(),
+
+      proposedAssessedAt: PROPOSED_ASSESSED_AT,
+
+      leaseToken: LEASE_TOKEN,
+
+      leaseSeconds: LEASE_SECONDS,
+    }),
+  );
+
+  const maybeSingleCalls = calls.filter(
+    (call) => call.method === "maybeSingle",
+  );
+
+  assert.equal(maybeSingleCalls.length, 2);
+
+  const rpcCalls = calls.filter(
+    (
+      call,
+    ): call is Extract<
+      RecordedCall,
+      {
+        method: "rpc";
+      }
+    > => call.method === "rpc",
+  );
+
+  assert.equal(rpcCalls.length, 3);
+
+  assert.deepEqual(rpcCalls[0], {
+    method: "rpc",
+
+    name: "acquire_hspp_assembly_assessment_execution_lease",
+
+    args: {
+      p_organization_id: ORGANIZATION_ID,
+
+      p_assembly_id: ASSEMBLY_ID,
+
+      p_lease_token: LEASE_TOKEN,
+
+      p_lease_seconds: LEASE_SECONDS,
+    },
+  });
+
+  assert.deepEqual(rpcCalls[1], {
+    method: "rpc",
+
     name: "claim_hspp_assembly_assessment_retry_identity",
 
     args: {
@@ -375,6 +489,20 @@ test("Q13d7 passes the exact caller proposal into Q13d2 when completion is absen
       p_assembly_id: ASSEMBLY_ID,
 
       p_proposed_assessed_at: PROPOSED_ASSESSED_AT,
+    },
+  });
+
+  assert.deepEqual(rpcCalls[2], {
+    method: "rpc",
+
+    name: "release_hspp_assembly_assessment_execution_lease",
+
+    args: {
+      p_organization_id: ORGANIZATION_ID,
+
+      p_assembly_id: ASSEMBLY_ID,
+
+      p_lease_token: LEASE_TOKEN,
     },
   });
 });

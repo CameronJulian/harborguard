@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import type { HsppAssessmentExecutionLeaseContext } from "@/lib/hspp/hsppAssessmentExecutionLeaseContext";
+
 import {
   HSPP_SEALED_ASSEMBLY_CORROBORATED_ASSESSMENT_PERSISTENCE_ROUTING_RUNNER_VERSION,
   runHsppSealedEvidenceAssemblyCorroboratedAssessmentPersistenceRouting,
@@ -33,6 +35,14 @@ export type RunHsppSealedEvidenceAssemblyCorroboratedAssessmentOperationalAuthor
      * Q10 does not generate, normalize or reinterpret wall-clock time.
      */
     assessedAt: string;
+
+    /**
+     * Optional recovery execution ownership.
+     *
+     * Q10 does not acquire, renew or release this lease. When supplied it is
+     * passed unchanged into Q9.
+     */
+    executionLease?: HsppAssessmentExecutionLeaseContext;
   };
 
 export type HsppSealedEvidenceAssemblyCorroboratedAssessmentOperationalAuthorityDeniedPreparation =
@@ -220,6 +230,8 @@ export async function runHsppSealedEvidenceAssemblyCorroboratedAssessmentOperati
         assemblyId: input.assemblyId,
 
         assessedAt: input.assessedAt,
+
+        executionLease: input.executionLease,
       },
     );
 

@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import type { HsppAssessmentExecutionLeaseContext } from "@/lib/hspp/hsppAssessmentExecutionLeaseContext";
+
 import {
   HSPP_SEALED_ASSEMBLY_CORROBORATED_ASSESSMENT_RUNNER_VERSION,
   runHsppSealedEvidenceAssemblyCorroboratedAssessment,
@@ -38,6 +40,14 @@ export type RunHsppSealedEvidenceAssemblyCorroboratedAssessmentPersistenceRoutin
      * Q9 does not normalize or generate time.
      */
     assessedAt: string;
+
+    /**
+     * Optional recovery execution ownership.
+     *
+     * Q9 does not acquire, renew or release this lease. When supplied it is
+     * passed unchanged to whichever Q8/B11F6 persistence branch executes.
+     */
+    executionLease?: HsppAssessmentExecutionLeaseContext;
   };
 
 export type HsppSealedEvidenceAssemblyCorroboratedAssessmentPersistenceRoutingPreparation =
@@ -221,6 +231,8 @@ export async function runHsppSealedEvidenceAssemblyCorroboratedAssessmentPersist
       assessment: preparation.assessment,
 
       assessedAt: preparation.assessedAt,
+
+      executionLease: input.executionLease,
     });
 
     return {
@@ -264,6 +276,8 @@ export async function runHsppSealedEvidenceAssemblyCorroboratedAssessmentPersist
       assessment: preparation.assessment,
 
       assessedAt: preparation.assessedAt,
+
+      executionLease: input.executionLease,
     },
   );
 
