@@ -18,7 +18,7 @@ export const HSPP_ASSEMBLY_ASSESSMENT_COMPLETION_UNDER_EXECUTION_LEASE_WRITER_VE
   "hspp-assembly-assessment-completion-under-execution-lease-writer-v1" as const;
 
 export const HSPP_ASSEMBLY_ASSESSMENT_COMPLETION_UNDER_EXECUTION_LEASE_RPC =
-  "record_hspp_assembly_assessment_completion_under_execution_lease" as const;
+  "record_hspp_assembly_assessment_completion_with_lease" as const;
 
 type CompletionRow = {
   organization_id: unknown;

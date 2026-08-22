@@ -20,7 +20,7 @@ test(
 
     assert.match(
       source,
-      /record_hspp_assembly_assessment_completion_under_execution_lease/
+      /record_hspp_assembly_assessment_completion_with_lease/
     );
   }
 );
