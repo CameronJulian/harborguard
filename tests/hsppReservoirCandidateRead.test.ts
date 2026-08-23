@@ -12,8 +12,14 @@ type EvidenceRow = {
   id: string;
 };
 
-type CurrentEffectiveMembershipRow = {
+type MembershipClassificationRow = {
   evidence_id: string;
+  has_historical_membership: boolean;
+  has_current_effective_membership: boolean;
+  membership_classification:
+    | "NEVER_ASSEMBLED"
+    | "HISTORICAL_NOT_CURRENT"
+    | "CURRENT_EFFECTIVE";
 };
 
 function validPersistedEvidenceRow(id: string) {
@@ -87,11 +93,11 @@ function validPersistedEvidenceRow(id: string) {
 }
 function createSupabaseMock({
   discoveryRows,
-  currentEffectiveMembershipRows,
+  membershipClassificationRows,
   persistedRows,
 }: {
   discoveryRows: EvidenceRow[];
-  currentEffectiveMembershipRows: MembershipRow[];
+  membershipClassificationRows: MembershipClassificationRow[];
   persistedRows: Record<string, ReturnType<typeof validPersistedEvidenceRow>>;
 }) {
   const calls: Array<[string, unknown]> = [];
@@ -184,10 +190,10 @@ function createSupabaseMock({
 
       if (
         functionName ===
-        "read_hspp_current_effective_assembly_memberships"
+        "read_hspp_evidence_assembly_membership_classifications"
       ) {
         return {
-          data: currentEffectiveMembershipRows,
+          data: membershipClassificationRows,
           error: null,
         };
       }
@@ -213,9 +219,18 @@ test("B06B returns only operationally eligible unassembled evidence", async () =
   const mock = createSupabaseMock({
     discoveryRows: [{ id: first }, { id: second }],
 
-    currentEffectiveMembershipRows: [
+    membershipClassificationRows: [
+      {
+        evidence_id: first,
+        has_historical_membership: false,
+        has_current_effective_membership: false,
+        membership_classification: "NEVER_ASSEMBLED",
+      },
       {
         evidence_id: second,
+        has_historical_membership: true,
+        has_current_effective_membership: true,
+        membership_classification: "CURRENT_EFFECTIVE",
       },
     ],
 
@@ -246,22 +261,27 @@ test("B06B returns only operationally eligible unassembled evidence", async () =
 
   assert.equal(result.candidates[0].hasAssemblyMembership, false);
 
-  const currentEffectiveMembershipRpcCalls =
+  assert.equal(
+    result.candidates[0].membershipClassification,
+    "NEVER_ASSEMBLED",
+  );
+
+  const membershipClassificationRpcCalls =
     mock.calls.filter(
       ([operation]) =>
         operation === "rpc",
     );
 
   assert.equal(
-    currentEffectiveMembershipRpcCalls.length,
+    membershipClassificationRpcCalls.length,
     1,
   );
 
   assert.deepEqual(
-    currentEffectiveMembershipRpcCalls[0][1],
+    membershipClassificationRpcCalls[0][1],
     {
       functionName:
-        "read_hspp_current_effective_assembly_memberships",
+        "read_hspp_evidence_assembly_membership_classifications",
 
       args: {
         p_organization_id:
@@ -281,10 +301,78 @@ test("B06B returns only operationally eligible unassembled evidence", async () =
   );
 });
 
+
+test(
+  "B06B carries HISTORICAL_NOT_CURRENT without bypassing B06A eligibility",
+  async () => {
+    const evidenceId =
+      "00000000-0000-0000-0000-000000000003";
+
+    const mock = createSupabaseMock({
+      discoveryRows: [
+        {
+          id: evidenceId,
+        },
+      ],
+
+      membershipClassificationRows: [
+        {
+          evidence_id: evidenceId,
+          has_historical_membership: true,
+          has_current_effective_membership: false,
+          membership_classification: "HISTORICAL_NOT_CURRENT",
+        },
+      ],
+
+      persistedRows: {
+        [evidenceId]:
+          validPersistedEvidenceRow(evidenceId),
+      },
+    });
+
+    const result =
+      await readHsppReservoirCandidates({
+        supabase:
+          mock.supabase as any,
+
+        organizationId:
+          "00000000-0000-0000-0000-0000000000a1",
+
+        limit:
+          25,
+      });
+
+    assert.equal(
+      result.candidates.length,
+      1,
+    );
+
+    assert.equal(
+      result.candidates[0].evidenceId,
+      evidenceId,
+    );
+
+    assert.equal(
+      result.candidates[0].hasAssemblyMembership,
+      false,
+    );
+
+    assert.equal(
+      result.candidates[0].membershipClassification,
+      "HISTORICAL_NOT_CURRENT",
+    );
+
+    assert.equal(
+      result.candidates[0].reservoirDecision.reason,
+      "RESERVOIR_ELIGIBLE",
+    );
+  },
+);
+
 test("B06B rejects invalid discovery limits", async () => {
   const mock = createSupabaseMock({
     discoveryRows: [],
-    currentEffectiveMembershipRows: [],
+    membershipClassificationRows: [],
     persistedRows: {},
   });
 
@@ -305,7 +393,7 @@ test("B06B rejects invalid discovery limits", async () => {
 test("B06B rejects blank organization identity", async () => {
   const mock = createSupabaseMock({
     discoveryRows: [],
-    currentEffectiveMembershipRows: [],
+    membershipClassificationRows: [],
     persistedRows: {},
   });
 

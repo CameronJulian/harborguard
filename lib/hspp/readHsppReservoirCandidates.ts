@@ -15,6 +15,11 @@ export const HSPP_RESERVOIR_DISCOVERY_POLICY_VERSION =
 
 export const HSPP_RESERVOIR_DISCOVERY_MAX_LIMIT = 100;
 
+export type HsppEvidenceAssemblyMembershipClassification =
+  | "NEVER_ASSEMBLED"
+  | "HISTORICAL_NOT_CURRENT"
+  | "CURRENT_EFFECTIVE";
+
 export type ReadHsppReservoirCandidatesInput = {
   supabase: SupabaseClient;
   organizationId: string;
@@ -27,6 +32,8 @@ export type HsppReservoirCandidate = {
   operationalRead: ReadHsppEvidenceForOperationalUseResult;
 
   hasAssemblyMembership: boolean;
+
+  membershipClassification: HsppEvidenceAssemblyMembershipClassification;
 
   reservoirDecision: HsppReservoirEligibilityDecision;
 };
@@ -147,43 +154,132 @@ export async function readHsppReservoirCandidates({
     evidenceIds,
   });
 
-  // Q14af is a service-role-only read authority. This server-side
+  // Q14ag8 is a service-role-only read authority. This server-side
   // boundary therefore requires a service-role-authorized Supabase client
   // whenever Reservoir discovery is executed.
   //
-  // Historical assembly membership remains immutable. Reservoir exclusion
-  // is derived only from CURRENT-EFFECTIVE membership at the current
-  // reconstruction lineage leaf.
+  // Historical assembly membership remains immutable.
+  //
+  // Reservoir exclusion continues to depend ONLY on current-effective
+  // membership, preserving the exact boolean supplied to B06A.
+  //
+  // The same single database statement snapshot additionally classifies
+  // the immutable membership lifecycle as NEVER_ASSEMBLED,
+  // HISTORICAL_NOT_CURRENT or CURRENT_EFFECTIVE. That classification is
+  // metadata only here: it grants no assembly, reconstruction, trust or
+  // downstream authority.
   const {
-    data: currentEffectiveMembershipRows,
-    error: currentEffectiveMembershipError,
+    data: membershipClassificationRows,
+    error: membershipClassificationError,
   } = await supabase.rpc(
-    "read_hspp_current_effective_assembly_memberships",
+    "read_hspp_evidence_assembly_membership_classifications",
     {
       p_organization_id: normalizedOrganizationId,
       p_evidence_ids: evidenceIds,
     },
   );
 
-  if (currentEffectiveMembershipError) {
-    throw currentEffectiveMembershipError;
+  if (membershipClassificationError) {
+    throw membershipClassificationError;
   }
 
-  const currentEffectiveAssemblyEvidenceIds = new Set(
-    (
-      (currentEffectiveMembershipRows || []) as Array<{
-        evidence_id: unknown;
-      }>
-    ).map((row) => {
-      if (typeof row.evidence_id !== "string" || !row.evidence_id.trim()) {
-        throw new Error(
-          "Reservoir current-effective membership lookup returned an invalid HSPP evidence id.",
-        );
-      }
+  const membershipClassifications = new Map<
+    string,
+    {
+      hasCurrentEffectiveMembership: boolean;
+      membershipClassification: HsppEvidenceAssemblyMembershipClassification;
+    }
+  >();
 
-      return row.evidence_id;
-    }),
-  );
+  for (
+    const row of
+      (membershipClassificationRows || []) as Array<{
+        evidence_id: unknown;
+        has_historical_membership: unknown;
+        has_current_effective_membership: unknown;
+        membership_classification: unknown;
+      }>
+  ) {
+    if (
+      typeof row.evidence_id !== "string" ||
+      !row.evidence_id.trim()
+    ) {
+      throw new Error(
+        "Reservoir membership classification lookup returned an invalid HSPP evidence id.",
+      );
+    }
+
+    if (
+      typeof row.has_historical_membership !== "boolean" ||
+      typeof row.has_current_effective_membership !== "boolean"
+    ) {
+      throw new Error(
+        `Reservoir membership classification lookup returned invalid membership flags for evidence ${row.evidence_id}.`,
+      );
+    }
+
+    if (
+      row.has_current_effective_membership &&
+      !row.has_historical_membership
+    ) {
+      throw new Error(
+        `Reservoir membership classification lookup returned impossible current-without-history state for evidence ${row.evidence_id}.`,
+      );
+    }
+
+    if (
+      row.membership_classification !== "NEVER_ASSEMBLED" &&
+      row.membership_classification !== "HISTORICAL_NOT_CURRENT" &&
+      row.membership_classification !== "CURRENT_EFFECTIVE"
+    ) {
+      throw new Error(
+        `Reservoir membership classification lookup returned an invalid lifecycle classification for evidence ${row.evidence_id}.`,
+      );
+    }
+
+    const evidenceId =
+      row.evidence_id.trim();
+
+    if (!evidenceIds.includes(evidenceId)) {
+      throw new Error(
+        `Reservoir membership classification lookup returned unexpected evidence ${evidenceId}.`,
+      );
+    }
+
+    if (membershipClassifications.has(evidenceId)) {
+      throw new Error(
+        `Reservoir membership classification lookup returned duplicate evidence ${evidenceId}.`,
+      );
+    }
+
+    const expectedMembershipClassification:
+      HsppEvidenceAssemblyMembershipClassification =
+        row.has_current_effective_membership
+          ? "CURRENT_EFFECTIVE"
+          : row.has_historical_membership
+            ? "HISTORICAL_NOT_CURRENT"
+            : "NEVER_ASSEMBLED";
+
+    if (
+      row.membership_classification !==
+      expectedMembershipClassification
+    ) {
+      throw new Error(
+        `Reservoir membership classification lookup returned inconsistent lifecycle state for evidence ${evidenceId}.`,
+      );
+    }
+
+    membershipClassifications.set(
+      evidenceId,
+      {
+        hasCurrentEffectiveMembership:
+          row.has_current_effective_membership,
+
+        membershipClassification:
+          row.membership_classification,
+      },
+    );
+  }
 
   const candidates: HsppReservoirCandidate[] = [];
 
@@ -196,7 +292,17 @@ export async function readHsppReservoirCandidates({
       );
     }
 
-    const hasAssemblyMembership = currentEffectiveAssemblyEvidenceIds.has(evidenceId);
+    const membershipState =
+      membershipClassifications.get(evidenceId);
+
+    if (!membershipState) {
+      throw new Error(
+        `Reservoir membership classification missing for evidence ${evidenceId}.`,
+      );
+    }
+
+    const hasAssemblyMembership =
+      membershipState.hasCurrentEffectiveMembership;
 
     const reservoirDecision = evaluateHsppReservoirEligibility({
       operationalUseDecision: operationalRead.decision,
@@ -214,6 +320,9 @@ export async function readHsppReservoirCandidates({
       operationalRead,
 
       hasAssemblyMembership,
+
+      membershipClassification:
+        membershipState.membershipClassification,
 
       reservoirDecision,
     });
