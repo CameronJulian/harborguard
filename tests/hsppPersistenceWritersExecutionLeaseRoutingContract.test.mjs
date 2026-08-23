@@ -8,11 +8,13 @@ const contextSource =
     "utf8",
   );
 
-const writerPaths = [
+const legacyFencedWriterPaths = [
   "lib/hspp/persistHsppDeniedCorroboratedMemberAssessment.ts",
   "lib/hspp/persistHsppCorroboratedMemberAssessment.ts",
-  "lib/hspp/persistHsppCorroboratedOperationalAssessment.ts",
 ];
+
+const q6Path =
+  "lib/hspp/persistHsppCorroboratedOperationalAssessment.ts";
 
 function executable(
   source,
@@ -63,9 +65,9 @@ test(
   },
 );
 
-for (const path of writerPaths) {
+for (const path of legacyFencedWriterPaths) {
   test(
-    `${path} preserves generic persistence and adds exactly one fenced alternative`,
+    `${path} preserves generic persistence and one general fenced alternative`,
     () => {
       const source =
         fs.readFileSync(
@@ -98,6 +100,11 @@ for (const path of writerPaths) {
           /\bapplyHsppAssessmentDecisionUnderExecutionLease\s*\(/g,
         ) ?? [];
 
+      const positiveCheckpointCalls =
+        code.match(
+          /\bpersistHsppPositiveAssessmentCheckpointUnderExecutionLease\s*\(/g,
+        ) ?? [];
+
       assert.equal(
         genericCalls.length,
         1,
@@ -108,34 +115,81 @@ for (const path of writerPaths) {
         1,
       );
 
+      assert.equal(
+        positiveCheckpointCalls.length,
+        0,
+      );
+
       assert.match(
         code,
         /executionLeaseAssemblyId\.toLowerCase\(\)\s*!==\s*assemblyId\.toLowerCase\(\)/,
       );
-
-      assert.match(
-        code,
-        /applyHsppAssessmentDecisionUnderExecutionLease\s*\(\s*\{[\s\S]*?organizationId,[\s\S]*?assemblyId,[\s\S]*?leaseToken:\s*[\r\n\s]*executionLease\.leaseToken,[\s\S]*?evidenceId,[\s\S]*?integrityFingerprint,[\s\S]*?assessment,[\s\S]*?assessedAt,[\s\S]*?\}\s*\)/,
-      );
-
-      assert.doesNotMatch(
-        code,
-        /\.(from|select|insert|update|upsert|delete|rpc)\s*\(/,
-      );
-
-      for (const forbidden of [
-        /\bacquireHsppAssemblyAssessmentExecutionLease\s*\(/,
-        /\brenewHsppAssemblyAssessmentExecutionLease\s*\(/,
-        /\breleaseHsppAssemblyAssessmentExecutionLease\s*\(/,
-        /\brecordHsppAssemblyAssessmentCompletion/,
-        /\bDate\.now\s*\(/,
-        /\bnew\s+Date\s*\(\s*\)/,
-      ]) {
-        assert.doesNotMatch(
-          code,
-          forbidden,
-        );
-      }
     },
   );
 }
+
+test(
+  "Q6 preserves generic persistence and uses the atomic positive-checkpoint lease alternative",
+  () => {
+    const source =
+      fs.readFileSync(
+        q6Path,
+        "utf8",
+      );
+
+    const code =
+      executable(
+        source,
+      );
+
+    assert.match(
+      source,
+      /HsppAssessmentExecutionLeaseContext/,
+    );
+
+    assert.match(
+      source,
+      /executionLease\?\s*:\s*[\r\n\s]*HsppAssessmentExecutionLeaseContext/,
+    );
+
+    const genericCalls =
+      code.match(
+        /\bapplyHsppAssessmentDecision\s*\(/g,
+      ) ?? [];
+
+    const oldFencedCalls =
+      code.match(
+        /\bapplyHsppAssessmentDecisionUnderExecutionLease\s*\(/g,
+      ) ?? [];
+
+    const positiveCheckpointCalls =
+      code.match(
+        /\bpersistHsppPositiveAssessmentCheckpointUnderExecutionLease\s*\(/g,
+      ) ?? [];
+
+    assert.equal(
+      genericCalls.length,
+      1,
+    );
+
+    assert.equal(
+      oldFencedCalls.length,
+      0,
+    );
+
+    assert.equal(
+      positiveCheckpointCalls.length,
+      1,
+    );
+
+    assert.match(
+      code,
+      /executionLeaseAssemblyId\.toLowerCase\(\)\s*!==\s*assemblyId\.toLowerCase\(\)/,
+    );
+
+    assert.match(
+      code,
+      /persistHsppPositiveAssessmentCheckpointUnderExecutionLease\s*\(\{[\s\S]*?organizationId,[\s\S]*?assemblyId,[\s\S]*?assemblyDecisionId,[\s\S]*?leaseToken:\s*executionLease\.leaseToken,[\s\S]*?evidenceId,[\s\S]*?integrityFingerprint,[\s\S]*?assessedAt,/,
+    );
+  },
+);

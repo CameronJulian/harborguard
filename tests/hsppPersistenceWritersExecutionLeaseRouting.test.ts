@@ -39,26 +39,30 @@ import {
   persistHsppCorroboratedOperationalAssessment,
 } from "../lib/hspp/persistHsppCorroboratedOperationalAssessment";
 
+import {
+  HSPP_POSITIVE_ASSESSMENT_CHECKPOINT_UNDER_EXECUTION_LEASE_RPC,
+} from "../lib/hspp/persistHsppPositiveAssessmentCheckpointUnderExecutionLease";
+
 const organizationId =
-  "11111111-1111-1111-1111-111111111111";
+  "11111111-1111-4111-8111-111111111111";
 
 const assemblyId =
-  "22222222-2222-2222-2222-222222222222";
+  "22222222-2222-4222-8222-222222222222";
 
 const leaseToken =
-  "33333333-3333-3333-3333-333333333333";
+  "33333333-3333-4333-8333-333333333333";
 
 const evidenceId =
-  "44444444-4444-4444-4444-444444444444";
+  "44444444-4444-4444-8444-444444444444";
 
 const supportingEvidenceId =
-  "55555555-5555-5555-5555-555555555555";
+  "55555555-5555-4555-8555-555555555555";
 
 const assemblyDecisionId =
-  "66666666-6666-6666-6666-666666666666";
+  "66666666-6666-4666-8666-666666666666";
 
 const otherAssemblyId =
-  "77777777-7777-7777-7777-777777777777";
+  "77777777-7777-4777-8777-777777777777";
 
 const integrityFingerprint =
   "a".repeat(64);
@@ -456,7 +460,7 @@ test(
 );
 
 test(
-  "Q6 uses fenced assessment persistence when execution ownership is supplied",
+  "Q6 uses atomic positive-checkpoint persistence when execution ownership is supplied",
   async () => {
     const authorityDecision =
       operationalAuthorityDecision();
@@ -466,13 +470,68 @@ test(
         authorityDecision,
       });
 
-    const mock =
-      createFencedRpcMock();
+    const checkpointId =
+      "88888888-8888-4888-8888-888888888888";
+
+    const calls: RpcCall[] =
+      [];
+
+    const supabase = {
+      rpc(
+        name: string,
+        args: Record<string, unknown>,
+      ) {
+        calls.push({
+          name,
+          args,
+        });
+
+        return {
+          maybeSingle() {
+            return Promise.resolve({
+              data: {
+                evidence_id:
+                  evidenceId,
+
+                trust_state:
+                  "CORROBORATED",
+
+                operational_eligible:
+                  true,
+
+                crowd_eligible:
+                  false,
+
+                training_eligible:
+                  false,
+
+                validation_eligible:
+                  false,
+
+                assessment_policy_version:
+                  HSPP_CORROBORATED_OPERATIONAL_ASSESSMENT_VERSION,
+
+                assessment_reason:
+                  "CORROBORATED_OPERATIONAL_AUTHORITY_GRANTED",
+
+                assessed_at:
+                  assessedAt,
+
+                checkpoint_id:
+                  checkpointId,
+              },
+
+              error:
+                null,
+            });
+          },
+        };
+      },
+    };
 
     const result =
       await persistHsppCorroboratedOperationalAssessment({
-        supabase:
-          mock.supabase,
+        supabase,
 
         authorityDecision,
 
@@ -487,13 +546,46 @@ test(
       });
 
     assert.equal(
-      mock.calls.length,
+      calls.length,
       1,
     );
 
-    assertFencedCall(
-      mock.calls[0],
+    assert.equal(
+      calls[0].name,
+      HSPP_POSITIVE_ASSESSMENT_CHECKPOINT_UNDER_EXECUTION_LEASE_RPC,
+    );
+
+    assert.deepEqual(
+      calls[0].args,
       {
+        p_organization_id:
+          organizationId,
+
+        p_assembly_id:
+          assemblyId,
+
+        p_lease_token:
+          leaseToken,
+
+        p_assembly_decision_id:
+          assemblyDecisionId,
+
+        p_evidence_id:
+          evidenceId,
+
+        p_integrity_fingerprint:
+          integrityFingerprint,
+
+        p_assessed_at:
+          assessedAt,
+      },
+    );
+
+    assert.deepEqual(
+      result.applied,
+      {
+        evidenceId,
+
         trustState:
           "CORROBORATED",
 
@@ -505,16 +597,9 @@ test(
 
         reason:
           "CORROBORATED_OPERATIONAL_AUTHORITY_GRANTED",
-      },
-    );
 
-    assert.equal(
-      (
-        result.applied as {
-          writerVersion?: string;
-        }
-      ).writerVersion,
-      HSPP_ASSESSMENT_DECISION_UNDER_EXECUTION_LEASE_VERSION,
+        assessedAt,
+      },
     );
   },
 );
