@@ -51,6 +51,121 @@ test("B07C2 performs no persistence when there is no assembly candidate", () => 
   assert.match(source, /"NO_ASSEMBLY_CANDIDATE"/);
 });
 
+test(
+  "B07C2 requires both selected candidates to be NEVER_ASSEMBLED before generic B07C1 persistence",
+  () => {
+    assert.match(
+      source,
+      /candidate\.membershipClassification\s*!==\s*"NEVER_ASSEMBLED"/,
+    );
+
+    assert.match(
+      source,
+      /HISTORICAL_NOT_CURRENT/,
+    );
+
+    assert.match(
+      source,
+      /CURRENT_EFFECTIVE/,
+    );
+
+    const lifecycleGuards =
+      source.match(
+        /requireInitialAssemblyLifecycle\(\s*(?:firstCandidate|secondCandidate)\s*\)/g,
+      ) ?? [];
+
+    assert.equal(
+      lifecycleGuards.length,
+      2,
+    );
+
+    const secondCandidateIndex =
+      source.indexOf(
+        "const secondCandidate = requireCandidate(",
+      );
+
+    const firstGuardIndex =
+      source.indexOf(
+        "requireInitialAssemblyLifecycle(firstCandidate);",
+      );
+
+    const secondGuardIndex =
+      source.indexOf(
+        "requireInitialAssemblyLifecycle(secondCandidate);",
+      );
+
+    const membersIndex =
+      source.indexOf(
+        "const members = [",
+      );
+
+    const persistenceIndex =
+      source.indexOf(
+        "await persistHsppEvidenceAssembly({",
+      );
+
+    assert.ok(
+      secondCandidateIndex >= 0,
+    );
+
+    assert.ok(
+      firstGuardIndex > secondCandidateIndex,
+    );
+
+    assert.ok(
+      secondGuardIndex > firstGuardIndex,
+    );
+
+    assert.ok(
+      membersIndex > secondGuardIndex,
+    );
+
+    assert.ok(
+      persistenceIndex > membersIndex,
+    );
+  },
+);
+
+test(
+  "B07C2 lifecycle guard does not rerun discovery classification or reconstruction",
+  () => {
+    assert.doesNotMatch(
+      source,
+      /\.rpc\s*\(/,
+    );
+
+    assert.doesNotMatch(
+      source,
+      /read_hspp_evidence_assembly_membership_classifications/,
+    );
+
+    assert.doesNotMatch(
+      source,
+      /read_hspp_current_effective_assembly_memberships/,
+    );
+
+    assert.doesNotMatch(
+      source,
+      /\breadHsppReservoirCandidates\s*\(/,
+    );
+
+    assert.doesNotMatch(
+      source,
+      /\bevaluateHsppReservoirEligibility\s*\(/,
+    );
+
+    assert.doesNotMatch(
+      source,
+      /\bevaluateHsppReservoirReevaluation\s*\(/,
+    );
+
+    assert.doesNotMatch(
+      source,
+      /persistHsppEvidenceAssemblyReconstruction/,
+    );
+  },
+);
+
 test("B07C2 invokes the existing B07C1 persistence primitive exactly once", () => {
   const calls = source.match(/await\s+persistHsppEvidenceAssembly\s*\(/g) ?? [];
 

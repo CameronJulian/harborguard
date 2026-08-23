@@ -48,6 +48,16 @@ function requireCandidate(
   return candidate;
 }
 
+function requireInitialAssemblyLifecycle(
+  candidate: HsppReservoirCandidate,
+): void {
+  if (candidate.membershipClassification !== "NEVER_ASSEMBLED") {
+    throw new Error(
+      `Selected Reservoir evidence ${candidate.evidenceId} cannot use initial assembly persistence because lifecycle classification ${candidate.membershipClassification} is not NEVER_ASSEMBLED.`,
+    );
+  }
+}
+
 function requirePersistenceMember(candidate: HsppReservoirCandidate): {
   evidenceId: string;
   integrityFingerprint: string;
@@ -91,10 +101,19 @@ function requirePersistenceMember(candidate: HsppReservoirCandidate): {
  * When B07A produced one or more ASSEMBLY_CANDIDATE pairs, B07C2:
  *
  * - selects only the first deterministic eligible pair;
- * - resolves both immutable evidence fingerprints from the existing
- *   B06B discovery result;
+ * - resolves both selected identities from the existing B06B discovery
+ *   result;
+ * - requires BOTH selected candidates to be NEVER_ASSEMBLED before the
+ *   generic initial-assembly persistence path may execute;
+ * - resolves both immutable evidence fingerprints from that same discovery
+ *   result;
  * - preserves the exact B11A2 membership policy provenance; and
  * - invokes B07C1 persistence at most once.
+ *
+ * HISTORICAL_NOT_CURRENT is deliberately not treated as fresh evidence.
+ * That lifecycle state is reserved for a later replacement/reconstruction
+ * authority. CURRENT_EFFECTIVE also fails closed if it reaches this write
+ * boundary unexpectedly.
  *
  * B07C2 deliberately does NOT:
  *
@@ -162,6 +181,9 @@ export async function persistHsppReservoirAssemblyCandidate(
     result.discovery.candidates,
     selected.secondEvidenceId,
   );
+
+  requireInitialAssemblyLifecycle(firstCandidate);
+  requireInitialAssemblyLifecycle(secondCandidate);
 
   const members = [
     requirePersistenceMember(firstCandidate),

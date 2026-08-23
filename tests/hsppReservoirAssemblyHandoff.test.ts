@@ -30,6 +30,8 @@ function lifeguardResult(
 
       hasAssemblyMembership: false,
 
+      membershipClassification: "NEVER_ASSEMBLED",
+
       reservoirDecision: {
         eligible: true,
       },
@@ -48,6 +50,8 @@ function lifeguardResult(
 
       hasAssemblyMembership: false,
 
+      membershipClassification: "NEVER_ASSEMBLED",
+
       reservoirDecision: {
         eligible: true,
       },
@@ -65,6 +69,8 @@ function lifeguardResult(
       },
 
       hasAssemblyMembership: false,
+
+      membershipClassification: "NEVER_ASSEMBLED",
 
       reservoirDecision: {
         eligible: true,
@@ -250,6 +256,66 @@ for (const state of ["NO_COUNTERPART", "MEMBERSHIP_DENIED"] as const) {
 
     assert.equal(mock.calls.length, 0);
   });
+}
+
+
+for (
+  const testCase of [
+    {
+      name: "first HISTORICAL_NOT_CURRENT member",
+      first: "HISTORICAL_NOT_CURRENT",
+      second: "NEVER_ASSEMBLED",
+    },
+    {
+      name: "second HISTORICAL_NOT_CURRENT member",
+      first: "NEVER_ASSEMBLED",
+      second: "HISTORICAL_NOT_CURRENT",
+    },
+    {
+      name: "two HISTORICAL_NOT_CURRENT members",
+      first: "HISTORICAL_NOT_CURRENT",
+      second: "HISTORICAL_NOT_CURRENT",
+    },
+    {
+      name: "first CURRENT_EFFECTIVE member",
+      first: "CURRENT_EFFECTIVE",
+      second: "NEVER_ASSEMBLED",
+    },
+    {
+      name: "second CURRENT_EFFECTIVE member",
+      first: "NEVER_ASSEMBLED",
+      second: "CURRENT_EFFECTIVE",
+    },
+  ] as const
+) {
+  test(
+    `B07C2 fails closed before persistence for ${testCase.name}`,
+    async () => {
+      const mock = createSupabaseMock();
+
+      const input = lifeguardResult();
+
+      input.discovery.candidates[0].membershipClassification =
+        testCase.first;
+
+      input.discovery.candidates[1].membershipClassification =
+        testCase.second;
+
+      await assert.rejects(
+        () =>
+          persistHsppReservoirAssemblyCandidate({
+            supabase: mock.supabase as any,
+            lifeguardResult: input as any,
+          }),
+        /cannot use initial assembly persistence.*not NEVER_ASSEMBLED/,
+      );
+
+      assert.equal(
+        mock.calls.length,
+        0,
+      );
+    },
+  );
 }
 
 test("B07C2 fails closed when selected evidence is absent from discovery", async () => {
