@@ -259,3 +259,120 @@ test(
     );
   }
 );
+test(
+  "Q14ag5 activates one bounded B07B shadow evaluation after Q13f recovery",
+  () => {
+    const q13fIndex =
+      source.indexOf(
+        "await runHsppAssemblyRecoveryCycle"
+      );
+
+    const b07bIndex =
+      source.indexOf(
+        "await runHsppReservoirReevaluation"
+      );
+
+    assert.ok(q13fIndex >= 0);
+
+    assert.ok(
+      b07bIndex > q13fIndex
+    );
+
+    const calls =
+      source.match(
+        /await\s+runHsppReservoirReevaluation\s*\(/g
+      ) ?? [];
+
+    assert.equal(
+      calls.length,
+      1
+    );
+
+    assert.match(
+      source,
+      /runHsppReservoirReevaluation\s*\(\s*\{[\s\S]*?supabase,[\s\S]*?organizationId,[\s\S]*?limit:\s*recoveryLimit,[\s\S]*?\}\s*\)/
+    );
+  }
+);
+
+
+test(
+  "Q14ag5 keeps B07C2 Reservoir persistence dormant",
+  () => {
+    assert.doesNotMatch(
+      source,
+      /\bpersistHsppReservoirAssemblyCandidate\s*\(/
+    );
+
+    assert.match(
+      source,
+      /does not invoke B07C2 or persist Reservoir assembly candidates/
+    );
+  }
+);
+
+
+test(
+  "Q14ag5 isolates B07B shadow failure from Q13f recovery",
+  () => {
+    assert.match(
+      source,
+      /const reservoir\s*=[\s\S]*?try\s*\{[\s\S]*?await runHsppReservoirReevaluation[\s\S]*?catch\s*\(\s*error:\s*unknown\s*\)/
+    );
+
+    assert.match(
+      source,
+      /status:\s*"EVALUATED"\s+as const/
+    );
+
+    assert.match(
+      source,
+      /status:\s*"ERROR"\s+as const/
+    );
+
+    assert.match(
+      source,
+      /error:\s*errorMessage\s*\(\s*error\s*\)/
+    );
+  }
+);
+
+
+test(
+  "Q14ag5 exposes only bounded Reservoir shadow summary fields",
+  () => {
+    for (const field of [
+      "runnerVersion",
+      "discoveryPolicyVersion",
+      "reevaluationPolicyVersion",
+      "discovered",
+      "reevaluationState",
+      "assemblyCandidateCount",
+    ]) {
+      assert.match(
+        source,
+        new RegExp(`\\b${field}\\b`)
+      );
+    }
+
+    assert.match(
+      source,
+      /reservoir,\s*[\r\n]+\s*outcomes:/
+    );
+
+    assert.doesNotMatch(
+      source,
+      /\breservoir:\s*lifeguard\b/
+    );
+
+    assert.doesNotMatch(
+      source,
+      /\bselectedEvidenceIds\b/
+    );
+
+    assert.doesNotMatch(
+      source,
+      /\boperationalRead\b/
+    );
+  }
+);

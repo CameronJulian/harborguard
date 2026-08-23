@@ -18,6 +18,10 @@ import {
   runHsppAssemblyRecoveryCycle,
 } from "@/lib/hspp/runHsppAssemblyRecoveryCycle";
 
+import {
+  runHsppReservoirReevaluation,
+} from "@/lib/hspp/runHsppReservoirReevaluation";
+
 
 export const dynamic =
   "force-dynamic";
@@ -101,12 +105,14 @@ function requireIntegerEnvironment(
  * - requires an explicit bounded execution-lease duration;
  * - owns fresh assessment-time proposals at the machine boundary;
  * - owns fresh lease tokens at the machine boundary;
- * - delegates all lifecycle behavior to Q13f;
+ * - delegates persisted-assembly recovery lifecycle behavior to Q13f;
+ * - runs B07B Reservoir reevaluation after Q13f in non-mutating shadow mode;
  * - returns only bounded operational summaries;
  * - does not expose execution lease tokens;
  * - does not accept lifecycle identity or policy from the request;
  * - does not schedule itself;
- * - does not implement H1 -> H2 reconstruction.
+ * - does not implement H1 -> H2 reconstruction;
+ * - does not invoke B07C2 or persist Reservoir assembly candidates.
  */
 export async function GET(
   request: Request
@@ -282,8 +288,89 @@ export async function GET(
       });
 
 
+    const reservoir =
+      await (async () => {
+        try {
+          const lifeguard =
+            await runHsppReservoirReevaluation({
+              supabase,
+
+              organizationId,
+
+              limit:
+                recoveryLimit,
+            });
+
+          return {
+            status:
+              "EVALUATED" as const,
+
+            runnerVersion:
+              lifeguard.runnerVersion,
+
+            discoveryPolicyVersion:
+              lifeguard.discoveryPolicyVersion,
+
+            reevaluationPolicyVersion:
+              lifeguard.reevaluationPolicyVersion,
+
+            discovered:
+              lifeguard.discovery
+                .candidates.length,
+
+            reevaluationState:
+              lifeguard.reevaluation
+                .state,
+
+            assemblyCandidateCount:
+              lifeguard.reevaluation
+                .assemblyCandidates.length,
+
+            error:
+              null,
+          };
+        }
+        catch (error: unknown) {
+          /*
+           * Q14ag5 is shadow activation.
+           *
+           * Reservoir read/evaluation failure must not convert
+           * a completed persisted-assembly recovery cycle into
+           * an HTTP-level recovery failure.
+           */
+          return {
+            status:
+              "ERROR" as const,
+
+            runnerVersion:
+              null,
+
+            discoveryPolicyVersion:
+              null,
+
+            reevaluationPolicyVersion:
+              null,
+
+            discovered:
+              0,
+
+            reevaluationState:
+              null,
+
+            assemblyCandidateCount:
+              0,
+
+            error:
+              errorMessage(
+                error
+              ),
+          };
+        }
+      })();
+
+
     /*
-     * Do not serialize Q13f's complete internal results directly.
+     * Do not serialize Q13f's or B07B's complete internal results directly.
      *
      * The machine boundary exposes only persisted assembly identity,
      * outcome branch and error text. In particular, execution lease
@@ -367,6 +454,8 @@ export async function GET(
           cycle.sealedDiscovery
             .workItems.length,
       },
+
+      reservoir,
 
       outcomes: {
         open: {
