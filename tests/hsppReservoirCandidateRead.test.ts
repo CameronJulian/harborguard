@@ -12,7 +12,7 @@ type EvidenceRow = {
   id: string;
 };
 
-type MembershipRow = {
+type CurrentEffectiveMembershipRow = {
   evidence_id: string;
 };
 
@@ -36,7 +36,7 @@ function validPersistedEvidenceRow(id: string) {
 
   return {
     id,
-    organization_id: "org-1",
+    organization_id: "00000000-0000-0000-0000-0000000000a1",
 
     protocol_version: evidence.protocolVersion,
 
@@ -87,11 +87,11 @@ function validPersistedEvidenceRow(id: string) {
 }
 function createSupabaseMock({
   discoveryRows,
-  membershipRows,
+  currentEffectiveMembershipRows,
   persistedRows,
 }: {
   discoveryRows: EvidenceRow[];
-  membershipRows: MembershipRow[];
+  currentEffectiveMembershipRows: MembershipRow[];
   persistedRows: Record<string, ReturnType<typeof validPersistedEvidenceRow>>;
 }) {
   const calls: Array<[string, unknown]> = [];
@@ -151,12 +151,6 @@ function createSupabaseMock({
         }).then(resolve);
       }
 
-      if (table === "hspp_evidence_assembly_members") {
-        return Promise.resolve({
-          data: membershipRows,
-          error: null,
-        }).then(resolve);
-      }
 
       return Promise.resolve({
         data: [],
@@ -175,6 +169,34 @@ function createSupabaseMock({
 
       return query;
     },
+
+    async rpc(
+      functionName: string,
+      args: Record<string, unknown>,
+    ) {
+      calls.push([
+        "rpc",
+        {
+          functionName,
+          args,
+        },
+      ]);
+
+      if (
+        functionName ===
+        "read_hspp_current_effective_assembly_memberships"
+      ) {
+        return {
+          data: currentEffectiveMembershipRows,
+          error: null,
+        };
+      }
+
+      return {
+        data: [],
+        error: null,
+      };
+    },
   };
 
   return {
@@ -191,7 +213,7 @@ test("B06B returns only operationally eligible unassembled evidence", async () =
   const mock = createSupabaseMock({
     discoveryRows: [{ id: first }, { id: second }],
 
-    membershipRows: [
+    currentEffectiveMembershipRows: [
       {
         evidence_id: second,
       },
@@ -207,14 +229,14 @@ test("B06B returns only operationally eligible unassembled evidence", async () =
   const result = await readHsppReservoirCandidates({
     supabase: mock.supabase as any,
 
-    organizationId: "org-1",
+    organizationId: "00000000-0000-0000-0000-0000000000a1",
 
     limit: 25,
   });
 
   assert.equal(result.policyVersion, HSPP_RESERVOIR_DISCOVERY_POLICY_VERSION);
 
-  assert.equal(result.organizationId, "org-1");
+  assert.equal(result.organizationId, "00000000-0000-0000-0000-0000000000a1");
 
   assert.equal(result.requestedLimit, 25);
 
@@ -223,6 +245,35 @@ test("B06B returns only operationally eligible unassembled evidence", async () =
   assert.equal(result.candidates[0].evidenceId, first);
 
   assert.equal(result.candidates[0].hasAssemblyMembership, false);
+
+  const currentEffectiveMembershipRpcCalls =
+    mock.calls.filter(
+      ([operation]) =>
+        operation === "rpc",
+    );
+
+  assert.equal(
+    currentEffectiveMembershipRpcCalls.length,
+    1,
+  );
+
+  assert.deepEqual(
+    currentEffectiveMembershipRpcCalls[0][1],
+    {
+      functionName:
+        "read_hspp_current_effective_assembly_memberships",
+
+      args: {
+        p_organization_id:
+          "00000000-0000-0000-0000-0000000000a1",
+
+        p_evidence_ids: [
+          first,
+          second,
+        ],
+      },
+    },
+  );
 
   assert.equal(
     result.candidates[0].reservoirDecision.reason,
@@ -233,7 +284,7 @@ test("B06B returns only operationally eligible unassembled evidence", async () =
 test("B06B rejects invalid discovery limits", async () => {
   const mock = createSupabaseMock({
     discoveryRows: [],
-    membershipRows: [],
+    currentEffectiveMembershipRows: [],
     persistedRows: {},
   });
 
@@ -242,7 +293,7 @@ test("B06B rejects invalid discovery limits", async () => {
       readHsppReservoirCandidates({
         supabase: mock.supabase as any,
 
-        organizationId: "org-1",
+        organizationId: "00000000-0000-0000-0000-0000000000a1",
 
         limit: 101,
       }),
@@ -254,7 +305,7 @@ test("B06B rejects invalid discovery limits", async () => {
 test("B06B rejects blank organization identity", async () => {
   const mock = createSupabaseMock({
     discoveryRows: [],
-    membershipRows: [],
+    currentEffectiveMembershipRows: [],
     persistedRows: {},
   });
 

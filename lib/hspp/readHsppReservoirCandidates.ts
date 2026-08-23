@@ -147,25 +147,37 @@ export async function readHsppReservoirCandidates({
     evidenceIds,
   });
 
-  const { data: membershipRows, error: membershipError } = await supabase
-    .from("hspp_evidence_assembly_members")
-    .select("evidence_id")
-    .eq("organization_id", normalizedOrganizationId)
-    .in("evidence_id", evidenceIds);
+  // Q14af is a service-role-only read authority. This server-side
+  // boundary therefore requires a service-role-authorized Supabase client
+  // whenever Reservoir discovery is executed.
+  //
+  // Historical assembly membership remains immutable. Reservoir exclusion
+  // is derived only from CURRENT-EFFECTIVE membership at the current
+  // reconstruction lineage leaf.
+  const {
+    data: currentEffectiveMembershipRows,
+    error: currentEffectiveMembershipError,
+  } = await supabase.rpc(
+    "read_hspp_current_effective_assembly_memberships",
+    {
+      p_organization_id: normalizedOrganizationId,
+      p_evidence_ids: evidenceIds,
+    },
+  );
 
-  if (membershipError) {
-    throw membershipError;
+  if (currentEffectiveMembershipError) {
+    throw currentEffectiveMembershipError;
   }
 
-  const assembledEvidenceIds = new Set(
+  const currentEffectiveAssemblyEvidenceIds = new Set(
     (
-      (membershipRows || []) as Array<{
+      (currentEffectiveMembershipRows || []) as Array<{
         evidence_id: unknown;
       }>
     ).map((row) => {
       if (typeof row.evidence_id !== "string" || !row.evidence_id.trim()) {
         throw new Error(
-          "Reservoir membership lookup returned an invalid HSPP evidence id.",
+          "Reservoir current-effective membership lookup returned an invalid HSPP evidence id.",
         );
       }
 
@@ -184,7 +196,7 @@ export async function readHsppReservoirCandidates({
       );
     }
 
-    const hasAssemblyMembership = assembledEvidenceIds.has(evidenceId);
+    const hasAssemblyMembership = currentEffectiveAssemblyEvidenceIds.has(evidenceId);
 
     const reservoirDecision = evaluateHsppReservoirEligibility({
       operationalUseDecision: operationalRead.decision,
