@@ -4,9 +4,8 @@ import {
 } from "./applyHsppAssessmentDecision";
 
 import {
-  applyHsppAssessmentDecisionUnderExecutionLease,
-} from "./applyHsppAssessmentDecisionUnderExecutionLease";
-
+  persistHsppPositiveAssessmentCheckpointUnderExecutionLease,
+} from "./persistHsppPositiveAssessmentCheckpointUnderExecutionLease";
 import type {
   HsppAssessmentExecutionLeaseContext,
 } from "./hsppAssessmentExecutionLeaseContext";
@@ -144,8 +143,10 @@ function assessmentsMatch(
  * supplied exact B11G2 authority decision and rejects any modified or
  * denied assessment before persistence.
  *
- * Evidence mutation remains exclusively owned by
- * applyHsppAssessmentDecision().
+ * Evidence mutation remains delegated to the existing persistence
+ * boundaries: the generic applyHsppAssessmentDecision path when no
+ * execution lease is present, and the lease-only atomic positive-
+ * checkpoint boundary when an execution lease is supplied.
  *
  * Q6 does not generalize B11F6, orchestrate Q5, create a second direct
  * database path, grant Crowd/ML/validation eligibility, assign VERIFIED
@@ -280,12 +281,14 @@ export async function persistHsppCorroboratedOperationalAssessment(
   }
 
   const applied = executionLease
-    ? await applyHsppAssessmentDecisionUnderExecutionLease({
+    ? await persistHsppPositiveAssessmentCheckpointUnderExecutionLease({
         supabase: input.supabase,
 
         organizationId,
 
         assemblyId,
+
+        assemblyDecisionId,
 
         leaseToken: executionLease.leaseToken,
 
@@ -293,7 +296,6 @@ export async function persistHsppCorroboratedOperationalAssessment(
 
         integrityFingerprint,
 
-        assessment,
 
         assessedAt,
       })
