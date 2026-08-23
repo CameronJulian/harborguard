@@ -3,7 +3,7 @@ import type {
 } from "./applyHsppAssessmentDecision";
 
 export const HSPP_POSITIVE_ASSESSMENT_CHECKPOINT_UNDER_EXECUTION_LEASE_RPC =
-  "persist_hspp_positive_assessment_checkpoint_under_execution_lease" as const;
+  "persist_hspp_positive_assessment_checkpoint_under_lease" as const;
 
 export type PersistHsppPositiveAssessmentCheckpointUnderExecutionLeaseInput = {
   supabase: any;

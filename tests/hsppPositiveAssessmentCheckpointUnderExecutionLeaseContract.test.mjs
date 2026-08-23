@@ -223,7 +223,7 @@ test(
   () => {
     assert.match(
       wrapper,
-      /persist_hspp_positive_assessment_checkpoint_under_execution_lease/,
+      /persist_hspp_positive_assessment_checkpoint_under_lease/,
     );
 
     assert.match(
@@ -311,6 +311,102 @@ test(
     assert.match(
       q6,
       /lease-only atomic positive-[\r\n]+\s*\* checkpoint boundary/,
+    );
+  },
+);
+
+test(
+  "Q14r corrective migration renames only the accidental PostgreSQL-truncated RPC",
+  () => {
+    const correctiveSql =
+      fs.readFileSync(
+        "supabase/migrations/20260823081000_fix_hspp_positive_checkpoint_rpc_name.sql",
+        "utf8",
+      );
+
+    const executableCorrectiveSql =
+      correctiveSql
+        .replace(
+          /\/\*[\s\S]*?\*\//g,
+          "",
+        )
+        .replace(
+          /--[^\r\n]*/g,
+          "",
+        )
+        .trim();
+
+    assert.match(
+      executableCorrectiveSql,
+      /^alter\s+function\s+public\.persist_hspp_positive_assessment_checkpoint_under_execution_lea\s*\(\s*uuid\s*,\s*uuid\s*,\s*uuid\s*,\s*uuid\s*,\s*uuid\s*,\s*text\s*,\s*timestamptz\s*\)\s*rename\s+to\s+persist_hspp_positive_assessment_checkpoint_under_lease\s*;\s*$/i,
+    );
+
+    assert.equal(
+      (
+        executableCorrectiveSql.match(
+          /\balter\s+function\b/gi,
+        ) ?? []
+      ).length,
+      1,
+    );
+
+    assert.doesNotMatch(
+      executableCorrectiveSql,
+      /\b(?:create|drop)\s+function\b/i,
+    );
+
+    assert.doesNotMatch(
+      executableCorrectiveSql,
+      /\b(?:grant|revoke)\b/i,
+    );
+  },
+);
+
+test(
+  "Q14r runtime RPC identifier is deliberate and within PostgreSQL's 63-byte limit",
+  () => {
+    const runtimeRpcMatch =
+      wrapper.match(
+        /HSPP_POSITIVE_ASSESSMENT_CHECKPOINT_UNDER_EXECUTION_LEASE_RPC\s*=\s*"([^"]+)"\s+as\s+const/,
+      );
+
+    assert.ok(
+      runtimeRpcMatch,
+      "runtime RPC constant must be present",
+    );
+
+    const runtimeRpc =
+      runtimeRpcMatch[1];
+
+    assert.equal(
+      runtimeRpc,
+      "persist_hspp_positive_assessment_checkpoint_under_lease",
+    );
+
+    assert.equal(
+      Buffer.byteLength(
+        runtimeRpc,
+        "utf8",
+      ),
+      55,
+    );
+
+    assert.ok(
+      Buffer.byteLength(
+        runtimeRpc,
+        "utf8",
+      ) <= 63,
+      "PostgreSQL identifiers must remain <= 63 UTF-8 bytes",
+    );
+
+    assert.doesNotMatch(
+      wrapper,
+      /"persist_hspp_positive_assessment_checkpoint_under_execution_lease"/,
+    );
+
+    assert.doesNotMatch(
+      wrapper,
+      /"persist_hspp_positive_assessment_checkpoint_under_execution_lea"/,
     );
   },
 );
