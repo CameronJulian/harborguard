@@ -118,6 +118,7 @@ function defaultFixture() {
      */
     members: [
       {
+        id: "00000000-0000-0000-0000-000000000001",
         evidence_id: second.id,
 
         evidence_integrity_fingerprint: second.integrity_fingerprint,
@@ -126,6 +127,7 @@ function defaultFixture() {
       },
 
       {
+        id: "00000000-0000-0000-0000-000000000002",
         evidence_id: first.id,
 
         evidence_integrity_fingerprint: first.integrity_fingerprint,

@@ -19,6 +19,8 @@ export type ReadHsppSealedEvidenceAssemblyInput = {
 };
 
 export type HsppSealedAssemblyVerifiedMemberMetadata = {
+  membershipId: string;
+
   evidenceId: string;
 
   integrityFingerprint: string;
@@ -69,6 +71,8 @@ type AssemblyRow = {
 };
 
 type AssemblyMemberRow = {
+  id: unknown;
+
   evidence_id: unknown;
   evidence_integrity_fingerprint: unknown;
   member_ordinal: unknown;
@@ -250,7 +254,7 @@ export async function readHsppSealedEvidenceAssembly(
   const { data: memberData, error: memberError } = await input.supabase
     .from("hspp_evidence_assembly_members")
     .select(
-      ["evidence_id", "evidence_integrity_fingerprint", "member_ordinal"].join(
+      ["id", "evidence_id", "evidence_integrity_fingerprint", "member_ordinal"].join(
         ", ",
       ),
     )
@@ -342,6 +346,8 @@ export async function readHsppSealedEvidenceAssembly(
       : null;
 
   const membership = persistedMembers.map((row) => ({
+    membershipId: requireString(row.id, "member id"),
+
     evidenceId: requireString(row.evidence_id, "member evidence_id"),
 
     integrityFingerprint: requireString(
@@ -419,6 +425,8 @@ export async function readHsppSealedEvidenceAssembly(
     }
 
     verifiedMembers.push({
+      membershipId: member.membershipId,
+
       evidenceId: member.evidenceId,
 
       integrityFingerprint: member.integrityFingerprint,
