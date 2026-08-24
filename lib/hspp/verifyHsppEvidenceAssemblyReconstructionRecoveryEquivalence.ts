@@ -71,6 +71,30 @@ export type VerifyHsppEvidenceAssemblyReconstructionRecoveryEquivalenceInput = {
 };
 
 
+export type VerifyHsppEvidenceAssemblyReconstructionRecoveryImmutableEquivalenceInput = {
+  organizationId: string;
+
+  childAssemblyId: string;
+
+  historicalEvidenceId: string;
+
+  historicalEvidenceIntegrityFingerprint: string;
+
+  replacementEvidenceId: string;
+
+  replacementEvidenceIntegrityFingerprint: string;
+
+  membershipPolicyVersion: string;
+
+  reconstructionPolicyVersion: string;
+
+  reconstructionReason: string;
+
+  parentAssembly: ReadHsppSealedEvidenceAssemblyResult;
+
+  recovery: HsppEvidenceAssemblyReconstructionRecoverySnapshot;
+};
+
 export type VerifyHsppEvidenceAssemblyReconstructionRecoveryEquivalenceResult = {
   verifierVersion:
     typeof HSPP_EVIDENCE_ASSEMBLY_RECONSTRUCTION_RECOVERY_EQUIVALENCE_VERSION;
@@ -431,16 +455,13 @@ function normalizeParentMembers(
 
 
 /**
- * Q14ag24 pure FOUND-recovery equivalence verifier.
+ * Q14ag31K shared immutable-identity FOUND-recovery equivalence core.
  *
- * This verifier is deliberately used only after:
+ * This core runs only after authorized historical/replacement immutable
+ * identities, a Q14ag22B FOUND recovery snapshot, and the immutable
+ * SEALED H1 parent are already available.
  *
- * - an already-computed B07B pair has been selected;
- * - the pair has been resolved to one HISTORICAL_NOT_CURRENT
- *   candidate and one NEVER_ASSEMBLED candidate;
- * - Q14ag22B returned FOUND for the caller-owned child UUID;
- * - Q14ag18A loaded the immutable SEALED parent identified by
- *   the recovery snapshot.
+ * It deliberately does not depend on current Reservoir membership state.
  *
  * It proves exact one-for-one reconstruction equivalence from:
  *
@@ -454,7 +475,7 @@ function normalizeParentMembers(
  * this verifier because, for the one-for-one reconstruction contract,
  * the exact delta is derivable from immutable H1 versus immutable H2.
  *
- * This verifier does NOT:
+ * This core does NOT:
  *
  * - discover or select a B07B pair;
  * - read Q14ag16C;
@@ -468,17 +489,21 @@ function normalizeParentMembers(
  * - alter trust or Reservoir state;
  * - create API, cron, queue or scheduler behavior.
  */
-export function verifyHsppEvidenceAssemblyReconstructionRecoveryEquivalence({
+export function verifyHsppEvidenceAssemblyReconstructionRecoveryImmutableEquivalence({
   organizationId: rawOrganizationId,
   childAssemblyId: rawChildAssemblyId,
-  historicalCandidate,
-  replacementCandidate,
+  historicalEvidenceId: rawHistoricalEvidenceId,
+  historicalEvidenceIntegrityFingerprint:
+    rawHistoricalEvidenceIntegrityFingerprint,
+  replacementEvidenceId: rawReplacementEvidenceId,
+  replacementEvidenceIntegrityFingerprint:
+    rawReplacementEvidenceIntegrityFingerprint,
   membershipPolicyVersion: rawMembershipPolicyVersion,
   reconstructionPolicyVersion: rawReconstructionPolicyVersion,
   reconstructionReason: rawReconstructionReason,
   parentAssembly,
   recovery,
-}: VerifyHsppEvidenceAssemblyReconstructionRecoveryEquivalenceInput): VerifyHsppEvidenceAssemblyReconstructionRecoveryEquivalenceResult {
+}: VerifyHsppEvidenceAssemblyReconstructionRecoveryImmutableEquivalenceInput): VerifyHsppEvidenceAssemblyReconstructionRecoveryEquivalenceResult {
   const organizationId =
     requireNonBlank(
       rawOrganizationId,
@@ -514,22 +539,34 @@ export function verifyHsppEvidenceAssemblyReconstructionRecoveryEquivalence({
     );
 
 
-  const historical =
-    validateCandidate(
-      historicalCandidate,
-      "HISTORICAL_NOT_CURRENT",
-      organizationId,
-      "historicalCandidate",
-    );
+  const historical: CandidateIdentity = {
+    evidenceId:
+      requireNonBlank(
+        rawHistoricalEvidenceId,
+        "historicalEvidenceId",
+      ),
+
+    integrityFingerprint:
+      requireSha256(
+        rawHistoricalEvidenceIntegrityFingerprint,
+        "historicalEvidenceIntegrityFingerprint",
+      ),
+  };
 
 
-  const replacement =
-    validateCandidate(
-      replacementCandidate,
-      "NEVER_ASSEMBLED",
-      organizationId,
-      "replacementCandidate",
-    );
+  const replacement: CandidateIdentity = {
+    evidenceId:
+      requireNonBlank(
+        rawReplacementEvidenceId,
+        "replacementEvidenceId",
+      ),
+
+    integrityFingerprint:
+      requireSha256(
+        rawReplacementEvidenceIntegrityFingerprint,
+        "replacementEvidenceIntegrityFingerprint",
+      ),
+  };
 
 
   if (
@@ -926,4 +963,104 @@ export function verifyHsppEvidenceAssemblyReconstructionRecoveryEquivalence({
     memberCount:
       recovery.members.length,
   };
+}
+
+/**
+ * Q14ag24 legacy B07B-candidate recovery-equivalence entry point.
+ *
+ * Candidate validation remains unchanged. Once the exact historical and
+ * replacement immutable identities are validated, all H1 -> H2 recovery
+ * equivalence is delegated to the single Q14ag31K immutable core.
+ */
+export function verifyHsppEvidenceAssemblyReconstructionRecoveryEquivalence({
+  organizationId: rawOrganizationId,
+  childAssemblyId: rawChildAssemblyId,
+  historicalCandidate,
+  replacementCandidate,
+  membershipPolicyVersion: rawMembershipPolicyVersion,
+  reconstructionPolicyVersion: rawReconstructionPolicyVersion,
+  reconstructionReason: rawReconstructionReason,
+  parentAssembly,
+  recovery,
+}: VerifyHsppEvidenceAssemblyReconstructionRecoveryEquivalenceInput): VerifyHsppEvidenceAssemblyReconstructionRecoveryEquivalenceResult {
+  const organizationId =
+    requireNonBlank(
+      rawOrganizationId,
+      "organizationId",
+    );
+
+
+  const childAssemblyId =
+    requireNonBlank(
+      rawChildAssemblyId,
+      "childAssemblyId",
+    );
+
+
+  const membershipPolicyVersion =
+    requireNonBlank(
+      rawMembershipPolicyVersion,
+      "membershipPolicyVersion",
+    );
+
+
+  const reconstructionPolicyVersion =
+    requireNonBlank(
+      rawReconstructionPolicyVersion,
+      "reconstructionPolicyVersion",
+    );
+
+
+  const reconstructionReason =
+    requireNonBlank(
+      rawReconstructionReason,
+      "reconstructionReason",
+    );
+
+
+  const historical =
+    validateCandidate(
+      historicalCandidate,
+      "HISTORICAL_NOT_CURRENT",
+      organizationId,
+      "historicalCandidate",
+    );
+
+
+  const replacement =
+    validateCandidate(
+      replacementCandidate,
+      "NEVER_ASSEMBLED",
+      organizationId,
+      "replacementCandidate",
+    );
+
+
+  return verifyHsppEvidenceAssemblyReconstructionRecoveryImmutableEquivalence({
+    organizationId,
+
+    childAssemblyId,
+
+    historicalEvidenceId:
+      historical.evidenceId,
+
+    historicalEvidenceIntegrityFingerprint:
+      historical.integrityFingerprint,
+
+    replacementEvidenceId:
+      replacement.evidenceId,
+
+    replacementEvidenceIntegrityFingerprint:
+      replacement.integrityFingerprint,
+
+    membershipPolicyVersion,
+
+    reconstructionPolicyVersion,
+
+    reconstructionReason,
+
+    parentAssembly,
+
+    recovery,
+  });
 }

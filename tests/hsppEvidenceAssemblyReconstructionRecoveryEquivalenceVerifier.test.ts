@@ -16,6 +16,7 @@ import type {
 import {
   HSPP_EVIDENCE_ASSEMBLY_RECONSTRUCTION_RECOVERY_EQUIVALENCE_VERSION,
   verifyHsppEvidenceAssemblyReconstructionRecoveryEquivalence,
+  verifyHsppEvidenceAssemblyReconstructionRecoveryImmutableEquivalence,
 } from "@/lib/hspp/verifyHsppEvidenceAssemblyReconstructionRecoveryEquivalence";
 
 
@@ -1086,6 +1087,161 @@ test(
           input,
         ),
       /replacement member must be ORIGINAL/,
+    );
+  },
+);
+
+function immutableRecoveryInput(
+  assemblyState:
+    | "OPEN"
+    | "SEALED" =
+      "OPEN",
+) {
+  return {
+    organizationId:
+      ORGANIZATION_ID,
+
+    childAssemblyId:
+      CHILD_ID,
+
+    historicalEvidenceId:
+      C,
+
+    historicalEvidenceIntegrityFingerprint:
+      FP_C,
+
+    replacementEvidenceId:
+      C2,
+
+    replacementEvidenceIntegrityFingerprint:
+      FP_C2,
+
+    membershipPolicyVersion:
+      MEMBERSHIP_POLICY_VERSION,
+
+    reconstructionPolicyVersion:
+      RECONSTRUCTION_POLICY_VERSION,
+
+    reconstructionReason:
+      RECONSTRUCTION_REASON,
+
+    parentAssembly:
+      parentAssembly(),
+
+    recovery:
+      recovery(
+        assemblyState,
+      ),
+  };
+}
+
+
+test(
+  "Q14ag31K immutable core produces the exact legacy Q14ag24 result",
+  () => {
+    for (
+      const assemblyState of [
+        "OPEN",
+        "SEALED",
+      ] as const
+    ) {
+      const legacyInput =
+        validInput();
+
+      legacyInput.recovery =
+        recovery(
+          assemblyState,
+        );
+
+      const legacyResult =
+        verifyHsppEvidenceAssemblyReconstructionRecoveryEquivalence(
+          legacyInput,
+        );
+
+      const immutableResult =
+        verifyHsppEvidenceAssemblyReconstructionRecoveryImmutableEquivalence(
+          immutableRecoveryInput(
+            assemblyState,
+          ),
+        );
+
+      assert.deepEqual(
+        immutableResult,
+        legacyResult,
+      );
+    }
+  },
+);
+
+
+test(
+  "Q14ag31K immutable core verifies SEALED post-persistence recovery without B07B candidate lifecycle state",
+  () => {
+    const result =
+      verifyHsppEvidenceAssemblyReconstructionRecoveryImmutableEquivalence(
+        immutableRecoveryInput(
+          "SEALED",
+        ),
+      );
+
+    assert.equal(
+      result.state,
+      "EXACT_RECOVERY",
+    );
+
+    assert.equal(
+      result.assemblyState,
+      "SEALED",
+    );
+
+    assert.equal(
+      result.historicalEvidenceId,
+      C,
+    );
+
+    assert.equal(
+      result.replacementEvidenceId,
+      C2,
+    );
+  },
+);
+
+
+test(
+  "Q14ag31K immutable core validates replacement fingerprint format",
+  () => {
+    const input =
+      immutableRecoveryInput();
+
+    input.replacementEvidenceIntegrityFingerprint =
+      "BAD";
+
+    assert.throws(
+      () =>
+        verifyHsppEvidenceAssemblyReconstructionRecoveryImmutableEquivalence(
+          input,
+        ),
+      /lowercase SHA-256 fingerprint/,
+    );
+  },
+);
+
+
+test(
+  "Q14ag31K immutable core binds historical fingerprint to exact H1",
+  () => {
+    const input =
+      immutableRecoveryInput();
+
+    input.historicalEvidenceIntegrityFingerprint =
+      FP_D;
+
+    assert.throws(
+      () =>
+        verifyHsppEvidenceAssemblyReconstructionRecoveryImmutableEquivalence(
+          input,
+        ),
+      /historical evidence fingerprint does not match/,
     );
   },
 );

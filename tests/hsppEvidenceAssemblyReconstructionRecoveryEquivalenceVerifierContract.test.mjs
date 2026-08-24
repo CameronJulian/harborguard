@@ -287,3 +287,186 @@ test(
     }
   },
 );
+
+test(
+  "Q14ag31K exposes one immutable-identity recovery-equivalence core",
+  () => {
+    assert.match(
+      source,
+      /export type VerifyHsppEvidenceAssemblyReconstructionRecoveryImmutableEquivalenceInput/,
+    );
+
+    assert.match(
+      source,
+      /export function verifyHsppEvidenceAssemblyReconstructionRecoveryImmutableEquivalence\s*\(/,
+    );
+
+    for (
+      const signal of [
+        "historicalEvidenceId: string",
+        "historicalEvidenceIntegrityFingerprint: string",
+        "replacementEvidenceId: string",
+        "replacementEvidenceIntegrityFingerprint: string",
+        "membershipPolicyVersion: string",
+        "reconstructionPolicyVersion: string",
+        "reconstructionReason: string",
+        "parentAssembly: ReadHsppSealedEvidenceAssemblyResult",
+        "recovery: HsppEvidenceAssemblyReconstructionRecoverySnapshot",
+      ]
+    ) {
+      assert.equal(
+        source.includes(
+          signal,
+        ),
+        true,
+        `missing immutable-core input: ${signal}`,
+      );
+    }
+  },
+);
+
+
+test(
+  "Q14ag31K immutable core contains no B07B candidate-state dependency",
+  () => {
+    const coreStart =
+      source.indexOf(
+        "export function verifyHsppEvidenceAssemblyReconstructionRecoveryImmutableEquivalence",
+      );
+
+    const legacyStart =
+      source.indexOf(
+        "export function verifyHsppEvidenceAssemblyReconstructionRecoveryEquivalence",
+        coreStart + 1,
+      );
+
+    assert.ok(
+      coreStart >= 0,
+    );
+
+    assert.ok(
+      legacyStart > coreStart,
+    );
+
+    const core =
+      source.slice(
+        coreStart,
+        legacyStart,
+      );
+
+    for (
+      const forbidden of [
+        "historicalCandidate",
+        "replacementCandidate",
+        "reservoirDecision",
+        "operationalRead",
+        "membershipClassification",
+      ]
+    ) {
+      assert.equal(
+        core.includes(
+          forbidden,
+        ),
+        false,
+        `immutable core depends on candidate state: ${forbidden}`,
+      );
+    }
+  },
+);
+
+
+test(
+  "Q14ag31K preserves Q14ag24 candidate validation as adapter",
+  () => {
+    const coreStart =
+      source.indexOf(
+        "export function verifyHsppEvidenceAssemblyReconstructionRecoveryImmutableEquivalence",
+      );
+
+    const legacyStart =
+      source.indexOf(
+        "export function verifyHsppEvidenceAssemblyReconstructionRecoveryEquivalence",
+        coreStart + 1,
+      );
+
+    const legacy =
+      source.slice(
+        legacyStart,
+      );
+
+    assert.match(
+      legacy,
+      /validateCandidate\s*\(\s*historicalCandidate[\s\S]*?"HISTORICAL_NOT_CURRENT"/,
+    );
+
+    assert.match(
+      legacy,
+      /validateCandidate\s*\(\s*replacementCandidate[\s\S]*?"NEVER_ASSEMBLED"/,
+    );
+
+    assert.match(
+      legacy,
+      /return verifyHsppEvidenceAssemblyReconstructionRecoveryImmutableEquivalence\s*\(/,
+    );
+  },
+);
+
+
+test(
+  "Q14ag31K keeps exactly one H1 to H2 recovery equivalence algorithm",
+  () => {
+    const count =
+      (value) =>
+        source.split(
+          value,
+        ).length - 1;
+
+    assert.equal(
+      count(
+        "Recovered H2 must preserve the one-for-one H1 member count.",
+      ),
+      1,
+    );
+
+    assert.equal(
+      count(
+        "Recovered ORIGINAL member is not the authorized NEVER_ASSEMBLED replacement.",
+      ),
+      1,
+    );
+
+    assert.equal(
+      count(
+        "Recovered H2 still contains the historical evidence that should have been removed.",
+      ),
+      1,
+    );
+  },
+);
+
+
+test(
+  "Q14ag31K introduces no execution or persistence authority",
+  () => {
+    const forbidden = [
+      "claimHsppReconstructionExecutionIntent(",
+      "readHsppReservoirCandidates(",
+      "evaluateHsppReservoirReevaluation(",
+      "runHsppReservoirReevaluation(",
+      "persistHsppEvidenceAssemblyReconstruction(",
+      "runHsppReservoirReconstruction(",
+      "randomUUID(",
+      "crypto.randomUUID(",
+    ];
+
+    for (const value of forbidden) {
+      assert.equal(
+        source.includes(
+          value,
+        ),
+        false,
+        `forbidden Q14ag31K authority present: ${value}`,
+      );
+    }
+  },
+);
