@@ -22,6 +22,10 @@ import {
   runHsppReservoirReevaluation,
 } from "@/lib/hspp/runHsppReservoirReevaluation";
 
+import {
+  runHsppReconstructionActivationCycle,
+} from "@/lib/hspp/runHsppReconstructionActivationCycle";
+
 
 export const dynamic =
   "force-dynamic";
@@ -106,12 +110,14 @@ function requireIntegerEnvironment(
  * - owns fresh assessment-time proposals at the machine boundary;
  * - owns fresh lease tokens at the machine boundary;
  * - delegates persisted-assembly recovery lifecycle behavior to Q13f;
- * - runs B07B Reservoir reevaluation after Q13f in non-mutating shadow mode;
+ * - runs B07B Reservoir reevaluation after Q13f;
+ * - delegates H1 -> H2 reconstruction activation to Q14ag32B using that exact B07B snapshot;
+ * - owns fresh proposed reconstruction-child UUIDs at the machine boundary;
  * - returns only bounded operational summaries;
  * - does not expose execution lease tokens;
  * - does not accept lifecycle identity or policy from the request;
  * - does not schedule itself;
- * - does not implement H1 -> H2 reconstruction;
+ * - does not implement H1 -> H2 reconstruction logic itself;
  * - does not invoke B07C2 or persist Reservoir assembly candidates.
  */
 export async function GET(
@@ -288,7 +294,7 @@ export async function GET(
       });
 
 
-    const reservoir =
+    const reservoirRun =
       await (async () => {
         try {
           const lifeguard =
@@ -301,73 +307,231 @@ export async function GET(
                 recoveryLimit,
             });
 
+
           return {
-            status:
-              "EVALUATED" as const,
+            summary: {
+              status:
+                "EVALUATED" as const,
 
-            runnerVersion:
-              lifeguard.runnerVersion,
+              runnerVersion:
+                lifeguard.runnerVersion,
 
-            discoveryPolicyVersion:
-              lifeguard.discoveryPolicyVersion,
+              discoveryPolicyVersion:
+                lifeguard.discoveryPolicyVersion,
 
-            reevaluationPolicyVersion:
-              lifeguard.reevaluationPolicyVersion,
+              reevaluationPolicyVersion:
+                lifeguard.reevaluationPolicyVersion,
 
-            discovered:
-              lifeguard.discovery
-                .candidates.length,
+              discovered:
+                lifeguard.discovery
+                  .candidates.length,
 
-            reevaluationState:
-              lifeguard.reevaluation
-                .state,
+              reevaluationState:
+                lifeguard.reevaluation
+                  .state,
 
-            assemblyCandidateCount:
-              lifeguard.reevaluation
-                .assemblyCandidates.length,
+              assemblyCandidateCount:
+                lifeguard.reevaluation
+                  .assemblyCandidates.length,
 
-            error:
-              null,
+              error:
+                null,
+            },
+
+            reevaluationResult:
+              lifeguard,
           };
         }
         catch (error: unknown) {
           /*
-           * Q14ag5 is shadow activation.
+           * Q14ag5 B07B failure isolation remains active.
            *
            * Reservoir read/evaluation failure must not convert
            * a completed persisted-assembly recovery cycle into
            * an HTTP-level recovery failure.
+           *
+           * Q14ag32D also refuses to fabricate a B07B snapshot.
+           * Existing durable reconstruction intents remain available
+           * for a later healthy cron cycle.
            */
           return {
-            status:
-              "ERROR" as const,
+            summary: {
+              status:
+                "ERROR" as const,
 
-            runnerVersion:
+              runnerVersion:
+                null,
+
+              discoveryPolicyVersion:
+                null,
+
+              reevaluationPolicyVersion:
+                null,
+
+              discovered:
+                0,
+
+              reevaluationState:
+                null,
+
+              assemblyCandidateCount:
+                0,
+
+              error:
+                errorMessage(
+                  error
+                ),
+            },
+
+            reevaluationResult:
               null,
-
-            discoveryPolicyVersion:
-              null,
-
-            reevaluationPolicyVersion:
-              null,
-
-            discovered:
-              0,
-
-            reevaluationState:
-              null,
-
-            assemblyCandidateCount:
-              0,
-
-            error:
-              errorMessage(
-                error
-              ),
           };
         }
       })();
 
+
+    const reservoir =
+      reservoirRun.summary;
+
+
+    const reconstructionSnapshot =
+      reservoirRun.reevaluationResult;
+
+
+    const reconstruction =
+      reconstructionSnapshot ===
+      null
+        ? {
+            status:
+              "SKIPPED_NO_B07B_SNAPSHOT" as const,
+
+            runnerVersion:
+              null,
+
+            producerSuccess:
+              null,
+
+            producerState:
+              null,
+
+            consumerState:
+              null,
+
+            consumerSelectedCount:
+              0,
+
+            consumerSucceededCount:
+              0,
+
+            consumerFailedCount:
+              0,
+
+            consumerHasMore:
+              false,
+
+            error:
+              reservoir.error,
+          }
+        : await (async () => {
+            try {
+              const activation =
+                await runHsppReconstructionActivationCycle({
+                  supabase,
+
+                  organizationId,
+
+                  reevaluationResult:
+                    reconstructionSnapshot,
+
+                  proposedChildAssemblyId:
+                    randomUUID(),
+                });
+
+
+              return {
+                status:
+                  "COMPLETED" as const,
+
+                runnerVersion:
+                  activation.runnerVersion,
+
+                producerSuccess:
+                  activation.producer.success,
+
+                producerState:
+                  activation.producer.success
+                    ? activation.producer
+                        .result.state
+                    : null,
+
+                consumerState:
+                  activation.consumer.state,
+
+                consumerSelectedCount:
+                  activation.consumer
+                    .selectedCount,
+
+                consumerSucceededCount:
+                  activation.consumer
+                    .succeededCount,
+
+                consumerFailedCount:
+                  activation.consumer
+                    .failedCount,
+
+                consumerHasMore:
+                  activation.consumer
+                    .hasMore,
+
+                error:
+                  activation.producer.success
+                    ? null
+                    : activation.producer
+                        .errorMessage,
+              };
+            }
+            catch (error: unknown) {
+              /*
+               * Q14ag32B deliberately propagates fatal consumer/read
+               * failures. The cron boundary isolates that failure so
+               * an already-completed Q13f recovery cycle is not
+               * retroactively converted into an HTTP-level failure.
+               */
+              return {
+                status:
+                  "ERROR" as const,
+
+                runnerVersion:
+                  null,
+
+                producerSuccess:
+                  null,
+
+                producerState:
+                  null,
+
+                consumerState:
+                  null,
+
+                consumerSelectedCount:
+                  0,
+
+                consumerSucceededCount:
+                  0,
+
+                consumerFailedCount:
+                  0,
+
+                consumerHasMore:
+                  false,
+
+                error:
+                  errorMessage(
+                    error
+                  ),
+              };
+            }
+          })();
 
     /*
      * Do not serialize Q13f's or B07B's complete internal results directly.
@@ -482,6 +646,8 @@ export async function GET(
             sealedFailed,
         },
       },
+
+      reconstruction,
 
       results: {
         open:

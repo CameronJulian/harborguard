@@ -241,7 +241,7 @@ test(
 
 
 test(
-  "Q13g creates no scheduler or H1 to H2 reconstruction authority",
+  "Q13g remains scheduler-free and delegates H1 to H2 reconstruction activation",
   () => {
     assert.match(
       source,
@@ -250,7 +250,17 @@ test(
 
     assert.match(
       source,
-      /does not implement H1 -> H2 reconstruction/
+      /delegates H1 -> H2 reconstruction activation to Q14ag32B/
+    );
+
+    assert.match(
+      source,
+      /does not implement H1 -> H2 reconstruction logic itself/
+    );
+
+    assert.match(
+      source,
+      /runHsppReconstructionActivationCycle/
     );
 
     assert.doesNotMatch(
@@ -260,7 +270,7 @@ test(
   }
 );
 test(
-  "Q14ag5 activates one bounded B07B shadow evaluation after Q13f recovery",
+  "Q14ag5 preserves one bounded B07B evaluation after Q13f recovery",
   () => {
     const q13fIndex =
       source.indexOf(
@@ -313,11 +323,11 @@ test(
 
 
 test(
-  "Q14ag5 isolates B07B shadow failure from Q13f recovery",
+  "Q14ag5 isolates B07B failure from Q13f recovery",
   () => {
     assert.match(
       source,
-      /const reservoir\s*=[\s\S]*?try\s*\{[\s\S]*?await runHsppReservoirReevaluation[\s\S]*?catch\s*\(\s*error:\s*unknown\s*\)/
+      /const reservoirRun\s*=[\s\S]*?try\s*\{[\s\S]*?await runHsppReservoirReevaluation[\s\S]*?catch\s*\(\s*error:\s*unknown\s*\)/
     );
 
     assert.match(
@@ -339,7 +349,7 @@ test(
 
 
 test(
-  "Q14ag5 exposes only bounded Reservoir shadow summary fields",
+  "Q14ag5 exposes only bounded Reservoir summary fields",
   () => {
     for (const field of [
       "runnerVersion",
@@ -374,5 +384,248 @@ test(
       source,
       /\boperationalRead\b/
     );
+  }
+);
+
+const q14ag32dExecutableSource =
+  source
+    .replace(
+      /\/\*[\s\S]*?\*\//g,
+      ""
+    )
+    .replace(
+      /\/\/.*$/gm,
+      ""
+    );
+
+
+test(
+  "Q14ag32D executes Q13f then one B07B snapshot then at most one Q14ag32B activation",
+  () => {
+    const q13fIndex =
+      q14ag32dExecutableSource.indexOf(
+        "await runHsppAssemblyRecoveryCycle"
+      );
+
+    const b07bIndex =
+      q14ag32dExecutableSource.indexOf(
+        "await runHsppReservoirReevaluation"
+      );
+
+    const activationIndex =
+      q14ag32dExecutableSource.indexOf(
+        "await runHsppReconstructionActivationCycle"
+      );
+
+    assert.ok(
+      q13fIndex >= 0
+    );
+
+    assert.ok(
+      b07bIndex >
+        q13fIndex
+    );
+
+    assert.ok(
+      activationIndex >
+        b07bIndex
+    );
+
+    const b07bCalls =
+      q14ag32dExecutableSource.match(
+        /await\s+runHsppReservoirReevaluation\s*\(/g
+      ) ?? [];
+
+    const activationCalls =
+      q14ag32dExecutableSource.match(
+        /await\s+runHsppReconstructionActivationCycle\s*\(/g
+      ) ?? [];
+
+    assert.equal(
+      b07bCalls.length,
+      1
+    );
+
+    assert.equal(
+      activationCalls.length,
+      1
+    );
+  }
+);
+
+
+test(
+  "Q14ag32D passes the same retained B07B snapshot and a cron-owned proposed child UUID",
+  () => {
+    assert.match(
+      source,
+      /const\s+reconstructionSnapshot\s*=\s*reservoirRun\.reevaluationResult/
+    );
+
+    assert.match(
+      source,
+      /runHsppReconstructionActivationCycle\s*\(\s*\{[\s\S]*?supabase,[\s\S]*?organizationId,[\s\S]*?reevaluationResult:\s*reconstructionSnapshot,[\s\S]*?proposedChildAssemblyId:\s*randomUUID\s*\(\s*\)/
+    );
+
+    const uuidCalls =
+      q14ag32dExecutableSource.match(
+        /\brandomUUID\s*\(/g
+      ) ?? [];
+
+    assert.equal(
+      uuidCalls.length,
+      2
+    );
+  }
+);
+
+
+test(
+  "Q14ag32D never bypasses the outer activation orchestrator",
+  () => {
+    for (
+      const functionName of
+      [
+        "runHsppReconstructionExecutionIntentClaim",
+        "runHsppReconstructionExecutionIntentCycle",
+        "runHsppReconstructionExecutionIntent",
+        "persistHsppEvidenceAssemblyReconstruction",
+        "persistHsppReservoirAssemblyCandidate",
+      ]
+    ) {
+      assert.doesNotMatch(
+        q14ag32dExecutableSource,
+        new RegExp(
+          `\\b${functionName}\\s*\\(`
+        )
+      );
+    }
+  }
+);
+
+
+test(
+  "Q14ag32D skips activation when B07B cannot provide a real snapshot",
+  () => {
+    assert.match(
+      source,
+      /reevaluationResult:\s*null/
+    );
+
+    assert.match(
+      source,
+      /const\s+reconstructionSnapshot\s*=\s*reservoirRun\.reevaluationResult/
+    );
+
+    assert.match(
+      source,
+      /reconstructionSnapshot\s*===\s*null[\s\S]*?"SKIPPED_NO_B07B_SNAPSHOT"/
+    );
+
+    assert.match(
+      source,
+      /Q14ag32D also refuses to fabricate a B07B snapshot/
+    );
+  }
+);
+
+
+test(
+  "Q14ag32D isolates fatal Q14ag32B errors without changing completed Q13f HTTP success",
+  () => {
+    assert.match(
+      source,
+      /const\s+reconstruction\s*=[\s\S]*?runHsppReconstructionActivationCycle[\s\S]*?catch\s*\(\s*error:\s*unknown\s*\)[\s\S]*?status:\s*"ERROR"\s+as\s+const[\s\S]*?error:\s*errorMessage\s*\(\s*error\s*\)/
+    );
+
+    assert.match(
+      source,
+      /success:\s*openFailed\s*===\s*0\s*&&\s*sealedFailed\s*===\s*0/
+    );
+  }
+);
+
+
+test(
+  "Q14ag32D exposes only a bounded reconstruction summary",
+  () => {
+    for (
+      const field of
+      [
+        "status",
+        "runnerVersion",
+        "producerSuccess",
+        "producerState",
+        "consumerState",
+        "consumerSelectedCount",
+        "consumerSucceededCount",
+        "consumerFailedCount",
+        "consumerHasMore",
+        "error",
+      ]
+    ) {
+      assert.match(
+        source,
+        new RegExp(
+          `\\b${field}\\b`
+        )
+      );
+    }
+
+    const responseStart =
+      source.lastIndexOf(
+        "return NextResponse.json({"
+      );
+
+    assert.ok(
+      responseStart >=
+        0
+    );
+
+    const outerCatch =
+      source.indexOf(
+        "\n  catch (error: unknown) {",
+        responseStart
+      );
+
+    assert.ok(
+      outerCatch >
+        responseStart
+    );
+
+    const response =
+      source.slice(
+        responseStart,
+        outerCatch
+      );
+
+    assert.match(
+      response,
+      /\breservoir\s*,/
+    );
+
+    assert.match(
+      response,
+      /\breconstruction\s*,/
+    );
+
+    for (
+      const forbidden of
+      [
+        /reevaluationResult/,
+        /reconstructionSnapshot/,
+        /activationPolicy/,
+        /\bproducer\s*:/,
+        /\bconsumer\s*:/,
+        /\bclaim\s*:/,
+        /\bintents\s*:/,
+        /\.outcomes\b/,
+      ]
+    ) {
+      assert.doesNotMatch(
+        response,
+        forbidden
+      );
+    }
   }
 );
