@@ -305,7 +305,7 @@ test(
 
           createProposedAssessedAt:
             null as unknown as (
-              workItem: never
+              workItem: unknown
             ) => string,
 
           createLeaseToken:
