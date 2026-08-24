@@ -7,12 +7,12 @@ import {
 } from "@/lib/hspp/persistHsppEvidenceAssembly";
 
 import type {
-  HsppReservoirCandidate,
-} from "@/lib/hspp/readHsppReservoirCandidates";
-
-import type {
   RunHsppReservoirReevaluationResult,
 } from "@/lib/hspp/runHsppReservoirReevaluation";
+import {
+  resolveHsppReconstructionClaimMaterial,
+  type HsppReconstructionClaimMaterial,
+} from "@/lib/hspp/resolveHsppReconstructionClaimMaterial";
 
 import {
   readHsppEvidenceAssemblyReconstructionRecovery,
@@ -155,22 +155,6 @@ export type RunHsppReservoirReconstructionResult = {
 };
 
 
-type ResolvedReconstructionPair = {
-  selectedEvidenceIds: [
-    string,
-    string,
-  ];
-
-  historicalCandidate:
-    HsppReservoirCandidate;
-
-  replacementCandidate:
-    HsppReservoirCandidate;
-
-  membershipPolicyVersion: string;
-};
-
-
 function requireNonBlank(
   value: unknown,
   fieldName: string,
@@ -185,267 +169,6 @@ function requireNonBlank(
   }
 
   return value.trim();
-}
-
-
-function requireCandidate(
-  candidates: HsppReservoirCandidate[],
-  evidenceId: string,
-): HsppReservoirCandidate {
-  const matches =
-    candidates.filter(
-      (candidate) =>
-        candidate?.evidenceId ===
-        evidenceId,
-    );
-
-
-  if (matches.length !== 1) {
-    throw new Error(
-      `Selected B07B evidence ${evidenceId} must resolve to exactly one discovery candidate.`,
-    );
-  }
-
-
-  return matches[0];
-}
-
-
-/**
- * Preserve B07A's already-deterministic pair order.
- *
- * This is a reconstruction-specific selection boundary, so an earlier
- * NEVER_ASSEMBLED + NEVER_ASSEMBLED pair remains B07C2's responsibility
- * and does not suppress a later deterministic
- * HISTORICAL_NOT_CURRENT + NEVER_ASSEMBLED pair.
- *
- * No re-ranking or membership reevaluation occurs here.
- */
-function resolveFirstReconstructionPair(
-  result: RunHsppReservoirReevaluationResult,
-  organizationId: string,
-): ResolvedReconstructionPair | null {
-  const resultOrganizationId =
-    requireNonBlank(
-      result?.organizationId,
-      "reevaluationResult.organizationId",
-    );
-
-
-  if (
-    resultOrganizationId !==
-    organizationId
-  ) {
-    throw new Error(
-      "B07B runner organization does not match the reconstruction organization.",
-    );
-  }
-
-
-  const discoveryOrganizationId =
-    requireNonBlank(
-      result?.discovery?.organizationId,
-      "reevaluationResult.discovery.organizationId",
-    );
-
-
-  if (
-    discoveryOrganizationId !==
-    organizationId
-  ) {
-    throw new Error(
-      "B07B discovery organization does not match the reconstruction organization.",
-    );
-  }
-
-
-  const discoveryCandidates =
-    result?.discovery?.candidates;
-
-
-  if (
-    !Array.isArray(
-      discoveryCandidates,
-    )
-  ) {
-    throw new Error(
-      "B07B discovery candidates must be an array.",
-    );
-  }
-
-
-  const assemblyCandidates =
-    result?.reevaluation?.assemblyCandidates;
-
-
-  if (
-    !Array.isArray(
-      assemblyCandidates,
-    )
-  ) {
-    throw new Error(
-      "B07A assemblyCandidates must be an array.",
-    );
-  }
-
-
-  const reevaluationState =
-    result?.reevaluation?.state;
-
-
-  if (
-    reevaluationState !==
-    "ASSEMBLY_CANDIDATE"
-  ) {
-    if (
-      assemblyCandidates.length !==
-      0
-    ) {
-      throw new Error(
-        "B07A non-candidate state cannot expose assembly candidates.",
-      );
-    }
-
-    return null;
-  }
-
-
-  if (
-    assemblyCandidates.length ===
-    0
-  ) {
-    throw new Error(
-      "B07A ASSEMBLY_CANDIDATE state must expose at least one assembly candidate.",
-    );
-  }
-
-
-  for (
-    const selected of
-      assemblyCandidates
-  ) {
-    const firstEvidenceId =
-      requireNonBlank(
-        selected?.firstEvidenceId,
-        "selected.firstEvidenceId",
-      );
-
-
-    const secondEvidenceId =
-      requireNonBlank(
-        selected?.secondEvidenceId,
-        "selected.secondEvidenceId",
-      );
-
-
-    if (
-      firstEvidenceId ===
-      secondEvidenceId
-    ) {
-      throw new Error(
-        "A selected B07A pair must contain two distinct evidence identities.",
-      );
-    }
-
-
-    if (
-      !selected?.membershipDecision ||
-      selected.membershipDecision.eligible !==
-        true
-    ) {
-      throw new Error(
-        "Every B07A assemblyCandidate must preserve an eligible membership decision.",
-      );
-    }
-
-
-    const firstCandidate =
-      requireCandidate(
-        discoveryCandidates,
-        firstEvidenceId,
-      );
-
-
-    const secondCandidate =
-      requireCandidate(
-        discoveryCandidates,
-        secondEvidenceId,
-      );
-
-
-    const firstClassification =
-      firstCandidate.membershipClassification;
-
-    const secondClassification =
-      secondCandidate.membershipClassification;
-
-
-    let historicalCandidate:
-      HsppReservoirCandidate | null =
-        null;
-
-    let replacementCandidate:
-      HsppReservoirCandidate | null =
-        null;
-
-
-    if (
-      firstClassification ===
-        "HISTORICAL_NOT_CURRENT" &&
-      secondClassification ===
-        "NEVER_ASSEMBLED"
-    ) {
-      historicalCandidate =
-        firstCandidate;
-
-      replacementCandidate =
-        secondCandidate;
-    }
-    else if (
-      firstClassification ===
-        "NEVER_ASSEMBLED" &&
-      secondClassification ===
-        "HISTORICAL_NOT_CURRENT"
-    ) {
-      historicalCandidate =
-        secondCandidate;
-
-      replacementCandidate =
-        firstCandidate;
-    }
-
-
-    if (
-      !historicalCandidate ||
-      !replacementCandidate
-    ) {
-      continue;
-    }
-
-
-    const membershipPolicyVersion =
-      requireNonBlank(
-        selected.membershipDecision.policyVersion,
-        "selected.membershipDecision.policyVersion",
-      );
-
-
-    return {
-      selectedEvidenceIds: [
-        firstEvidenceId,
-        secondEvidenceId,
-      ],
-
-      historicalCandidate,
-
-      replacementCandidate,
-
-      membershipPolicyVersion,
-    };
-  }
-
-
-  return null;
 }
 
 
@@ -465,7 +188,7 @@ function makeBaseResult({
   childAssemblyId: string;
 
   pair:
-    ResolvedReconstructionPair | null;
+    HsppReconstructionClaimMaterial | null;
 
   reconstructionPolicyVersion: string;
 
@@ -550,7 +273,7 @@ async function recoverExactReconstruction({
 
   childAssemblyId: string;
 
-  pair: ResolvedReconstructionPair;
+  pair: HsppReconstructionClaimMaterial;
 
   reconstructionPolicyVersion: string;
 
@@ -756,10 +479,10 @@ export async function runHsppReservoirReconstruction({
 
 
   const pair =
-    resolveFirstReconstructionPair(
+    resolveHsppReconstructionClaimMaterial({
       reevaluationResult,
       organizationId,
-    );
+    });
 
 
   if (!pair) {

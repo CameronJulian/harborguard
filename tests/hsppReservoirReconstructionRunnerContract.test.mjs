@@ -10,6 +10,17 @@ const source =
   );
 
 
+const executableSource =
+  source
+    .replace(
+      /\/\*[\s\S]*?\*\//g,
+      "",
+    )
+    .replace(
+      /\/\/.*$/gm,
+      "",
+    );
+
 test(
   "Q14ag26 exposes one explicitly versioned reconstruction runner",
   () => {
@@ -113,71 +124,55 @@ test(
 
 
 test(
-  "Q14ag26 scans B07A assembly candidates in existing order without reranking",
+  "Q14ag31S makes Q14ag26 delegate reconstruction pair and claim-material resolution to the shared pure resolver",
   () => {
     assert.match(
       source,
-      /for\s*\(\s*const selected of\s*assemblyCandidates\s*\)/,
+      /resolveHsppReconstructionClaimMaterial/,
     );
 
     assert.match(
       source,
-      /"HISTORICAL_NOT_CURRENT"/,
+      /type\s+HsppReconstructionClaimMaterial/,
     );
 
-    assert.match(
-      source,
-      /"NEVER_ASSEMBLED"/,
-    );
+    const calls =
+      executableSource.match(
+        /\bresolveHsppReconstructionClaimMaterial\s*\(/g,
+      ) ?? [];
 
-    assert.match(
-      source,
-      /selected\.membershipDecision\.policyVersion/,
-    );
-
-    assert.doesNotMatch(
-      source,
-      /assemblyCandidates\.sort\s*\(/,
+    assert.equal(
+      calls.length,
+      1,
     );
   },
 );
 
 
 test(
-  "Q14ag26 resolves B07A pair identities only from the existing B07B discovery candidates",
+  "Q14ag31S removes the duplicate private B07A reconstruction selection algorithm from Q14ag26",
   () => {
-    assert.match(
-      source,
+    assert.doesNotMatch(
+      executableSource,
+      /function\s+resolveFirstReconstructionPair\s*\(/,
+    );
+
+    assert.doesNotMatch(
+      executableSource,
+      /function\s+requireCandidate\s*\(/,
+    );
+
+    assert.doesNotMatch(
+      executableSource,
+      /for\s*\(\s*const\s+selected\s+of\s+assemblyCandidates\s*\)/,
+    );
+
+    assert.doesNotMatch(
+      executableSource,
       /result\?\.discovery\?\.candidates/,
-    );
-
-    assert.match(
-      source,
-      /requireCandidate\s*\(/,
-    );
-
-    assert.match(
-      source,
-      /must resolve to exactly one discovery candidate/,
-    );
-
-    assert.doesNotMatch(
-      source,
-      /\breadHsppReservoirCandidates\s*\(/,
-    );
-
-    assert.doesNotMatch(
-      source,
-      /\bevaluateHsppReservoirReevaluation\s*\(/,
-    );
-
-    assert.doesNotMatch(
-      source,
-      /\bevaluateHsppAssemblyMembership\s*\(/,
     );
   },
 );
-
 
 test(
   "Q14ag26 uses Q14ag22B as the first external read for a selected reconstruction pair",
