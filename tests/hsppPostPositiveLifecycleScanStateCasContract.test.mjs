@@ -393,3 +393,14 @@ test(
     }
   },
 );
+
+
+test(
+  "scan-state migration contains no UTF-8 BOM",
+  () => {
+    assert.notEqual(
+      migration.charCodeAt(0),
+      0xfeff,
+    );
+  },
+);
