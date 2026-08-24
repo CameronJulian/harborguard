@@ -1,4 +1,4 @@
-﻿import test from "node:test";
+import test from "node:test";
 import assert from "node:assert/strict";
 
 import type {
@@ -178,6 +178,9 @@ test(
           null,
 
         p_before_intent_id:
+          null,
+
+        p_persistence_state:
           null,
       },
     );
@@ -453,6 +456,9 @@ test(
 
         p_before_intent_id:
           "intent-9999",
+
+        p_persistence_state:
+          null,
       },
     );
 
@@ -958,6 +964,177 @@ test(
         error: unknown,
       ) =>
         error === expectedError,
+    );
+  },
+);
+
+
+test(
+  "Q14ag31O maps CLAIMED_NOT_PERSISTED filter to the canonical RPC",
+  async () => {
+    const {
+      supabase,
+      calls,
+    } =
+      makeSupabase([
+        makeRow(),
+      ]);
+
+    const result =
+      await readHsppReconstructionExecutionIntents({
+        supabase,
+
+        organizationId:
+          "org-1",
+
+        persistenceStateFilter:
+          "CLAIMED_NOT_PERSISTED",
+      });
+
+    assert.equal(
+      calls.length,
+      1,
+    );
+
+    assert.equal(
+      calls[0].args.p_persistence_state,
+      "CLAIMED_NOT_PERSISTED",
+    );
+
+    assert.equal(
+      result.intents.length,
+      1,
+    );
+
+    assert.equal(
+      result.intents[0].persistenceState,
+      "CLAIMED_NOT_PERSISTED",
+    );
+  },
+);
+
+
+test(
+  "Q14ag31O maps RECONSTRUCTION_PERSISTED filter to the canonical RPC",
+  async () => {
+    const {
+      supabase,
+      calls,
+    } =
+      makeSupabase([
+        makeRow({
+          persistence_state:
+            "RECONSTRUCTION_PERSISTED",
+
+          reconstruction_id:
+            "reconstruction-1",
+
+          parent_assembly_id:
+            "parent-1",
+
+          assembly_state:
+            "OPEN",
+
+          sealed_at:
+            null,
+        }),
+      ]);
+
+    const result =
+      await readHsppReconstructionExecutionIntents({
+        supabase,
+
+        organizationId:
+          "org-1",
+
+        persistenceStateFilter:
+          "RECONSTRUCTION_PERSISTED",
+      });
+
+    assert.equal(
+      calls.length,
+      1,
+    );
+
+    assert.equal(
+      calls[0].args.p_persistence_state,
+      "RECONSTRUCTION_PERSISTED",
+    );
+
+    assert.equal(
+      result.intents[0].persistenceState,
+      "RECONSTRUCTION_PERSISTED",
+    );
+  },
+);
+
+
+test(
+  "Q14ag31O rejects unsupported persistence-state filters before RPC execution",
+  async () => {
+    const {
+      supabase,
+      calls,
+    } =
+      makeSupabase([]);
+
+    await assert.rejects(
+      readHsppReconstructionExecutionIntents({
+        supabase,
+
+        organizationId:
+          "org-1",
+
+        persistenceStateFilter:
+          "UNSUPPORTED_STATE" as any,
+      }),
+      /persistenceStateFilter must be CLAIMED_NOT_PERSISTED, RECONSTRUCTION_PERSISTED, or null/,
+    );
+
+    assert.equal(
+      calls.length,
+      0,
+    );
+  },
+);
+
+
+test(
+  "Q14ag31O fails closed if the RPC returns a state outside the requested server-side filter",
+  async () => {
+    const {
+      supabase,
+    } =
+      makeSupabase([
+        makeRow({
+          persistence_state:
+            "RECONSTRUCTION_PERSISTED",
+
+          reconstruction_id:
+            "reconstruction-1",
+
+          parent_assembly_id:
+            "parent-1",
+
+          assembly_state:
+            "OPEN",
+
+          sealed_at:
+            null,
+        }),
+      ]);
+
+    await assert.rejects(
+      readHsppReconstructionExecutionIntents({
+        supabase,
+
+        organizationId:
+          "org-1",
+
+        persistenceStateFilter:
+          "CLAIMED_NOT_PERSISTED",
+      }),
+      /does not match requested persistence-state filter/,
     );
   },
 );

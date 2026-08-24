@@ -1,4 +1,4 @@
-﻿import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
   HSPP_RECONSTRUCTION_EXECUTION_INTENT_VERSION,
@@ -143,6 +143,15 @@ export type ReadHsppReconstructionExecutionIntentsInput = {
 
   beforeIntentId?:
     | string
+    | null;
+
+  /**
+   * Optional server-side lifecycle-state filter.
+   *
+   * null / omitted preserves Q14ag31F generic both-state discovery.
+   */
+  persistenceStateFilter?:
+    | HsppReconstructionExecutionIntent["persistenceState"]
     | null;
 };
 
@@ -361,6 +370,28 @@ function requireLimit(
   return value;
 }
 
+
+function normalizePersistenceStateFilter(
+  value: unknown,
+): HsppReconstructionExecutionIntent["persistenceState"] | null {
+  if (
+    value === undefined ||
+    value === null
+  ) {
+    return null;
+  }
+
+  if (
+    value === "CLAIMED_NOT_PERSISTED" ||
+    value === "RECONSTRUCTION_PERSISTED"
+  ) {
+    return value;
+  }
+
+  throw new Error(
+    "persistenceStateFilter must be CLAIMED_NOT_PERSISTED, RECONSTRUCTION_PERSISTED, or null.",
+  );
+}
 
 function normalizeCursor(
   beforeCreatedAt: unknown,
@@ -835,6 +866,8 @@ export async function readHsppReconstructionExecutionIntents({
   limit: rawLimit,
   beforeCreatedAt,
   beforeIntentId,
+  persistenceStateFilter:
+    rawPersistenceStateFilter,
 }: ReadHsppReconstructionExecutionIntentsInput): Promise<ReadHsppReconstructionExecutionIntentsResult> {
   const organizationId =
     requireNonBlankString(
@@ -853,6 +886,12 @@ export async function readHsppReconstructionExecutionIntents({
     normalizeCursor(
       beforeCreatedAt,
       beforeIntentId,
+    );
+
+
+  const persistenceStateFilter =
+    normalizePersistenceStateFilter(
+      rawPersistenceStateFilter,
     );
 
 
@@ -876,6 +915,9 @@ export async function readHsppReconstructionExecutionIntents({
         p_before_intent_id:
           cursor?.intentId ??
           null,
+
+        p_persistence_state:
+          persistenceStateFilter,
       },
     );
 
@@ -912,6 +954,26 @@ export async function readHsppReconstructionExecutionIntents({
         ),
     );
 
+
+  if (
+    persistenceStateFilter !==
+    null
+  ) {
+    for (
+      let index = 0;
+      index < intents.length;
+      index += 1
+    ) {
+      if (
+        intents[index].persistenceState !==
+        persistenceStateFilter
+      ) {
+        throw new Error(
+          `Q14ag31O returned persistence state ${intents[index].persistenceState} that does not match requested persistence-state filter ${persistenceStateFilter}.`,
+        );
+      }
+    }
+  }
 
   const intentIds =
     new Set<string>();

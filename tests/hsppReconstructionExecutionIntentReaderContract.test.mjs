@@ -1,4 +1,4 @@
-﻿import test from "node:test";
+import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
@@ -285,6 +285,100 @@ test(
     assert.doesNotMatch(
       executableSource,
       /crypto\.randomUUID\s*\(/,
+    );
+  },
+);
+
+
+test(
+  "Q14ag31O exposes one optional server-side persistence-state filter",
+  () => {
+    assert.match(
+      source,
+      /persistenceStateFilter\?\s*:/,
+    );
+
+    assert.match(
+      source,
+      /HsppReconstructionExecutionIntent\["persistenceState"\]/,
+    );
+
+    assert.match(
+      source,
+      /normalizePersistenceStateFilter\s*\(/,
+    );
+
+    assert.match(
+      source,
+      /p_persistence_state\s*:/,
+    );
+  },
+);
+
+
+test(
+  "Q14ag31O preserves null as generic both-state discovery",
+  () => {
+    assert.match(
+      source,
+      /value\s*===\s*undefined[\s\S]*?value\s*===\s*null[\s\S]*?return\s+null/,
+    );
+
+    assert.match(
+      source,
+      /"CLAIMED_NOT_PERSISTED"/,
+    );
+
+    assert.match(
+      source,
+      /"RECONSTRUCTION_PERSISTED"/,
+    );
+  },
+);
+
+
+test(
+  "Q14ag31O distrusts the filtered RPC result and verifies every returned lifecycle state",
+  () => {
+    assert.match(
+      executableSource,
+      /intents\[index\]\.persistenceState\s*!==\s*persistenceStateFilter/,
+    );
+
+    assert.match(
+      source,
+      /does not match requested persistence-state filter/,
+    );
+  },
+);
+
+
+test(
+  "Q14ag31O still owns no claim execution table mutation or activation authority",
+  () => {
+    assert.doesNotMatch(
+      executableSource,
+      /\bclaimHsppReconstructionExecutionIntent\s*\(/,
+    );
+
+    assert.doesNotMatch(
+      executableSource,
+      /\brunHsppReconstructionExecutionIntent\s*\(/,
+    );
+
+    assert.doesNotMatch(
+      executableSource,
+      /\.from\s*\(/,
+    );
+
+    assert.doesNotMatch(
+      executableSource,
+      /\.(?:insert|update|delete|upsert)\s*\(/,
+    );
+
+    assert.doesNotMatch(
+      executableSource,
+      /\brandomUUID\s*\(/,
     );
   },
 );
