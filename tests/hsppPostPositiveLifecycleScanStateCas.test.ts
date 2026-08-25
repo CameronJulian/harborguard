@@ -18,7 +18,7 @@ const ORGANIZATION_ID =
 
 const CURSOR_A = {
   positiveAssessedAt:
-    "2026-08-23T10:00:00.000Z",
+    "2026-08-23T10:00:00.123456+00:00",
 
   positiveCheckpointId:
     "checkpoint-a",
@@ -26,7 +26,7 @@ const CURSOR_A = {
 
 const CURSOR_B = {
   positiveAssessedAt:
-    "2026-08-23T11:00:00.000Z",
+    "2026-08-23T11:00:00.654321+00:00",
 
   positiveCheckpointId:
     "checkpoint-b",
@@ -34,7 +34,7 @@ const CURSOR_B = {
 
 const CURSOR_C = {
   positiveAssessedAt:
-    "2026-08-23T12:00:00.000Z",
+    "2026-08-23T12:00:00.000001+00:00",
 
   positiveCheckpointId:
     "checkpoint-c",

@@ -17,6 +17,13 @@ const clientUrl =
   );
 
 
+const runtimeTestUrl =
+  new URL(
+    "./hsppPostPositiveLifecycleScanStateCas.test.ts",
+    import.meta.url,
+  );
+
+
 const migration =
   fs.readFileSync(
     migrationUrl,
@@ -27,6 +34,13 @@ const migration =
 const client =
   fs.readFileSync(
     clientUrl,
+    "utf8",
+  );
+
+
+const runtimeTestSource =
+  fs.readFileSync(
+    runtimeTestUrl,
     "utf8",
   );
 
@@ -401,6 +415,43 @@ test(
     assert.notEqual(
       migration.charCodeAt(0),
       0xfeff,
+    );
+  },
+);
+
+
+
+test(
+  "TypeScript client preserves PostgreSQL microsecond cursor identity",
+  () => {
+    assert.match(
+      runtime,
+      /function\s+requireExactCursorTimestamp[\s\S]*?return\s+normalized;/i,
+    );
+
+    assert.match(
+      runtime,
+      /function\s+normalizeCursor[\s\S]*?positiveAssessedAt:[\s\S]*?requireExactCursorTimestamp\s*\(/i,
+    );
+
+    assert.match(
+      runtime,
+      /function\s+readPersistedCursor[\s\S]*?positiveAssessedAt:[\s\S]*?requireExactCursorTimestamp\s*\(/i,
+    );
+
+    assert.match(
+      runtimeTestSource,
+      /2026-08-23T10:00:00\.123456\+00:00/,
+    );
+
+    assert.match(
+      runtimeTestSource,
+      /2026-08-23T11:00:00\.654321\+00:00/,
+    );
+
+    assert.match(
+      runtimeTestSource,
+      /2026-08-23T12:00:00\.000001\+00:00/,
     );
   },
 );

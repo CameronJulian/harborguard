@@ -147,6 +147,39 @@ function requireTimestamp(
 }
 
 
+function requireExactCursorTimestamp(
+  value: unknown,
+  fieldName: string,
+): string {
+  const normalized =
+    requireNonBlank(
+      value,
+      fieldName,
+    );
+
+  if (
+    Number.isNaN(
+      Date.parse(
+        normalized,
+      ),
+    )
+  ) {
+    throw new Error(
+      `${fieldName} must be a valid timestamp.`,
+    );
+  }
+
+  /*
+   * Cursor assessedAt is immutable PostgreSQL identity.
+   *
+   * Do not round-trip it through JavaScript Date because PostgreSQL
+   * timestamptz may contain microsecond precision while JavaScript
+   * Date preserves only milliseconds.
+   */
+  return normalized;
+}
+
+
 function optionalTimestamp(
   value: unknown,
   fieldName: string,
@@ -177,7 +210,7 @@ function normalizeCursor(
 
   return {
     positiveAssessedAt:
-      requireTimestamp(
+      requireExactCursorTimestamp(
         cursor.positiveAssessedAt,
         `${fieldName}.positiveAssessedAt`,
       ),
@@ -222,7 +255,7 @@ function readPersistedCursor(
 
   return {
     positiveAssessedAt:
-      requireTimestamp(
+      requireExactCursorTimestamp(
         assessedAt,
         `${fieldName}.positiveAssessedAt`,
       ),
