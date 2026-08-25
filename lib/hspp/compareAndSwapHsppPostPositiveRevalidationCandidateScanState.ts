@@ -15,7 +15,7 @@ HSPP_POST_POSITIVE_REVALIDATION_CANDIDATE_SCAN_STATE_CAS_VERSION =
 
 export const
 HSPP_POST_POSITIVE_REVALIDATION_CANDIDATE_SCAN_STATE_CAS_RPC =
-  "compare_and_swap_hspp_post_positive_revalidation_candidate_scan_state" as const;
+  "compare_and_swap_hspp_revalidation_candidate_scan_state" as const;
 
 
 const UUID_PATTERN =

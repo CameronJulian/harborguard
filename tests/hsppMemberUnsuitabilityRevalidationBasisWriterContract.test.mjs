@@ -64,7 +64,7 @@ test("R1 observation is tied to the prior positive checkpoint and Q14v observed_
 test("new R1-aware Q14x RPC exposes exactly C identity plus R1 identity and times", () => {
   assert.match(
     source,
-    /persist_hspp_member_unsuitability_checkpoint_with_revalidation_under_lease\(\s*p_organization_id uuid,\s*p_assembly_id uuid,\s*p_lease_token uuid,\s*p_evidence_id uuid,\s*p_integrity_fingerprint text,\s*p_revalidation_evidence_id uuid,\s*p_revalidation_integrity_fingerprint text,\s*p_observed_at timestamptz,\s*p_decided_at timestamptz\s*\)/i,
+    /persist_hspp_member_revalidation_checkpoint_under_lease\(\s*p_organization_id uuid,\s*p_assembly_id uuid,\s*p_lease_token uuid,\s*p_evidence_id uuid,\s*p_integrity_fingerprint text,\s*p_revalidation_evidence_id uuid,\s*p_revalidation_integrity_fingerprint text,\s*p_observed_at timestamptz,\s*p_decided_at timestamptz\s*\)/i,
   );
 });
 
@@ -77,7 +77,7 @@ test("new R1-aware Q14x RPC remains SECURITY DEFINER with fixed search_path", ()
 
 test("new R1-aware Q14x follows assembly-before-lease lock ordering", () => {
   const writerMarker =
-    "public.persist_hspp_member_unsuitability_checkpoint_with_revalidation_under_lease(";
+    "public.persist_hspp_member_revalidation_checkpoint_under_lease(";
 
   const writerStart =
     source.indexOf(
@@ -200,7 +200,7 @@ test("new R1-aware Q14x remains dormant with no application EXECUTE grant", () =
 
   assert.match(
     source,
-    /revoke all[\s\S]*persist_hspp_member_unsuitability_checkpoint_with_revalidation_under_lease[\s\S]*service_role/i,
+    /revoke all[\s\S]*persist_hspp_member_revalidation_checkpoint_under_lease[\s\S]*service_role/i,
   );
 });
 

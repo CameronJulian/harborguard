@@ -246,12 +246,12 @@ test(
 
     assert.match(
       sql,
-      /revoke\s+all[\s\S]*?on\s+function\s+public\.compare_and_swap_hspp_post_positive_revalidation_candidate_scan_state[\s\S]*?from\s+public[\s\S]*?anon[\s\S]*?authenticated[\s\S]*?service_role/i,
+      /revoke\s+all[\s\S]*?on\s+function\s+public\.compare_and_swap_hspp_revalidation_candidate_scan_state[\s\S]*?from\s+public[\s\S]*?anon[\s\S]*?authenticated[\s\S]*?service_role/i,
     );
 
     assert.doesNotMatch(
       sql,
-      /grant\s+execute[\s\S]*?compare_and_swap_hspp_post_positive_revalidation_candidate_scan_state[\s\S]*?service_role/i,
+      /grant\s+execute[\s\S]*?compare_and_swap_hspp_revalidation_candidate_scan_state[\s\S]*?service_role/i,
     );
   },
 );
@@ -262,7 +262,7 @@ test(
   () => {
     assert.match(
       runtime,
-      /compare_and_swap_hspp_post_positive_revalidation_candidate_scan_state/,
+      /compare_and_swap_hspp_revalidation_candidate_scan_state/,
     );
 
     assert.match(
@@ -318,7 +318,7 @@ test(
 
     assert.doesNotMatch(
       activationSurface,
-      /compareAndSwapHsppPostPositiveRevalidationCandidateScanState|compare_and_swap_hspp_post_positive_revalidation_candidate_scan_state/,
+      /compareAndSwapHsppPostPositiveRevalidationCandidateScanState|compare_and_swap_hspp_revalidation_candidate_scan_state/,
     );
   },
 );

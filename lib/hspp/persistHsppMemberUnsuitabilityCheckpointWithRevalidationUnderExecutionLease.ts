@@ -1,5 +1,5 @@
 export const HSPP_MEMBER_UNSUITABILITY_CHECKPOINT_WITH_REVALIDATION_UNDER_EXECUTION_LEASE_RPC =
-  "persist_hspp_member_unsuitability_checkpoint_with_revalidation_under_lease" as const;
+  "persist_hspp_member_revalidation_checkpoint_under_lease" as const;
 
 
 export const HSPP_MEMBER_UNSUITABILITY_CHECKPOINT_WITH_REVALIDATION_UNDER_EXECUTION_LEASE_WRITER_VERSION =

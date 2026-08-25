@@ -265,7 +265,7 @@ test(
   () => {
     assert.doesNotMatch(
       sql,
-      /runHsppPostPositiveRevalidationUnsuitabilityAssessment|runHsppReservoirReevaluation|runHsppReconstructionActivationCycle|persist_hspp_member_unsuitability_checkpoint_with_revalidation_under_lease/,
+      /runHsppPostPositiveRevalidationUnsuitabilityAssessment|runHsppReservoirReevaluation|runHsppReconstructionActivationCycle|persist_hspp_member_revalidation_checkpoint_under_lease/,
     );
   },
 );

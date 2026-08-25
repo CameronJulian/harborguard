@@ -197,7 +197,7 @@ test(
 
     assert.equal(
       calls[0].name,
-      "persist_hspp_member_unsuitability_checkpoint_with_revalidation_under_lease",
+      "persist_hspp_member_revalidation_checkpoint_under_lease",
     );
 
     assert.deepEqual(

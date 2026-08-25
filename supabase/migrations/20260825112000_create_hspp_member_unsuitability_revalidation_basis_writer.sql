@@ -233,7 +233,7 @@ execute function
 -- ============================================================
 
 create or replace function
-  public.persist_hspp_member_unsuitability_checkpoint_with_revalidation_under_lease(
+  public.persist_hspp_member_revalidation_checkpoint_under_lease(
     p_organization_id uuid,
     p_assembly_id uuid,
     p_lease_token uuid,
@@ -732,7 +732,7 @@ $function$;
 
 revoke all
 on function
-  public.persist_hspp_member_unsuitability_checkpoint_with_revalidation_under_lease(
+  public.persist_hspp_member_revalidation_checkpoint_under_lease(
     uuid,
     uuid,
     uuid,
@@ -761,7 +761,7 @@ from
 
 
 comment on function
-  public.persist_hspp_member_unsuitability_checkpoint_with_revalidation_under_lease(
+  public.persist_hspp_member_revalidation_checkpoint_under_lease(
     uuid,
     uuid,
     uuid,

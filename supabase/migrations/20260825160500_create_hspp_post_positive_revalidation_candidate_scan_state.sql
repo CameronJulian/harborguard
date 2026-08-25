@@ -160,7 +160,7 @@ to service_role;
 
 
 create or replace function
-  public.compare_and_swap_hspp_post_positive_revalidation_candidate_scan_state(
+  public.compare_and_swap_hspp_revalidation_candidate_scan_state(
     p_positive_checkpoint_id uuid,
 
     p_expected_cursor_observed_at timestamptz,
@@ -695,7 +695,7 @@ $function$;
 -- Keep the future mutation boundary completely dormant.
 revoke all
 on function
-  public.compare_and_swap_hspp_post_positive_revalidation_candidate_scan_state(
+  public.compare_and_swap_hspp_revalidation_candidate_scan_state(
     uuid,
     timestamptz,
     uuid,
@@ -715,7 +715,7 @@ is
 
 
 comment on function
-  public.compare_and_swap_hspp_post_positive_revalidation_candidate_scan_state(
+  public.compare_and_swap_hspp_revalidation_candidate_scan_state(
     uuid,
     timestamptz,
     uuid,

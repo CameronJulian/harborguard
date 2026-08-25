@@ -227,7 +227,7 @@ test(
 
     assert.doesNotMatch(
       executable,
-      /compare_and_swap_hspp_post_positive_revalidation_candidate_scan_state/i,
+      /compare_and_swap_hspp_revalidation_candidate_scan_state/i,
     );
 
     assert.doesNotMatch(
