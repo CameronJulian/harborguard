@@ -363,13 +363,22 @@ export default function DriverEmergencyPage() {
 
       setNearbyAlerts(alerts);
 
-      if (alerts.length === 0) return;
+      if (alerts.length === 0) {
+        setLastAlertId(null);
+        setRouteOptions([]);
+        setRouteRecommendation(null);
+        return;
+      }
 
       const closest = alerts[0];
-      await loadRerouteOptions(latitude, longitude);
 
       if (closest.id !== lastAlertId) {
         setLastAlertId(closest.id);
+
+        await loadRerouteOptions(
+          latitude,
+          longitude
+        );
 
         if (typeof window !== "undefined" && "Notification" in window) {
           if (Notification.permission === "granted") {
