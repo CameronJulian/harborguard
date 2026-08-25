@@ -186,7 +186,7 @@ test(
 
 
 test(
-  "isolated route does not bypass lifecycle authority and remains unscheduled",
+  "isolated route does not bypass lifecycle authority and is scheduled once daily before recovery",
   () => {
     for (
       const forbidden of
@@ -215,9 +215,56 @@ test(
       /"path"\s*:\s*"\/api\/hspp\/cron\/recovery"/,
     );
 
-    assert.doesNotMatch(
-      vercel,
-      /\/api\/hspp\/cron\/post-positive-lifecycle/,
+    const cronConfig =
+      JSON.parse(
+        vercel,
+      );
+
+    const cronJobs =
+      Array.isArray(
+        cronConfig.crons,
+      )
+        ? cronConfig.crons
+        : [];
+
+    const recoveryJobs =
+      cronJobs.filter(
+        (job) =>
+          job?.path ===
+          "/api/hspp/cron/recovery",
+      );
+
+    const postPositiveJobs =
+      cronJobs.filter(
+        (job) =>
+          job?.path ===
+          "/api/hspp/cron/post-positive-lifecycle",
+      );
+
+    assert.deepEqual(
+      recoveryJobs,
+      [
+        {
+          path:
+            "/api/hspp/cron/recovery",
+
+          schedule:
+            "0 3 * * *",
+        },
+      ],
+    );
+
+    assert.deepEqual(
+      postPositiveJobs,
+      [
+        {
+          path:
+            "/api/hspp/cron/post-positive-lifecycle",
+
+          schedule:
+            "0 0 * * *",
+        },
+      ],
     );
   },
 );
