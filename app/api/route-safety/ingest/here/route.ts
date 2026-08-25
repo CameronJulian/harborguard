@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
+import {
+  getIntelligenceSourceConfiguration,
+} from "@/lib/route-safety/providers/getIntelligenceSourceConfiguration";
 
 function mapHereSeverity(criticality?: string) {
   const value = String(criticality || "").toLowerCase();
@@ -62,6 +65,42 @@ function getLatLng(incident: any) {
 export async function POST(req: Request) {
   try {
     const { supabase, organizationId } = await requireOrganization();
+
+    const {
+      configuration: hereTrafficConfiguration,
+      error: hereTrafficConfigurationError,
+    } = await getIntelligenceSourceConfiguration(
+      supabase,
+      "here_traffic"
+    );
+
+    if (!hereTrafficConfiguration) {
+      return NextResponse.json(
+        {
+          error:
+            hereTrafficConfigurationError ||
+            "HERE Traffic source configuration could not be loaded.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    if (
+      !hereTrafficConfiguration.enabled ||
+      !hereTrafficConfiguration.approvedForIngestion
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "HERE Traffic ingestion is disabled by the intelligence source registry.",
+        },
+        {
+          status: 503,
+        }
+      );
+    }
 
     if (!process.env.HERE_API_KEY) {
       return NextResponse.json(
@@ -187,5 +226,3 @@ export async function POST(req: Request) {
     );
   }
 }
-
-
