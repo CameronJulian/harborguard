@@ -9,11 +9,16 @@ const cycle =
   );
 
 test(
-  "cycle composes only canonical discovery and the two closed single-item runners",
+  "cycle composes fair discovery CAS and the two closed single-item runners",
   () => {
     assert.match(
       cycle,
-      /readHsppPostPositiveLifecycleWorkItems/,
+      /readHsppPostPositiveLifecycleFairWorkItemsV2/,
+    );
+
+    assert.match(
+      cycle,
+      /compareAndSwapHsppPostPositiveLifecycleScanState/,
     );
 
     assert.match(
@@ -279,6 +284,189 @@ test(
     assert.equal(
       calls.length,
       1,
+    );
+  },
+);
+
+
+
+/* ============================================================
+ * FAIR CURSOR SCHEDULING CONTRACTS
+ * ============================================================ */
+
+test(
+  "cycle defaults to fair discovery and canonical scan-state CAS",
+  () => {
+    assert.match(
+      cycle,
+      /readWorkItems:\s*readHsppPostPositiveLifecycleFairWorkItemsV2/,
+    );
+
+    assert.match(
+      cycle,
+      /advanceCursor:\s*compareAndSwapHsppPostPositiveLifecycleScanState/,
+    );
+
+    assert.match(
+      cycle,
+      /hspp-post-positive-lifecycle-cycle-runner-v2/,
+    );
+
+    assert.doesNotMatch(
+      cycle,
+      /readWorkItems:\s*readHsppPostPositiveLifecycleWorkItems/,
+    );
+  },
+);
+
+
+test(
+  "cycle attempts one cursor CAS only after the captured work-item loop",
+  () => {
+    const calls =
+      cycle.match(
+        /dependencies\.advanceCursor\s*\(/g,
+      ) || [];
+
+
+    assert.equal(
+      calls.length,
+      1,
+    );
+
+
+    const loopIndex =
+      cycle.indexOf(
+        "of discovery.workItems",
+      );
+
+
+    const cursorIndex =
+      cycle.indexOf(
+        "await dependencies.advanceCursor",
+      );
+
+
+    assert.ok(
+      loopIndex >= 0,
+    );
+
+
+    assert.ok(
+      cursorIndex >
+        loopIndex,
+    );
+  },
+);
+
+
+test(
+  "cycle maps only the captured expected and proposed fair cursor identity into CAS",
+  () => {
+    assert.match(
+      cycle,
+      /expectedCursor:\s*cursorAdvanceRequest\.expectedCursor/,
+    );
+
+    assert.match(
+      cycle,
+      /proposedCursor:\s*cursorAdvanceRequest\.proposedCursor/,
+    );
+
+    assert.match(
+      cycle,
+      /organizationId:\s*normalizedOrganizationId/,
+    );
+
+    assert.match(
+      cycle,
+      /const cursorAdvanceRequest\s*=\s*discovery\.cursorAdvance/,
+    );
+  },
+);
+
+
+test(
+  "cycle surfaces no-op success and failure cursor outcomes separately",
+  () => {
+    assert.match(
+      cycle,
+      /"CURSOR_ADVANCE_NOT_REQUIRED"/,
+    );
+
+    assert.match(
+      cycle,
+      /"CURSOR_ADVANCE_RESULT"/,
+    );
+
+    assert.match(
+      cycle,
+      /"CURSOR_ADVANCE_ERROR"/,
+    );
+
+    assert.match(
+      cycle,
+      /cursorAdvanceResult,/,
+    );
+
+    /*
+     * The CAS primitive owns interpretation of ADVANCED,
+     * EXACT_RETRY, NO_CHANGE and STALE. The cycle must not
+     * reinterpret STALE as lifecycle failure.
+     */
+    assert.doesNotMatch(
+      cycle,
+      /"STALE"/,
+    );
+  },
+);
+
+
+test(
+  "cursor failure is isolated after work results with no retry or rediscovery",
+  () => {
+    assert.match(
+      cycle,
+      /HSPP post-positive lifecycle cursor advancement failed/,
+    );
+
+    assert.match(
+      cycle,
+      /workResults,[\s\S]*cursorAdvanceResult/,
+    );
+
+    const discoveryCalls =
+      cycle.match(
+        /dependencies\.readWorkItems\s*\(/g,
+      ) || [];
+
+
+    const cursorCalls =
+      cycle.match(
+        /dependencies\.advanceCursor\s*\(/g,
+      ) || [];
+
+
+    assert.equal(
+      discoveryCalls.length,
+      1,
+    );
+
+
+    assert.equal(
+      cursorCalls.length,
+      1,
+    );
+
+
+    assert.doesNotMatch(
+      cycle,
+      /Promise\.all/,
+    );
+
+    assert.doesNotMatch(
+      cycle,
+      /setTimeout/,
     );
   },
 );

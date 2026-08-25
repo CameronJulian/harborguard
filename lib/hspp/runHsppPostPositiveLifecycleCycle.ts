@@ -2,11 +2,20 @@ import type {
   SupabaseClient,
 } from "@supabase/supabase-js";
 
-import {
-  readHsppPostPositiveLifecycleWorkItems,
-  type HsppPostPositiveLifecycleWorkItem,
-  type ReadHsppPostPositiveLifecycleWorkItemsResult,
+import type {
+  HsppPostPositiveLifecycleWorkItem,
 } from "@/lib/hspp/readHsppPostPositiveLifecycleWorkItems";
+
+import {
+  readHsppPostPositiveLifecycleFairWorkItemsV2,
+  type HsppPostPositiveLifecycleFairCursorAdvance,
+  type ReadHsppPostPositiveLifecycleFairWorkItemsResult,
+} from "@/lib/hspp/readHsppPostPositiveLifecycleFairWorkItemsV2";
+
+import {
+  compareAndSwapHsppPostPositiveLifecycleScanState,
+  type CompareAndSwapHsppPostPositiveLifecycleScanStateResult,
+} from "@/lib/hspp/compareAndSwapHsppPostPositiveLifecycleScanState";
 
 import {
   runHsppPostPositiveMemberUnsuitabilityAssessment,
@@ -19,7 +28,7 @@ import {
 } from "@/lib/hspp/runHsppPostPositiveMemberEffectiveCessation";
 
 export const HSPP_POST_POSITIVE_LIFECYCLE_CYCLE_RUNNER_VERSION =
-  "hspp-post-positive-lifecycle-cycle-runner-v1" as const;
+  "hspp-post-positive-lifecycle-cycle-runner-v2" as const;
 
 export type HsppPostPositiveLifecycleAttemptValueFactory =
   (
@@ -35,7 +44,7 @@ export type RunHsppPostPositiveLifecycleCycleInput = {
     string;
 
   /**
-   * Delegated to the canonical bounded lifecycle reader.
+   * Delegated to the canonical bounded fair lifecycle reader.
    */
   limit?:
     number;
@@ -145,6 +154,48 @@ export type HsppPostPositiveLifecycleCycleWorkResult =
   | HsppPostPositiveLifecycleCycleReevaluationResult
   | HsppPostPositiveLifecycleCycleCessationResult;
 
+export type HsppPostPositiveLifecycleCycleCursorAdvanceResult =
+  | {
+      branch:
+        "CURSOR_ADVANCE_NOT_REQUIRED";
+
+      request:
+        null;
+
+      result:
+        null;
+
+      error:
+        null;
+    }
+  | {
+      branch:
+        "CURSOR_ADVANCE_RESULT";
+
+      request:
+        HsppPostPositiveLifecycleFairCursorAdvance;
+
+      result:
+        CompareAndSwapHsppPostPositiveLifecycleScanStateResult;
+
+      error:
+        null;
+    }
+  | {
+      branch:
+        "CURSOR_ADVANCE_ERROR";
+
+      request:
+        HsppPostPositiveLifecycleFairCursorAdvance;
+
+      result:
+        null;
+
+      error:
+        string;
+    };
+
+
 export type RunHsppPostPositiveLifecycleCycleResult = {
   runnerVersion:
     typeof HSPP_POST_POSITIVE_LIFECYCLE_CYCLE_RUNNER_VERSION;
@@ -153,15 +204,21 @@ export type RunHsppPostPositiveLifecycleCycleResult = {
     string;
 
   discovery:
-    ReadHsppPostPositiveLifecycleWorkItemsResult;
+    ReadHsppPostPositiveLifecycleFairWorkItemsResult;
 
   workResults:
     HsppPostPositiveLifecycleCycleWorkResult[];
+
+  cursorAdvanceResult:
+    HsppPostPositiveLifecycleCycleCursorAdvanceResult;
 };
 
 export type HsppPostPositiveLifecycleCycleDependencies = {
   readWorkItems:
-    typeof readHsppPostPositiveLifecycleWorkItems;
+    typeof readHsppPostPositiveLifecycleFairWorkItemsV2;
+
+  advanceCursor:
+    typeof compareAndSwapHsppPostPositiveLifecycleScanState;
 
   runReevaluation:
     typeof runHsppPostPositiveMemberUnsuitabilityAssessment;
@@ -173,7 +230,10 @@ export type HsppPostPositiveLifecycleCycleDependencies = {
 const DEFAULT_DEPENDENCIES:
   HsppPostPositiveLifecycleCycleDependencies = {
     readWorkItems:
-      readHsppPostPositiveLifecycleWorkItems,
+      readHsppPostPositiveLifecycleFairWorkItemsV2,
+
+    advanceCursor:
+      compareAndSwapHsppPostPositiveLifecycleScanState,
 
     runReevaluation:
       runHsppPostPositiveMemberUnsuitabilityAssessment,
@@ -214,6 +274,8 @@ function requireFactory(
 
 function cycleErrorMessage(
   error: unknown,
+  fallbackMessage =
+    "HSPP post-positive lifecycle work item failed.",
 ): string {
   if (
     error instanceof Error &&
@@ -229,7 +291,7 @@ function cycleErrorMessage(
     return error.trim();
   }
 
-  return "HSPP post-positive lifecycle work item failed.";
+  return fallbackMessage;
 }
 
 /**
@@ -485,6 +547,91 @@ export async function runHsppPostPositiveLifecycleCycle(
     );
   }
 
+
+  /*
+   * Fair scheduling state advances only after every item in the captured
+   * discovery snapshot has been attempted.
+   *
+   * Lifecycle writes remain owned by the existing item runners. The cursor
+   * is scheduling metadata only. Item error, INDETERMINATE, SUITABLE and
+   * LEASE_BUSY results therefore do not pin the captured fair page.
+   *
+   * No retry or rediscovery occurs here. STALE is returned as ordinary CAS
+   * scheduling contention and is not reinterpreted by this cycle.
+   */
+  const cursorAdvanceRequest =
+    discovery.cursorAdvance ??
+    null;
+
+
+  let cursorAdvanceResult:
+    HsppPostPositiveLifecycleCycleCursorAdvanceResult;
+
+
+  if (cursorAdvanceRequest === null) {
+    cursorAdvanceResult = {
+      branch:
+        "CURSOR_ADVANCE_NOT_REQUIRED",
+
+      request:
+        null,
+
+      result:
+        null,
+
+      error:
+        null,
+    };
+  } else {
+    try {
+      const result =
+        await dependencies.advanceCursor({
+          supabase,
+
+          organizationId:
+            normalizedOrganizationId,
+
+          expectedCursor:
+            cursorAdvanceRequest.expectedCursor,
+
+          proposedCursor:
+            cursorAdvanceRequest.proposedCursor,
+        });
+
+
+      cursorAdvanceResult = {
+        branch:
+          "CURSOR_ADVANCE_RESULT",
+
+        request:
+          cursorAdvanceRequest,
+
+        result,
+
+        error:
+          null,
+      };
+    }
+    catch (error: unknown) {
+      cursorAdvanceResult = {
+        branch:
+          "CURSOR_ADVANCE_ERROR",
+
+        request:
+          cursorAdvanceRequest,
+
+        result:
+          null,
+
+        error:
+          cycleErrorMessage(
+            error,
+            "HSPP post-positive lifecycle cursor advancement failed.",
+          ),
+      };
+    }
+  }
+
   return {
     runnerVersion:
       HSPP_POST_POSITIVE_LIFECYCLE_CYCLE_RUNNER_VERSION,
@@ -495,5 +642,7 @@ export async function runHsppPostPositiveLifecycleCycle(
     discovery,
 
     workResults,
+
+    cursorAdvanceResult,
   };
 }

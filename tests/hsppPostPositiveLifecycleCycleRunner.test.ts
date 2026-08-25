@@ -901,3 +901,549 @@ test(
     );
   },
 );
+
+
+
+/* ============================================================
+ * FAIR CURSOR ADVANCEMENT TEST HARNESS
+ * ============================================================ */
+
+const TEST_CURSOR_ADVANCE = {
+  expectedCursor:
+    null,
+
+  proposedCursor: {
+    positiveAssessedAt:
+      "2026-08-24T15:00:00.123456+00:00",
+
+    positiveCheckpointId:
+      POSITIVE_ID_1,
+  },
+};
+
+
+type CursorHarnessOptions = {
+  cursorAdvance?:
+    any | null;
+
+  cursorState?:
+    string;
+
+  cursorError?:
+    Error | null;
+};
+
+
+function attachCursorHarness(
+  harness:
+    ReturnType<typeof createHarness>,
+
+  {
+    cursorAdvance =
+      TEST_CURSOR_ADVANCE,
+
+    cursorState =
+      "ADVANCED",
+
+    cursorError =
+      null,
+  }: CursorHarnessOptions = {},
+) {
+  const originalReadWorkItems =
+    harness.dependencies.readWorkItems;
+
+
+  const cursorCalls:
+    any[] =
+      [];
+
+
+  harness.dependencies.readWorkItems =
+    async (
+      input: any,
+    ) => {
+      const discovery =
+        await originalReadWorkItems(
+          input,
+        );
+
+
+      return {
+        ...discovery,
+
+        readerVersion:
+          "hspp-post-positive-lifecycle-fair-work-reader-v2",
+
+        cursorAdvance,
+      };
+    };
+
+
+  harness.dependencies.advanceCursor =
+    async (
+      input: any,
+    ) => {
+      harness.events.push(
+        "cursor",
+      );
+
+
+      cursorCalls.push(
+        input,
+      );
+
+
+      if (cursorError) {
+        throw cursorError;
+      }
+
+
+      return {
+        operationVersion:
+          "hspp-post-positive-lifecycle-scan-state-cas-v1",
+
+        stateVersion:
+          "hspp-post-positive-lifecycle-scan-state-v1",
+
+        state:
+          cursorState,
+
+        organizationId:
+          input.organizationId,
+
+        currentCursor:
+          cursorState ===
+          "STALE"
+            ? (
+                cursorAdvance
+                  ?.expectedCursor ??
+                null
+              )
+            : input.proposedCursor,
+
+        previousCursor:
+          input.expectedCursor,
+
+        createdAt:
+          "2026-08-24T16:00:00.000Z",
+
+        updatedAt:
+          "2026-08-24T16:00:01.000Z",
+      };
+    };
+
+
+  return {
+    harness,
+    cursorCalls,
+    cursorAdvance,
+  };
+}
+
+
+test(
+  "fair page advances its captured cursor exactly once after all work attempts",
+  async () => {
+    const reevaluation =
+      createWorkItem(
+        "REEVALUATION_REQUIRED",
+        1,
+      );
+
+
+    const cessation =
+      createWorkItem(
+        "CESSATION_REQUIRED",
+        2,
+      );
+
+
+    const cursorHarness =
+      attachCursorHarness(
+        createHarness({
+          workItems: [
+            reevaluation,
+            cessation,
+          ],
+        }),
+      );
+
+
+    const result =
+      await runWithHarness(
+        cursorHarness.harness,
+      );
+
+
+    assert.equal(
+      cursorHarness.cursorCalls.length,
+      1,
+    );
+
+
+    assert.deepEqual(
+      cursorHarness.cursorCalls[0],
+      {
+        supabase:
+          SUPABASE,
+
+        organizationId:
+          ORGANIZATION_ID,
+
+        expectedCursor:
+          TEST_CURSOR_ADVANCE.expectedCursor,
+
+        proposedCursor:
+          TEST_CURSOR_ADVANCE.proposedCursor,
+      },
+    );
+
+
+    assert.equal(
+      cursorHarness.harness.events[
+        cursorHarness.harness.events.length - 1
+      ],
+      "cursor",
+    );
+
+
+    assert.equal(
+      result.cursorAdvanceResult.branch,
+      "CURSOR_ADVANCE_RESULT",
+    );
+
+
+    assert.deepEqual(
+      result.cursorAdvanceResult.request,
+      TEST_CURSOR_ADVANCE,
+    );
+
+
+    assert.equal(
+      result.cursorAdvanceResult.result
+        ?.state,
+      "ADVANCED",
+    );
+
+
+    assert.equal(
+      result.workResults.length,
+      2,
+    );
+  },
+);
+
+
+test(
+  "isolated reevaluation error does not pin the captured fair cursor",
+  async () => {
+    const cursorHarness =
+      attachCursorHarness(
+        createHarness({
+          workItems: [
+            createWorkItem(
+              "REEVALUATION_REQUIRED",
+              1,
+            ),
+          ],
+
+          reevaluationErrorCheckpointId:
+            POSITIVE_ID_1,
+        }),
+      );
+
+
+    const result =
+      await runWithHarness(
+        cursorHarness.harness,
+      );
+
+
+    assert.equal(
+      result.workResults[0]
+        ?.branch,
+      "REEVALUATION_ERROR",
+    );
+
+
+    assert.equal(
+      cursorHarness.cursorCalls.length,
+      1,
+    );
+
+
+    assert.equal(
+      result.cursorAdvanceResult.branch,
+      "CURSOR_ADVANCE_RESULT",
+    );
+  },
+);
+
+
+test(
+  "LEASE_BUSY does not pin the captured fair cursor",
+  async () => {
+    const cursorHarness =
+      attachCursorHarness(
+        createHarness({
+          workItems: [
+            createWorkItem(
+              "REEVALUATION_REQUIRED",
+              1,
+            ),
+          ],
+
+          reevaluationBranch:
+            "LEASE_BUSY",
+        }),
+      );
+
+
+    const result =
+      await runWithHarness(
+        cursorHarness.harness,
+      );
+
+
+    assert.equal(
+      result.workResults[0]
+        ?.assessment
+        ?.branch,
+      "LEASE_BUSY",
+    );
+
+
+    assert.equal(
+      cursorHarness.cursorCalls.length,
+      1,
+    );
+
+
+    assert.equal(
+      result.cursorAdvanceResult.branch,
+      "CURSOR_ADVANCE_RESULT",
+    );
+  },
+);
+
+
+test(
+  "STALE cursor CAS is scheduling contention rather than cycle failure",
+  async () => {
+    const cursorHarness =
+      attachCursorHarness(
+        createHarness({
+          workItems: [
+            createWorkItem(
+              "REEVALUATION_REQUIRED",
+              1,
+            ),
+          ],
+        }),
+
+        {
+          cursorState:
+            "STALE",
+        },
+      );
+
+
+    const result =
+      await runWithHarness(
+        cursorHarness.harness,
+      );
+
+
+    assert.equal(
+      cursorHarness.cursorCalls.length,
+      1,
+    );
+
+
+    assert.equal(
+      result.cursorAdvanceResult.branch,
+      "CURSOR_ADVANCE_RESULT",
+    );
+
+
+    assert.equal(
+      result.cursorAdvanceResult.result
+        ?.state,
+      "STALE",
+    );
+
+
+    assert.equal(
+      result.cursorAdvanceResult.error,
+      null,
+    );
+  },
+);
+
+
+test(
+  "cursor transport error is isolated after durable work results",
+  async () => {
+    const cursorHarness =
+      attachCursorHarness(
+        createHarness({
+          workItems: [
+            createWorkItem(
+              "REEVALUATION_REQUIRED",
+              1,
+            ),
+          ],
+        }),
+
+        {
+          cursorError:
+            new Error(
+              "synthetic cursor transport failure",
+            ),
+        },
+      );
+
+
+    const result =
+      await runWithHarness(
+        cursorHarness.harness,
+      );
+
+
+    assert.equal(
+      result.workResults.length,
+      1,
+    );
+
+
+    assert.equal(
+      result.workResults[0]
+        ?.branch,
+      "REEVALUATION_RESULT",
+    );
+
+
+    assert.equal(
+      result.cursorAdvanceResult.branch,
+      "CURSOR_ADVANCE_ERROR",
+    );
+
+
+    assert.equal(
+      result.cursorAdvanceResult.result,
+      null,
+    );
+
+
+    assert.match(
+      result.cursorAdvanceResult.error ||
+        "",
+      /synthetic cursor transport failure/,
+    );
+
+
+    assert.equal(
+      cursorHarness.cursorCalls.length,
+      1,
+    );
+  },
+);
+
+
+test(
+  "empty fair page with no cursor performs no CAS",
+  async () => {
+    const cursorHarness =
+      attachCursorHarness(
+        createHarness({
+          workItems:
+            [],
+        }),
+
+        {
+          cursorAdvance:
+            null,
+        },
+      );
+
+
+    const result =
+      await runWithHarness(
+        cursorHarness.harness,
+      );
+
+
+    assert.equal(
+      cursorHarness.cursorCalls.length,
+      0,
+    );
+
+
+    assert.equal(
+      result.cursorAdvanceResult.branch,
+      "CURSOR_ADVANCE_NOT_REQUIRED",
+    );
+  },
+);
+
+
+test(
+  "cessation-only fair page advances the shared all-state cursor",
+  async () => {
+    const cessationCursorAdvance = {
+      expectedCursor:
+        TEST_CURSOR_ADVANCE.expectedCursor,
+
+      proposedCursor: {
+        positiveAssessedAt:
+          "2026-08-24T15:01:00.654321+00:00",
+
+        positiveCheckpointId:
+          POSITIVE_ID_2,
+      },
+    };
+
+
+    const cursorHarness =
+      attachCursorHarness(
+        createHarness({
+          workItems: [
+            createWorkItem(
+              "CESSATION_REQUIRED",
+              2,
+            ),
+          ],
+        }),
+
+        {
+          cursorAdvance:
+            cessationCursorAdvance,
+        },
+      );
+
+
+    const result =
+      await runWithHarness(
+        cursorHarness.harness,
+      );
+
+
+    assert.equal(
+      cursorHarness.cursorCalls.length,
+      1,
+    );
+
+
+    assert.deepEqual(
+      cursorHarness.cursorCalls[0]
+        ?.proposedCursor,
+      cessationCursorAdvance.proposedCursor,
+    );
+
+
+    assert.equal(
+      result.cursorAdvanceResult.branch,
+      "CURSOR_ADVANCE_RESULT",
+    );
+  },
+);
