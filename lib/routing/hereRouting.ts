@@ -1,3 +1,8 @@
+import {
+  buildHereRoutingProviderCacheKey,
+  cacheHereRoutingProviderResponse,
+  getCachedHereRoutingProviderResponse,
+} from "@/lib/routing/hereRoutingProviderCache";
 import { decode } from "@here/flexpolyline";
 import { calculateDistanceMeters } from "@/lib/utils/command-center";
 import { historicalRoadRiskRecencyWeight } from "@/lib/routing/roadRiskRecency";
@@ -321,12 +326,38 @@ export async function calculateHereRoutes(
     `&departureTime=any` +
     `&apikey=${process.env.HERE_API_KEY}`;
 
-  const response = await fetch(url, { cache: "no-store" });
-  const data = await response.json();
+  const cacheKey =
+    buildHereRoutingProviderCacheKey(
+      origin,
+      destination
+    );
 
-  if (!response.ok) {
-    throw new Error(
-      data?.title || data?.error || "HERE Routing request failed."
+  let data =
+    await getCachedHereRoutingProviderResponse(
+      cacheKey
+    );
+
+  if (!data) {
+    const response = await fetch(
+      url,
+      {
+        cache: "no-store",
+      }
+    );
+
+    data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data?.title ||
+          data?.error ||
+          "HERE Routing request failed."
+      );
+    }
+
+    await cacheHereRoutingProviderResponse(
+      cacheKey,
+      data
     );
   }
 
