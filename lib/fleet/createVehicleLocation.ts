@@ -10,6 +10,9 @@ export type CreateVehicleLocationInput = {
   recordedAt: string;
   source: "mobile" | "hardware" | "manual";
   roadSpeedLimitKmh: number | null;
+  roadSpeedLimitResolvedAt: string | null;
+  roadSpeedLimitResolvedLatitude: number | null;
+  roadSpeedLimitResolvedLongitude: number | null;
   hsppEvidenceId?: string | null;
 };
 
@@ -32,6 +35,9 @@ export async function createVehicleLocation(
     recordedAt,
     source,
     roadSpeedLimitKmh,
+    roadSpeedLimitResolvedAt,
+    roadSpeedLimitResolvedLatitude,
+    roadSpeedLimitResolvedLongitude,
     hsppEvidenceId = null,
   } = input;
 
@@ -48,6 +54,12 @@ export async function createVehicleLocation(
       recorded_at: recordedAt,
       source,
       road_speed_limit_kmh: roadSpeedLimitKmh,
+      road_speed_limit_resolved_at:
+        roadSpeedLimitResolvedAt,
+      road_speed_limit_resolved_latitude:
+        roadSpeedLimitResolvedLatitude,
+      road_speed_limit_resolved_longitude:
+        roadSpeedLimitResolvedLongitude,
       hspp_evidence_id: hsppEvidenceId,
     });
 

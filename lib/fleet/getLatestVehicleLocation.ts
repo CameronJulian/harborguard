@@ -3,6 +3,10 @@ export type LatestVehicleLocation = {
   longitude: number | string | null;
   speed_kmh: number | string | null;
   heading: number | string | null;
+  road_speed_limit_kmh: number | string | null;
+  road_speed_limit_resolved_at: string | null;
+  road_speed_limit_resolved_latitude: number | string | null;
+  road_speed_limit_resolved_longitude: number | string | null;
   recorded_at: string;
 };
 
@@ -25,7 +29,7 @@ export async function getLatestVehicleLocation(
     await supabase
       .from("vehicle_locations")
       .select(
-        "latitude, longitude, speed_kmh, heading, recorded_at"
+        "latitude, longitude, speed_kmh, heading, road_speed_limit_kmh, road_speed_limit_resolved_at, road_speed_limit_resolved_latitude, road_speed_limit_resolved_longitude, recorded_at"
       )
       .eq("vehicle_id", vehicleId)
       .eq("organization_id", organizationId)

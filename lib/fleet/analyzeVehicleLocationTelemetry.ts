@@ -35,8 +35,18 @@ type LatestVehicleLocation = {
   longitude: unknown;
   speed_kmh: unknown;
   heading: unknown;
+  road_speed_limit_kmh: unknown;
+  road_speed_limit_resolved_at: string | null;
+  road_speed_limit_resolved_latitude: unknown;
+  road_speed_limit_resolved_longitude: unknown;
   recorded_at: string;
 };
+
+const ROAD_SPEED_LIMIT_CACHE_MAX_AGE_SECONDS =
+  15 * 60;
+
+const ROAD_SPEED_LIMIT_CACHE_MAX_DISTANCE_METERS =
+  500;
 
 type HarshBrakingCandidate = {
   previousSpeedKmh: number;
@@ -109,6 +119,9 @@ type AnalyzeVehicleLocationTelemetryResult = {
   harshCorneringCandidate: HarshCorneringCandidate | null;
   speedingCandidate: SpeedingCandidate | null;
   roadSpeedLimitKmh: number | null;
+  roadSpeedLimitResolvedAt: string | null;
+  roadSpeedLimitResolvedLatitude: number | null;
+  roadSpeedLimitResolvedLongitude: number | null;
 };
 
 export async function analyzeVehicleLocationTelemetry({
@@ -148,6 +161,9 @@ export async function analyzeVehicleLocationTelemetry({
   let harshCorneringCandidate: HarshCorneringCandidate | null = null;
   let speedingCandidate: SpeedingCandidate | null = null;
   let roadSpeedLimitKmh: number | null = null;
+  let roadSpeedLimitResolvedAt: string | null = null;
+  let roadSpeedLimitResolvedLatitude: number | null = null;
+  let roadSpeedLimitResolvedLongitude: number | null = null;
 
   if (!lastPoint) {
     return {
@@ -157,6 +173,9 @@ export async function analyzeVehicleLocationTelemetry({
       harshCorneringCandidate,
       speedingCandidate,
       roadSpeedLimitKmh,
+      roadSpeedLimitResolvedAt,
+      roadSpeedLimitResolvedLatitude,
+      roadSpeedLimitResolvedLongitude,
     };
   }
 
@@ -178,6 +197,9 @@ export async function analyzeVehicleLocationTelemetry({
       harshCorneringCandidate,
       speedingCandidate,
       roadSpeedLimitKmh,
+      roadSpeedLimitResolvedAt,
+      roadSpeedLimitResolvedLatitude,
+      roadSpeedLimitResolvedLongitude,
     };
   }
 
@@ -220,6 +242,9 @@ export async function analyzeVehicleLocationTelemetry({
       harshCorneringCandidate,
       speedingCandidate,
       roadSpeedLimitKmh,
+      roadSpeedLimitResolvedAt,
+      roadSpeedLimitResolvedLatitude,
+      roadSpeedLimitResolvedLongitude,
     };
   }
 
@@ -249,23 +274,117 @@ export async function analyzeVehicleLocationTelemetry({
       harshCorneringCandidate,
       speedingCandidate,
       roadSpeedLimitKmh,
+      roadSpeedLimitResolvedAt,
+      roadSpeedLimitResolvedLatitude,
+      roadSpeedLimitResolvedLongitude,
     };
   }
 
   if (source !== "manual") {
-    const resolvedRoadSpeedLimitKmh =
-      await resolveHereRoadSpeedLimit({
-        latitude,
-        longitude,
-        heading,
-      });
+    const previousRoadSpeedLimitKmh =
+      parseFleetTelemetryNumber(
+        lastPoint.road_speed_limit_kmh
+      );
 
-    roadSpeedLimitKmh =
-      resolvedRoadSpeedLimitKmh !== null &&
-      Number.isFinite(resolvedRoadSpeedLimitKmh) &&
-      resolvedRoadSpeedLimitKmh > 0
-        ? resolvedRoadSpeedLimitKmh
-        : null;
+    const previousRoadSpeedLimitResolvedLatitude =
+      parseFleetTelemetryNumber(
+        lastPoint.road_speed_limit_resolved_latitude
+      );
+
+    const previousRoadSpeedLimitResolvedLongitude =
+      parseFleetTelemetryNumber(
+        lastPoint.road_speed_limit_resolved_longitude
+      );
+
+    const previousRoadSpeedLimitResolvedAt =
+      lastPoint.road_speed_limit_resolved_at;
+
+    const roadSpeedLimitResolutionAgeSeconds =
+      previousRoadSpeedLimitResolvedAt
+        ? (
+            new Date(occurredAt).getTime() -
+            new Date(
+              previousRoadSpeedLimitResolvedAt
+            ).getTime()
+          ) / 1000
+        : Number.NaN;
+
+    const roadSpeedLimitResolutionDistanceMeters =
+      Number.isFinite(
+        previousRoadSpeedLimitResolvedLatitude
+      ) &&
+      Number.isFinite(
+        previousRoadSpeedLimitResolvedLongitude
+      )
+        ? getDistanceMeters(
+            {
+              latitude:
+                previousRoadSpeedLimitResolvedLatitude,
+              longitude:
+                previousRoadSpeedLimitResolvedLongitude,
+            },
+            {
+              latitude,
+              longitude,
+            }
+          )
+        : Number.NaN;
+
+    const reusableRoadSpeedLimit =
+      Number.isFinite(previousRoadSpeedLimitKmh) &&
+      previousRoadSpeedLimitKmh > 0 &&
+      Number.isFinite(
+        roadSpeedLimitResolutionAgeSeconds
+      ) &&
+      roadSpeedLimitResolutionAgeSeconds >= 0 &&
+      roadSpeedLimitResolutionAgeSeconds <=
+        ROAD_SPEED_LIMIT_CACHE_MAX_AGE_SECONDS &&
+      Number.isFinite(
+        roadSpeedLimitResolutionDistanceMeters
+      ) &&
+      roadSpeedLimitResolutionDistanceMeters <=
+        ROAD_SPEED_LIMIT_CACHE_MAX_DISTANCE_METERS;
+
+    if (reusableRoadSpeedLimit) {
+      roadSpeedLimitKmh =
+        previousRoadSpeedLimitKmh;
+
+      roadSpeedLimitResolvedAt =
+        previousRoadSpeedLimitResolvedAt;
+
+      roadSpeedLimitResolvedLatitude =
+        previousRoadSpeedLimitResolvedLatitude;
+
+      roadSpeedLimitResolvedLongitude =
+        previousRoadSpeedLimitResolvedLongitude;
+    } else {
+      const resolvedRoadSpeedLimitKmh =
+        await resolveHereRoadSpeedLimit({
+          latitude,
+          longitude,
+          heading,
+        });
+
+      roadSpeedLimitKmh =
+        resolvedRoadSpeedLimitKmh !== null &&
+        Number.isFinite(
+          resolvedRoadSpeedLimitKmh
+        ) &&
+        resolvedRoadSpeedLimitKmh > 0
+          ? resolvedRoadSpeedLimitKmh
+          : null;
+
+      if (roadSpeedLimitKmh !== null) {
+        roadSpeedLimitResolvedAt =
+          occurredAt;
+
+        roadSpeedLimitResolvedLatitude =
+          latitude;
+
+        roadSpeedLimitResolvedLongitude =
+          longitude;
+      }
+    }
 
     const effectiveSpeedingMinimumKmh =
       roadSpeedLimitKmh ?? speedingMinimumSpeedKmh;
@@ -349,5 +468,8 @@ export async function analyzeVehicleLocationTelemetry({
     harshCorneringCandidate,
     speedingCandidate,
     roadSpeedLimitKmh,
+    roadSpeedLimitResolvedAt,
+    roadSpeedLimitResolvedLatitude,
+    roadSpeedLimitResolvedLongitude,
   };
 }

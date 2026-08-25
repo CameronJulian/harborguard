@@ -231,6 +231,9 @@ export async function processVehicleLocationUpdate({
     harshCorneringCandidate,
     speedingCandidate,
     roadSpeedLimitKmh,
+    roadSpeedLimitResolvedAt,
+    roadSpeedLimitResolvedLatitude,
+    roadSpeedLimitResolvedLongitude,
   } = telemetryAnalysis;
 
   const {
@@ -247,6 +250,9 @@ export async function processVehicleLocationUpdate({
     recordedAt: occurredAt,
     source,
     roadSpeedLimitKmh,
+    roadSpeedLimitResolvedAt,
+    roadSpeedLimitResolvedLatitude,
+    roadSpeedLimitResolvedLongitude,
     hsppEvidenceId,
   });
 
