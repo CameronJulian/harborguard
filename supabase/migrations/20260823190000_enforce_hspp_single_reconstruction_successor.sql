@@ -68,20 +68,79 @@ end;
 $$;
 
 
-alter table
-  public.hspp_evidence_assembly_reconstructions
+-- ============================================================
+-- Historical replay compatibility.
+--
+-- B7490-14K1 / migration 20260823064000 already introduced the
+-- exact authoritative UNIQUE constraint below.
+--
+-- Production currently retains that earlier constraint identity.
+-- Therefore:
+--
+-- - preserve the existing exact constraint when already present;
+-- - create it only if it is genuinely absent;
+-- - fail closed if the same constraint name exists with a
+--   different definition.
+--
+-- This makes clean migration replay deterministic without
+-- dropping, replacing or weakening the existing invariant.
+-- ============================================================
 
-  add constraint
-    hspp_reconstruction_parent_unique
+do $$
+declare
+  v_existing_definition text;
+begin
 
-  unique (
-    organization_id,
-    parent_assembly_id
-  );
+  select
+    pg_get_constraintdef(
+      constraint_row.oid,
+      true
+    )
+  into
+    v_existing_definition
+  from
+    pg_constraint as constraint_row
+  where
+    constraint_row.conrelid =
+      'public.hspp_evidence_assembly_reconstructions'::regclass
+
+    and constraint_row.conname =
+      'hspp_reconstruction_parent_unique';
 
 
-comment on constraint
-  hspp_reconstruction_parent_unique
-  on public.hspp_evidence_assembly_reconstructions
-is
-  'B7490-Q14AG21 immutable lineage invariant. Within one organization, a historical assembly may have at most one immediate reconstruction successor. Descendants may independently become parents of later descendants, preserving a single reconstruction chain. This constraint grants no reconstruction, trust, Reservoir, validation or downstream authority.';
+  if v_existing_definition is null then
+
+    alter table
+      public.hspp_evidence_assembly_reconstructions
+    add constraint
+      hspp_reconstruction_parent_unique
+    unique (
+      organization_id,
+      parent_assembly_id
+    );
+
+
+    comment on constraint
+      hspp_reconstruction_parent_unique
+      on public.hspp_evidence_assembly_reconstructions
+    is
+      'B7490-Q14AG21 immutable lineage invariant. Within one organization, a historical assembly may have at most one immediate reconstruction successor. Descendants may independently become parents of later descendants, preserving a single reconstruction chain. This constraint grants no reconstruction, trust, Reservoir, validation or downstream authority.';
+
+  elsif
+    regexp_replace(
+      v_existing_definition,
+      '\s+',
+      ' ',
+      'g'
+    ) <>
+      'UNIQUE (organization_id, parent_assembly_id)'
+  then
+
+    raise exception
+      'Existing HSPP reconstruction parent uniqueness constraint conflicts with Q14AG21: %',
+      v_existing_definition;
+
+  end if;
+
+end;
+$$;
