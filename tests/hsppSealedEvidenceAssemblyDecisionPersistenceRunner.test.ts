@@ -99,6 +99,11 @@ function createSupabaseMock(options?: {
   ];
 
   const members = rows.map((row, index) => ({
+    id:
+      index === 0
+        ? "00000000-0000-4000-8000-000000000031"
+        : "00000000-0000-4000-8000-000000000032",
+
     evidence_id: row.id,
 
     evidence_integrity_fingerprint: row.integrity_fingerprint,
