@@ -307,16 +307,61 @@ test(
 
 
 test(
-  "Q14ag5 keeps B07C2 Reservoir persistence dormant",
+  "Q14ag5 activates B07C2 only behind deterministic lifecycle routing",
   () => {
-    assert.doesNotMatch(
+    assert.match(
       source,
-      /\bpersistHsppReservoirAssemblyCandidate\s*\(/
+      /\bresolveHsppReconstructionClaimMaterial\s*\(/
     );
 
     assert.match(
       source,
-      /does not invoke B07C2 or persist Reservoir assembly candidates/
+      /\bresolveHsppReservoirLifecycleRoute\s*\(/
+    );
+
+    assert.match(
+      source,
+      /route\.state\s*!==[\s\S]*?"INITIAL_ASSEMBLY"/
+    );
+
+    const calls =
+      source.match(
+        /await\s+persistHsppReservoirAssemblyCandidate\s*\(/g
+      ) ?? [];
+
+    assert.equal(
+      calls.length,
+      1
+    );
+
+    const reconstructionMaterialIndex =
+      source.indexOf(
+        "resolveHsppReconstructionClaimMaterial({"
+      );
+
+    const lifecycleRouteIndex =
+      source.indexOf(
+        "resolveHsppReservoirLifecycleRoute({"
+      );
+
+    const b07c2Index =
+      source.indexOf(
+        "await persistHsppReservoirAssemblyCandidate({"
+      );
+
+    assert.ok(
+      reconstructionMaterialIndex >=
+        0
+    );
+
+    assert.ok(
+      lifecycleRouteIndex >
+        reconstructionMaterialIndex
+    );
+
+    assert.ok(
+      b07c2Index >
+        lifecycleRouteIndex
     );
   }
 );
@@ -367,7 +412,7 @@ test(
 
     assert.match(
       source,
-      /reservoir,\s*[\r\n]+\s*outcomes:/
+      /reservoir,\s*[\r\n]+\s*lifecycle,\s*[\r\n]+\s*outcomes:/
     );
 
     assert.doesNotMatch(
@@ -490,7 +535,6 @@ test(
         "runHsppReconstructionExecutionIntentCycle",
         "runHsppReconstructionExecutionIntent",
         "persistHsppEvidenceAssemblyReconstruction",
-        "persistHsppReservoirAssemblyCandidate",
       ]
     ) {
       assert.doesNotMatch(

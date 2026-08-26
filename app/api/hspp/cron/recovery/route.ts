@@ -19,6 +19,18 @@ import {
 } from "@/lib/hspp/runHsppAssemblyRecoveryCycle";
 
 import {
+  persistHsppReservoirAssemblyCandidate,
+} from "@/lib/hspp/persistHsppReservoirAssemblyCandidate";
+
+import {
+  resolveHsppReconstructionClaimMaterial,
+} from "@/lib/hspp/resolveHsppReconstructionClaimMaterial";
+
+import {
+  resolveHsppReservoirLifecycleRoute,
+} from "@/lib/hspp/resolveHsppReservoirLifecycleRoute";
+
+import {
   runHsppReservoirReevaluation,
 } from "@/lib/hspp/runHsppReservoirReevaluation";
 
@@ -118,7 +130,8 @@ function requireIntegerEnvironment(
  * - does not accept lifecycle identity or policy from the request;
  * - does not schedule itself;
  * - does not implement H1 -> H2 reconstruction logic itself;
- * - does not invoke B07C2 or persist Reservoir assembly candidates.
+ * - routes fresh initial-H1 Reservoir candidates through B07C2 only when no authorized reconstruction material exists;
+ * - preserves existing H1 -> H2 reconstruction activation on the same retained B07B snapshot.
  */
 export async function GET(
   request: Request
@@ -394,6 +407,148 @@ export async function GET(
       reservoirRun.summary;
 
 
+    const lifecycleSnapshot =
+      reservoirRun.reevaluationResult;
+
+
+    const initialAssemblyRun =
+      lifecycleSnapshot ===
+      null
+        ? {
+            routeState:
+              "NO_B07B_SNAPSHOT" as const,
+
+            summary: {
+              status:
+                "SKIPPED_NO_B07B_SNAPSHOT" as const,
+
+              handoffState:
+                null,
+
+              assemblyId:
+                null,
+
+              error:
+                reservoir.error,
+            },
+          }
+        : await (async () => {
+            try {
+              const reconstructionMaterial =
+                resolveHsppReconstructionClaimMaterial({
+                  organizationId,
+
+                  reevaluationResult:
+                    lifecycleSnapshot,
+                });
+
+
+              const route =
+                resolveHsppReservoirLifecycleRoute({
+                  reevaluationResult:
+                    lifecycleSnapshot,
+
+                  reconstructionMaterial,
+                });
+
+
+              if (
+                route.state !==
+                "INITIAL_ASSEMBLY"
+              ) {
+                return {
+                  routeState:
+                    route.state,
+
+                  summary: {
+                    status:
+                      "SKIPPED_ROUTE" as const,
+
+                    handoffState:
+                      null,
+
+                    assemblyId:
+                      null,
+
+                    error:
+                      null,
+                  },
+                };
+              }
+
+
+              const handoff =
+                await persistHsppReservoirAssemblyCandidate({
+                  supabase,
+
+                  lifeguardResult:
+                    lifecycleSnapshot,
+                });
+
+
+              return {
+                routeState:
+                  route.state,
+
+                summary: {
+                  status:
+                    "COMPLETED" as const,
+
+                  handoffState:
+                    handoff.state,
+
+                  assemblyId:
+                    handoff.assembly
+                      ?.assemblyId ??
+                    null,
+
+                  error:
+                    null,
+                },
+              };
+            }
+            catch (error: unknown) {
+              /*
+               * Initial-H1 activation remains operationally isolated.
+               *
+               * A stale/concurrent B07C2 claim is still fail-closed by the
+               * existing B07C1a database lock + ownership + UNIQUE boundary.
+               * Failure here must not retroactively fail Q13f recovery or
+               * prevent the already-existing reconstruction activation path.
+               */
+              return {
+                routeState:
+                  null,
+
+                summary: {
+                  status:
+                    "ERROR" as const,
+
+                  handoffState:
+                    null,
+
+                  assemblyId:
+                    null,
+
+                  error:
+                    errorMessage(
+                      error
+                    ),
+                },
+              };
+            }
+          })();
+
+
+    const lifecycle = {
+      routeState:
+        initialAssemblyRun.routeState,
+
+      initialAssembly:
+        initialAssemblyRun.summary,
+    };
+
+
     const reconstructionSnapshot =
       reservoirRun.reevaluationResult;
 
@@ -620,6 +775,8 @@ export async function GET(
       },
 
       reservoir,
+
+      lifecycle,
 
       outcomes: {
         open: {
