@@ -327,16 +327,20 @@ export async function persistHsppMemberUnsuitabilityCheckpointWithRevalidationUn
   }
 
   const normalizedObservedAt =
-    requireTimestamp(
-      observedAt,
-      "observedAt",
-    );
+    new Date(
+      requireTimestamp(
+        observedAt,
+        "observedAt",
+      ),
+    ).toISOString();
 
   const normalizedDecidedAt =
-    requireTimestamp(
-      decidedAt,
-      "decidedAt",
-    );
+    new Date(
+      requireTimestamp(
+        decidedAt,
+        "decidedAt",
+      ),
+    ).toISOString();
 
   if (
     new Date(
@@ -456,16 +460,20 @@ export async function persistHsppMemberUnsuitabilityCheckpointWithRevalidationUn
     );
 
   const returnedObservedAt =
-    requireTimestamp(
-      row.observed_at,
-      "returnedObservedAt",
-    );
+    new Date(
+      requireTimestamp(
+        row.observed_at,
+        "returnedObservedAt",
+      ),
+    ).toISOString();
 
   const returnedDecidedAt =
-    requireTimestamp(
-      row.decided_at,
-      "returnedDecidedAt",
-    );
+    new Date(
+      requireTimestamp(
+        row.decided_at,
+        "returnedDecidedAt",
+      ),
+    ).toISOString();
 
   const returnedCreatedAt =
     requireTimestamp(

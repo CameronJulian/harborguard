@@ -439,3 +439,61 @@ test(
     );
   },
 );
+
+
+test(
+  "wrapper accepts semantically identical PostgREST timestamp representations",
+  async () => {
+    const {
+      calls,
+      supabase,
+    } =
+      makeSupabase(
+        makeRow({
+          observed_at:
+            "2026-08-25T08:05:00+00:00",
+
+          decided_at:
+            "2026-08-25T08:06:00+00:00",
+        }),
+      );
+
+
+    const result =
+      await persistHsppMemberUnsuitabilityCheckpointWithRevalidationUnderExecutionLease(
+        input(
+          supabase,
+        ),
+      );
+
+
+    assert.equal(
+      calls.length,
+      1,
+    );
+
+    assert.equal(
+      result.observedAt,
+      OBSERVED_AT,
+    );
+
+    assert.equal(
+      result.decidedAt,
+      DECIDED_AT,
+    );
+
+    assert.equal(
+      Date.parse(result.observedAt),
+      Date.parse(
+        "2026-08-25T08:05:00+00:00",
+      ),
+    );
+
+    assert.equal(
+      Date.parse(result.decidedAt),
+      Date.parse(
+        "2026-08-25T08:06:00+00:00",
+      ),
+    );
+  },
+);
