@@ -175,6 +175,8 @@ export async function applyHsppAssessmentDecision({
       data.assessment_reason,
 
     assessedAt:
-      data.assessed_at,
+      normalizeTimestamp(
+        data.assessed_at
+      ),
   };
 }
