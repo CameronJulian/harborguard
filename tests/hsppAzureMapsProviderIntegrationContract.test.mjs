@@ -191,3 +191,21 @@ test(
     );
   }
 );
+
+
+test(
+  "shared cross-provider candidate filter includes Azure Maps",
+  () => {
+    const sharedUpsert =
+      fs.readFileSync(
+        "lib/route-safety/upsertRouteSafetyAlerts.ts",
+        "utf8"
+      );
+
+    assert.ok(
+      sharedUpsert.includes(
+        '["here_traffic", "tomtom", "azure_maps_traffic"].includes(existingSource)'
+      )
+    );
+  }
+);

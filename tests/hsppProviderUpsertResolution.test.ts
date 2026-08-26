@@ -488,3 +488,84 @@ test(
     );
   }
 );
+
+test(
+  "Azure Maps existing alert participates in cross-provider merge",
+  async () => {
+    const row =
+      makeRow(
+        "Road closure",
+        -26.20001,
+        28.20001
+      );
+
+    const { supabase } =
+      makeSupabase({
+        existing: [
+          {
+            id: "existing-azure",
+            source: "azure_maps_traffic",
+            type: row.type,
+            title: row.title,
+            latitude: row.latitude,
+            longitude: row.longitude,
+            expires_at: row.expires_at,
+            road_name: row.road_name,
+            road_from: null,
+            road_to: null,
+            provider_geometry: null,
+            provider_sources: [
+              "azure_maps_traffic",
+            ],
+            provider_confirmation_count:
+              1,
+            provider_confidence:
+              65,
+            provider_last_seen: {
+              azure_maps_traffic:
+                "2026-08-20T10:00:00.000Z",
+            },
+            last_provider_confirmation_at:
+              "2026-08-20T10:00:00.000Z",
+          },
+        ],
+      });
+
+    const result =
+      await insertNewProviderAlerts(
+        supabase,
+        "org-1",
+        "here_traffic",
+        65,
+        [row]
+      );
+
+    assert.equal(
+      result.resolutions.length,
+      1
+    );
+
+    assert.equal(
+      result.resolutions[0]
+        .outcome,
+      "merged_cross_provider"
+    );
+
+    assert.equal(
+      result.resolutions[0]
+        .alertId,
+      "existing-azure"
+    );
+
+    assert.deepEqual(
+      new Set(
+        result.resolutions[0]
+          .providerSources
+      ),
+      new Set([
+        "azure_maps_traffic",
+        "here_traffic",
+      ])
+    );
+  }
+);

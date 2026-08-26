@@ -481,7 +481,7 @@ provider_sources,
       .filter((alert: any) => {
         const existingSource = String(alert.source || "");
 
-        if (!["here_traffic", "tomtom"].includes(existingSource)) {
+        if (!["here_traffic", "tomtom", "azure_maps_traffic"].includes(existingSource)) {
           return false;
         }
 
