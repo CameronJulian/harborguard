@@ -11,6 +11,9 @@ import {
   importTomTomIncidents,
 } from "@/lib/route-safety/providers/importTomTomIncidents";
 import {
+  importAzureMapsIncidents,
+} from "@/lib/route-safety/providers/importAzureMapsIncidents";
+import {
   reconcileProviderObservations,
 } from "@/lib/route-safety/providers/reconcileProviderObservations";
 import type {
@@ -53,6 +56,13 @@ export async function runOrganizationProviderImport(
       getIntelligenceSourceConfiguration
     );
 
+  const azureMapsResult =
+    await importAzureMapsIncidents(
+      supabase,
+      organizationId,
+      getIntelligenceSourceConfiguration
+    );
+
   const reconciliationMetrics =
     await reconcileProviderObservations(
       supabase,
@@ -65,6 +75,7 @@ export async function runOrganizationProviderImport(
     providerResults: [
       hereResult,
       tomTomResult,
+      azureMapsResult,
     ],
     expiredAlertsTransitioned,
     staleProviderObservations:

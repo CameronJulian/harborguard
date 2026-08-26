@@ -45,7 +45,7 @@ test(
 );
 
 test(
-  "Azure Maps registry guard occurs before the network request",
+  "Azure Maps registry guard occurs before credentials and network request",
   () => {
     const configuration =
       source.indexOf(
@@ -55,6 +55,11 @@ test(
     const enabledGuard =
       source.indexOf(
         "!sourceConfiguration.enabled"
+      );
+
+    const subscriptionKey =
+      source.indexOf(
+        ".AZURE_MAPS_SUBSCRIPTION_KEY"
       );
 
     const fetch =
@@ -72,8 +77,13 @@ test(
     );
 
     assert.ok(
-      fetch >
+      subscriptionKey >
         enabledGuard
+    );
+
+    assert.ok(
+      fetch >
+        subscriptionKey
     );
   }
 );
@@ -183,11 +193,45 @@ test(
 );
 
 test(
-  "Azure Maps source remains dormant and is not yet scheduled",
+  "Azure Maps is scheduled after TomTom and before reconciliation",
   () => {
-    assert.doesNotMatch(
+    const tomTomCall =
+      orchestration.indexOf(
+        "await importTomTomIncidents("
+      );
+
+    const azureMapsCall =
+      orchestration.indexOf(
+        "await importAzureMapsIncidents("
+      );
+
+    const reconciliation =
+      orchestration.indexOf(
+        "await reconcileProviderObservations("
+      );
+
+    assert.match(
       orchestration,
       /importAzureMapsIncidents/
+    );
+
+    assert.ok(
+      tomTomCall >= 0
+    );
+
+    assert.ok(
+      azureMapsCall >
+        tomTomCall
+    );
+
+    assert.ok(
+      reconciliation >
+        azureMapsCall
+    );
+
+    assert.match(
+      orchestration,
+      /providerResults:\s*\[[\s\S]*hereResult,[\s\S]*tomTomResult,[\s\S]*azureMapsResult,[\s\S]*\]/
     );
   }
 );
