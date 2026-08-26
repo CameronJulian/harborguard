@@ -7,8 +7,8 @@ import {
 } from "@supabase/supabase-js";
 
 import {
-  runHsppPostPositiveLifecycleCycle,
-} from "@/lib/hspp/runHsppPostPositiveLifecycleCycle";
+  runHsppPostPositiveLifecycleCycleV3,
+} from "@/lib/hspp/runHsppPostPositiveLifecycleCycleV3";
 
 
 export const dynamic =
@@ -349,7 +349,7 @@ export async function GET(
 
 
     const cycle =
-      await runHsppPostPositiveLifecycleCycle({
+      await runHsppPostPositiveLifecycleCycleV3({
         supabase,
 
         organizationId,
@@ -358,11 +358,6 @@ export async function GET(
           HSPP_POST_POSITIVE_LIFECYCLE_LIMIT,
 
         leaseSeconds,
-
-        createObservedAt() {
-          return new Date()
-            .toISOString();
-        },
 
         createDecidedAt() {
           return new Date()
