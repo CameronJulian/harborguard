@@ -1,5 +1,5 @@
 export type ProviderResult = {
-  provider: "here" | "tomtom";
+  provider: "here" | "tomtom" | "azure_maps";
   organizationId: string;
   success: boolean;
   rawCount: number;

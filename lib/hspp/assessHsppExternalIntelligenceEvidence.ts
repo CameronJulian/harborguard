@@ -13,7 +13,8 @@ export const HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION =
 
 export type HsppExternalIntelligenceProvider =
   | "here"
-  | "tomtom";
+  | "tomtom"
+  | "azure_maps";
 
 export type AssessHsppExternalIntelligenceEvidenceInput = {
   verification: HsppIntegrityVerificationResult;
@@ -75,6 +76,10 @@ function expectedSourceKey(
 
   if (provider === "tomtom") {
     return "tomtom";
+  }
+
+  if (provider === "azure_maps") {
+    return "azure_maps_traffic";
   }
 
   return null;

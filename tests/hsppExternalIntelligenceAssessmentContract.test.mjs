@@ -23,7 +23,7 @@ test(
 );
 
 test(
-  "external intelligence supports only HERE and TomTom source identities",
+  "external intelligence supports HERE, TomTom, and Azure Maps source identities",
   () => {
     assert.match(
       assessor,
@@ -43,6 +43,16 @@ test(
     assert.match(
       assessor,
       /return "tomtom"/
+    );
+
+    assert.match(
+      assessor,
+      /provider === "azure_maps"/
+    );
+
+    assert.match(
+      assessor,
+      /return "azure_maps_traffic"/
     );
 
     assert.match(
