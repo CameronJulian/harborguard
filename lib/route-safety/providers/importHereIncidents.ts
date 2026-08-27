@@ -11,7 +11,7 @@ import { buildHsppEvidence } from "@/lib/hspp/buildHsppEvidence";
 import { persistHsppEvidenceForProviderObservation } from "@/lib/hspp/persistHsppEvidenceForProviderObservation";
 import {
   assessHsppExternalIntelligenceEvidence,
-  HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION,
+  HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION_V2,
 } from "@/lib/hspp/assessHsppExternalIntelligenceEvidence";
 import { applyHsppAssessmentDecision } from "@/lib/hspp/applyHsppAssessmentDecision";
 import { verifyHsppEvidenceIntegrity } from "@/lib/hspp/verifyHsppEvidenceIntegrity";
@@ -371,6 +371,16 @@ export async function importHereIncidents(
         continue;
       }
 
+      const immutableNormalizedPayload:
+        Record<string, unknown> = {
+          ...(
+            normalized.row as unknown as
+              Record<string, unknown>
+          ),
+        };
+
+      delete immutableNormalizedPayload.verified_at;
+
       const providerObservation =
         await persistRouteSafetyProviderObservation({
           supabase,
@@ -384,12 +394,9 @@ export async function importHereIncidents(
           observedAt:
             normalized.observedAt,
           payloadSchemaVersion:
-            HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION,
+            HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION_V2,
           normalizedPayload:
-            normalized.row as unknown as Record<
-              string,
-              unknown
-            >,
+            immutableNormalizedPayload,
         });
 
       const evidence =

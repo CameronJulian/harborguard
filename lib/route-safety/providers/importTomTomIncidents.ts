@@ -9,7 +9,7 @@ import { resolveRoadContext } from "@/lib/road-context/provider";
 import { persistRouteSafetyProviderObservation } from "@/lib/hspp/persistRouteSafetyProviderObservation";
 import {
   assessHsppExternalIntelligenceEvidence,
-  HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION,
+  HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION_V2,
 } from "@/lib/hspp/assessHsppExternalIntelligenceEvidence";
 import { buildHsppEvidence } from "@/lib/hspp/buildHsppEvidence";
 import { persistHsppEvidenceForProviderObservation } from "@/lib/hspp/persistHsppEvidenceForProviderObservation";
@@ -334,6 +334,17 @@ export async function importTomTomIncidents(
         continue;
       }
 
+      const immutableNormalizedPayload:
+        Record<string, unknown> = {
+          ...(
+            normalized.row as unknown as
+              Record<string, unknown>
+          ),
+        };
+
+      delete immutableNormalizedPayload.verified_at;
+      delete immutableNormalizedPayload.expires_at;
+
       const providerObservation =
         await persistRouteSafetyProviderObservation({
         supabase,
@@ -347,12 +358,9 @@ export async function importTomTomIncidents(
         observedAt:
           normalized.observedAt,
         payloadSchemaVersion:
-          HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION,
+          HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION_V2,
         normalizedPayload:
-          normalized.row as unknown as Record<
-            string,
-            unknown
-          >,
+          immutableNormalizedPayload,
       });
 
       const evidence =

@@ -11,6 +11,9 @@ export const HSPP_EXTERNAL_INTELLIGENCE_ASSESSMENT_POLICY_VERSION =
 export const HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION =
   "normalized-route-safety-alert-v1" as const;
 
+export const HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION_V2 =
+  "normalized-route-safety-alert-v2" as const;
+
 export type HsppExternalIntelligenceProvider =
   | "here"
   | "tomtom"
@@ -131,10 +134,19 @@ export function assessHsppExternalIntelligenceEvidence(
     };
   }
 
-  if (
-    input.payloadSchemaVersion !==
-    HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION
-  ) {
+  const payloadSchemaSupported =
+    input.payloadSchemaVersion ===
+      HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION ||
+    (
+      input.payloadSchemaVersion ===
+        HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION_V2 &&
+      (
+        input.sourceProvider === "here" ||
+        input.sourceProvider === "tomtom"
+      )
+    );
+
+  if (!payloadSchemaSupported) {
     return {
       ...base,
       trustState: "UNASSESSED",

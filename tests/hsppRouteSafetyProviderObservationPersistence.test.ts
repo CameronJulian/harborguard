@@ -30,7 +30,9 @@ function createSupabaseMock(
       left.source_stream ===
         right.source_stream &&
       left.provider_message_id ===
-        right.provider_message_id
+        right.provider_message_id &&
+      left.payload_schema_version ===
+        right.payload_schema_version
     );
   }
 
@@ -322,28 +324,55 @@ test(
 );
 
 test(
-  "same provider identity with changed schema fails closed",
+  "same provider message with changed schema creates a distinct versioned observation",
   async () => {
     const supabase =
       createSupabaseMock();
 
-    await persistRouteSafetyProviderObservation(
-      validInput(supabase)
+    const first =
+      await persistRouteSafetyProviderObservation(
+        validInput(supabase)
+      );
+
+    const second =
+      await persistRouteSafetyProviderObservation(
+        validInput(
+          supabase,
+          {
+            payloadSchemaVersion:
+              "normalized-route-safety-alert-v2",
+          }
+        )
+      );
+
+    assert.equal(
+      first.created,
+      true
     );
 
-    await assert.rejects(
-      () =>
-        persistRouteSafetyProviderObservation(
-          validInput(
-            supabase,
-            {
-              payloadSchemaVersion:
-                "normalized-route-safety-alert-v2",
-            }
-          )
-        ),
+    assert.equal(
+      second.created,
+      true
+    );
 
-      /payload schema does not match/
+    assert.notEqual(
+      second.id,
+      first.id
+    );
+
+    assert.equal(
+      supabase.rows.length,
+      2
+    );
+
+    assert.equal(
+      supabase.rows[0].payload_schema_version,
+      "normalized-route-safety-alert-v1"
+    );
+
+    assert.equal(
+      supabase.rows[1].payload_schema_version,
+      "normalized-route-safety-alert-v2"
     );
   }
 );

@@ -331,7 +331,7 @@ test(
       assessHsppExternalIntelligenceEvidence(
         validHereInput({
           payloadSchemaVersion:
-            "normalized-route-safety-alert-v2",
+            "normalized-route-safety-alert-v999",
         })
       );
 

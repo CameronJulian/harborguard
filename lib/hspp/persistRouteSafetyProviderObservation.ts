@@ -408,6 +408,10 @@ export async function persistRouteSafetyProviderObservation({
         "provider_message_id",
         normalizedProviderMessageId
       )
+      .eq(
+        "payload_schema_version",
+        normalizedPayloadSchemaVersion
+      )
       .maybeSingle();
 
   if (existingError) {
