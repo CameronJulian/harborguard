@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { ProviderResult } from "@/lib/route-safety/providers/types";
 import type {
   IntelligenceSourceConfigurationLoader,
@@ -7,6 +8,10 @@ import { insertNewProviderAlerts } from "@/lib/route-safety/upsertRouteSafetyAle
 import { enrichRouteSafetyAlertsWithRoadContext } from "@/lib/route-safety/enrichRouteSafetyAlertsWithRoadContext";
 import { resolveRoadContext } from "@/lib/road-context/provider";
 import { persistRouteSafetyProviderObservation } from "@/lib/hspp/persistRouteSafetyProviderObservation";
+import {
+  persistRouteSafetyProviderSnapshotRetrieval,
+  type RouteSafetyProviderSnapshotAssertionInput,
+} from "@/lib/route-safety/providers/persistRouteSafetyProviderSnapshotRetrieval";
 import {
   assessHsppExternalIntelligenceEvidence,
   HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION_V2,
@@ -182,6 +187,46 @@ export async function importTomTomIncidents(
       cache: "no-store",
     });
 
+    const receivedAt =
+      new Date().toISOString();
+
+    const retrievalId =
+      randomUUID();
+
+    const trafficModelId =
+      response.headers
+        .get("TrafficModelID")
+        ?.trim() || "";
+
+    const responseOriginatedAtCandidate =
+      response.headers
+        .get("Date")
+        ?.trim() || "";
+
+    const responseOriginatedAtMilliseconds =
+      Date.parse(
+        responseOriginatedAtCandidate
+      );
+
+    const responseOriginatedAt =
+      responseOriginatedAtCandidate &&
+      Number.isFinite(
+        responseOriginatedAtMilliseconds
+      )
+        ? new Date(
+            responseOriginatedAtMilliseconds
+          ).toISOString()
+        : null;
+
+    const providerRequestIdCandidate =
+      response.headers
+        .get("Tracking-ID")
+        ?.trim() || "";
+
+    const providerRequestId =
+      providerRequestIdCandidate ||
+      null;
+
     const data = await response.json();
 
     if (!response.ok) {
@@ -310,6 +355,48 @@ export async function importTomTomIncidents(
           item !== null
       );
 
+    const snapshotAssertions:
+      RouteSafetyProviderSnapshotAssertionInput[] =
+        normalizedIncidents.map(
+          (normalized: {
+            row: RouteSafetyAlertRow;
+            providerMessageId: string;
+            observedAt: string | null;
+          }) => {
+            const immutableNormalizedPayload:
+              Record<string, unknown> = {
+                ...(
+                  normalized.row as unknown as
+                    Record<string, unknown>
+                ),
+              };
+
+            delete immutableNormalizedPayload.verified_at;
+            delete immutableNormalizedPayload.expires_at;
+
+            return {
+              providerMessageId:
+                normalized.providerMessageId,
+              payloadSchemaVersion:
+                HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION_V2,
+              eventObservedAt:
+                normalized.observedAt,
+              providerObservationId:
+                null,
+              normalizedPayload:
+                immutableNormalizedPayload,
+            };
+          }
+        );
+
+    const hasCompleteSnapshotAssertionIdentity =
+      snapshotAssertions.every(
+        (assertion) =>
+          assertion.providerMessageId
+            .trim()
+            .length > 0
+      );
+
     const hsppAssessmentContexts:
       TomTomHsppAssessmentContext[] =
         Array.from(
@@ -334,16 +421,11 @@ export async function importTomTomIncidents(
         continue;
       }
 
-      const immutableNormalizedPayload:
-        Record<string, unknown> = {
-          ...(
-            normalized.row as unknown as
-              Record<string, unknown>
-          ),
-        };
+      const snapshotAssertion =
+        snapshotAssertions[inputIndex];
 
-      delete immutableNormalizedPayload.verified_at;
-      delete immutableNormalizedPayload.expires_at;
+      const immutableNormalizedPayload =
+        snapshotAssertion.normalizedPayload;
 
       const providerObservation =
         await persistRouteSafetyProviderObservation({
@@ -362,6 +444,21 @@ export async function importTomTomIncidents(
         normalizedPayload:
           immutableNormalizedPayload,
       });
+
+      snapshotAssertion.providerMessageId =
+        providerObservation.providerMessageId;
+
+      snapshotAssertion.payloadSchemaVersion =
+        providerObservation.payloadSchemaVersion;
+
+      snapshotAssertion.eventObservedAt =
+        providerObservation.observedAt;
+
+      snapshotAssertion.providerObservationId =
+        providerObservation.id;
+
+      snapshotAssertion.normalizedPayload =
+        providerObservation.normalizedPayload;
 
       const evidence =
         buildHsppEvidence({
@@ -403,6 +500,47 @@ export async function importTomTomIncidents(
         evidence,
         persistedEvidence,
       };
+    }
+
+    if (!trafficModelId) {
+      console.warn(
+        "[TomTom provider ingestion] Snapshot provenance skipped because TrafficModelID was not present."
+      );
+    } else if (!hasCompleteSnapshotAssertionIdentity) {
+      console.warn(
+        "[TomTom provider ingestion] Snapshot provenance skipped because at least one normalized incident is missing provider identity."
+      );
+    } else {
+      const snapshotPersistence =
+        await persistRouteSafetyProviderSnapshotRetrieval({
+          supabase,
+          organizationId,
+          provider:
+            "tomtom",
+          sourceStream:
+            "tomtom",
+          snapshotIdentityKind:
+            "traffic_model_id",
+          snapshotIdentityValue:
+            trafficModelId,
+          providerSourceUpdatedAt:
+            null,
+          retrievalId,
+          responseOriginatedAt,
+          receivedAt,
+          providerRequestId,
+          assertions:
+            snapshotAssertions,
+        });
+
+      if (
+        snapshotPersistence.assertionCount !==
+        snapshotAssertions.length
+      ) {
+        throw new Error(
+          "TomTom provider snapshot persistence did not return one assertion per normalized incident."
+        );
+      }
     }
 
     const normalizedRows =
