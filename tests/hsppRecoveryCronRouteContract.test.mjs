@@ -412,7 +412,7 @@ test(
 
     assert.match(
       source,
-      /reservoir,\s*[\r\n]+\s*lifecycle,\s*[\r\n]+\s*outcomes:/
+      /reservoir,\s*[\r\n]+\s*reservoirScheduling,\s*[\r\n]+\s*lifecycle,\s*[\r\n]+\s*outcomes:/
     );
 
     assert.doesNotMatch(

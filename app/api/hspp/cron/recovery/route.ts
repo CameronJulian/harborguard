@@ -31,6 +31,10 @@ import {
 } from "@/lib/hspp/resolveHsppReservoirLifecycleRoute";
 
 import {
+  compareAndSwapHsppReservoirDiscoveryScanState,
+} from "@/lib/hspp/compareAndSwapHsppReservoirDiscoveryScanState";
+
+import {
   runHsppReservoirReevaluation,
 } from "@/lib/hspp/runHsppReservoirReevaluation";
 
@@ -695,6 +699,103 @@ export async function GET(
      * outcome branch and error text. In particular, execution lease
      * ownership material is never returned to the HTTP caller.
      */
+    /*
+     * Reservoir discovery scheduling is deliberately advanced only here:
+     *
+     * - B07B has already evaluated the captured page;
+     * - initial H1 lifecycle routing has already been attempted;
+     * - reconstruction activation using the same B07B snapshot has already
+     *   been attempted;
+     * - the cursor remains non-authoritative scheduling metadata only.
+     *
+     * STALE means another concurrent recovery invocation advanced the same
+     * organization cursor first. That is not an HSPP semantic failure.
+     */
+    const schedulingSnapshot =
+      lifecycleSnapshot
+        ?.discovery
+        .scheduling ??
+      null;
+
+    const proposedReservoirCursor =
+      schedulingSnapshot
+        ?.proposedCursor ??
+      null;
+
+    const reservoirScheduling =
+      proposedReservoirCursor ===
+      null
+        ? {
+            status:
+              "SKIPPED_NO_PROPOSED_CURSOR" as const,
+
+            schedulingVersion:
+              schedulingSnapshot
+                ?.version ??
+              null,
+
+            casState:
+              null,
+
+            error:
+              null,
+          }
+        : await (async () => {
+            try {
+              const cas =
+                await compareAndSwapHsppReservoirDiscoveryScanState({
+                  supabase,
+
+                  organizationId,
+
+                  expectedCursor:
+                    schedulingSnapshot
+                      ?.expectedCursor ??
+                    null,
+
+                  proposedCursor:
+                    proposedReservoirCursor,
+                });
+
+              return {
+                status:
+                  cas.casState ===
+                  "STALE"
+                    ? "STALE" as const
+                    : "COMPLETED" as const,
+
+                schedulingVersion:
+                  cas.schedulingVersion,
+
+                casState:
+                  cas.casState,
+
+                error:
+                  null,
+              };
+            }
+            catch (error: unknown) {
+              return {
+                status:
+                  "ERROR" as const,
+
+                schedulingVersion:
+                  schedulingSnapshot
+                    ?.version ??
+                  null,
+
+                casState:
+                  null,
+
+                error:
+                  errorMessage(
+                    error,
+                  ),
+              };
+            }
+          })();
+
+
     const openResults =
       cycle.openResults.map(
         (result) => ({
@@ -775,6 +876,8 @@ export async function GET(
       },
 
       reservoir,
+
+      reservoirScheduling,
 
       lifecycle,
 

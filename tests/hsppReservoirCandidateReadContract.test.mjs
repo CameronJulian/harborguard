@@ -11,7 +11,7 @@ const source =
 
 
 test(
-  "B06B is explicitly versioned and bounded",
+  "B06B preserves semantic policy v1 while delegating bounded scheduling",
   () => {
     assert.match(
       source,
@@ -30,37 +30,70 @@ test(
 
     assert.match(
       source,
-      /\.limit\(normalizedLimit\)/,
+      /HSPP_RESERVOIR_DISCOVERY_SCHEDULING_VERSION/,
+    );
+
+    const pageCalls =
+      source.match(
+        /\breadHsppReservoirDiscoveryPage\s*\(/g,
+      ) ?? [];
+
+    assert.equal(
+      pageCalls.length,
+      1,
+    );
+
+    assert.match(
+      source,
+      /organizationId:\s*normalizedOrganizationId/,
+    );
+
+    assert.match(
+      source,
+      /limit:\s*normalizedLimit/,
     );
   },
 );
-
 
 test(
-  "B06B discovery remains organization scoped and deterministic",
+  "B06B semantic reader no longer owns the fixed first evidence page",
   () => {
-    assert.match(
+    assert.doesNotMatch(
       source,
-      /\.from\("hspp_evidence"\)/,
+      /\.from\(\s*"hspp_evidence"\s*\)/,
+    );
+
+    assert.doesNotMatch(
+      source,
+      /\.order\(\s*"observed_at"/,
+    );
+
+    assert.doesNotMatch(
+      source,
+      /\.order\(\s*"id"/,
     );
 
     assert.match(
       source,
-      /\.eq\(\s*"organization_id",\s*normalizedOrganizationId\s*\)/s,
+      /discoveryPage\.items\.map/,
     );
 
     assert.match(
       source,
-      /\.order\(\s*"observed_at",[\s\S]*?ascending:\s*true/s,
+      /rawEvidenceCount:\s*discoveryPage\.items\.length/,
     );
 
     assert.match(
       source,
-      /\.order\(\s*"id",[\s\S]*?ascending:\s*true/s,
+      /expectedCursor:\s*discoveryPage\.expectedCursor/,
+    );
+
+    assert.match(
+      source,
+      /proposedCursor:\s*discoveryPage\.proposedCursor/,
     );
   },
 );
-
 
 test(
   "B06B reuses operational verification and B06A policy unchanged",

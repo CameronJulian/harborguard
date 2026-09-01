@@ -10,6 +10,12 @@ import {
   type HsppReservoirEligibilityDecision,
 } from "@/lib/hspp/evaluateHsppReservoirEligibility";
 
+import {
+  HSPP_RESERVOIR_DISCOVERY_SCHEDULING_VERSION,
+  readHsppReservoirDiscoveryPage,
+  type HsppReservoirDiscoveryCursor,
+} from "@/lib/hspp/readHsppReservoirDiscoveryPage";
+
 export const HSPP_RESERVOIR_DISCOVERY_POLICY_VERSION =
   "hspp-reservoir-discovery-v1" as const;
 
@@ -44,6 +50,20 @@ export type ReadHsppReservoirCandidatesResult = {
   organizationId: string;
 
   requestedLimit: number;
+
+  scheduling?: {
+    version:
+      typeof HSPP_RESERVOIR_DISCOVERY_SCHEDULING_VERSION;
+
+    expectedCursor:
+      HsppReservoirDiscoveryCursor | null;
+
+    proposedCursor:
+      HsppReservoirDiscoveryCursor | null;
+
+    rawEvidenceCount:
+      number;
+  };
 
   candidates: HsppReservoirCandidate[];
 };
@@ -110,32 +130,22 @@ export async function readHsppReservoirCandidates({
 
   const normalizedLimit = normalizeLimit(limit);
 
-  const { data: evidenceRows, error: evidenceError } = await supabase
-    .from("hspp_evidence")
-    .select("id")
-    .eq("organization_id", normalizedOrganizationId)
-    .order("observed_at", { ascending: true })
-    .order("id", { ascending: true })
-    .limit(normalizedLimit);
+  const discoveryPage =
+    await readHsppReservoirDiscoveryPage({
+      supabase,
 
-  if (evidenceError) {
-    throw evidenceError;
-  }
+      organizationId:
+        normalizedOrganizationId,
 
-  const evidenceIds = (
-    (evidenceRows || []) as Array<{
-      id: unknown;
-    }>
-  ).map((row) => {
-    if (typeof row.id !== "string" || !row.id.trim()) {
-      throw new Error(
-        "Reservoir discovery returned an invalid HSPP evidence id.",
-      );
-    }
+      limit:
+        normalizedLimit,
+    });
 
-    return row.id;
-  });
-
+  const evidenceIds =
+    discoveryPage.items.map(
+      (item) =>
+        item.evidenceId,
+    );
   if (evidenceIds.length === 0) {
     return {
       policyVersion: HSPP_RESERVOIR_DISCOVERY_POLICY_VERSION,
@@ -143,6 +153,20 @@ export async function readHsppReservoirCandidates({
       organizationId: normalizedOrganizationId,
 
       requestedLimit: normalizedLimit,
+
+    scheduling: {
+      version:
+        discoveryPage.schedulingVersion,
+
+      expectedCursor:
+        discoveryPage.expectedCursor,
+
+      proposedCursor:
+        discoveryPage.proposedCursor,
+
+      rawEvidenceCount:
+        discoveryPage.items.length,
+    },
 
       candidates: [],
     };
@@ -334,6 +358,20 @@ export async function readHsppReservoirCandidates({
     organizationId: normalizedOrganizationId,
 
     requestedLimit: normalizedLimit,
+
+    scheduling: {
+      version:
+        discoveryPage.schedulingVersion,
+
+      expectedCursor:
+        discoveryPage.expectedCursor,
+
+      proposedCursor:
+        discoveryPage.proposedCursor,
+
+      rawEvidenceCount:
+        discoveryPage.items.length,
+    },
 
     candidates,
   };

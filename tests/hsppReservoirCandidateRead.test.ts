@@ -190,6 +190,57 @@ function createSupabaseMock({
 
       if (
         functionName ===
+        "read_hspp_reservoir_discovery_page"
+      ) {
+        const proposedEvidenceId =
+          discoveryRows.length > 0
+            ? discoveryRows[
+                discoveryRows.length - 1
+              ].id
+            : null;
+
+        return {
+          data:
+            discoveryRows.map(
+              (
+                row,
+                index,
+              ) => ({
+                scheduling_version:
+                  "hspp-reservoir-discovery-scheduling-v1",
+
+                cursor_expected_observed_at:
+                  null,
+
+                cursor_expected_evidence_id:
+                  null,
+
+                cursor_proposed_observed_at:
+                  proposedEvidenceId
+                    ? "2026-08-21T10:00:00.000Z"
+                    : null,
+
+                cursor_proposed_evidence_id:
+                  proposedEvidenceId,
+
+                candidate_evidence_id:
+                  row.id,
+
+                candidate_observed_at:
+                  "2026-08-21T10:00:00.000Z",
+
+                candidate_position:
+                  index + 1,
+              }),
+            ),
+
+          error:
+            null,
+        };
+      }
+
+      if (
+        functionName ===
         "read_hspp_evidence_assembly_membership_classifications"
       ) {
         return {
@@ -268,8 +319,21 @@ test("B06B returns only operationally eligible unassembled evidence", async () =
 
   const membershipClassificationRpcCalls =
     mock.calls.filter(
-      ([operation]) =>
-        operation === "rpc",
+      (
+        [
+          operation,
+          value,
+        ],
+      ) =>
+        operation === "rpc" &&
+        typeof value === "object" &&
+        value !== null &&
+        (
+          value as {
+            functionName?: unknown;
+          }
+        ).functionName ===
+          "read_hspp_evidence_assembly_membership_classifications",
     );
 
   assert.equal(
