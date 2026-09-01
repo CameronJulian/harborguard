@@ -2,6 +2,11 @@ import type {
   HsppReservoirCandidate,
 } from "@/lib/hspp/readHsppReservoirCandidates";
 
+import {
+  createHsppReservoirDownstreamSnapshotFromB07B,
+  type HsppReservoirDownstreamSnapshot,
+} from "@/lib/hspp/createHsppReservoirDownstreamSnapshot";
+
 import type {
   RunHsppReservoirReevaluationResult,
 } from "@/lib/hspp/runHsppReservoirReevaluation";
@@ -15,7 +20,7 @@ const SHA256_PATTERN =
   /^[0-9a-f]{64}$/;
 
 
-export type HsppReconstructionClaimMaterial = {
+export type HsppReconstructionSelectionMaterial = {
   resolverVersion:
     typeof HSPP_RECONSTRUCTION_CLAIM_MATERIAL_RESOLVER_VERSION;
 
@@ -47,13 +52,33 @@ export type HsppReconstructionClaimMaterial = {
 
   replacementEvidenceIntegrityFingerprint: string;
 
-  discoveryPolicyVersion: string;
-
+  /**
+   * Semantic B07A reevaluation provenance.
+   *
+   * This is available on both B07B and scheduled-pair reevaluation results.
+   */
   reevaluationPolicyVersion: string;
 
   membershipPolicyVersion: string;
 };
 
+
+/**
+ * Legacy durable reconstruction claim material.
+ *
+ * discoveryPolicyVersion remains B07B producer provenance and is deliberately
+ * not part of the producer-neutral selection material.
+ */
+export type HsppReconstructionClaimMaterial =
+  HsppReconstructionSelectionMaterial & {
+    discoveryPolicyVersion: string;
+  };
+
+
+export type ResolveHsppReconstructionSelectionMaterialFromSnapshotInput = {
+  snapshot:
+    HsppReservoirDownstreamSnapshot;
+};
 
 export type ResolveHsppReconstructionClaimMaterialInput = {
   organizationId: string;
@@ -86,7 +111,7 @@ function requireNonBlank(
 
 
 function requireCandidate(
-  candidates: HsppReservoirCandidate[],
+  candidates: readonly HsppReservoirCandidate[],
   evidenceId: string,
 ): HsppReservoirCandidate {
   const matches =
@@ -152,114 +177,78 @@ function requireImmutableFingerprint(
 
 
 /**
- * Q14ag31S pure B07B -> durable reconstruction claim-material resolver.
+ * Q14ag31S producer-neutral reconstruction selection core.
  *
- * This function extracts the exact deterministic reconstruction pair already
- * selected by the Q14ag26 lifecycle rules and exposes the immutable material
- * required by the durable Q14ag31A/Q14ag31B claim boundary.
+ * This function consumes only the neutral semantic Reservoir snapshot:
  *
- * It deliberately:
+ * - organization identity;
+ * - currently eligible Reservoir candidates; and
+ * - the already-computed semantic reevaluation result.
  *
- * - consumes one already-computed B07B snapshot;
- * - preserves existing B07A assemblyCandidates order;
- * - preserves exact first/second pair orientation;
- * - resolves each selected id to exactly one B06B discovery candidate;
- * - accepts only HISTORICAL_NOT_CURRENT + NEVER_ASSEMBLED reconstruction pairs;
- * - derives membershipPolicyVersion only from the selected membership decision;
- * - preserves the B07B discovery/reevaluation policy snapshot;
- * - validates immutable persisted evidence id/fingerprint identity.
+ * It preserves existing reconstruction semantics:
  *
- * It deliberately does NOT:
+ * - assemblyCandidates order is preserved exactly;
+ * - original first/second evidence orientation is preserved;
+ * - every selected membership decision must remain eligible;
+ * - only HISTORICAL_NOT_CURRENT + NEVER_ASSEMBLED pairs qualify;
+ * - each selected evidence id must resolve exactly once;
+ * - persisted evidence identity and immutable SHA-256 fingerprints are
+ *   validated fail-closed; and
+ * - membershipPolicyVersion comes only from the selected membership decision.
  *
- * - read from Supabase;
- * - call an RPC;
+ * This core deliberately does NOT:
+ *
+ * - consume RunHsppReservoirReevaluationResult;
+ * - read B07B discovery envelope metadata;
+ * - carry or invent discoveryPolicyVersion;
  * - rerun B06B, B07A or B07B;
- * - generate a UUID;
- * - claim a durable execution intent;
- * - read historical reconstruction context;
- * - persist or recover H2;
- * - seal or assess an assembly;
- * - mutate evidence trust or Reservoir state;
- * - grant downstream authority;
- * - create API, cron, queue or scheduler behavior.
+ * - perform database access;
+ * - claim or execute reconstruction;
+ * - mutate lifecycle, trust, Reservoir or scheduling state; or
+ * - grant downstream authority.
  */
-export function resolveHsppReconstructionClaimMaterial({
-  organizationId: rawOrganizationId,
-  reevaluationResult: result,
-}: ResolveHsppReconstructionClaimMaterialInput): HsppReconstructionClaimMaterial | null {
-  const organizationId =
-    requireNonBlank(
-      rawOrganizationId,
-      "organizationId",
-    );
-
+export function resolveHsppReconstructionSelectionMaterialFromSnapshot({
+  snapshot,
+}: ResolveHsppReconstructionSelectionMaterialFromSnapshotInput): HsppReconstructionSelectionMaterial | null {
   if (
-    !result ||
-    typeof result !==
+    !snapshot ||
+    typeof snapshot !==
       "object"
   ) {
     throw new Error(
-      "reevaluationResult is required.",
+      "snapshot is required.",
     );
   }
 
-  const resultOrganizationId =
+  const organizationId =
     requireNonBlank(
-      result?.organizationId,
-      "reevaluationResult.organizationId",
+      snapshot?.organizationId,
+      "snapshot.organizationId",
     );
 
-  if (
-    resultOrganizationId !==
-    organizationId
-  ) {
-    throw new Error(
-      "B07B runner organization does not match the reconstruction organization.",
-    );
-  }
-
-  const discoveryOrganizationId =
-    requireNonBlank(
-      result?.discovery?.organizationId,
-      "reevaluationResult.discovery.organizationId",
-    );
-
-  if (
-    discoveryOrganizationId !==
-    organizationId
-  ) {
-    throw new Error(
-      "B07B discovery organization does not match the reconstruction organization.",
-    );
-  }
-
-  const discoveryPolicyVersion =
-    requireNonBlank(
-      result?.discoveryPolicyVersion,
-      "reevaluationResult.discoveryPolicyVersion",
-    );
-
-  const reevaluationPolicyVersion =
-    requireNonBlank(
-      result?.reevaluationPolicyVersion,
-      "reevaluationResult.reevaluationPolicyVersion",
-    );
-
-  const discoveryCandidates =
-    result?.discovery?.candidates;
+  const candidates =
+    snapshot?.candidates;
 
   if (
     !Array.isArray(
-      discoveryCandidates,
+      candidates,
     )
   ) {
     throw new Error(
-      "B07B discovery candidates must be an array.",
+      "Reservoir snapshot candidates must be an array.",
     );
   }
 
+  const reevaluationPolicyVersion =
+    requireNonBlank(
+      snapshot?.reevaluation
+        ?.policyVersion,
+      "snapshot.reevaluation.policyVersion",
+    );
+
   const assemblyCandidates =
-    result?.reevaluation?.assemblyCandidates;
+    snapshot?.reevaluation
+      ?.assemblyCandidates;
 
   if (
     !Array.isArray(
@@ -272,7 +261,8 @@ export function resolveHsppReconstructionClaimMaterial({
   }
 
   const reevaluationState =
-    result?.reevaluation?.state;
+    snapshot?.reevaluation
+      ?.state;
 
   if (
     reevaluationState !==
@@ -336,13 +326,13 @@ export function resolveHsppReconstructionClaimMaterial({
 
     const firstCandidate =
       requireCandidate(
-        discoveryCandidates,
+        candidates,
         firstEvidenceId,
       );
 
     const secondCandidate =
       requireCandidate(
-        discoveryCandidates,
+        candidates,
         secondEvidenceId,
       );
 
@@ -441,8 +431,6 @@ export function resolveHsppReconstructionClaimMaterial({
 
       replacementEvidenceIntegrityFingerprint,
 
-      discoveryPolicyVersion,
-
       reevaluationPolicyVersion,
 
       membershipPolicyVersion,
@@ -450,4 +438,151 @@ export function resolveHsppReconstructionClaimMaterial({
   }
 
   return null;
+}
+
+
+/**
+ * Q14ag31S legacy B07B -> durable reconstruction claim-material wrapper.
+ *
+ * Existing recovery behavior remains B07B-compatible here.
+ *
+ * This wrapper retains producer-specific validation for:
+ *
+ * - B07B runner organization;
+ * - B07B discovery organization;
+ * - B07B discoveryPolicyVersion; and
+ * - the legacy top-level reevaluationPolicyVersion.
+ *
+ * After those compatibility/provenance guards pass, semantic pair selection
+ * is delegated exactly once to the producer-neutral snapshot core above.
+ */
+export function resolveHsppReconstructionClaimMaterial({
+  organizationId: rawOrganizationId,
+  reevaluationResult: result,
+}: ResolveHsppReconstructionClaimMaterialInput): HsppReconstructionClaimMaterial | null {
+  const organizationId =
+    requireNonBlank(
+      rawOrganizationId,
+      "organizationId",
+    );
+
+  if (
+    !result ||
+    typeof result !==
+      "object"
+  ) {
+    throw new Error(
+      "reevaluationResult is required.",
+    );
+  }
+
+  const resultOrganizationId =
+    requireNonBlank(
+      result?.organizationId,
+      "reevaluationResult.organizationId",
+    );
+
+  if (
+    resultOrganizationId !==
+    organizationId
+  ) {
+    throw new Error(
+      "B07B runner organization does not match the reconstruction organization.",
+    );
+  }
+
+  const discoveryOrganizationId =
+    requireNonBlank(
+      result?.discovery?.organizationId,
+      "reevaluationResult.discovery.organizationId",
+    );
+
+  if (
+    discoveryOrganizationId !==
+    organizationId
+  ) {
+    throw new Error(
+      "B07B discovery organization does not match the reconstruction organization.",
+    );
+  }
+
+  const discoveryPolicyVersion =
+    requireNonBlank(
+      result?.discoveryPolicyVersion,
+      "reevaluationResult.discoveryPolicyVersion",
+    );
+
+  const reevaluationPolicyVersion =
+    requireNonBlank(
+      result?.reevaluationPolicyVersion,
+      "reevaluationResult.reevaluationPolicyVersion",
+    );
+
+  const discoveryCandidates =
+    result?.discovery?.candidates;
+
+  if (
+    !Array.isArray(
+      discoveryCandidates,
+    )
+  ) {
+    throw new Error(
+      "B07B discovery candidates must be an array.",
+    );
+  }
+
+  const neutralSnapshot =
+    createHsppReservoirDownstreamSnapshotFromB07B(
+      result,
+    );
+
+  /*
+   * Preserve the exact legacy top-level B07B reevaluationPolicyVersion
+   * behavior even for malformed runtime objects whose nested policy field
+   * might disagree. This is compatibility behavior only; scheduled-pair
+   * callers will use their semantic reevaluation.policyVersion directly.
+   */
+  const compatibilitySnapshot:
+    HsppReservoirDownstreamSnapshot =
+      {
+        ...neutralSnapshot,
+
+        organizationId,
+
+        candidates:
+          discoveryCandidates,
+
+        reevaluation: {
+          ...neutralSnapshot.reevaluation,
+
+          policyVersion:
+            reevaluationPolicyVersion as
+              HsppReservoirDownstreamSnapshot[
+                "reevaluation"
+              ][
+                "policyVersion"
+              ],
+        },
+      };
+
+  const selection =
+    resolveHsppReconstructionSelectionMaterialFromSnapshot({
+      snapshot:
+        compatibilitySnapshot,
+    });
+
+  if (!selection) {
+    return null;
+  }
+
+  return {
+    ...selection,
+
+    discoveryPolicyVersion,
+
+    /*
+     * Retain the exact legacy B07B envelope value.
+     */
+    reevaluationPolicyVersion,
+  };
 }

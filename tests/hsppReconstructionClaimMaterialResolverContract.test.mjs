@@ -222,3 +222,197 @@ test(
     }
   },
 );
+/*
+ * NEUTRAL_RECONSTRUCTION_SELECTION_CONTRACT_V1
+ */
+test(
+  "Q14ag31S separates producer-neutral reconstruction selection from legacy B07B durable provenance",
+  () => {
+    const neutralFunctionName =
+      "export function resolveHsppReconstructionSelectionMaterialFromSnapshot";
+
+    const legacyFunctionName =
+      "export function resolveHsppReconstructionClaimMaterial";
+
+
+    const neutralStart =
+      source.indexOf(
+        neutralFunctionName,
+      );
+
+    const legacyStart =
+      source.indexOf(
+        legacyFunctionName,
+      );
+
+
+    assert.ok(
+      neutralStart >=
+        0,
+      "neutral reconstruction selection core is missing",
+    );
+
+    assert.ok(
+      legacyStart >
+        neutralStart,
+      "legacy B07B wrapper must remain after the neutral selection core",
+    );
+
+
+    /*
+     * The legacy wrapper has its own JSDoc immediately before the legacy
+     * function declaration. Do not include that producer-specific comment
+     * when inspecting the neutral function body.
+     */
+    const legacyCommentStart =
+      source.lastIndexOf(
+        "\n/**",
+        legacyStart,
+      );
+
+    const neutralEnd =
+      legacyCommentStart >= neutralStart
+        ? legacyCommentStart
+        : legacyStart;
+
+    const neutralSource =
+      source.slice(
+        neutralStart,
+        neutralEnd,
+      );
+
+    const legacySource =
+      source.slice(
+        legacyStart,
+      );
+
+
+    assert.match(
+      source,
+      /ResolveHsppReconstructionSelectionMaterialFromSnapshotInput[\s\S]*?snapshot\s*:\s*HsppReservoirDownstreamSnapshot/,
+    );
+
+    assert.match(
+      source,
+      /export\s+type\s+HsppReconstructionSelectionMaterial/,
+    );
+
+
+    assert.doesNotMatch(
+      neutralSource,
+      /RunHsppReservoirReevaluationResult/,
+    );
+
+    assert.doesNotMatch(
+      neutralSource,
+      /\breevaluationResult\b/,
+    );
+
+    assert.doesNotMatch(
+      neutralSource,
+      /\.discovery\b/,
+    );
+
+    assert.doesNotMatch(
+      neutralSource,
+      /\bdiscoveryPolicyVersion\b/,
+    );
+
+
+    assert.match(
+      neutralSource,
+      /snapshot\?*\.organizationId/,
+    );
+
+    assert.match(
+      neutralSource,
+      /snapshot\?*\.candidates/,
+    );
+
+    assert.match(
+      neutralSource,
+      /snapshot\?*\.reevaluation/,
+    );
+
+    assert.match(
+      neutralSource,
+      /reevaluation[\s\S]*?policyVersion/,
+    );
+
+
+    assert.match(
+      neutralSource,
+      /"HISTORICAL_NOT_CURRENT"/,
+    );
+
+    assert.match(
+      neutralSource,
+      /"NEVER_ASSEMBLED"/,
+    );
+
+    assert.match(
+      neutralSource,
+      /selected\.membershipDecision\.eligible\s*!==\s*true/,
+    );
+
+    assert.match(
+      neutralSource,
+      /selected\.membershipDecision\.policyVersion/,
+    );
+
+
+    assert.match(
+      legacySource,
+      /result\?\.discoveryPolicyVersion/,
+    );
+
+    assert.match(
+      legacySource,
+      /result\?\.reevaluationPolicyVersion/,
+    );
+
+    assert.match(
+      legacySource,
+      /createHsppReservoirDownstreamSnapshotFromB07B\s*\(/,
+    );
+
+
+    assert.equal(
+      (
+        legacySource.match(
+          /resolveHsppReconstructionSelectionMaterialFromSnapshot\s*\(/g,
+        ) ??
+        []
+      ).length,
+      1,
+      "legacy B07B wrapper must delegate semantic selection exactly once",
+    );
+
+
+    assert.match(
+      legacySource,
+      /discoveryPolicyVersion/,
+    );
+
+
+    assert.doesNotMatch(
+      neutralSource,
+      /\.rpc\s*\(/,
+    );
+
+    assert.doesNotMatch(
+      neutralSource,
+      /\.from\s*\(/,
+    );
+
+    assert.doesNotMatch(
+      neutralSource,
+      /compareAndSwap/,
+    );
+
+    assert.doesNotMatch(
+      neutralSource,
+      /expectedCursor|proposedCursor|pairPage/,
+    );
+  },
+);

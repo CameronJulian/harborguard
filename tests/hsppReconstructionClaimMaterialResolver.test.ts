@@ -12,6 +12,7 @@ import type {
 import {
   HSPP_RECONSTRUCTION_CLAIM_MATERIAL_RESOLVER_VERSION,
   resolveHsppReconstructionClaimMaterial,
+  resolveHsppReconstructionSelectionMaterialFromSnapshot,
 } from "../lib/hspp/resolveHsppReconstructionClaimMaterial";
 
 
@@ -805,6 +806,231 @@ test(
             }),
         }),
       /runner organization does not match/,
+    );
+  },
+);
+/*
+ * NEUTRAL_RECONSTRUCTION_SELECTION_TEST_V1
+ */
+test(
+  "Q14ag31S neutral snapshot selection matches legacy B07B semantics without carrying discovery provenance",
+  () => {
+    const organizationId =
+      "neutral-reconstruction-org";
+
+    const historicalEvidenceId =
+      "neutral-historical-evidence";
+
+    const replacementEvidenceId =
+      "neutral-replacement-evidence";
+
+    const selectedPair = {
+      firstEvidenceId:
+        historicalEvidenceId,
+
+      secondEvidenceId:
+        replacementEvidenceId,
+
+      membershipDecision: {
+        eligible:
+          true,
+
+        policyVersion:
+          "hspp-assembly-membership-v1",
+
+        reason:
+          "ELIGIBLE",
+
+        distanceMeters:
+          10,
+
+        timeDeltaMs:
+          1000,
+      },
+    };
+
+    const neutralSnapshot =
+      {
+        organizationId,
+
+        candidates: [
+          {
+            evidenceId:
+              historicalEvidenceId,
+
+            membershipClassification:
+              "HISTORICAL_NOT_CURRENT",
+
+            operationalRead: {
+              evidence: {
+                id:
+                  historicalEvidenceId,
+
+                integrityFingerprint:
+                  "a".repeat(
+                    64,
+                  ),
+              },
+            },
+          },
+
+          {
+            evidenceId:
+              replacementEvidenceId,
+
+            membershipClassification:
+              "NEVER_ASSEMBLED",
+
+            operationalRead: {
+              evidence: {
+                id:
+                  replacementEvidenceId,
+
+                integrityFingerprint:
+                  "b".repeat(
+                    64,
+                  ),
+              },
+            },
+          },
+        ],
+
+        reevaluation: {
+          policyVersion:
+            "hspp-reservoir-reevaluation-v1",
+
+          state:
+            "ASSEMBLY_CANDIDATE",
+
+          candidateCount:
+            2,
+
+          comparisonCount:
+            1,
+
+          comparisonLimit:
+            100,
+
+          evaluations: [
+            selectedPair,
+          ],
+
+          assemblyCandidates: [
+            selectedPair,
+          ],
+        },
+      } as unknown as Parameters<
+        typeof resolveHsppReconstructionSelectionMaterialFromSnapshot
+      >[0]["snapshot"];
+
+
+    const neutralSelection =
+      resolveHsppReconstructionSelectionMaterialFromSnapshot({
+        snapshot:
+          neutralSnapshot,
+      });
+
+
+    assert.ok(
+      neutralSelection,
+    );
+
+    assert.deepEqual(
+      neutralSelection.selectedEvidenceIds,
+      [
+        historicalEvidenceId,
+        replacementEvidenceId,
+      ],
+    );
+
+    assert.equal(
+      neutralSelection.historicalEvidenceId,
+      historicalEvidenceId,
+    );
+
+    assert.equal(
+      neutralSelection.replacementEvidenceId,
+      replacementEvidenceId,
+    );
+
+    assert.equal(
+      neutralSelection.reevaluationPolicyVersion,
+      "hspp-reservoir-reevaluation-v1",
+    );
+
+    assert.equal(
+      neutralSelection.membershipPolicyVersion,
+      "hspp-assembly-membership-v1",
+    );
+
+    assert.equal(
+      "discoveryPolicyVersion" in
+        neutralSelection,
+      false,
+    );
+
+
+    const legacyResult =
+      {
+        runnerVersion:
+          "hspp-reservoir-reevaluation-runner-v1",
+
+        discoveryPolicyVersion:
+          "hspp-reservoir-discovery-v1",
+
+        reevaluationPolicyVersion:
+          "hspp-reservoir-reevaluation-v1",
+
+        organizationId,
+
+        discovery: {
+          policyVersion:
+            "hspp-reservoir-discovery-v1",
+
+          organizationId,
+
+          requestedLimit:
+            100,
+
+          candidates:
+            neutralSnapshot.candidates,
+        },
+
+        reevaluation:
+          neutralSnapshot.reevaluation,
+      } as unknown as
+        RunHsppReservoirReevaluationResult;
+
+
+    const legacyClaim =
+      resolveHsppReconstructionClaimMaterial({
+        organizationId,
+
+        reevaluationResult:
+          legacyResult,
+      });
+
+
+    assert.ok(
+      legacyClaim,
+    );
+
+
+    const {
+      discoveryPolicyVersion,
+      ...legacySelection
+    } =
+      legacyClaim;
+
+
+    assert.equal(
+      discoveryPolicyVersion,
+      "hspp-reservoir-discovery-v1",
+    );
+
+    assert.deepEqual(
+      neutralSelection,
+      legacySelection,
     );
   },
 );
