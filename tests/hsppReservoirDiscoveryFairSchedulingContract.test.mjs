@@ -260,20 +260,24 @@ test(
       reader,
       /\.from\(\s*"hspp_evidence"\s*\)/,
     );
-
     assert.match(
       reader,
-      /readHsppEvidenceBatchForOperationalUse/,
+      /readHsppReservoirEligibleEvidenceByIds/,
+    );
+
+    assert.doesNotMatch(
+      reader,
+      /\breadHsppEvidenceBatchForOperationalUse\s*\(/,
+    );
+
+    assert.doesNotMatch(
+      reader,
+      /\bevaluateHsppReservoirEligibility\s*\(/,
     );
 
     assert.match(
       reader,
-      /evaluateHsppReservoirEligibility/,
-    );
-
-    assert.match(
-      reader,
-      /rawEvidenceCount:\s*discoveryPage\.items\.length/,
+      /rawEvidenceCount:\s*discoveryPage\s*\.items\.length/,
     );
   },
 );

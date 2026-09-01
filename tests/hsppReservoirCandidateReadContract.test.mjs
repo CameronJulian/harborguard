@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 
@@ -55,8 +55,9 @@ test(
   },
 );
 
+
 test(
-  "B06B semantic reader no longer owns the fixed first evidence page",
+  "B06B semantic reader still does not own the raw evidence page",
   () => {
     assert.doesNotMatch(
       source,
@@ -80,63 +81,58 @@ test(
 
     assert.match(
       source,
-      /rawEvidenceCount:\s*discoveryPage\.items\.length/,
+      /rawEvidenceCount:[\s\S]*discoveryPage[\s\S]*\.items\.length/,
     );
 
     assert.match(
       source,
-      /expectedCursor:\s*discoveryPage\.expectedCursor/,
+      /expectedCursor:[\s\S]*discoveryPage[\s\S]*\.expectedCursor/,
     );
 
     assert.match(
       source,
-      /proposedCursor:\s*discoveryPage\.proposedCursor/,
-    );
-  },
-);
-
-test(
-  "B06B reuses operational verification and B06A policy unchanged",
-  () => {
-    assert.match(
-      source,
-      /readHsppEvidenceBatchForOperationalUse/,
-    );
-
-    assert.match(
-      source,
-      /evaluateHsppReservoirEligibility/,
+      /proposedCursor:[\s\S]*discoveryPage[\s\S]*\.proposedCursor/,
     );
   },
 );
 
 
 test(
-  "B06B performs exactly one Q14ag8 membership classification read",
+  "B06B delegates current-state Reservoir eligibility to the shared evidence-id boundary exactly once",
   () => {
-    const classificationCalls =
+    const calls =
       source.match(
-        /\.rpc\(\s*"read_hspp_evidence_assembly_membership_classifications"/g,
+        /await\s+readHsppReservoirEligibleEvidenceByIds\s*\(/g,
       ) ?? [];
 
     assert.equal(
-      classificationCalls.length,
+      calls.length,
       1,
+    );
+
+    assert.match(
+      source,
+      /organizationId:\s*normalizedOrganizationId/,
+    );
+
+    assert.match(
+      source,
+      /\bevidenceIds\s*,/,
     );
 
     assert.doesNotMatch(
       source,
-      /\.rpc\(\s*"read_hspp_current_effective_assembly_memberships"/,
+      /\breadHsppEvidenceBatchForOperationalUse\s*\(/,
     );
 
-    assert.match(
+    assert.doesNotMatch(
       source,
-      /p_organization_id:\s*normalizedOrganizationId/,
+      /\bevaluateHsppReservoirEligibility\s*\(/,
     );
 
-    assert.match(
+    assert.doesNotMatch(
       source,
-      /p_evidence_ids:\s*evidenceIds/,
+      /\.rpc\(\s*"read_hspp_evidence_assembly_membership_classifications"/,
     );
 
     assert.doesNotMatch(
@@ -148,7 +144,7 @@ test(
 
 
 test(
-  "B06B preserves Q14ag8 lifecycle classification on eligible candidates",
+  "B06B preserves its public candidate and lifecycle classification shape",
   () => {
     assert.match(
       source,
@@ -157,116 +153,48 @@ test(
 
     assert.match(
       source,
-      /membershipClassification:\s*HsppEvidenceAssemblyMembershipClassification/,
+      /export\s+type\s+HsppReservoirCandidate\s*=/,
     );
 
     assert.match(
       source,
-      /has_historical_membership:\s*unknown/,
+      /operationalRead:[\s\S]*ReadHsppEvidenceForOperationalUseResult/,
     );
 
     assert.match(
       source,
-      /has_current_effective_membership:\s*unknown/,
+      /hasAssemblyMembership:\s*boolean/,
     );
 
     assert.match(
       source,
-      /membership_classification:\s*unknown/,
+      /membershipClassification:[\s\S]*HsppEvidenceAssemblyMembershipClassification/,
     );
 
     assert.match(
       source,
-      /membershipClassification:\s*membershipState\.membershipClassification/,
+      /reservoirDecision:[\s\S]*HsppReservoirEligibilityDecision/,
     );
   },
 );
 
 
 test(
-  "B06B derives hasAssemblyMembership only from Q14ag8 current-effective state",
-  () => {
-    assert.match(
-      source,
-      /const\s+hasAssemblyMembership\s*=\s*membershipState\.hasCurrentEffectiveMembership/,
-    );
-
-    assert.match(
-      source,
-      /evaluateHsppReservoirEligibility\(\{[\s\S]*hasAssemblyMembership/,
-    );
-
-    assert.doesNotMatch(
-      source,
-      /\bcurrentEffectiveAssemblyEvidenceIds\b/,
-    );
-
-    assert.doesNotMatch(
-      source,
-      /\bassembledEvidenceIds\b/,
-    );
-  },
-);
-
-
-test(
-  "B06B lifecycle classification does not bypass B06A eligibility",
-  () => {
-    assert.match(
-      source,
-      /const\s+reservoirDecision\s*=\s*evaluateHsppReservoirEligibility\(/,
-    );
-
-    assert.match(
-      source,
-      /if\s*\(\s*!reservoirDecision\.eligible\s*\)\s*\{\s*continue;\s*\}[\s\S]*candidates\.push\(/,
-    );
-
-    assert.doesNotMatch(
-      source,
-      /membershipClassification\s*===\s*"HISTORICAL_NOT_CURRENT"[\s\S]*eligible\s*:\s*true/,
-    );
-  },
-);
-
-
-test(
-  "B06B validates classification rows fail closed",
-  () => {
-    assert.match(
-      source,
-      /membership classification lookup returned an invalid HSPP evidence id/i,
-    );
-
-    assert.match(
-      source,
-      /impossible current-without-history state/i,
-    );
-
-    assert.match(
-      source,
-      /invalid lifecycle classification/i,
-    );
-
-    assert.match(
-      source,
-      /inconsistent lifecycle state/i,
-    );
-
-    assert.match(
-      source,
-      /membership classification missing for evidence/i,
-    );
-  },
-);
-
-
-test(
-  "B06B documents the service-role authority requirement",
+  "B06B documents shared service-role revalidation without granting lifecycle authority",
   () => {
     assert.match(
       source,
       /service-role-authorized Supabase client/i,
+    );
+
+    assert.match(
+      source,
+      /HISTORICAL_NOT_CURRENT remains eligible only when B06A/i,
+    );
+
+    assert.match(
+      source,
+      /does NOT/i,
     );
   },
 );
@@ -288,11 +216,6 @@ test(
     assert.doesNotMatch(
       source,
       /persistHsppEvidenceAssemblyReconstruction\s*\(/,
-    );
-
-    assert.match(
-      source,
-      /does NOT/i,
     );
 
     assert.match(
