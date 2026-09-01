@@ -53,6 +53,14 @@ export type HsppReconstructionSelectionMaterial = {
   replacementEvidenceIntegrityFingerprint: string;
 
   /**
+   * Producer-neutral B06A Reservoir-eligibility semantic provenance.
+   *
+   * This is derived from the already-selected Reservoir candidates and is
+   * available to both B07B and scheduled-pair producers.
+   */
+  reservoirEligibilityPolicyVersion: string;
+
+  /**
    * Semantic B07A reevaluation provenance.
    *
    * This is available on both B07B and scheduled-pair reevaluation results.
@@ -382,6 +390,62 @@ export function resolveHsppReconstructionSelectionMaterialFromSnapshot({
       continue;
     }
 
+    /*
+     * NEUTRAL_RECONSTRUCTION_ELIGIBILITY_PROVENANCE_V1
+     *
+     * Both selected candidates must still carry an affirmative B06A
+     * Reservoir-eligibility decision, and both decisions must come from the
+     * same semantic eligibility-policy version.
+     *
+     * This derives semantic provenance from existing candidate state only.
+     * It does not rerun B06A and does not consume discovery or scheduling
+     * metadata.
+     */
+    const historicalReservoirDecision =
+      historicalCandidate
+        .reservoirDecision;
+
+    const replacementReservoirDecision =
+      replacementCandidate
+        .reservoirDecision;
+
+    if (
+      historicalReservoirDecision
+        ?.eligible !== true ||
+      replacementReservoirDecision
+        ?.eligible !== true
+    ) {
+      throw new Error(
+        "Selected reconstruction evidence must remain Reservoir eligible.",
+      );
+    }
+
+    const historicalReservoirEligibilityPolicyVersion =
+      requireNonBlank(
+        historicalReservoirDecision
+          ?.policyVersion,
+        "historicalCandidate.reservoirDecision.policyVersion",
+      );
+
+    const replacementReservoirEligibilityPolicyVersion =
+      requireNonBlank(
+        replacementReservoirDecision
+          ?.policyVersion,
+        "replacementCandidate.reservoirDecision.policyVersion",
+      );
+
+    if (
+      historicalReservoirEligibilityPolicyVersion !==
+      replacementReservoirEligibilityPolicyVersion
+    ) {
+      throw new Error(
+        "Selected reconstruction Reservoir candidates must share one eligibility policy version.",
+      );
+    }
+
+    const reservoirEligibilityPolicyVersion =
+      historicalReservoirEligibilityPolicyVersion;
+
     const membershipPolicyVersion =
       requireNonBlank(
         selected.membershipDecision.policyVersion,
@@ -430,6 +494,8 @@ export function resolveHsppReconstructionSelectionMaterialFromSnapshot({
         replacementCandidate.evidenceId,
 
       replacementEvidenceIntegrityFingerprint,
+
+      reservoirEligibilityPolicyVersion,
 
       reevaluationPolicyVersion,
 

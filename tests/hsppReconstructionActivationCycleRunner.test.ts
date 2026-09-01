@@ -169,6 +169,17 @@ function claimSnapshot(): RunHsppReservoirReevaluationResult {
           membershipClassification:
             "HISTORICAL_NOT_CURRENT",
 
+          reservoirDecision: {
+            policyVersion:
+              "hspp-reservoir-eligibility-v1",
+
+            eligible:
+              true,
+
+            reason:
+              "RESERVOIR_ELIGIBLE",
+          },
+
           operationalRead: {
             evidence: {
               id:
@@ -186,6 +197,17 @@ function claimSnapshot(): RunHsppReservoirReevaluationResult {
 
           membershipClassification:
             "NEVER_ASSEMBLED",
+
+          reservoirDecision: {
+            policyVersion:
+              "hspp-reservoir-eligibility-v1",
+
+            eligible:
+              true,
+
+            reason:
+              "RESERVOIR_ELIGIBLE",
+          },
 
           operationalRead: {
             evidence: {

@@ -416,3 +416,113 @@ test(
     );
   },
 );
+/*
+ * NEUTRAL_RECONSTRUCTION_ELIGIBILITY_PROVENANCE_CONTRACT_V1
+ */
+test(
+  "Q14ag31S carries producer-neutral B06A Reservoir eligibility provenance",
+  () => {
+    const neutralFunctionName =
+      "export function resolveHsppReconstructionSelectionMaterialFromSnapshot";
+
+    const legacyFunctionName =
+      "export function resolveHsppReconstructionClaimMaterial";
+
+    const neutralStart =
+      source.indexOf(
+        neutralFunctionName,
+      );
+
+    const legacyStart =
+      source.indexOf(
+        legacyFunctionName,
+      );
+
+    assert.ok(
+      neutralStart >= 0,
+      "neutral selection core is missing",
+    );
+
+    assert.ok(
+      legacyStart > neutralStart,
+      "legacy wrapper must remain after the neutral core",
+    );
+
+    const legacyCommentStart =
+      source.lastIndexOf(
+        "\n/**",
+        legacyStart,
+      );
+
+    const neutralEnd =
+      legacyCommentStart >= neutralStart
+        ? legacyCommentStart
+        : legacyStart;
+
+    const neutralSource =
+      source.slice(
+        neutralStart,
+        neutralEnd,
+      );
+
+    assert.match(
+      source,
+      /HsppReconstructionSelectionMaterial[\s\S]*?reservoirEligibilityPolicyVersion\s*:\s*string/,
+    );
+
+    assert.match(
+      neutralSource,
+      /historicalCandidate[\s\S]*?\.reservoirDecision/,
+    );
+
+    assert.match(
+      neutralSource,
+      /replacementCandidate[\s\S]*?\.reservoirDecision/,
+    );
+
+    assert.match(
+      neutralSource,
+      /historicalReservoirDecision[\s\S]*?eligible\s*!==\s*true/,
+    );
+
+    assert.match(
+      neutralSource,
+      /replacementReservoirDecision[\s\S]*?eligible\s*!==\s*true/,
+    );
+
+    assert.match(
+      neutralSource,
+      /historicalReservoirEligibilityPolicyVersion[\s\S]*?!==[\s\S]*?replacementReservoirEligibilityPolicyVersion/,
+    );
+
+    assert.match(
+      neutralSource,
+      /const\s+reservoirEligibilityPolicyVersion\s*=\s*historicalReservoirEligibilityPolicyVersion/,
+    );
+
+    assert.match(
+      neutralSource,
+      /reservoirEligibilityPolicyVersion\s*,/,
+    );
+
+    assert.doesNotMatch(
+      neutralSource,
+      /\bdiscoveryPolicyVersion\b/,
+    );
+
+    assert.doesNotMatch(
+      neutralSource,
+      /HSPP_RESERVOIR_DISCOVERY_POLICY_VERSION/,
+    );
+
+    assert.doesNotMatch(
+      neutralSource,
+      /\bschedulingVersion\b|\bpairPage\b|expectedCursor|proposedCursor/,
+    );
+
+    assert.doesNotMatch(
+      neutralSource,
+      /\.rpc\s*\(|\.from\s*\(/,
+    );
+  },
+);

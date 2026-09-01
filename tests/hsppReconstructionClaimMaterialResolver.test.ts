@@ -97,8 +97,14 @@ function candidate(
     membershipClassification,
 
     reservoirDecision: {
+      policyVersion:
+        "hspp-reservoir-eligibility-v1",
+
       eligible:
         true,
+
+      reason:
+        "RESERVOIR_ELIGIBLE",
     },
   } as unknown as HsppReservoirCandidate;
 }
@@ -861,6 +867,17 @@ test(
             membershipClassification:
               "HISTORICAL_NOT_CURRENT",
 
+            reservoirDecision: {
+              policyVersion:
+                "hspp-reservoir-eligibility-v1",
+
+              eligible:
+                true,
+
+              reason:
+                "RESERVOIR_ELIGIBLE",
+            },
+
             operationalRead: {
               evidence: {
                 id:
@@ -880,6 +897,17 @@ test(
 
             membershipClassification:
               "NEVER_ASSEMBLED",
+
+            reservoirDecision: {
+              policyVersion:
+                "hspp-reservoir-eligibility-v1",
+
+              eligible:
+                true,
+
+              reason:
+                "RESERVOIR_ELIGIBLE",
+            },
 
             operationalRead: {
               evidence: {
@@ -964,11 +992,48 @@ test(
     );
 
     assert.equal(
+      neutralSelection.reservoirEligibilityPolicyVersion,
+      "hspp-reservoir-eligibility-v1",
+    );
+
+    assert.equal(
       "discoveryPolicyVersion" in
         neutralSelection,
       false,
     );
 
+
+    const mismatchedReplacementCandidate = {
+      ...neutralSnapshot.candidates[1]!,
+
+      reservoirDecision: {
+        ...neutralSnapshot.candidates[1]!
+          .reservoirDecision,
+
+        policyVersion:
+          "hspp-reservoir-eligibility-v2",
+      },
+    };
+
+    const mismatchedEligibilitySnapshot = {
+      ...neutralSnapshot,
+
+      candidates: [
+        neutralSnapshot.candidates[0]!,
+        mismatchedReplacementCandidate,
+      ],
+    } as unknown as Parameters<
+      typeof resolveHsppReconstructionSelectionMaterialFromSnapshot
+    >[0]["snapshot"];
+
+    assert.throws(
+      () =>
+        resolveHsppReconstructionSelectionMaterialFromSnapshot({
+          snapshot:
+            mismatchedEligibilitySnapshot,
+        }),
+      /must share one eligibility policy version/,
+    );
 
     const legacyResult =
       {

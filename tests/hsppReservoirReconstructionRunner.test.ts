@@ -84,8 +84,14 @@ function candidate(
     membershipClassification,
 
     reservoirDecision: {
+      policyVersion:
+        "hspp-reservoir-eligibility-v1",
+
       eligible:
         true,
+
+      reason:
+        "RESERVOIR_ELIGIBLE",
     },
   } as unknown as HsppReservoirCandidate;
 }
