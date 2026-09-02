@@ -72,6 +72,110 @@ export type RunHsppReconstructionExecutionIntentInput = {
 };
 
 
+/**
+ * Q14ag33E3C1 producer-neutral durable execution identity.
+ *
+ * This is the immutable reconstruction/recovery surface shared by
+ * all durable selection producers. Producer provenance such as B07B
+ * discovery or scheduled-PAIR scheduling authority is deliberately
+ * excluded.
+ */
+export type HsppReconstructionExecutionIntentCore = {
+  intentId: string;
+
+  organizationId: string;
+
+  childAssemblyId: string;
+
+  selectedFirstEvidenceId: string;
+
+  selectedSecondEvidenceId: string;
+
+  historicalEvidenceId: string;
+
+  historicalEvidenceIntegrityFingerprint: string;
+
+  replacementEvidenceId: string;
+
+  replacementEvidenceIntegrityFingerprint: string;
+
+  reevaluationPolicyVersion: string;
+
+  membershipPolicyVersion: string;
+
+  reconstructionPolicyVersion: string;
+
+  reconstructionReason: string;
+
+  persistenceState:
+    | "CLAIMED_NOT_PERSISTED"
+    | "RECONSTRUCTION_PERSISTED";
+
+  reconstructionId:
+    string | null;
+
+  parentAssemblyId:
+    string | null;
+
+  assemblyState:
+    | "OPEN"
+    | "SEALED"
+    | null;
+
+  sealedAt:
+    string | null;
+
+  createdAt: string;
+};
+
+
+type HsppReconstructionExecutionRecoveryCoreResult = {
+  parentAssemblyId: string;
+
+  reconstructionId: string;
+
+  assemblyState:
+    | "OPEN"
+    | "SEALED";
+
+  memberCount: number;
+};
+
+export type HsppReconstructionExecutionPostHydrationCoreResult =
+  | {
+      state:
+        "RECONSTRUCTION_RECOVERED";
+
+      parentAssemblyId: string;
+
+      reconstructionId: string;
+
+      assemblyState:
+        | "OPEN"
+        | "SEALED";
+
+      idempotentRecovery:
+        null;
+
+      memberCount: number;
+    }
+  | {
+      state:
+        "RECONSTRUCTION_PERSISTED";
+
+      parentAssemblyId: string;
+
+      reconstructionId: string;
+
+      assemblyState:
+        "OPEN";
+
+      idempotentRecovery:
+        boolean;
+
+      memberCount: number;
+    };
+
 type RunHsppReconstructionExecutionIntentCommon = {
   runnerVersion:
     typeof HSPP_RECONSTRUCTION_EXECUTION_INTENT_RUNNER_VERSION;
@@ -402,6 +506,70 @@ function validateExecutionIntent(
 }
 
 
+function toExecutionIntentCore(
+  intent:
+    HsppReconstructionExecutionIntent,
+): HsppReconstructionExecutionIntentCore {
+  return {
+    intentId:
+      intent.intentId,
+
+    organizationId:
+      intent.organizationId,
+
+    childAssemblyId:
+      intent.childAssemblyId,
+
+    selectedFirstEvidenceId:
+      intent.selectedFirstEvidenceId,
+
+    selectedSecondEvidenceId:
+      intent.selectedSecondEvidenceId,
+
+    historicalEvidenceId:
+      intent.historicalEvidenceId,
+
+    historicalEvidenceIntegrityFingerprint:
+      intent.historicalEvidenceIntegrityFingerprint,
+
+    replacementEvidenceId:
+      intent.replacementEvidenceId,
+
+    replacementEvidenceIntegrityFingerprint:
+      intent.replacementEvidenceIntegrityFingerprint,
+
+    reevaluationPolicyVersion:
+      intent.reevaluationPolicyVersion,
+
+    membershipPolicyVersion:
+      intent.membershipPolicyVersion,
+
+    reconstructionPolicyVersion:
+      intent.reconstructionPolicyVersion,
+
+    reconstructionReason:
+      intent.reconstructionReason,
+
+    persistenceState:
+      intent.persistenceState,
+
+    reconstructionId:
+      intent.reconstructionId,
+
+    parentAssemblyId:
+      intent.parentAssemblyId,
+
+    assemblyState:
+      intent.assemblyState,
+
+    sealedAt:
+      intent.sealedAt,
+
+    createdAt:
+      intent.createdAt,
+  };
+}
+
 function makeCommonResult(
   intent:
     HsppReconstructionExecutionIntent,
@@ -448,7 +616,7 @@ function makeCommonResult(
 
 function assertPersistedIntentRecoveryCompatibility(
   intent:
-    HsppReconstructionExecutionIntent,
+    HsppReconstructionExecutionIntentCore,
   recovery:
     HsppEvidenceAssemblyReconstructionRecoverySnapshot,
 ): void {
@@ -514,15 +682,15 @@ function assertPersistedIntentRecoveryCompatibility(
  * only the immutable durable identities/provenance captured by Q14ag31A
  * against Q14ag22B recovery and the immutable SEALED H1.
  */
-async function recoverDurableIntent({
+export async function recoverDurableIntentCore({
   supabase,
   intent,
 }: {
   supabase: SupabaseClient;
 
   intent:
-    HsppReconstructionExecutionIntent;
-}): Promise<RunHsppReconstructionExecutionIntentResult | null> {
+    HsppReconstructionExecutionIntentCore;
+}): Promise<HsppReconstructionExecutionRecoveryCoreResult | null> {
   const recoveryRead =
     await readHsppEvidenceAssemblyReconstructionRecovery({
       supabase,
@@ -604,13 +772,6 @@ async function recoverDurableIntent({
     });
 
   return {
-    ...makeCommonResult(
-      intent,
-    ),
-
-    state:
-      "RECONSTRUCTION_RECOVERED",
-
     parentAssemblyId:
       verification.parentAssemblyId,
 
@@ -620,14 +781,339 @@ async function recoverDurableIntent({
     assemblyState:
       verification.assemblyState,
 
-    idempotentRecovery:
-      null,
-
     memberCount:
       verification.memberCount,
   };
 }
 
+
+
+/**
+ * Q14ag33E3C1 legacy result adapter.
+ *
+ * Q14ag31M's public B07B result remains unchanged. Recovery authority is
+ * delegated to the producer-neutral core and legacy discovery provenance
+ * remains result decoration only.
+ */
+async function recoverDurableIntent({
+  supabase,
+  intent,
+}: {
+  supabase: SupabaseClient;
+
+  intent:
+    HsppReconstructionExecutionIntent;
+}): Promise<RunHsppReconstructionExecutionIntentResult | null> {
+  const recovery =
+    await recoverDurableIntentCore({
+      supabase,
+
+      intent:
+        toExecutionIntentCore(
+          intent,
+        ),
+    });
+
+  if (!recovery) {
+    return null;
+  }
+
+  return {
+    ...makeCommonResult(
+      intent,
+    ),
+
+    state:
+      "RECONSTRUCTION_RECOVERED",
+
+    parentAssemblyId:
+      recovery.parentAssemblyId,
+
+    reconstructionId:
+      recovery.reconstructionId,
+
+    assemblyState:
+      recovery.assemblyState,
+
+    idempotentRecovery:
+      null,
+
+    memberCount:
+      recovery.memberCount,
+  };
+}
+
+/**
+ * Q14ag33E3C2 producer-neutral post-hydration execution core.
+ *
+ * Producer-specific selection/hydration is complete before entering this
+ * function. From this boundary onward reconstruction uses only immutable
+ * durable execution identity and the normalized hydrated replacement
+ * candidate.
+ */
+export async function runHsppReconstructionPostHydrationExecutionCore({
+  supabase,
+  intent,
+  replacementCandidate,
+}: {
+  supabase: SupabaseClient;
+
+  intent:
+    HsppReconstructionExecutionIntentCore;
+
+  replacementCandidate:
+    Parameters<
+      typeof planHsppEvidenceAssemblyReconstructionMembers
+    >[0]["replacementCandidate"];
+}): Promise<HsppReconstructionExecutionPostHydrationCoreResult> {
+  const contextRead =
+    await readHsppHistoricalReconstructionContexts({
+      supabase,
+
+      organizationId:
+        intent.organizationId,
+
+      evidenceIds: [
+        intent.historicalEvidenceId,
+      ],
+    });
+
+  if (
+    contextRead.organizationId !==
+    intent.organizationId
+  ) {
+    throw new Error(
+      "Historical reconstruction context organization does not match the durable intent.",
+    );
+  }
+
+  if (
+    contextRead.requestedEvidenceIds.length !==
+      1 ||
+    contextRead.requestedEvidenceIds[0] !==
+      intent.historicalEvidenceId
+  ) {
+    throw new Error(
+      "Historical reconstruction context read did not preserve the exact durable historical evidence identity.",
+    );
+  }
+
+  if (
+    contextRead.contexts.length ===
+    0
+  ) {
+    /*
+     * The child may have been persisted after our initial NOT_FOUND,
+     * causing Q14ag14 to stop exposing the old H1 as actionable.
+     */
+    const recoveredAfterContextLoss =
+      await recoverDurableIntentCore({
+        supabase,
+        intent,
+      });
+
+    if (
+      recoveredAfterContextLoss
+    ) {
+      return {
+        state:
+          "RECONSTRUCTION_RECOVERED",
+
+        parentAssemblyId:
+          recoveredAfterContextLoss.parentAssemblyId,
+
+        reconstructionId:
+          recoveredAfterContextLoss.reconstructionId,
+
+        assemblyState:
+          recoveredAfterContextLoss.assemblyState,
+
+        idempotentRecovery:
+          null,
+
+        memberCount:
+          recoveredAfterContextLoss.memberCount,
+      };
+    }
+
+    throw new Error(
+      "Durable reconstruction intent lost actionable historical context without a recoverable canonical child.",
+    );
+  }
+
+  if (
+    contextRead.contexts.length !==
+    1
+  ) {
+    throw new Error(
+      "Exactly one actionable historical reconstruction context is required for a durable reconstruction intent.",
+    );
+  }
+
+  if (
+    contextRead.noContextEvidenceIds.length !==
+    0
+  ) {
+    throw new Error(
+      "Historical reconstruction context read returned contradictory context and no-context state.",
+    );
+  }
+
+  const historicalContext =
+    contextRead.contexts[0];
+
+  if (
+    historicalContext.evidenceId !==
+    intent.historicalEvidenceId
+  ) {
+    throw new Error(
+      "Historical reconstruction context evidence identity does not match the durable intent.",
+    );
+  }
+
+  if (
+    historicalContext.evidenceIntegrityFingerprint !==
+    intent.historicalEvidenceIntegrityFingerprint
+  ) {
+    throw new Error(
+      "Historical reconstruction context fingerprint does not match the durable intent.",
+    );
+  }
+
+  const parentAssembly =
+    await readHsppSealedEvidenceAssembly({
+      supabase,
+
+      organizationId:
+        intent.organizationId,
+
+      assemblyId:
+        historicalContext.parentAssemblyId,
+    });
+
+  const plan =
+    planHsppEvidenceAssemblyReconstructionMembers({
+      historicalContext,
+
+      parentAssembly,
+
+      replacementCandidate:
+        replacementCandidate,
+    });
+
+  if (
+    plan.parentAssemblyId !==
+    historicalContext.parentAssemblyId
+  ) {
+    throw new Error(
+      "Reconstruction plan parent does not match the exact historical context.",
+    );
+  }
+
+  if (
+    plan.historicalEvidenceId !==
+    intent.historicalEvidenceId
+  ) {
+    throw new Error(
+      "Reconstruction plan historical evidence does not match the durable intent.",
+    );
+  }
+
+  if (
+    plan.replacementEvidenceId !==
+    intent.replacementEvidenceId
+  ) {
+    throw new Error(
+      "Reconstruction plan replacement evidence does not match the durable intent.",
+    );
+  }
+
+  try {
+    const persistence =
+      await persistHsppEvidenceAssemblyReconstruction({
+        supabase,
+
+        organizationId:
+          intent.organizationId,
+
+        parentAssemblyId:
+          plan.parentAssemblyId,
+
+        childAssemblyId:
+          intent.childAssemblyId,
+
+        membershipPolicyVersion:
+          intent.membershipPolicyVersion,
+
+        reconstructionPolicyVersion:
+          intent.reconstructionPolicyVersion,
+
+        reconstructionReason:
+          intent.reconstructionReason,
+
+        members:
+          plan.members,
+      });
+
+    return {
+      state:
+        "RECONSTRUCTION_PERSISTED",
+
+      parentAssemblyId:
+        persistence.parentAssemblyId,
+
+      reconstructionId:
+        persistence.reconstructionId,
+
+      assemblyState:
+        persistence.assemblyState,
+
+      idempotentRecovery:
+        persistence.idempotentRecovery,
+
+      memberCount:
+        persistence.persistedMemberCount,
+    };
+  }
+  catch (persistenceError) {
+    /*
+     * Q14h may have committed successfully before a transport error, or
+     * a same-child caller may have won the exact retry race. Recover only
+     * this immutable canonical child and prove it through Q14ag31K.
+     */
+    const recoveredAfterPersistenceError =
+      await recoverDurableIntentCore({
+        supabase,
+        intent,
+      });
+
+    if (
+      recoveredAfterPersistenceError
+    ) {
+      return {
+        state:
+          "RECONSTRUCTION_RECOVERED",
+
+        parentAssemblyId:
+          recoveredAfterPersistenceError.parentAssemblyId,
+
+        reconstructionId:
+          recoveredAfterPersistenceError.reconstructionId,
+
+        assemblyState:
+          recoveredAfterPersistenceError.assemblyState,
+
+        idempotentRecovery:
+          null,
+
+        memberCount:
+          recoveredAfterPersistenceError.memberCount,
+      };
+    }
+
+    throw persistenceError;
+  }
+}
 
 /**
  * Q14ag31M isolated durable reconstruction-intent execution runner.
@@ -730,219 +1216,24 @@ export async function runHsppReconstructionExecutionIntent({
     );
   }
 
-  const contextRead =
-    await readHsppHistoricalReconstructionContexts({
+  const execution =
+    await runHsppReconstructionPostHydrationExecutionCore({
       supabase,
 
-      organizationId:
-        intent.organizationId,
-
-      evidenceIds: [
-        intent.historicalEvidenceId,
-      ],
-    });
-
-  if (
-    contextRead.organizationId !==
-    intent.organizationId
-  ) {
-    throw new Error(
-      "Historical reconstruction context organization does not match the durable intent.",
-    );
-  }
-
-  if (
-    contextRead.requestedEvidenceIds.length !==
-      1 ||
-    contextRead.requestedEvidenceIds[0] !==
-      intent.historicalEvidenceId
-  ) {
-    throw new Error(
-      "Historical reconstruction context read did not preserve the exact durable historical evidence identity.",
-    );
-  }
-
-  if (
-    contextRead.contexts.length ===
-    0
-  ) {
-    /*
-     * The child may have been persisted after our initial NOT_FOUND,
-     * causing Q14ag14 to stop exposing the old H1 as actionable.
-     */
-    const recoveredAfterContextLoss =
-      await recoverDurableIntent({
-        supabase,
-        intent,
-      });
-
-    if (
-      recoveredAfterContextLoss
-    ) {
-      return recoveredAfterContextLoss;
-    }
-
-    throw new Error(
-      "Durable reconstruction intent lost actionable historical context without a recoverable canonical child.",
-    );
-  }
-
-  if (
-    contextRead.contexts.length !==
-    1
-  ) {
-    throw new Error(
-      "Exactly one actionable historical reconstruction context is required for a durable reconstruction intent.",
-    );
-  }
-
-  if (
-    contextRead.noContextEvidenceIds.length !==
-    0
-  ) {
-    throw new Error(
-      "Historical reconstruction context read returned contradictory context and no-context state.",
-    );
-  }
-
-  const historicalContext =
-    contextRead.contexts[0];
-
-  if (
-    historicalContext.evidenceId !==
-    intent.historicalEvidenceId
-  ) {
-    throw new Error(
-      "Historical reconstruction context evidence identity does not match the durable intent.",
-    );
-  }
-
-  if (
-    historicalContext.evidenceIntegrityFingerprint !==
-    intent.historicalEvidenceIntegrityFingerprint
-  ) {
-    throw new Error(
-      "Historical reconstruction context fingerprint does not match the durable intent.",
-    );
-  }
-
-  const parentAssembly =
-    await readHsppSealedEvidenceAssembly({
-      supabase,
-
-      organizationId:
-        intent.organizationId,
-
-      assemblyId:
-        historicalContext.parentAssemblyId,
-    });
-
-  const plan =
-    planHsppEvidenceAssemblyReconstructionMembers({
-      historicalContext,
-
-      parentAssembly,
+      intent:
+        toExecutionIntentCore(
+          intent,
+        ),
 
       replacementCandidate:
         replacementRead.candidate,
     });
 
-  if (
-    plan.parentAssemblyId !==
-    historicalContext.parentAssemblyId
-  ) {
-    throw new Error(
-      "Reconstruction plan parent does not match the exact historical context.",
-    );
-  }
+  return {
+    ...makeCommonResult(
+      intent,
+    ),
 
-  if (
-    plan.historicalEvidenceId !==
-    intent.historicalEvidenceId
-  ) {
-    throw new Error(
-      "Reconstruction plan historical evidence does not match the durable intent.",
-    );
-  }
-
-  if (
-    plan.replacementEvidenceId !==
-    intent.replacementEvidenceId
-  ) {
-    throw new Error(
-      "Reconstruction plan replacement evidence does not match the durable intent.",
-    );
-  }
-
-  try {
-    const persistence =
-      await persistHsppEvidenceAssemblyReconstruction({
-        supabase,
-
-        organizationId:
-          intent.organizationId,
-
-        parentAssemblyId:
-          plan.parentAssemblyId,
-
-        childAssemblyId:
-          intent.childAssemblyId,
-
-        membershipPolicyVersion:
-          intent.membershipPolicyVersion,
-
-        reconstructionPolicyVersion:
-          intent.reconstructionPolicyVersion,
-
-        reconstructionReason:
-          intent.reconstructionReason,
-
-        members:
-          plan.members,
-      });
-
-    return {
-      ...makeCommonResult(
-        intent,
-      ),
-
-      state:
-        "RECONSTRUCTION_PERSISTED",
-
-      parentAssemblyId:
-        persistence.parentAssemblyId,
-
-      reconstructionId:
-        persistence.reconstructionId,
-
-      assemblyState:
-        persistence.assemblyState,
-
-      idempotentRecovery:
-        persistence.idempotentRecovery,
-
-      memberCount:
-        persistence.persistedMemberCount,
-    };
-  }
-  catch (persistenceError) {
-    /*
-     * Q14h may have committed successfully before a transport error, or
-     * a same-child caller may have won the exact retry race. Recover only
-     * this immutable canonical child and prove it through Q14ag31K.
-     */
-    const recoveredAfterPersistenceError =
-      await recoverDurableIntent({
-        supabase,
-        intent,
-      });
-
-    if (
-      recoveredAfterPersistenceError
-    ) {
-      return recoveredAfterPersistenceError;
-    }
-
-    throw persistenceError;
-  }
+    ...execution,
+  };
 }

@@ -17,6 +17,11 @@ import {
   type RunHsppReconstructionExecutionIntentCycleResult,
 } from "@/lib/hspp/runHsppReconstructionExecutionIntentCycle";
 
+import {
+  runHsppReconstructionExecutionIntentCycleV2,
+  type RunHsppReconstructionExecutionIntentCycleV2Result,
+} from "@/lib/hspp/runHsppReconstructionExecutionIntentCycleV2";
+
 import type {
   RunHsppReservoirReevaluationResult,
 } from "@/lib/hspp/runHsppReservoirReevaluation";
@@ -93,6 +98,15 @@ export type RunHsppReconstructionActivationCycleResult = {
 
   consumer:
     RunHsppReconstructionExecutionIntentCycleResult;
+
+  /**
+   * Q14ag33 successor durable-intent drain.
+   *
+   * Kept separate from the legacy consumer so existing result
+   * semantics remain backwards-compatible and independently auditable.
+   */
+  successorConsumer:
+    RunHsppReconstructionExecutionIntentCycleV2Result;
 };
 
 
@@ -132,8 +146,9 @@ function normalizeErrorMessage(
  * - preserve the producer result when successful;
  * - isolate a producer exception so existing durable work can still drain;
  * - always invoke Q14ag31W consumer exactly once after the producer attempt;
+ * - then invoke the Q14ag33 successor consumer exactly once;
  * - propagate fatal consumer/read failures; and
- * - return both producer and consumer outcomes.
+ * - return producer, legacy consumer and successor consumer outcomes.
  *
  * It deliberately does NOT:
  *
@@ -215,7 +230,14 @@ export async function runHsppReconstructionActivationCycle({
     });
 
 
-  return {
+
+  const successorConsumer =
+    await runHsppReconstructionExecutionIntentCycleV2({
+      supabase,
+
+      organizationId,
+    });
+return {
     runnerVersion:
       HSPP_RECONSTRUCTION_ACTIVATION_CYCLE_RUNNER_VERSION,
 
@@ -231,5 +253,7 @@ export async function runHsppReconstructionActivationCycle({
     producer,
 
     consumer,
+
+    successorConsumer,
   };
 }

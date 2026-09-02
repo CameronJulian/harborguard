@@ -79,7 +79,7 @@ test(
 
 
 test(
-  "Q14ag31M recovery-preflights the canonical durable child before replacement hydration, context or persistence",
+  "Q14ag31M recovery-preflights the canonical durable child before replacement hydration and common execution",
   () => {
     const mainStart =
       executableSource.indexOf(
@@ -106,14 +106,9 @@ test(
         "const replacementRead",
       );
 
-    const contextIndex =
+    const executionIndex =
       main.indexOf(
-        "const contextRead",
-      );
-
-    const persistenceIndex =
-      main.indexOf(
-        "const persistence",
+        "const execution",
       );
 
     assert.ok(
@@ -127,13 +122,24 @@ test(
     );
 
     assert.ok(
-      contextIndex >
+      executionIndex >
       replacementIndex,
     );
 
-    assert.ok(
-      persistenceIndex >
-      contextIndex,
+    assert.doesNotMatch(
+      main.slice(
+        0,
+        executionIndex,
+      ),
+      /\breadHsppHistoricalReconstructionContexts\s*\(/,
+    );
+
+    assert.doesNotMatch(
+      main.slice(
+        0,
+        executionIndex,
+      ),
+      /\bpersistHsppEvidenceAssemblyReconstruction\s*\(/,
     );
   },
 );
@@ -144,12 +150,13 @@ test(
   () => {
     const helperStart =
       executableSource.indexOf(
-        "async function recoverDurableIntent",
+        "async function recoverDurableIntentCore",
       );
 
-    const mainStart =
+    const helperEnd =
       executableSource.indexOf(
-        "export async function runHsppReconstructionExecutionIntent",
+        "async function recoverDurableIntent({",
+        helperStart,
       );
 
     assert.ok(
@@ -158,14 +165,14 @@ test(
     );
 
     assert.ok(
-      mainStart >
+      helperEnd >
       helperStart,
     );
 
     const helper =
       executableSource.slice(
         helperStart,
-        mainStart,
+        helperEnd,
       );
 
     assert.match(
@@ -295,7 +302,7 @@ test(
 
     assert.match(
       executableSource,
-      /const\s+recoveredAfterContextLoss\s*=\s*await\s+recoverDurableIntent\s*\(/,
+      /const\s+recoveredAfterContextLoss\s*=\s*await\s+recoverDurableIntentCore\s*\(/,
     );
   },
 );
@@ -332,7 +339,7 @@ test(
 
     assert.match(
       executableSource,
-      /const\s+recoveredAfterPersistenceError\s*=\s*await\s+recoverDurableIntent\s*\(/,
+      /const\s+recoveredAfterPersistenceError\s*=\s*await\s+recoverDurableIntentCore\s*\(/,
     );
 
     assert.match(

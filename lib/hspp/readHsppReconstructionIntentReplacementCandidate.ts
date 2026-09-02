@@ -1,6 +1,7 @@
-﻿import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
+  HSPP_RESERVOIR_ELIGIBILITY_POLICY_VERSION,
   evaluateHsppReservoirEligibility,
 } from "./evaluateHsppReservoirEligibility";
 
@@ -46,6 +47,30 @@ export type ValidateHsppReconstructionIntentReplacementCandidateSnapshotInput = 
   membershipClassificationRow: RawMembershipClassificationRow;
 };
 
+
+export type ReadHsppReconstructionIntentReplacementCandidateCoreInput = {
+  supabase: SupabaseClient;
+
+  organizationId: string;
+
+  replacementEvidenceId: string;
+
+  replacementEvidenceIntegrityFingerprint: string;
+
+  reservoirEligibilityPolicyVersion: string;
+};
+
+
+export type ReadHsppReconstructionIntentReplacementCandidateCoreResult = {
+  organizationId: string;
+
+  replacementEvidenceId: string;
+
+  reservoirEligibilityPolicyVersion:
+    typeof HSPP_RESERVOIR_ELIGIBILITY_POLICY_VERSION;
+
+  candidate: HsppReservoirCandidate;
+};
 
 export type ReadHsppReconstructionIntentReplacementCandidateInput = {
   supabase: SupabaseClient;
@@ -119,15 +144,47 @@ function requireSha256(
  * reconstruction execution intent. It does not perform Reservoir discovery
  * and does not select an alternative replacement.
  */
-export function validateHsppReconstructionIntentReplacementCandidateSnapshot({
+export type ValidateHsppReconstructionIntentReplacementCandidateCoreSnapshotInput = {
+  organizationId: string;
+
+  replacementEvidenceId: string;
+
+  replacementEvidenceIntegrityFingerprint: string;
+
+  reservoirEligibilityPolicyVersion: string;
+
+  operationalRead: ReadHsppEvidenceForOperationalUseResult;
+
+  membershipClassificationRow: RawMembershipClassificationRow;
+};
+
+
+/**
+ * Q14ag33E1 producer-neutral exact replacement snapshot validator.
+ *
+ * This owns only invariants common to every durable reconstruction
+ * selection producer:
+ *
+ * - exact replacement identity and integrity fingerprint;
+ * - exact organization ownership;
+ * - exact lifecycle classification;
+ * - NEVER_ASSEMBLED replacement status;
+ * - current B06A Reservoir eligibility;
+ * - durable/current B06A policy-version agreement.
+ *
+ * It deliberately owns no B07B discovery policy validation and no
+ * scheduled-pair provenance validation.
+ */
+export function validateHsppReconstructionIntentReplacementCandidateCoreSnapshot({
   organizationId: rawOrganizationId,
   replacementEvidenceId: rawReplacementEvidenceId,
   replacementEvidenceIntegrityFingerprint:
     rawReplacementEvidenceIntegrityFingerprint,
-  discoveryPolicyVersion: rawDiscoveryPolicyVersion,
+  reservoirEligibilityPolicyVersion:
+    rawReservoirEligibilityPolicyVersion,
   operationalRead,
   membershipClassificationRow,
-}: ValidateHsppReconstructionIntentReplacementCandidateSnapshotInput): HsppReservoirCandidate {
+}: ValidateHsppReconstructionIntentReplacementCandidateCoreSnapshotInput): HsppReservoirCandidate {
   const organizationId =
     requireNonBlank(
       rawOrganizationId,
@@ -146,18 +203,18 @@ export function validateHsppReconstructionIntentReplacementCandidateSnapshot({
       "replacementEvidenceIntegrityFingerprint",
     );
 
-  const discoveryPolicyVersion =
+  const reservoirEligibilityPolicyVersion =
     requireNonBlank(
-      rawDiscoveryPolicyVersion,
-      "discoveryPolicyVersion",
+      rawReservoirEligibilityPolicyVersion,
+      "reservoirEligibilityPolicyVersion",
     );
 
   if (
-    discoveryPolicyVersion !==
-    HSPP_RESERVOIR_DISCOVERY_POLICY_VERSION
+    reservoirEligibilityPolicyVersion !==
+      HSPP_RESERVOIR_ELIGIBILITY_POLICY_VERSION
   ) {
     throw new Error(
-      "Durable reconstruction intent discovery policy does not match the current Reservoir discovery authority.",
+      "Durable reconstruction intent Reservoir eligibility policy does not match the current B06A authority.",
     );
   }
 
@@ -295,6 +352,15 @@ export function validateHsppReconstructionIntentReplacementCandidateSnapshot({
       hasAssemblyMembership,
     });
 
+  if (
+    reservoirDecision.policyVersion !==
+      reservoirEligibilityPolicyVersion
+  ) {
+    throw new Error(
+      "Revalidated replacement Reservoir eligibility policy does not match the durable reconstruction intent.",
+    );
+  }
+
   if (!reservoirDecision.eligible) {
     throw new Error(
       `Durable reconstruction replacement ${replacementEvidenceId} is no longer Reservoir eligible (${reservoirDecision.reason}).`,
@@ -318,26 +384,91 @@ export function validateHsppReconstructionIntentReplacementCandidateSnapshot({
 
 
 /**
- * Q14ag31H exact durable replacement-candidate hydration boundary.
+ * Q14ag31H legacy B07B exact-snapshot validator.
  *
- * It performs only:
- *
- * - exact persisted operational-evidence read;
- * - exact Q14ag8 lifecycle classification;
- * - B06A Reservoir eligibility evaluation;
- * - immutable replacement identity/fingerprint validation.
- *
- * It performs no Reservoir discovery, pair reevaluation, reconstruction,
- * sealing, assessment or scheduling.
+ * B07B discovery provenance remains mandatory and current.
+ * Common evidence, lifecycle and B06A validation is delegated to
+ * the Q14ag33E1 producer-neutral core.
  */
-export async function readHsppReconstructionIntentReplacementCandidate({
-  supabase,
+export function validateHsppReconstructionIntentReplacementCandidateSnapshot({
   organizationId: rawOrganizationId,
   replacementEvidenceId: rawReplacementEvidenceId,
   replacementEvidenceIntegrityFingerprint:
     rawReplacementEvidenceIntegrityFingerprint,
   discoveryPolicyVersion: rawDiscoveryPolicyVersion,
-}: ReadHsppReconstructionIntentReplacementCandidateInput): Promise<ReadHsppReconstructionIntentReplacementCandidateResult> {
+  operationalRead,
+  membershipClassificationRow,
+}: ValidateHsppReconstructionIntentReplacementCandidateSnapshotInput): HsppReservoirCandidate {
+  const organizationId =
+    requireNonBlank(
+      rawOrganizationId,
+      "organizationId",
+    );
+
+  const replacementEvidenceId =
+    requireNonBlank(
+      rawReplacementEvidenceId,
+      "replacementEvidenceId",
+    );
+
+  const authorizedFingerprint =
+    requireSha256(
+      rawReplacementEvidenceIntegrityFingerprint,
+      "replacementEvidenceIntegrityFingerprint",
+    );
+
+  const discoveryPolicyVersion =
+    requireNonBlank(
+      rawDiscoveryPolicyVersion,
+      "discoveryPolicyVersion",
+    );
+
+  if (
+    discoveryPolicyVersion !==
+      HSPP_RESERVOIR_DISCOVERY_POLICY_VERSION
+  ) {
+    throw new Error(
+      "Durable reconstruction intent discovery policy does not match the current Reservoir discovery authority.",
+    );
+  }
+
+  return validateHsppReconstructionIntentReplacementCandidateCoreSnapshot({
+    organizationId,
+
+    replacementEvidenceId,
+
+    replacementEvidenceIntegrityFingerprint:
+      authorizedFingerprint,
+
+    reservoirEligibilityPolicyVersion:
+      HSPP_RESERVOIR_ELIGIBILITY_POLICY_VERSION,
+
+    operationalRead,
+
+    membershipClassificationRow,
+  });
+}
+
+/**
+ * Q14ag33E2A producer-neutral exact replacement hydration IO.
+ *
+ * This boundary owns only the exact persisted evidence read,
+ * exact membership-classification read and Q14ag33E1 shared
+ * evidence/lifecycle/B06A validation.
+ *
+ * It owns no B07B discovery provenance, PAIR scheduling provenance,
+ * replacement discovery, pair reevaluation, reconstruction, sealing,
+ * assessment, scheduling or authority transition.
+ */
+export async function readHsppReconstructionIntentReplacementCandidateCore({
+  supabase,
+  organizationId: rawOrganizationId,
+  replacementEvidenceId: rawReplacementEvidenceId,
+  replacementEvidenceIntegrityFingerprint:
+    rawReplacementEvidenceIntegrityFingerprint,
+  reservoirEligibilityPolicyVersion:
+    rawReservoirEligibilityPolicyVersion,
+}: ReadHsppReconstructionIntentReplacementCandidateCoreInput): Promise<ReadHsppReconstructionIntentReplacementCandidateCoreResult> {
   const organizationId =
     requireNonBlank(
       rawOrganizationId,
@@ -356,20 +487,11 @@ export async function readHsppReconstructionIntentReplacementCandidate({
       "replacementEvidenceIntegrityFingerprint",
     );
 
-  const discoveryPolicyVersion =
+  const reservoirEligibilityPolicyVersion =
     requireNonBlank(
-      rawDiscoveryPolicyVersion,
-      "discoveryPolicyVersion",
+      rawReservoirEligibilityPolicyVersion,
+      "reservoirEligibilityPolicyVersion",
     );
-
-  if (
-    discoveryPolicyVersion !==
-    HSPP_RESERVOIR_DISCOVERY_POLICY_VERSION
-  ) {
-    throw new Error(
-      "Durable reconstruction intent discovery policy does not match the current Reservoir discovery authority.",
-    );
-  }
 
   if (
     !supabase ||
@@ -434,20 +556,98 @@ export async function readHsppReconstructionIntentReplacementCandidate({
   }
 
   const candidate =
-    validateHsppReconstructionIntentReplacementCandidateSnapshot({
+    validateHsppReconstructionIntentReplacementCandidateCoreSnapshot({
       organizationId,
 
       replacementEvidenceId,
 
       replacementEvidenceIntegrityFingerprint,
 
-      discoveryPolicyVersion,
-
+      reservoirEligibilityPolicyVersion,
       operationalRead,
 
       membershipClassificationRow:
         membershipClassificationRows[0] as
           RawMembershipClassificationRow,
+    });
+
+  return {
+    organizationId,
+
+    replacementEvidenceId,
+
+    reservoirEligibilityPolicyVersion:
+      HSPP_RESERVOIR_ELIGIBILITY_POLICY_VERSION,
+
+    candidate,
+  };
+}
+
+/**
+ * Q14ag31H exact durable replacement-candidate hydration boundary.
+ *
+ * It performs only:
+ *
+ * - exact persisted operational-evidence read;
+ * - exact Q14ag8 lifecycle classification;
+ * - B06A Reservoir eligibility evaluation;
+ * - immutable replacement identity/fingerprint validation.
+ *
+ * It performs no Reservoir discovery, pair reevaluation, reconstruction,
+ * sealing, assessment or scheduling.
+ */
+export async function readHsppReconstructionIntentReplacementCandidate({
+  supabase,
+  organizationId: rawOrganizationId,
+  replacementEvidenceId: rawReplacementEvidenceId,
+  replacementEvidenceIntegrityFingerprint:
+    rawReplacementEvidenceIntegrityFingerprint,
+  discoveryPolicyVersion: rawDiscoveryPolicyVersion,
+}: ReadHsppReconstructionIntentReplacementCandidateInput): Promise<ReadHsppReconstructionIntentReplacementCandidateResult> {
+  const organizationId =
+    requireNonBlank(
+      rawOrganizationId,
+      "organizationId",
+    );
+
+  const replacementEvidenceId =
+    requireNonBlank(
+      rawReplacementEvidenceId,
+      "replacementEvidenceId",
+    );
+
+  const replacementEvidenceIntegrityFingerprint =
+    requireSha256(
+      rawReplacementEvidenceIntegrityFingerprint,
+      "replacementEvidenceIntegrityFingerprint",
+    );
+
+  const discoveryPolicyVersion =
+    requireNonBlank(
+      rawDiscoveryPolicyVersion,
+      "discoveryPolicyVersion",
+    );
+
+  if (
+    discoveryPolicyVersion !==
+    HSPP_RESERVOIR_DISCOVERY_POLICY_VERSION
+  ) {
+    throw new Error(
+      "Durable reconstruction intent discovery policy does not match the current Reservoir discovery authority.",
+    );
+  }
+  const coreRead =
+    await readHsppReconstructionIntentReplacementCandidateCore({
+      supabase,
+
+      organizationId,
+
+      replacementEvidenceId,
+
+      replacementEvidenceIntegrityFingerprint,
+
+      reservoirEligibilityPolicyVersion:
+        HSPP_RESERVOIR_ELIGIBILITY_POLICY_VERSION,
     });
 
   return {
@@ -457,10 +657,13 @@ export async function readHsppReconstructionIntentReplacementCandidate({
     discoveryPolicyVersion:
       HSPP_RESERVOIR_DISCOVERY_POLICY_VERSION,
 
-    organizationId,
+    organizationId:
+      coreRead.organizationId,
 
-    replacementEvidenceId,
+    replacementEvidenceId:
+      coreRead.replacementEvidenceId,
 
-    candidate,
+    candidate:
+      coreRead.candidate,
   };
 }

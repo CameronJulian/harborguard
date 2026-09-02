@@ -349,3 +349,153 @@ test(
     }
   },
 );
+
+test(
+  "Q14ag33E3E4 integrates the successor cycle exactly once after the legacy consumer",
+  () => {
+    const successorCalls =
+      executableSource.match(
+        /\brunHsppReconstructionExecutionIntentCycleV2\s*\(/g,
+      ) ?? [];
+
+    assert.equal(
+      successorCalls.length,
+      1,
+    );
+
+    const legacyIndex =
+      executableSource.indexOf(
+        "runHsppReconstructionExecutionIntentCycle({",
+      );
+
+    const successorIndex =
+      executableSource.indexOf(
+        "runHsppReconstructionExecutionIntentCycleV2({",
+      );
+
+    const returnIndex =
+      executableSource.indexOf(
+        "return {",
+        successorIndex,
+      );
+
+    assert.ok(
+      legacyIndex >= 0,
+    );
+
+    assert.ok(
+      successorIndex > legacyIndex,
+    );
+
+    assert.ok(
+      returnIndex > successorIndex,
+    );
+  },
+);
+
+
+test(
+  "Q14ag33E3E4 preserves consumer and exposes successorConsumer separately",
+  () => {
+    assert.match(
+      executableSource,
+      /\bconsumer\s*:\s*RunHsppReconstructionExecutionIntentCycleResult/,
+    );
+
+    assert.match(
+      executableSource,
+      /\bsuccessorConsumer\s*:\s*RunHsppReconstructionExecutionIntentCycleV2Result/,
+    );
+
+    assert.match(
+      executableSource,
+      /\bconsumer\s*,/,
+    );
+
+    assert.match(
+      executableSource,
+      /\bsuccessorConsumer\s*,/,
+    );
+  },
+);
+
+
+test(
+  "Q14ag33E3E4 passes only Supabase and organization identity into the successor cycle",
+  () => {
+    const call =
+      executableSource.match(
+        /runHsppReconstructionExecutionIntentCycleV2\s*\(\s*\{([\s\S]*?)\}\s*\)/,
+      );
+
+    assert.ok(
+      call,
+    );
+
+    assert.match(
+      call[1],
+      /\bsupabase\b/,
+    );
+
+    assert.match(
+      call[1],
+      /\borganizationId\b/,
+    );
+
+    assert.doesNotMatch(
+      call[1],
+      /\breevaluationResult\b/,
+    );
+
+    assert.doesNotMatch(
+      call[1],
+      /\bproposedChildAssemblyId\b/,
+    );
+
+    assert.doesNotMatch(
+      call[1],
+      /\blimit\b/,
+    );
+  },
+);
+
+
+test(
+  "Q14ag33E3E4 does not add a catch around successor execution",
+  () => {
+    const successorIndex =
+      executableSource.indexOf(
+        "runHsppReconstructionExecutionIntentCycleV2({",
+      );
+
+    const returnIndex =
+      executableSource.indexOf(
+        "return {",
+        successorIndex,
+      );
+
+    assert.ok(
+      successorIndex >= 0,
+    );
+
+    assert.ok(
+      returnIndex > successorIndex,
+    );
+
+    const window =
+      executableSource.slice(
+        successorIndex,
+        returnIndex,
+      );
+
+    assert.doesNotMatch(
+      window,
+      /\btry\s*\{/,
+    );
+
+    assert.doesNotMatch(
+      window,
+      /\bcatch\s*\(/,
+    );
+  },
+);

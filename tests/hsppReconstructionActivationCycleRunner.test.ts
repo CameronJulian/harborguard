@@ -11,6 +11,10 @@ import {
   runHsppReconstructionActivationCycle,
 } from "../lib/hspp/runHsppReconstructionActivationCycle";
 
+import {
+  HSPP_RECONSTRUCTION_EXECUTION_INTENT_SUCCESSOR_READ_RPC,
+} from "../lib/hspp/readHsppReconstructionExecutionIntentsV2";
+
 import type {
   RunHsppReservoirReevaluationResult,
 } from "../lib/hspp/runHsppReservoirReevaluation";
@@ -77,6 +81,7 @@ type RpcHandler = (
 
 function makeSupabase(
   handler: RpcHandler,
+  successorHandler?: RpcHandler,
 ) {
   const calls:
     RpcCall[] =
@@ -96,6 +101,27 @@ function makeSupabase(
           args,
         });
 
+
+        if (
+          name ===
+          HSPP_RECONSTRUCTION_EXECUTION_INTENT_SUCCESSOR_READ_RPC
+        ) {
+          if (successorHandler) {
+            return successorHandler(
+              name,
+              args,
+              calls.length - 1,
+            );
+          }
+
+          return {
+            data:
+              [],
+
+            error:
+              null,
+          };
+        }
 
         return handler(
           name,
@@ -372,11 +398,21 @@ test(
 
     assert.equal(
       mock.calls.length,
-      1,
+      2,
     );
 
 
+
     assert.equal(
+      mock.calls[0].name,
+      "read_hspp_reconstruction_execution_intents",
+    );
+
+    assert.equal(
+      mock.calls[1].name,
+      HSPP_RECONSTRUCTION_EXECUTION_INTENT_SUCCESSOR_READ_RPC,
+    );
+assert.equal(
       result.state,
       "ACTIVATION_CYCLE_COMPLETED",
     );
@@ -422,7 +458,17 @@ test(
     );
 
 
+
     assert.equal(
+      result.successorConsumer.state,
+      "NO_PENDING_SUCCESSOR_INTENTS",
+    );
+
+    assert.equal(
+      result.successorConsumer.selectedCount,
+      0,
+    );
+assert.equal(
       result.organizationId,
       ORGANIZATION_ID,
     );
@@ -492,7 +538,7 @@ test(
 
     assert.equal(
       mock.calls.length,
-      2,
+      3,
     );
 
 
@@ -508,7 +554,12 @@ test(
     );
 
 
-    assert.deepEqual(
+
+    assert.equal(
+      mock.calls[2].name,
+      HSPP_RECONSTRUCTION_EXECUTION_INTENT_SUCCESSOR_READ_RPC,
+    );
+assert.deepEqual(
       mock.calls[0].args,
       {
         p_organization_id:
@@ -650,7 +701,7 @@ test(
      */
     assert.equal(
       mock.calls.length,
-      1,
+      2,
     );
 
 
@@ -660,7 +711,12 @@ test(
     );
 
 
+
     assert.equal(
+      mock.calls[1].name,
+      HSPP_RECONSTRUCTION_EXECUTION_INTENT_SUCCESSOR_READ_RPC,
+    );
+assert.equal(
       result.producer.success,
       false,
     );
@@ -740,6 +796,91 @@ test(
     assert.equal(
       mock.calls.length,
       1,
+    );
+  },
+);
+
+test(
+  "Q14ag33E3E4 propagates a fatal successor read only after the legacy consumer has run",
+  async () => {
+    const mock =
+      makeSupabase(
+        async (
+          name,
+          _args,
+        ) => {
+          assert.equal(
+            name,
+            "read_hspp_reconstruction_execution_intents",
+          );
+
+          return {
+            data:
+              [],
+
+            error:
+              null,
+          };
+        },
+
+        async (
+          name,
+          _args,
+        ) => {
+          assert.equal(
+            name,
+            HSPP_RECONSTRUCTION_EXECUTION_INTENT_SUCCESSOR_READ_RPC,
+          );
+
+          const rpcError = {
+            message:
+              "successor read failed",
+          };
+
+          return {
+            data:
+              null,
+
+            error:
+              rpcError,
+          };
+        },
+      );
+
+    await assert.rejects(
+      () =>
+        runHsppReconstructionActivationCycle(
+          request(
+            mock.client,
+            noClaimSnapshot(),
+          ),
+        ),
+      error => {
+        assert.deepEqual(
+          error,
+          {
+            message:
+              "successor read failed",
+          },
+        );
+
+        return true;
+      },
+    );
+
+    assert.equal(
+      mock.calls.length,
+      2,
+    );
+
+    assert.equal(
+      mock.calls[0].name,
+      "read_hspp_reconstruction_execution_intents",
+    );
+
+    assert.equal(
+      mock.calls[1].name,
+      HSPP_RECONSTRUCTION_EXECUTION_INTENT_SUCCESSOR_READ_RPC,
     );
   },
 );
