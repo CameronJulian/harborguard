@@ -1,4 +1,4 @@
-﻿import assert from "node:assert/strict";
+import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
@@ -369,6 +369,58 @@ test(
     assert.doesNotMatch(
       recoveryCron,
       /\brunHsppReservoirReconstruction\s*\(/,
+    );
+  },
+);
+
+
+test(
+  "Q14ag35 reconstructed OPEN children establish child-specific B11A2 before generic Q13c sealing",
+  () => {
+    const membershipIndex =
+      recoveryCycle.indexOf(
+        "await prepareHsppOpenAssemblyMembershipBeforeSealing",
+      );
+
+    const sealingIndex =
+      recoveryCycle.indexOf(
+        "await runHsppOpenAssemblyRecoverySealing",
+      );
+
+    assert.ok(
+      membershipIndex >= 0,
+      "Q13f must invoke the OPEN child B11A2 preparation boundary.",
+    );
+
+    assert.ok(
+      sealingIndex > membershipIndex,
+      "Child-specific B11A2 provenance must exist before Q13c sealing.",
+    );
+
+    assert.match(
+      recoveryCycle,
+      /membershipPreparation/,
+    );
+  },
+);
+
+
+test(
+  "Q14ag35 preserves separate reconstruction B11A2 and Q13c authorities",
+  () => {
+    assert.doesNotMatch(
+      q14h,
+      /\bevaluateHsppAssemblyMembership\s*\(/,
+    );
+
+    assert.doesNotMatch(
+      openSealing,
+      /\bevaluateHsppAssemblyMembership\s*\(/,
+    );
+
+    assert.doesNotMatch(
+      openSealing,
+      /persist_hspp_open_assembly_membership_relation/,
     );
   },
 );

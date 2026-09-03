@@ -14,6 +14,11 @@ import {
 } from "@/lib/hspp/runHsppOpenAssemblyRecoverySealing";
 
 import {
+  prepareHsppOpenAssemblyMembershipBeforeSealing,
+  type PreparedHsppOpenAssemblyMembershipBeforeSealing,
+} from "@/lib/hspp/prepareHsppOpenAssemblyMembershipBeforeSealing";
+
+import {
   runHsppSealedAssemblyRecoveryAssessment,
   type RunHsppSealedAssemblyRecoveryAssessmentResult,
 } from "@/lib/hspp/runHsppSealedAssemblyRecoveryAssessment";
@@ -69,6 +74,9 @@ export type HsppAssemblyRecoveryOpenWorkResult =
       workItem:
         HsppAssemblyRecoveryWorkItem;
 
+      membershipPreparation:
+        PreparedHsppOpenAssemblyMembershipBeforeSealing;
+
       sealing:
         RunHsppOpenAssemblyRecoverySealingResult;
 
@@ -79,6 +87,8 @@ export type HsppAssemblyRecoveryOpenWorkResult =
 
       workItem:
         HsppAssemblyRecoveryWorkItem;
+
+      membershipPreparation: null;
 
       sealing: null;
 
@@ -169,6 +179,29 @@ function recoveryErrorMessage(
     error.trim().length > 0
   ) {
     return error.trim();
+  }
+
+  /*
+   * Supabase/PostgREST failures are commonly returned as plain objects
+   * rather than Error instances. Preserve their diagnostic message
+   * without changing recovery control flow or lifecycle authority.
+   */
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error
+  ) {
+    const message =
+      (error as {
+        message?: unknown;
+      }).message;
+
+    if (
+      typeof message === "string" &&
+      message.trim().length > 0
+    ) {
+      return message.trim();
+    }
   }
 
   return "HSPP assembly recovery work item failed.";
@@ -274,6 +307,25 @@ export async function runHsppAssemblyRecoveryCycle({
     of openDiscovery.workItems
   ) {
     try {
+      /*
+       * Reconstructed OPEN children may contain a new immutable evidence
+       * pair that did not exist when their parent assembly established
+       * B11A2 provenance.
+       *
+       * Establish child-specific B11A2 provenance before Q13c changes
+       * OPEN -> SEALED. Q13c remains a sealing-only authority.
+       */
+      const membershipPreparation =
+        await prepareHsppOpenAssemblyMembershipBeforeSealing({
+          supabase,
+
+          organizationId:
+            normalizedOrganizationId,
+
+          assemblyId:
+            workItem.assemblyId,
+        });
+
       const sealing =
         await runHsppOpenAssemblyRecoverySealing({
           supabase,
@@ -286,6 +338,8 @@ export async function runHsppAssemblyRecoveryCycle({
 
         workItem,
 
+        membershipPreparation,
+
         sealing,
 
         error:
@@ -297,6 +351,9 @@ export async function runHsppAssemblyRecoveryCycle({
           "OPEN_ERROR",
 
         workItem,
+
+        membershipPreparation:
+          null,
 
         sealing:
           null,
