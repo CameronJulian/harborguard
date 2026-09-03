@@ -15,6 +15,10 @@ import {
   HSPP_RECONSTRUCTION_EXECUTION_INTENT_SUCCESSOR_READ_RPC,
 } from "../lib/hspp/readHsppReconstructionExecutionIntentsV2";
 
+import {
+  HSPP_RECONSTRUCTION_EXECUTION_INTENT_CLAIM_V2_RPC,
+} from "../lib/hspp/claimHsppReconstructionExecutionIntentV2";
+
 import type {
   RunHsppReservoirReevaluationResult,
 } from "../lib/hspp/runHsppReservoirReevaluation";
@@ -331,6 +335,71 @@ function claimRow() {
 }
 
 
+function successorClaimRow() {
+  return {
+    intent_id:
+      INTENT_ID,
+
+    organization_id:
+      ORGANIZATION_ID,
+
+    child_assembly_id:
+      PROPOSED_CHILD_ID,
+
+    selected_first_evidence_id:
+      HISTORICAL_ID,
+
+    selected_second_evidence_id:
+      REPLACEMENT_ID,
+
+    historical_evidence_id:
+      HISTORICAL_ID,
+
+    historical_evidence_integrity_fingerprint:
+      HISTORICAL_FINGERPRINT,
+
+    replacement_evidence_id:
+      REPLACEMENT_ID,
+
+    replacement_evidence_integrity_fingerprint:
+      REPLACEMENT_FINGERPRINT,
+
+    selection_source:
+      "B07B_DISCOVERY",
+
+    discovery_policy_version:
+      DISCOVERY_POLICY,
+
+    pair_scheduling_version:
+      null,
+
+    reservoir_eligibility_policy_version:
+      "hspp-reservoir-eligibility-v1",
+
+    reevaluation_policy_version:
+      REEVALUATION_POLICY,
+
+    membership_policy_version:
+      MEMBERSHIP_POLICY,
+
+    reconstruction_policy_version:
+      RECONSTRUCTION_POLICY,
+
+    reconstruction_reason:
+      RECONSTRUCTION_REASON,
+
+    intent_version:
+      "hspp-reconstruction-execution-intent-v1",
+
+    created_at:
+      CREATED_AT,
+
+    idempotent_recovery:
+      false,
+  };
+}
+
+
 function request(
   supabase: any,
   reevaluationResult:
@@ -508,6 +577,21 @@ test(
 
           if (
             name ===
+            HSPP_RECONSTRUCTION_EXECUTION_INTENT_CLAIM_V2_RPC
+          ) {
+            return {
+              data: [
+                successorClaimRow(),
+              ],
+
+              error:
+                null,
+            };
+          }
+
+
+          if (
+            name ===
             "read_hspp_reconstruction_execution_intents"
           ) {
             return {
@@ -538,7 +622,7 @@ test(
 
     assert.equal(
       mock.calls.length,
-      3,
+      4,
     );
 
 
@@ -550,13 +634,18 @@ test(
 
     assert.equal(
       mock.calls[1].name,
-      "read_hspp_reconstruction_execution_intents",
+      HSPP_RECONSTRUCTION_EXECUTION_INTENT_CLAIM_V2_RPC,
     );
-
 
 
     assert.equal(
       mock.calls[2].name,
+      "read_hspp_reconstruction_execution_intents",
+    );
+
+
+    assert.equal(
+      mock.calls[3].name,
       HSPP_RECONSTRUCTION_EXECUTION_INTENT_SUCCESSOR_READ_RPC,
     );
 assert.deepEqual(
@@ -588,6 +677,60 @@ assert.deepEqual(
 
         p_discovery_policy_version:
           DISCOVERY_POLICY,
+
+        p_reevaluation_policy_version:
+          REEVALUATION_POLICY,
+
+        p_membership_policy_version:
+          MEMBERSHIP_POLICY,
+
+        p_reconstruction_policy_version:
+          RECONSTRUCTION_POLICY,
+
+        p_reconstruction_reason:
+          RECONSTRUCTION_REASON,
+      },
+    );
+
+
+    assert.deepEqual(
+      mock.calls[1].args,
+      {
+        p_organization_id:
+          ORGANIZATION_ID,
+
+        p_proposed_child_assembly_id:
+          PROPOSED_CHILD_ID,
+
+        p_selected_first_evidence_id:
+          HISTORICAL_ID,
+
+        p_selected_second_evidence_id:
+          REPLACEMENT_ID,
+
+        p_historical_evidence_id:
+          HISTORICAL_ID,
+
+        p_historical_evidence_integrity_fingerprint:
+          HISTORICAL_FINGERPRINT,
+
+        p_replacement_evidence_id:
+          REPLACEMENT_ID,
+
+        p_replacement_evidence_integrity_fingerprint:
+          REPLACEMENT_FINGERPRINT,
+
+        p_selection_source:
+          "B07B_DISCOVERY",
+
+        p_discovery_policy_version:
+          DISCOVERY_POLICY,
+
+        p_pair_scheduling_version:
+          null,
+
+        p_reservoir_eligibility_policy_version:
+          "hspp-reservoir-eligibility-v1",
 
         p_reevaluation_policy_version:
           REEVALUATION_POLICY,
@@ -642,6 +785,59 @@ assert.deepEqual(
     assert.equal(
       result.producer.result.claim.reconstructionReason,
       RECONSTRUCTION_REASON,
+    );
+
+
+    assert.equal(
+      result.successorProducer.success,
+      true,
+    );
+
+
+    if (!result.successorProducer.success) {
+      throw new Error(
+        "Expected successful successor durable claim producer.",
+      );
+    }
+
+
+    assert.equal(
+      result.successorProducer.result.state,
+      "RECONSTRUCTION_INTENT_V2_CLAIMED",
+    );
+
+
+    if (
+      result.successorProducer.result.state !==
+      "RECONSTRUCTION_INTENT_V2_CLAIMED"
+    ) {
+      throw new Error(
+        "Expected claimed successor reconstruction intent.",
+      );
+    }
+
+
+    assert.equal(
+      result.successorProducer.result.claim.selectionSource,
+      "B07B_DISCOVERY",
+    );
+
+
+    assert.equal(
+      result.successorProducer.result.claim.discoveryPolicyVersion,
+      DISCOVERY_POLICY,
+    );
+
+
+    assert.equal(
+      result.successorProducer.result.claim.pairSchedulingVersion,
+      null,
+    );
+
+
+    assert.equal(
+      result.successorProducer.result.claim.reservoirEligibilityPolicyVersion,
+      "hspp-reservoir-eligibility-v1",
     );
 
 

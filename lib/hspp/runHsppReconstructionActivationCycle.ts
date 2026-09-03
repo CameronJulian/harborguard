@@ -13,6 +13,11 @@ import {
 } from "@/lib/hspp/runHsppReconstructionExecutionIntentClaim";
 
 import {
+  runHsppReconstructionExecutionIntentClaimV2,
+  type RunHsppReconstructionExecutionIntentClaimV2Result,
+} from "@/lib/hspp/runHsppReconstructionExecutionIntentClaimV2";
+
+import {
   runHsppReconstructionExecutionIntentCycle,
   type RunHsppReconstructionExecutionIntentCycleResult,
 } from "@/lib/hspp/runHsppReconstructionExecutionIntentCycle";
@@ -79,6 +84,26 @@ export type HsppReconstructionActivationProducerOutcome =
     };
 
 
+export type HsppReconstructionActivationSuccessorProducerOutcome =
+  | {
+      success: true;
+
+      result:
+        RunHsppReconstructionExecutionIntentClaimV2Result;
+
+      errorMessage:
+        null;
+    }
+  | {
+      success: false;
+
+      result:
+        null;
+
+      errorMessage: string;
+    };
+
+
 export type RunHsppReconstructionActivationCycleResult = {
   runnerVersion:
     typeof HSPP_RECONSTRUCTION_ACTIVATION_CYCLE_RUNNER_VERSION;
@@ -95,6 +120,15 @@ export type RunHsppReconstructionActivationCycleResult = {
 
   producer:
     HsppReconstructionActivationProducerOutcome;
+
+  /**
+   * Q14ag34 B07B successor durable-intent producer.
+   *
+   * Kept independent from the legacy producer so either producer may fail
+   * without suppressing durable-work drains.
+   */
+  successorProducer:
+    HsppReconstructionActivationSuccessorProducerOutcome;
 
   consumer:
     RunHsppReconstructionExecutionIntentCycleResult;
@@ -142,10 +176,11 @@ function normalizeErrorMessage(
  *
  * - consume one already-computed B07B snapshot;
  * - resolve Q14ag31Z policy/reason exactly once;
- * - attempt Q14ag31U producer exactly once;
- * - preserve the producer result when successful;
- * - isolate a producer exception so existing durable work can still drain;
- * - always invoke Q14ag31W consumer exactly once after the producer attempt;
+ * - attempt Q14ag31U legacy producer exactly once;
+ * - attempt the Q14ag34 B07B successor producer exactly once;
+ * - preserve each producer result independently when successful;
+ * - isolate either producer exception so existing durable work can still drain;
+ * - always invoke Q14ag31W consumer after both producer attempts;
  * - then invoke the Q14ag33 successor consumer exactly once;
  * - propagate fatal consumer/read failures; and
  * - return producer, legacy consumer and successor consumer outcomes.
@@ -222,6 +257,56 @@ export async function runHsppReconstructionActivationCycle({
   }
 
 
+  let successorProducer:
+    HsppReconstructionActivationSuccessorProducerOutcome;
+
+
+  try {
+    const result =
+      await runHsppReconstructionExecutionIntentClaimV2({
+        supabase,
+
+        organizationId,
+
+        reevaluationResult,
+
+        proposedChildAssemblyId,
+
+        reconstructionPolicyVersion:
+          activationPolicy.reconstructionPolicyVersion,
+
+        reconstructionReason:
+          activationPolicy.reconstructionReason,
+      });
+
+
+    successorProducer = {
+      success:
+        true,
+
+      result,
+
+      errorMessage:
+        null,
+    };
+  }
+  catch (error) {
+    successorProducer = {
+      success:
+        false,
+
+      result:
+        null,
+
+      errorMessage:
+        normalizeErrorMessage(
+          error,
+        ),
+    };
+  }
+
+
+
   const consumer =
     await runHsppReconstructionExecutionIntentCycle({
       supabase,
@@ -251,6 +336,8 @@ return {
     activationPolicy,
 
     producer,
+
+    successorProducer,
 
     consumer,
 
