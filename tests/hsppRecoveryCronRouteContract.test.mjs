@@ -512,15 +512,17 @@ test(
       /runHsppReconstructionActivationCycle\s*\(\s*\{[\s\S]*?supabase,[\s\S]*?organizationId,[\s\S]*?reevaluationResult:\s*reconstructionSnapshot,[\s\S]*?proposedChildAssemblyId:\s*randomUUID\s*\(\s*\)/
     );
 
-    const uuidCalls =
-      q14ag32dExecutableSource.match(
-        /\brandomUUID\s*\(/g
-      ) ?? [];
-
-    assert.equal(
-      uuidCalls.length,
-      2
-    );
+    /*
+     * Q14ag32D owns only the B07B activation identity contract.
+     *
+     * Do not count randomUUID() calls across the whole recovery
+     * route. Independent machine lifecycles may legitimately own
+     * their own UUIDs.
+     *
+     * The assertions above already prove that B07B receives the
+     * retained reconstructionSnapshot and its own cron-owned
+     * proposedChildAssemblyId.
+     */
   }
 );
 

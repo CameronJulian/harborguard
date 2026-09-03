@@ -42,6 +42,14 @@ import {
   runHsppReconstructionActivationCycle,
 } from "@/lib/hspp/runHsppReconstructionActivationCycle";
 
+import {
+  resolveHsppReconstructionActivationPolicy,
+} from "@/lib/hspp/resolveHsppReconstructionActivationPolicy";
+
+import {
+  runHsppScheduledPairReconstructionCycle,
+} from "@/lib/hspp/runHsppScheduledPairReconstructionCycle";
+
 
 export const dynamic =
   "force-dynamic";
@@ -693,6 +701,135 @@ export async function GET(
           })();
 
     /*
+     * Q14ag35N scheduled-PAIR machine activation.
+     *
+     * This boundary deliberately runs only after the existing B07B
+     * reconstruction activation attempt and before discovery scheduling
+     * advancement.
+     *
+     * The recovery machine owns:
+     *
+     * - the canonical reconstruction policy resolution;
+     * - a fresh independent PAIR child UUID;
+     * - bounded operational failure isolation.
+     *
+     * PAIR failure must not:
+     *
+     * - retroactively fail completed Q13f recovery;
+     * - roll back the existing B07B activation attempt;
+     * - prevent discovery cursor progression;
+     * - alter the existing top-level HTTP success calculation.
+     */
+    const scheduledPairReconstruction =
+      await (async () => {
+        try {
+          const pairPolicy =
+            resolveHsppReconstructionActivationPolicy();
+
+
+          const pairCycle =
+            await runHsppScheduledPairReconstructionCycle({
+              supabase,
+
+              organizationId,
+
+              limit:
+                recoveryLimit,
+
+              proposedChildAssemblyId:
+                randomUUID(),
+
+              reconstructionPolicyVersion:
+                pairPolicy.reconstructionPolicyVersion,
+
+              reconstructionReason:
+                pairPolicy.reconstructionReason,
+            });
+
+
+          return {
+            status:
+              "COMPLETED" as const,
+
+            runnerVersion:
+              pairCycle.runnerVersion,
+
+            schedulingVersion:
+              pairCycle.scheduled
+                .pairPage
+                .schedulingVersion,
+
+            scheduledPairCount:
+              pairCycle.scheduled
+                .pairPage
+                .pairs.length,
+
+            reevaluationState:
+              pairCycle.scheduled
+                .reevaluation
+                .state,
+
+            producerState:
+              pairCycle.producer.state,
+
+            cursorState:
+              pairCycle.cursor.state,
+
+            cursorCasStatus:
+              pairCycle.cursor.state ===
+              "PAIR_CURSOR_CAS_COMPLETED"
+                ? pairCycle.cursor
+                    .cas.status
+                : null,
+
+            error:
+              null,
+          };
+        }
+        catch (error: unknown) {
+          /*
+           * PAIR activation is an independently isolated lifecycle attempt.
+           *
+           * Internal PAIR fail-closed behavior already prevents its own
+           * scheduling cursor from advancing when reevaluation/producer work
+           * throws. This outer machine boundary additionally prevents that
+           * failure from blocking existing discovery scheduling.
+           */
+          return {
+            status:
+              "ERROR" as const,
+
+            runnerVersion:
+              null,
+
+            schedulingVersion:
+              null,
+
+            scheduledPairCount:
+              0,
+
+            reevaluationState:
+              null,
+
+            producerState:
+              null,
+
+            cursorState:
+              null,
+
+            cursorCasStatus:
+              null,
+
+            error:
+              errorMessage(
+                error
+              ),
+          };
+        }
+      })();
+
+
+    /*
      * Do not serialize Q13f's or B07B's complete internal results directly.
      *
      * The machine boundary exposes only persisted assembly identity,
@@ -908,6 +1045,8 @@ export async function GET(
       },
 
       reconstruction,
+
+      scheduledPairReconstruction,
 
       results: {
         open:
