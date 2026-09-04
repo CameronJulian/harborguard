@@ -106,11 +106,49 @@ export async function GET(
 
     if (error) throw error;
 
+    const missionStoragePrefix = `missions/${id}/`;
+
+    const evidenceWithSignedUrls = await Promise.all(
+      (evidence || []).map(async (item) => {
+        const filePath =
+          typeof item.file_path === "string"
+            ? item.file_path
+            : "";
+
+        if (!filePath.startsWith(missionStoragePrefix)) {
+          return item;
+        }
+
+        const { data: signedUrlData, error: signedUrlError } =
+          await supabase.storage
+            .from("mission-evidence")
+            .createSignedUrl(filePath, 600);
+
+        if (signedUrlError || !signedUrlData?.signedUrl) {
+          console.error(
+            "Failed to create mission evidence signed URL",
+            {
+              evidenceId: item.id,
+              missionId: id,
+              error: signedUrlError?.message || "Signed URL missing",
+            }
+          );
+
+          return item;
+        }
+
+        return {
+          ...item,
+          file_url: signedUrlData.signedUrl,
+        };
+      })
+    );
+
     return NextResponse.json({
       success: true,
       missionId: id,
       count: evidence?.length || 0,
-      evidence: evidence || [],
+      evidence: evidenceWithSignedUrls,
     });
   } catch (error: any) {
     return NextResponse.json(

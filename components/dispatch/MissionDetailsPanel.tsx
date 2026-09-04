@@ -126,17 +126,11 @@ export default function MissionDetailsPanel({
       if (uploadError) {
         throw uploadError;
       }
-
-      const { data: publicUrlData } = supabase.storage
-        .from("mission-evidence")
-        .getPublicUrl(filePath);
-
       const response = await fetchWithAuth(`/api/dispatch/missions/${missionId}/evidence`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           evidenceType: file.type.startsWith("image/") ? "photo" : "note",
-          fileUrl: publicUrlData.publicUrl,
           filePath,
           notes: `File uploaded: ${file.name}`,
           metadata: {
