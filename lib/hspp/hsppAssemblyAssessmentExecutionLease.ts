@@ -94,7 +94,7 @@ export type HsppAssemblyAssessmentExecutionLeaseRelease = {
     typeof HSPP_ASSEMBLY_ASSESSMENT_EXECUTION_LEASE_RELEASE_VERSION;
   leaseVersion:
     typeof HSPP_ASSEMBLY_ASSESSMENT_EXECUTION_LEASE_VERSION;
-  state: "RELEASED" | "NOT_OWNER";
+  state: "RELEASED" | "NOT_OWNER" | "CONTENDED";
   organizationId: string;
   assemblyId: string;
   leaseToken: string;
@@ -605,7 +605,8 @@ export async function releaseHsppAssemblyAssessmentExecutionLease({
 
   if (
     row.release_state !== "RELEASED" &&
-    row.release_state !== "NOT_OWNER"
+    row.release_state !== "NOT_OWNER" &&
+    row.release_state !== "CONTENDED"
   ) {
     throw new Error(
       "HSPP assessment execution lease release returned an invalid state.",

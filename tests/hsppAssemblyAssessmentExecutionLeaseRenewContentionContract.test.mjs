@@ -109,7 +109,7 @@ test("renew hardening leaves release semantics unchanged", () => {
 
   assert.match(
     source,
-    /state:\s*"RELEASED"\s*\|\s*"NOT_OWNER";/,
+    /state:\s*"RELEASED"\s*\|\s*"NOT_OWNER"\s*\|\s*"CONTENDED";/,
   );
 
   const migrationsDir =

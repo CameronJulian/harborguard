@@ -307,15 +307,22 @@ export async function runHsppSealedAssemblyRecoveryAssessment({
     throw error;
   } finally {
     try {
-      await releaseHsppAssemblyAssessmentExecutionLease({
-        supabase,
+      const release =
+        await releaseHsppAssemblyAssessmentExecutionLease({
+          supabase,
 
-        organizationId: leaseAcquisition.organizationId,
+          organizationId: leaseAcquisition.organizationId,
 
-        assemblyId: leaseAcquisition.assemblyId,
+          assemblyId: leaseAcquisition.assemblyId,
 
-        leaseToken: leaseAcquisition.leaseToken,
-      });
+          leaseToken: leaseAcquisition.leaseToken,
+        });
+
+      if (release.state === "CONTENDED") {
+        throw new Error(
+          "HSPP sealed assembly recovery lease release was contended.",
+        );
+      }
     } catch (releaseError) {
       if (primaryError === null) {
         throw releaseError;

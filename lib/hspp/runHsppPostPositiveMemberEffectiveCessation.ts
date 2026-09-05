@@ -45,7 +45,8 @@ export type HsppPostPositiveMemberEffectiveCessationLeaseReleaseSummary =
   | {
       state:
         "RELEASED" |
-        "NOT_OWNER";
+        "NOT_OWNER" |
+        "CONTENDED";
 
       error:
         null;

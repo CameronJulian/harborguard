@@ -115,7 +115,7 @@ test("Q13d7 orders preflight acquire re-read retry Q12 completion and release", 
 test("Q13d7 BUSY stops without retry identity Q12 completion or release", () => {
   assert.match(
     runtime,
-    /if\s*\(\s*leaseAcquisition\.state\s*===\s*"BUSY"\s*\)[\s\S]*?branch:\s*"EXECUTION_BUSY"[\s\S]*?leaseAcquisition,[\s\S]*?completion:\s*null[\s\S]*?retryIdentity:\s*null[\s\S]*?terminalResult:\s*null/,
+    /if\s*\(\s*leaseAcquisition\.state\s*===\s*"BUSY"\s*\|\|\s*leaseAcquisition\.state\s*===\s*"CONTENDED"\s*\)[\s\S]*?branch:\s*"EXECUTION_BUSY"[\s\S]*?leaseAcquisition,[\s\S]*?completion:\s*null[\s\S]*?retryIdentity:\s*null[\s\S]*?terminalResult:\s*null/,
   );
 });
 

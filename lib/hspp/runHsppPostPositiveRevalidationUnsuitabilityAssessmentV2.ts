@@ -95,7 +95,8 @@ export type HsppPostPositiveRevalidationAuthoritativeLeaseAcquisition =
 export type HsppPostPositiveRevalidationAuthoritativeLeaseReleaseResult = {
   state:
     "RELEASED" |
-    "NOT_OWNER";
+        "NOT_OWNER" |
+        "CONTENDED";
 
   organizationId:
     string;
@@ -112,7 +113,8 @@ export type HsppPostPositiveRevalidationAuthoritativeLeaseReleaseSummary =
   | {
       state:
         "RELEASED" |
-        "NOT_OWNER";
+        "NOT_OWNER" |
+        "CONTENDED";
 
       error:
         null;
