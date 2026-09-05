@@ -82,7 +82,7 @@ export type HsppAssemblyAssessmentExecutionLeaseRenew = {
     typeof HSPP_ASSEMBLY_ASSESSMENT_EXECUTION_LEASE_RENEW_VERSION;
   leaseVersion:
     typeof HSPP_ASSEMBLY_ASSESSMENT_EXECUTION_LEASE_VERSION;
-  state: "RENEWED" | "LOST";
+  state: "RENEWED" | "LOST" | "CONTENDED";
   organizationId: string;
   assemblyId: string;
   leaseToken: string;
@@ -453,13 +453,44 @@ export async function renewHsppAssemblyAssessmentExecutionLease({
 
   if (
     row.renew_state !== "RENEWED" &&
-    row.renew_state !== "LOST"
+    row.renew_state !== "LOST" &&
+    row.renew_state !== "CONTENDED"
   ) {
     throw new Error(
       "HSPP assessment execution lease renew returned an invalid state.",
     );
   }
 
+  if (row.renew_state === "CONTENDED") {
+    if (row.lease_expires_at !== null) {
+      throw new Error(
+        "CONTENDED HSPP execution lease renew must not expose an expiry.",
+      );
+    }
+
+    return {
+      operationVersion:
+        HSPP_ASSEMBLY_ASSESSMENT_EXECUTION_LEASE_RENEW_VERSION,
+
+      leaseVersion:
+        HSPP_ASSEMBLY_ASSESSMENT_EXECUTION_LEASE_VERSION,
+
+      state:
+        "CONTENDED",
+
+      organizationId:
+        normalizedOrganizationId,
+
+      assemblyId:
+        normalizedAssemblyId,
+
+      leaseToken:
+        normalizedLeaseToken,
+
+      expiresAt:
+        null,
+    };
+  }
   if (row.renew_state === "LOST") {
     if (row.lease_expires_at !== null) {
       throw new Error(
