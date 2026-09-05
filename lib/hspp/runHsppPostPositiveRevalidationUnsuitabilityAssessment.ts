@@ -63,6 +63,22 @@ export type HsppPostPositiveRevalidationAuthoritativeLeaseAcquisition =
 
       expiresAt:
         string;
+    }
+  | {
+      state:
+        "CONTENDED";
+
+      organizationId:
+        string;
+
+      assemblyId:
+        string;
+
+      leaseToken:
+        null;
+
+      expiresAt:
+        null;
     };
 
 
@@ -460,8 +476,8 @@ export async function runHsppPostPositiveRevalidationUnsuitabilityAssessment(
 
 
   if (
-    leaseAcquisition.state ===
-    "BUSY"
+    leaseAcquisition.state === "BUSY" ||
+    leaseAcquisition.state === "CONTENDED"
   ) {
     return {
       runnerVersion:
@@ -495,7 +511,9 @@ export async function runHsppPostPositiveRevalidationUnsuitabilityAssessment(
         null,
 
       busyUntil:
-        leaseAcquisition.expiresAt,
+        leaseAcquisition.state === "BUSY"
+          ? leaseAcquisition.expiresAt
+          : null,
 
       leaseRelease:
         null,

@@ -89,7 +89,7 @@ export type HsppSealedAssemblyRecoveryAssessmentExecutionBusyResult =
 
     leaseAcquisition: Extract<
       HsppAssemblyAssessmentExecutionLeaseAcquire,
-      { state: "BUSY" }
+      { state: "BUSY" | "CONTENDED" }
     >;
 
     completion: null;
@@ -206,7 +206,10 @@ export async function runHsppSealedAssemblyRecoveryAssessment({
       leaseSeconds,
     });
 
-  if (leaseAcquisition.state === "BUSY") {
+  if (
+    leaseAcquisition.state === "BUSY" ||
+    leaseAcquisition.state === "CONTENDED"
+  ) {
     return {
       runnerVersion: HSPP_SEALED_ASSEMBLY_RECOVERY_ASSESSMENT_RUNNER_VERSION,
 

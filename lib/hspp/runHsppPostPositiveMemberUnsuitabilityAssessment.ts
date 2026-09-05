@@ -308,8 +308,8 @@ export async function runHsppPostPositiveMemberUnsuitabilityAssessment(
     });
 
   if (
-    leaseAcquisition.state ===
-    "BUSY"
+    leaseAcquisition.state === "BUSY" ||
+    leaseAcquisition.state === "CONTENDED"
   ) {
     return {
       runnerVersion:
@@ -337,7 +337,9 @@ export async function runHsppPostPositiveMemberUnsuitabilityAssessment(
         null,
 
       busyUntil:
-        leaseAcquisition.expiresAt,
+        leaseAcquisition.state === "BUSY"
+          ? leaseAcquisition.expiresAt
+          : null,
 
       leaseRelease:
         null,

@@ -47,6 +47,34 @@ export type HsppAssemblyAssessmentExecutionLeaseAcquire =
       acquiredAt: string;
       renewedAt: string;
       expiresAt: string;
+    }
+  | {
+      operationVersion:
+        typeof HSPP_ASSEMBLY_ASSESSMENT_EXECUTION_LEASE_ACQUIRE_VERSION;
+
+      leaseVersion:
+        typeof HSPP_ASSEMBLY_ASSESSMENT_EXECUTION_LEASE_VERSION;
+
+      state:
+        "CONTENDED";
+
+      organizationId:
+        string;
+
+      assemblyId:
+        string;
+
+      leaseToken:
+        null;
+
+      acquiredAt:
+        null;
+
+      renewedAt:
+        null;
+
+      expiresAt:
+        null;
     };
 
 export type HsppAssemblyAssessmentExecutionLeaseRenew = {
@@ -223,11 +251,54 @@ export async function acquireHsppAssemblyAssessmentExecutionLease({
 
   if (
     row.acquire_state !== "ACQUIRED" &&
-    row.acquire_state !== "BUSY"
+    row.acquire_state !== "BUSY" &&
+    row.acquire_state !== "CONTENDED"
   ) {
     throw new Error(
       "HSPP assessment execution lease acquire returned an invalid state.",
     );
+  }
+
+  if (row.acquire_state === "CONTENDED") {
+    if (
+      row.returned_lease_token !== null ||
+      row.lease_acquired_at !== null ||
+      row.lease_renewed_at !== null ||
+      row.lease_expires_at !== null
+    ) {
+      throw new Error(
+        "CONTENDED HSPP execution lease must not expose lease ownership metadata.",
+      );
+    }
+
+    return {
+      operationVersion:
+        HSPP_ASSEMBLY_ASSESSMENT_EXECUTION_LEASE_ACQUIRE_VERSION,
+
+      leaseVersion:
+        HSPP_ASSEMBLY_ASSESSMENT_EXECUTION_LEASE_VERSION,
+
+      state:
+        "CONTENDED",
+
+      organizationId:
+        normalizedOrganizationId,
+
+      assemblyId:
+        normalizedAssemblyId,
+
+      leaseToken:
+        null,
+
+      acquiredAt:
+        null,
+
+      renewedAt:
+        null,
+
+      expiresAt:
+        null,
+    };
   }
 
   const acquiredAt =

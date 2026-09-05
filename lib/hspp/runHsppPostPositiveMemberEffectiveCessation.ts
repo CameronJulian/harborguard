@@ -298,8 +298,8 @@ export async function runHsppPostPositiveMemberEffectiveCessation(
     });
 
   if (
-    leaseAcquisition.state ===
-    "BUSY"
+    leaseAcquisition.state === "BUSY" ||
+    leaseAcquisition.state === "CONTENDED"
   ) {
     return {
       runnerVersion:
@@ -324,7 +324,9 @@ export async function runHsppPostPositiveMemberEffectiveCessation(
         null,
 
       busyUntil:
-        leaseAcquisition.expiresAt,
+        leaseAcquisition.state === "BUSY"
+          ? leaseAcquisition.expiresAt
+          : null,
 
       leaseRelease:
         null,
