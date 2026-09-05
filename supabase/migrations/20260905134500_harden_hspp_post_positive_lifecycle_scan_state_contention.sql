@@ -1,4 +1,4 @@
-﻿-- HarborGuard HSPP
+-- HarborGuard HSPP
 -- Harden post-positive lifecycle fair-scan CAS contention.
 --
 -- Forward-only replacement of the existing RPC.
