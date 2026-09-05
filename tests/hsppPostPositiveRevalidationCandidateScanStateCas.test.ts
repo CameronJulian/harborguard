@@ -623,3 +623,109 @@ test(
     );
   },
 );
+
+test(
+  "contended returns requested scope without claiming unobserved durable state",
+  async () => {
+    const mock =
+      createSupabase({
+        data: {
+          cas_state:
+            "CONTENDED",
+
+          state_version:
+            "hspp-post-positive-revalidation-candidate-scan-state-v1",
+
+          positive_checkpoint_id:
+            POSITIVE_CHECKPOINT_ID,
+
+          organization_id:
+            null,
+
+          subject_evidence_id:
+            null,
+
+          subject_integrity_fingerprint:
+            null,
+
+          cursor_observed_at:
+            null,
+
+          cursor_evidence_id:
+            null,
+
+          previous_cursor_observed_at:
+            null,
+
+          previous_cursor_evidence_id:
+            null,
+
+          created_at:
+            null,
+
+          updated_at:
+            null,
+        },
+      });
+
+    const result =
+      await compareAndSwapHsppPostPositiveRevalidationCandidateScanState({
+        supabase:
+          mock.supabase,
+
+        positiveCheckpointId:
+          POSITIVE_CHECKPOINT_ID,
+
+        expectedCursor:
+          CURSOR_A,
+
+        proposedCursor:
+          CURSOR_B,
+      });
+
+    assert.equal(
+      result.state,
+      "CONTENDED",
+    );
+
+    assert.equal(
+      result.positiveCheckpointId,
+      POSITIVE_CHECKPOINT_ID,
+    );
+
+    assert.equal(
+      result.organizationId,
+      null,
+    );
+
+    assert.equal(
+      result.subjectEvidenceId,
+      null,
+    );
+
+    assert.equal(
+      result.subjectIntegrityFingerprint,
+      null,
+    );
+
+    assert.equal(
+      result.currentCursor,
+      null,
+    );
+
+    assert.equal(
+      result.previousCursor,
+      null,
+    );
+
+    assert.equal(
+      result.createdAt,
+      null,
+    );
+
+    assert.equal(
+      result.updatedAt,
+      null,
+    );
+  },
+);

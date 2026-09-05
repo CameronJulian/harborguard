@@ -39,7 +39,8 @@ export type HsppPostPositiveRevalidationCandidateScanStateCasState =
   | "ADVANCED"
   | "EXACT_RETRY"
   | "NO_CHANGE"
-  | "STALE";
+  | "STALE"
+  | "CONTENDED";
 
 
 export type CompareAndSwapHsppPostPositiveRevalidationCandidateScanStateInput = {
@@ -72,13 +73,13 @@ export type CompareAndSwapHsppPostPositiveRevalidationCandidateScanStateResult =
     string;
 
   organizationId:
-    string;
+    string | null;
 
   subjectEvidenceId:
-    string;
+    string | null;
 
   subjectIntegrityFingerprint:
-    string;
+    string | null;
 
   currentCursor:
     | HsppPostPositiveRevalidationCandidateScanCursor
@@ -335,7 +336,8 @@ function requireState(
     value !== "ADVANCED" &&
     value !== "EXACT_RETRY" &&
     value !== "NO_CHANGE" &&
-    value !== "STALE"
+    value !== "STALE" &&
+    value !== "CONTENDED"
   ) {
     throw new Error(
       "R1 candidate scan-state CAS returned an unsupported state.",
@@ -462,24 +464,30 @@ compareAndSwapHsppPostPositiveRevalidationCandidateScanState({
 
 
   const organizationId =
-    requireUuid(
-      row.organization_id,
-      "scanState.organizationId",
-    );
+    state === "CONTENDED"
+      ? null
+      : requireUuid(
+          row.organization_id,
+          "scanState.organizationId",
+        );
 
 
   const subjectEvidenceId =
-    requireUuid(
-      row.subject_evidence_id,
-      "scanState.subjectEvidenceId",
-    );
+    state === "CONTENDED"
+      ? null
+      : requireUuid(
+          row.subject_evidence_id,
+          "scanState.subjectEvidenceId",
+        );
 
 
   const subjectIntegrityFingerprint =
-    requireFingerprint(
-      row.subject_integrity_fingerprint,
-      "scanState.subjectIntegrityFingerprint",
-    );
+    state === "CONTENDED"
+      ? null
+      : requireFingerprint(
+          row.subject_integrity_fingerprint,
+          "scanState.subjectIntegrityFingerprint",
+        );
 
 
   const currentCursor =
@@ -524,6 +532,7 @@ compareAndSwapHsppPostPositiveRevalidationCandidateScanState({
 
   if (
     state !== "STALE" &&
+    state !== "CONTENDED" &&
     (
       createdAt === null ||
       updatedAt === null
@@ -532,6 +541,23 @@ compareAndSwapHsppPostPositiveRevalidationCandidateScanState({
     throw new Error(
       "Persisted R1 candidate scan-state timestamps are required.",
     );
+  }
+
+
+  if (state === "CONTENDED") {
+    if (
+      organizationId !== null ||
+      subjectEvidenceId !== null ||
+      subjectIntegrityFingerprint !== null ||
+      currentCursor !== null ||
+      previousCursor !== null ||
+      createdAt !== null ||
+      updatedAt !== null
+    ) {
+      throw new Error(
+        "Contended R1 candidate scan-state CAS must not claim unobserved durable state.",
+      );
+    }
   }
 
 

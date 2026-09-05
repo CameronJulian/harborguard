@@ -11,6 +11,9 @@ const ROOT =
 const MIGRATION =
   "supabase/migrations/20260825160500_create_hspp_post_positive_revalidation_candidate_scan_state.sql";
 
+const HARDENING_MIGRATION =
+  "supabase/migrations/20260905152000_harden_hspp_revalidation_candidate_scan_state_lock_contention.sql";
+
 const RUNTIME =
   "lib/hspp/compareAndSwapHsppPostPositiveRevalidationCandidateScanState.ts";
 
@@ -45,6 +48,11 @@ const sql =
     MIGRATION,
   );
 
+const hardeningSql =
+  read(
+    HARDENING_MIGRATION,
+  );
+
 const runtime =
   read(
     RUNTIME,
@@ -58,6 +66,7 @@ test(
       const relativePath of
       [
         MIGRATION,
+        HARDENING_MIGRATION,
         RUNTIME,
       ]
     ) {
@@ -128,25 +137,25 @@ test(
 
 
 test(
-  "CAS serializes one Q14p scope and preserves four-state retry semantics",
+  "CAS serializes one Q14p scope with non-blocking five-state scheduling semantics",
   () => {
     assert.match(
-      sql,
+      hardeningSql,
       /security\s+definer[\s\S]*?set\s+search_path\s*=\s*public/i,
     );
 
     assert.match(
-      sql,
-      /pg_advisory_xact_lock\s*\([\s\S]*?harborguard:hspp-post-positive-revalidation-candidate-scan-state:[\s\S]*?p_positive_checkpoint_id/i,
+      hardeningSql,
+      /pg_try_advisory_xact_lock\s*\([\s\S]*?harborguard:hspp-post-positive-revalidation-candidate-scan-state:[\s\S]*?p_positive_checkpoint_id/i,
     );
 
     assert.match(
-      sql,
+      hardeningSql,
       /for\s+key\s+share/i,
     );
 
     assert.match(
-      sql,
+      hardeningSql,
       /for\s+update/i,
     );
 
@@ -157,10 +166,11 @@ test(
         "EXACT_RETRY",
         "NO_CHANGE",
         "STALE",
+        "CONTENDED",
       ]
     ) {
       assert.match(
-        sql,
+        hardeningSql,
         new RegExp(
           "'" + state + "'",
         ),
@@ -168,12 +178,12 @@ test(
     }
 
     assert.match(
-      sql,
+      hardeningSql,
       /previous_cursor_observed_at\s*=\s*v_state\.cursor_observed_at[\s\S]*?previous_cursor_evidence_id\s*=\s*v_state\.cursor_evidence_id/i,
     );
 
     assert.doesNotMatch(
-      sql,
+      hardeningSql,
       /p_proposed_cursor_observed_at\s*(?:>|>=|<|<=)\s*p_expected_cursor_observed_at/i,
     );
   },

@@ -581,6 +581,7 @@ for (
     "EXACT_RETRY",
     "NO_CHANGE",
     "STALE",
+    "CONTENDED",
   ] as const
 ) {
   test(
