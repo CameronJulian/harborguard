@@ -176,6 +176,81 @@ function createSupabase(
 
 
 test(
+  "returns CONTENDED without claiming persisted cursor state",
+  async () => {
+    const mock =
+      createSupabase({
+        data: [
+          makeRow({
+            state:
+              "CONTENDED",
+
+            current:
+              null,
+
+            previous:
+              null,
+
+            createdAt:
+              null,
+
+            updatedAt:
+              null,
+          }),
+        ],
+
+        error:
+          null,
+      });
+
+    const result =
+      await compareAndSwapHsppPostPositiveLifecycleScanState({
+        supabase:
+          mock.supabase,
+
+        organizationId:
+          ORGANIZATION_ID,
+
+        expectedCursor:
+          CURSOR_A,
+
+        proposedCursor:
+          CURSOR_B,
+      });
+
+    assert.equal(
+      result.state,
+      "CONTENDED",
+    );
+
+    assert.equal(
+      result.organizationId,
+      ORGANIZATION_ID,
+    );
+
+    assert.equal(
+      result.currentCursor,
+      null,
+    );
+
+    assert.equal(
+      result.previousCursor,
+      null,
+    );
+
+    assert.equal(
+      result.createdAt,
+      null,
+    );
+
+    assert.equal(
+      result.updatedAt,
+      null,
+    );
+  },
+);
+
+test(
   "scan-state CAS exposes explicit versions and RPC identity",
   () => {
     assert.equal(

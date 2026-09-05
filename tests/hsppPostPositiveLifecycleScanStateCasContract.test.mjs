@@ -1,4 +1,5 @@
-﻿import assert from "node:assert/strict";
+﻿import { readFileSync } from "node:fs";
+import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 
@@ -81,6 +82,15 @@ const runtime =
     client,
   );
 
+
+const hardeningSql =
+  readFileSync(
+    new URL(
+      "../supabase/migrations/20260905134500_harden_hspp_post_positive_lifecycle_scan_state_contention.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
 
 test(
   "scan-state schema is one organization-scoped non-authoritative state row",
@@ -173,20 +183,36 @@ test(
 
 
 test(
-  "CAS serialization is organization scoped and transaction local",
+  "CAS exposes non-blocking organization-scoped serialization contention",
   () => {
     assert.match(
-      sql,
-      /pg_advisory_xact_lock\s*\([\s\S]*?harborguard:hspp-post-positive-lifecycle-scan-state:/i,
+      hardeningSql,
+      /pg_try_advisory_xact_lock\s*\([\s\S]*?harborguard:hspp-post-positive-lifecycle-scan-state:/i,
     );
 
     assert.match(
-      sql,
+      hardeningSql,
+      /'CONTENDED'::text[\s\S]*?'hspp-post-positive-lifecycle-scan-state-v1'::text[\s\S]*?p_organization_id[\s\S]*?null::timestamptz[\s\S]*?null::uuid/i,
+    );
+  },
+);
+
+
+test(
+  "CAS serialization is organization scoped and transaction local",
+  () => {
+    assert.match(
+      hardeningSql,
+      /pg_try_advisory_xact_lock\s*\([\s\S]*?harborguard:hspp-post-positive-lifecycle-scan-state:/i,
+    );
+
+    assert.match(
+      hardeningSql,
       /public\.organizations/i,
     );
 
     assert.match(
-      sql,
+      hardeningSql,
       /public\.hspp_post_positive_lifecycle_scan_states[\s\S]*?for\s+update/i,
     );
   },

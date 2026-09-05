@@ -29,7 +29,8 @@ export type HsppPostPositiveLifecycleScanStateCasState =
   | "ADVANCED"
   | "EXACT_RETRY"
   | "NO_CHANGE"
-  | "STALE";
+  | "STALE"
+  | "CONTENDED";
 
 
 export type CompareAndSwapHsppPostPositiveLifecycleScanStateInput = {
@@ -442,7 +443,8 @@ compareAndSwapHsppPostPositiveLifecycleScanState({
     state !== "ADVANCED" &&
     state !== "EXACT_RETRY" &&
     state !== "NO_CHANGE" &&
-    state !== "STALE"
+    state !== "STALE" &&
+    state !== "CONTENDED"
   ) {
     throw new Error(
       "HSPP post-positive lifecycle scan-state CAS returned an invalid state.",
@@ -556,6 +558,25 @@ compareAndSwapHsppPostPositiveLifecycleScanState({
   ) {
     throw new Error(
       "HSPP post-positive lifecycle scan-state CAS returned incomplete persisted stale state.",
+    );
+  }
+
+
+  /*
+   * CONTENDED carries no persisted-state observation. Null cursor and
+   * timestamp fields therefore mean "not observed", not "durably absent".
+   */
+  if (
+    state === "CONTENDED" &&
+    (
+      currentCursor !== null ||
+      previousCursor !== null ||
+      createdAt !== null ||
+      updatedAt !== null
+    )
+  ) {
+    throw new Error(
+      "HSPP post-positive lifecycle scan-state CAS returned persisted state for CONTENDED.",
     );
   }
 
