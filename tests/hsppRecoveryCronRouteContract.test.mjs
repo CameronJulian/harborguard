@@ -675,3 +675,68 @@ test(
     }
   }
 );
+test(
+  "Q13g reports outer fatal recovery failures to Sentry without changing HTTP failure semantics",
+  () => {
+    assert.match(
+      source,
+      /import\s+\*\s+as\s+Sentry\s+from\s+["']@sentry\/nextjs["'];/
+    );
+
+    const outerCatch =
+      source.lastIndexOf(
+        "catch (error: unknown)"
+      );
+
+    assert.ok(
+      outerCatch >= 0,
+      "outer recovery catch must remain present"
+    );
+
+    const outerSource =
+      source.slice(
+        outerCatch
+      );
+
+    assert.match(
+      outerSource,
+      /Sentry\.captureException\s*\(\s*error\s*,/
+    );
+
+    assert.match(
+      outerSource,
+      /domain:\s*["']hspp["']/
+    );
+
+    assert.match(
+      outerSource,
+      /operation:\s*["']recovery-cron["']/
+    );
+
+    assert.match(
+      outerSource,
+      /boundary:\s*["']outer-request["']/
+    );
+
+    assert.match(
+      outerSource,
+      /console\.error\s*\(\s*["']\[hspp recovery cron\]["']/
+    );
+
+    assert.match(
+      outerSource,
+      /status:\s*500/
+    );
+
+    const beforeOuterCatch =
+      source.slice(
+        0,
+        outerCatch
+      );
+
+    assert.doesNotMatch(
+      beforeOuterCatch,
+      /Sentry\.captureException/
+    );
+  }
+);

@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import {
   randomUUID,
 } from "node:crypto";
@@ -1058,6 +1059,20 @@ export async function GET(
     });
   }
   catch (error: unknown) {
+    Sentry.captureException(
+      error,
+      {
+        tags: {
+          domain:
+            "hspp",
+          operation:
+            "recovery-cron",
+          boundary:
+            "outer-request",
+        },
+      }
+    );
+
     console.error(
       "[hspp recovery cron]",
       error
