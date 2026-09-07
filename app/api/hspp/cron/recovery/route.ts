@@ -927,6 +927,20 @@ export async function GET(
               };
             }
             catch (error: unknown) {
+              Sentry.captureException(
+                error,
+                {
+                  tags: {
+                    domain:
+                      "hspp",
+                    operation:
+                      "recovery-cron",
+                    boundary:
+                      "discovery-cursor-cas",
+                  },
+                }
+              );
+
               return {
                 status:
                   "ERROR" as const,

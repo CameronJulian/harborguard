@@ -793,3 +793,64 @@ test(
     );
   }
 );
+test(
+  "Q13g reports thrown discovery cursor CAS failures to Sentry while keeping STALE contention silent",
+  () => {
+    const casCall =
+      source.lastIndexOf(
+        "compareAndSwapHsppReservoirDiscoveryScanState"
+      );
+
+    assert.ok(
+      casCall >= 0,
+      "discovery cursor CAS call must remain present"
+    );
+
+    const casSection =
+      source.slice(
+        casCall,
+        source.indexOf(
+          "const openResults",
+          casCall
+        )
+      );
+
+    assert.match(
+      casSection,
+      /cas\.casState\s*===\s*"STALE"\s*\?\s*"STALE"\s+as const/
+    );
+
+    assert.match(
+      casSection,
+      /catch\s*\(\s*error:\s*unknown\s*\)[\s\S]*?Sentry\.captureException\s*\(\s*error\s*,/
+    );
+
+    assert.match(
+      casSection,
+      /boundary:\s*["']discovery-cursor-cas["']/
+    );
+
+    assert.match(
+      casSection,
+      /status:\s*"ERROR"\s+as\s+const/
+    );
+
+    assert.match(
+      casSection,
+      /error:\s*errorMessage\s*\(\s*error/
+    );
+
+    const staleBranch =
+      casSection.slice(
+        0,
+        casSection.indexOf(
+          "catch (error: unknown)"
+        )
+      );
+
+    assert.doesNotMatch(
+      staleBranch,
+      /boundary:\s*["']discovery-cursor-cas["']/
+    );
+  }
+);
