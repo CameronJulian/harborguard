@@ -244,6 +244,7 @@ export async function runPostLocationUpdateLifecycle(
     await detectFleetRisks({
       supabase,
       organizationId,
+      vehicleId,
     });
   } catch (riskError) {
     console.error(

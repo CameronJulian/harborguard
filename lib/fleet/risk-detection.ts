@@ -176,13 +176,28 @@ const DRIVER_FATIGUE_MIN_REST_MINUTES = 15;
 export async function detectFleetRisks(params: {
   supabase: any;
   organizationId: string;
+  vehicleId?: string;
 }) {
-  const { supabase, organizationId } = params;
+  const {
+    supabase,
+    organizationId,
+    vehicleId,
+  } = params;
 
-  const { data: vehicles, error: vehiclesError } = await supabase
+  let vehiclesQuery = supabase
     .from("vehicles")
     .select("id, nickname, registration_number")
     .eq("organization_id", organizationId);
+
+  if (vehicleId) {
+    vehiclesQuery =
+      vehiclesQuery.eq("id", vehicleId);
+  }
+
+  const {
+    data: vehicles,
+    error: vehiclesError,
+  } = await vehiclesQuery;
 
   if (vehiclesError) {
     throw new Error(vehiclesError.message);
