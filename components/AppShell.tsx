@@ -5,12 +5,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import Sidebar from "@/components/Sidebar";
+import type { UserRole } from "@/lib/rbac";
 
 type Props = {
   children: ReactNode;
 };
-
-type UserRole = "admin" | "manager" | "viewer";
 
 type ProfileRow = {
   id: string;
@@ -64,12 +63,12 @@ export default function AppShell({ children }: Props) {
 
       if (data) {
         const profile = data as ProfileRow;
-        setRole(profile.role || "admin");
+        setRole(profile.role || null);
       } else {
-        setRole("admin");
+        setRole(null);
       }
     } catch {
-      setRole("admin");
+      setRole(null);
     }
   }
 

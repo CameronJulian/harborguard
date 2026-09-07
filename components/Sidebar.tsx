@@ -1,10 +1,9 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { UserRole } from "@/lib/rbac";
 import { CSSProperties } from "react";
-
-type UserRole = "admin" | "manager" | "viewer";
 
 type Props = {
   email?: string | null;
@@ -36,6 +35,9 @@ export default function Sidebar({
   const pathname = usePathname();
 
   const canManageReports = role === "admin";
+  const canManageArchive =
+    role === "owner" ||
+    role === "admin";
 
   function navStyle(href: string): CSSProperties {
     const active = pathname === href;
@@ -145,6 +147,15 @@ export default function Sidebar({
           </>
         )}
 
+        {canManageArchive && (
+          <Link
+            href="/admin/archive-manifests"
+            style={navStyle("/admin/archive-manifests")}
+            onClick={onNavigate}
+          >
+            Archive Manifests
+          </Link>
+        )}
         <Link href="/batches" style={navStyle("/batches")} onClick={onNavigate}>
           Recent Batches
         </Link>
