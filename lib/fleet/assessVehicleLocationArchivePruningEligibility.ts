@@ -385,6 +385,44 @@ export async function assessVehicleLocationArchivePruningEligibility(
       prepared.archive
     );
 
+  function normalizeArchiveComparisonTimestamp(
+    value: string
+  ): string | null {
+    const timestamp =
+      Date.parse(value);
+
+    if (
+      !Number.isFinite(
+        timestamp
+      )
+    ) {
+      return null;
+    }
+
+    return new Date(
+      timestamp
+    ).toISOString();
+  }
+
+  const normalizedPreparedFirstRecordedAt =
+    normalizeArchiveComparisonTimestamp(
+      prepared.archive.firstRecordedAt
+    );
+
+  const normalizedManifestFirstRecordedAt =
+    normalizeArchiveComparisonTimestamp(
+      manifest.first_recorded_at
+    );
+
+  const normalizedPreparedLastRecordedAt =
+    normalizeArchiveComparisonTimestamp(
+      prepared.archive.lastRecordedAt
+    );
+
+  const normalizedManifestLastRecordedAt =
+    normalizeArchiveComparisonTimestamp(
+      manifest.last_recorded_at
+    );
   /*
    * A verified manifest is necessary but not sufficient.
    *
@@ -399,10 +437,14 @@ export async function assessVehicleLocationArchivePruningEligibility(
       manifest.vehicle_id ||
     prepared.archive.tripId !==
       manifest.trip_id ||
-    prepared.archive.firstRecordedAt !==
-      manifest.first_recorded_at ||
-    prepared.archive.lastRecordedAt !==
-      manifest.last_recorded_at ||
+    normalizedPreparedFirstRecordedAt === null ||
+    normalizedManifestFirstRecordedAt === null ||
+    normalizedPreparedLastRecordedAt === null ||
+    normalizedManifestLastRecordedAt === null ||
+    normalizedPreparedFirstRecordedAt !==
+      normalizedManifestFirstRecordedAt ||
+    normalizedPreparedLastRecordedAt !==
+      normalizedManifestLastRecordedAt ||
     prepared.archive.rowCount !==
       expectedRowCount ||
     prepared.archive.sha256 !==
