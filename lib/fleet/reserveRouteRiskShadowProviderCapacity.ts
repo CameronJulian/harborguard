@@ -13,7 +13,8 @@ export type RouteRiskShadowProviderCapacityDenialReason =
   | "organization_capacity_exhausted"
   | "global_concurrency_exhausted"
   | "organization_concurrency_exhausted"
-  | "duplicate_reservation";
+  | "duplicate_reservation"
+  | "capacity_contention";
 
 export type RouteRiskShadowProviderCapacityReservation = {
   capacityVersion: typeof ROUTE_RISK_SHADOW_PROVIDER_CAPACITY_VERSION;
@@ -65,6 +66,7 @@ const denialReasons = new Set<string>([
   "global_concurrency_exhausted",
   "organization_concurrency_exhausted",
   "duplicate_reservation",
+  "capacity_contention",
 ]);
 
 function unavailableReservation(): RouteRiskShadowProviderCapacityReservation {

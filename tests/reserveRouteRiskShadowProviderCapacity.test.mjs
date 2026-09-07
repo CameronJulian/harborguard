@@ -52,6 +52,7 @@ test("propagates supported denial reasons without allowing capacity", async () =
     "global_concurrency_exhausted",
     "organization_concurrency_exhausted",
     "duplicate_reservation",
+    "capacity_contention",
   ]) {
     const fake = rpcReturning([{ reservation_state: "DENIED", reason }]);
     const result = await reserveRouteRiskShadowProviderCapacity({
