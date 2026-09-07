@@ -736,7 +736,60 @@ test(
 
     assert.doesNotMatch(
       beforeOuterCatch,
-      /Sentry\.captureException/
+      /boundary:\s*["']outer-request["']/
+    );
+  }
+);
+test(
+  "Q14ag32D reports fatal reconstruction consumer failures to Sentry without changing completed Q13f HTTP success",
+  () => {
+    const reconstructionCatch =
+      source.indexOf(
+        "Q14ag32B deliberately propagates fatal consumer/read"
+      );
+
+    assert.ok(
+      reconstructionCatch >= 0,
+      "fatal reconstruction boundary must remain present"
+    );
+
+    const reconstructionSource =
+      source.slice(
+        reconstructionCatch,
+        source.indexOf(
+          "Q14ag35N scheduled-PAIR machine activation",
+          reconstructionCatch
+        )
+      );
+
+    assert.match(
+      reconstructionSource,
+      /Sentry\.captureException\s*\(\s*error\s*,/
+    );
+
+    assert.match(
+      reconstructionSource,
+      /domain:\s*["']hspp["']/
+    );
+
+    assert.match(
+      reconstructionSource,
+      /operation:\s*["']recovery-cron["']/
+    );
+
+    assert.match(
+      reconstructionSource,
+      /boundary:\s*["']reconstruction-consumer["']/
+    );
+
+    assert.match(
+      reconstructionSource,
+      /status:\s*"ERROR"\s+as\s+const/
+    );
+
+    assert.match(
+      reconstructionSource,
+      /error:\s*errorMessage\s*\(\s*error\s*\)/
     );
   }
 );

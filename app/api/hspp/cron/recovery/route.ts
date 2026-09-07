@@ -665,6 +665,20 @@ export async function GET(
                * an already-completed Q13f recovery cycle is not
                * retroactively converted into an HTTP-level failure.
                */
+              Sentry.captureException(
+                error,
+                {
+                  tags: {
+                    domain:
+                      "hspp",
+                    operation:
+                      "recovery-cron",
+                    boundary:
+                      "reconstruction-consumer",
+                  },
+                }
+              );
+
               return {
                 status:
                   "ERROR" as const,
