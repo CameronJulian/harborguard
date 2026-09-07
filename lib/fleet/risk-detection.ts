@@ -372,37 +372,52 @@ export async function detectFleetRisks(params: {
       if (alert) createdAlerts.push(alert);
     }
 
-    let insideAny = false;
+    const activeGeofences = geofences || [];
 
-    for (const zone of geofences || []) {
-      const distance = getDistanceMeters(
-        {
-          latitude: latest.latitude,
-          longitude: latest.longitude,
-        },
-        {
-          latitude: zone.center_lat,
-          longitude: zone.center_lng,
+    if (activeGeofences.length > 0) {
+      let insideAny = false;
+
+      for (const zone of activeGeofences) {
+        const distance = getDistanceMeters(
+          {
+            latitude: latest.latitude,
+            longitude: latest.longitude,
+          },
+          {
+            latitude: zone.center_lat,
+            longitude: zone.center_lng,
+          }
+        );
+
+        if (distance <= zone.radius_meters) {
+          insideAny = true;
+          break;
         }
-      );
-
-      if (distance <= zone.radius_meters) {
-        insideAny = true;
-        break;
       }
-    }
 
-    if (!insideAny && !openTypes.has("geofence_breach")) {
-      const message = String(vehicle.registration_number || "Unknown vehicle") + " outside allowed zone";
+      if (!insideAny && !openTypes.has("geofence_breach")) {
+        const message =
+          String(
+            vehicle.registration_number ||
+              "Unknown vehicle"
+          ) +
+          " outside allowed zone";
 
-      const alert = await createAlert(supabase, organizationId, {
-        vehicleId: vehicle.id,
-        alertType: "geofence_breach",
-        severity: "critical",
-        message,
-      });
+        const alert = await createAlert(
+          supabase,
+          organizationId,
+          {
+            vehicleId: vehicle.id,
+            alertType: "geofence_breach",
+            severity: "critical",
+            message,
+          }
+        );
 
-      if (alert) createdAlerts.push(alert);
+        if (alert) {
+          createdAlerts.push(alert);
+        }
+      }
     }
   }
 
