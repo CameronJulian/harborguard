@@ -97,7 +97,37 @@ test(
 
     assert.match(
       fastSource,
+      /loadVerifiedClaimsAuthorizationState\(\s*supabase,\s*userId\s*\)/
+    );
+
+    const loaderStart =
+      serverAuth.indexOf(
+        "async function loadVerifiedClaimsAuthorizationState("
+      );
+
+    assert.ok(
+      loaderStart >= 0
+    );
+
+    const loaderSource =
+      serverAuth.slice(
+        loaderStart,
+        fastStart
+      );
+
+    assert.match(
+      loaderSource,
+      /\.from\("profiles"\)/
+    );
+
+    assert.match(
+      loaderSource,
       /\.eq\("id", userId\)/
+    );
+
+    assert.match(
+      loaderSource,
+      /organization:organizations/
     );
 
     assert.match(
