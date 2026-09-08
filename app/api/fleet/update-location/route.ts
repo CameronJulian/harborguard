@@ -7,7 +7,7 @@ import {
   processVehicleLocationUpdate,
 } from "@/lib/fleet/processVehicleLocationUpdate";
 
-import { requireOrganization } from "@/lib/server-auth";
+import { requireOrganizationVerifiedClaims } from "@/lib/server-auth";
 import {
   authorizeRoadUserVehicle,
 } from "@/lib/fleet/authorizeRoadUserVehicle";
@@ -17,9 +17,9 @@ export async function POST(req: Request) {
     const {
       supabase,
       organizationId,
-      user,
+      userId,
       role,
-    } = await requireOrganization();
+    } = await requireOrganizationVerifiedClaims();
 
     const body =
       (await req.json()) as UpdateLocationBody;
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
       await authorizeRoadUserVehicle({
         supabase,
         organizationId,
-        userId: user.id,
+        userId,
         role,
         vehicleId: parsedInput.value.vehicleId,
       });
