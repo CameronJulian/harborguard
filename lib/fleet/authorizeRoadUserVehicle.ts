@@ -13,6 +13,8 @@ export type RoadUserVehicleAuthorizationResult =
         id: string;
         driver_id: string | null;
         assigned_user_id: string | null;
+        nickname: string | null;
+        registration_number: string | null;
       };
     }
   | {
@@ -38,7 +40,7 @@ export async function authorizeRoadUserVehicle({
 }: RoadUserVehicleAuthorizationInput): Promise<RoadUserVehicleAuthorizationResult> {
   const { data: vehicle, error } = await supabase
     .from("vehicles")
-    .select("id, driver_id, assigned_user_id")
+    .select("id, driver_id, assigned_user_id, nickname, registration_number")
     .eq("id", vehicleId)
     .eq("organization_id", organizationId)
     .maybeSingle();

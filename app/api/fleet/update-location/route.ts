@@ -55,6 +55,7 @@ export async function POST(req: Request) {
         supabase,
         organizationId,
         location: parsedInput.value,
+      authorizedVehicle: vehicleAuthorization.vehicle,
       });
 
     if (!result.ok) {

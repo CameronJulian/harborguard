@@ -57,6 +57,11 @@ export type ProcessVehicleLocationUpdateInput = {
   organizationId: string;
   location: ParsedUpdateLocationInput;
   hsppEvidenceId?: string | null;
+  authorizedVehicle?: {
+    id: string;
+    nickname: string | null;
+    registration_number: string | null;
+  } | null;
 };
 
 export type ProcessVehicleLocationUpdateResult =
@@ -97,6 +102,7 @@ export async function processVehicleLocationUpdate({
   organizationId,
   location,
   hsppEvidenceId = null,
+  authorizedVehicle = null,
 }: ProcessVehicleLocationUpdateInput): Promise<ProcessVehicleLocationUpdateResult> {
   const {
     vehicleId,
@@ -110,21 +116,27 @@ export async function processVehicleLocationUpdate({
     recordedAt,
   } = location;
 
-  const {
-    vehicle,
-    error: vehicleError,
-  } = await getVehicleForLocationUpdate({
-    supabase,
-    organizationId,
-    vehicleId,
-  });
+  let vehicle = authorizedVehicle;
 
-  if (vehicleError || !vehicle) {
-    return {
-      ok: false,
-      error: vehicleError?.message || "Vehicle not found.",
-      errorType: "vehicle_not_found",
-    };
+  if (!vehicle) {
+    const {
+      vehicle: loadedVehicle,
+      error: vehicleError,
+    } = await getVehicleForLocationUpdate({
+      supabase,
+      organizationId,
+      vehicleId,
+    });
+
+    if (vehicleError || !loadedVehicle) {
+      return {
+        ok: false,
+        error: vehicleError?.message || "Vehicle not found.",
+        errorType: "vehicle_not_found",
+      };
+    }
+
+    vehicle = loadedVehicle;
   }
 
   const occurredAt =
