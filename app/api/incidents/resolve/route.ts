@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 import { createAuditLog } from "@/lib/audit";
 
@@ -9,14 +9,15 @@ type ResolveIncidentBody = {
 
 export async function POST(req: Request) {
   try {
-    const { supabase, organizationId, user } = await requireOrganization();
+    const { supabase, organizationId, user } =
+      await requireOrganization();
 
     const body = (await req.json()) as ResolveIncidentBody;
     const incidentId = String(body.id || "").trim();
 
-const resolutionNote = String(
-  body.resolutionNote || ""
-).trim();
+    const resolutionNote = String(
+      body.resolutionNote || ""
+    ).trim();
 
     if (!incidentId) {
       return NextResponse.json(
@@ -25,50 +26,71 @@ const resolutionNote = String(
       );
     }
 
-    const { data: incident, error: incidentError } = await supabase
+    /*
+     * Preserve the pre-resolution incident read for audit metadata and
+     * existing 404 semantics.
+     */
+    const {
+      data: incident,
+      error: incidentError,
+    } = await supabase
       .from("incidents")
-      .select("id, incident_code, summary, status, vehicle_alert_id")
+      .select(
+        "id, incident_code, summary, status, vehicle_alert_id"
+      )
       .eq("id", incidentId)
       .eq("organization_id", organizationId)
       .maybeSingle();
 
     if (incidentError || !incident) {
       return NextResponse.json(
-        { error: incidentError?.message || "Incident not found." },
+        {
+          error:
+            incidentError?.message ||
+            "Incident not found.",
+        },
         { status: 404 }
       );
     }
 
-    const { error: updateError } = await supabase
-      .from("incidents")
-      .update({
-        status: "Resolved",
-        resolved_by: user?.id ?? null,
-        resolved_at: new Date().toISOString(),
-        resolution_note: resolutionNote || null,
-      })
-      .eq("id", incidentId)
-      .eq("organization_id", organizationId);
+    /*
+     * Incident + linked alert resolution must cross one PostgreSQL
+     * transaction boundary. The RPC locks and validates both rows before
+     * mutation, preventing a partially-resolved lifecycle state.
+     */
+    const {
+      data: resolutionRows,
+      error: resolutionError,
+    } = await supabase.rpc(
+      "resolve_incident_with_linked_alert",
+      {
+        p_organization_id: organizationId,
+        p_incident_id: incidentId,
+        p_resolution_note:
+          resolutionNote || null,
+      }
+    );
 
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    if (resolutionError) {
+      return NextResponse.json(
+        { error: resolutionError.message },
+        { status: 500 }
+      );
     }
 
-    if (incident.vehicle_alert_id) {
-      const { error: alertResolveError } = await supabase
-        .from("vehicle_alerts")
-        .update({
-          is_resolved: true,
-          resolved_at: new Date().toISOString(),
-          resolution_notes: resolutionNote || "Resolved via incident management.",
-        })
-        .eq("id", incident.vehicle_alert_id)
-        .eq("organization_id", organizationId)
-        .eq("is_resolved", false);
+    const resolution =
+      Array.isArray(resolutionRows)
+        ? resolutionRows[0]
+        : resolutionRows;
 
-      if (alertResolveError) {
-        console.error("Failed to resolve linked alert:", alertResolveError);
-      }
+    if (!resolution) {
+      return NextResponse.json(
+        {
+          error:
+            "Incident resolution returned no lifecycle state.",
+        },
+        { status: 500 }
+      );
     }
 
     await createAuditLog({
@@ -80,8 +102,18 @@ const resolutionNote = String(
         incidentCode: incident.incident_code,
         previousStatus: incident.status,
         summary: incident.summary,
-        resolvedAt: new Date().toISOString(),
+        resolvedAt:
+          resolution.lifecycle_resolved_at ??
+          new Date().toISOString(),
         resolutionNote,
+        linkedVehicleAlertId:
+          resolution.linked_vehicle_alert_id ??
+          incident.vehicle_alert_id ??
+          null,
+        linkedAlertResolved:
+          resolution.linked_alert_resolved ??
+          null,
+        atomicLifecycleResolution: true,
       },
     });
 
@@ -91,17 +123,13 @@ const resolutionNote = String(
     });
   } catch (err: unknown) {
     const message =
-      err instanceof Error ? err.message : "Failed to resolve incident.";
+      err instanceof Error
+        ? err.message
+        : "Failed to resolve incident.";
 
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: message },
+      { status: 500 }
+    );
   }
 }
-
-
-
-
-
-
-
-
-
