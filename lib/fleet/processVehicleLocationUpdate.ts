@@ -17,9 +17,6 @@ import {
   runTripStatusLifecycle,
   runPostLocationUpdateLifecycle,
 } from "@/lib/fleet/runPostLocationUpdateLifecycle";
-import {
-  recordCrowdLocationQualityOutcome,
-} from "@/lib/fleet/recordCrowdLocationQualityOutcome";
 import type {
   ParsedUpdateLocationInput,
 } from "@/lib/fleet/parseUpdateLocationInput";
@@ -64,6 +61,15 @@ export type ProcessVehicleLocationUpdateInput = {
   } | null;
 };
 
+export type CrowdLocationQualityObservabilityEvent = {
+  source: ParsedUpdateLocationInput["source"];
+  outcome:
+    | "accepted"
+    | "jitter"
+    | "gps_spike";
+  occurredAt: string;
+};
+
 export type ProcessVehicleLocationUpdateResult =
   | {
       ok: false;
@@ -73,10 +79,14 @@ export type ProcessVehicleLocationUpdateResult =
   | {
       ok: true;
       skipped: "jitter";
+      observabilityEvent:
+        CrowdLocationQualityObservabilityEvent;
     }
   | {
       ok: true;
       skipped: "gps_spike";
+      observabilityEvent:
+        CrowdLocationQualityObservabilityEvent;
     }
   | {
       ok: true;
@@ -95,6 +105,8 @@ export type ProcessVehicleLocationUpdateResult =
         recordedAt: string;
       };
       activeTripId: string | null;
+      observabilityEvent:
+        CrowdLocationQualityObservabilityEvent;
     };
 
 export async function processVehicleLocationUpdate({
@@ -141,14 +153,12 @@ export async function processVehicleLocationUpdate({
 
   const occurredAt =
     recordedAt ?? new Date().toISOString();
-
   const lastPoint =
     await getLatestVehicleLocation({
       supabase,
       organizationId,
       vehicleId,
     });
-
   const telemetryAnalysis =
     await analyzeVehicleLocationTelemetry({
       supabase,
@@ -201,14 +211,7 @@ export async function processVehicleLocationUpdate({
       harshCorneringMaximumIntervalSeconds:
         HARSH_CORNERING_MAX_INTERVAL_SECONDS,
     });
-
   if (telemetryAnalysis.skipped) {
-    await recordCrowdLocationQualityOutcome({
-      source,
-      outcome: telemetryAnalysis.skipped,
-      occurredAt,
-    });
-
     if (requestedStatus === "delivered") {
       const activeTrip =
         await getActiveVehicleTrip({
@@ -234,6 +237,11 @@ export async function processVehicleLocationUpdate({
     return {
       ok: true,
       skipped: telemetryAnalysis.skipped,
+      observabilityEvent: {
+        source,
+        outcome: telemetryAnalysis.skipped,
+        occurredAt,
+      },
     };
   }
 
@@ -247,7 +255,6 @@ export async function processVehicleLocationUpdate({
     roadSpeedLimitResolvedLatitude,
     roadSpeedLimitResolvedLongitude,
   } = telemetryAnalysis;
-
   const {
     error: locationError,
   } = await createVehicleLocation({
@@ -267,7 +274,6 @@ export async function processVehicleLocationUpdate({
     roadSpeedLimitResolvedLongitude,
     hsppEvidenceId,
   });
-
   if (locationError) {
     return {
       ok: false,
@@ -275,23 +281,14 @@ export async function processVehicleLocationUpdate({
       errorType: "location_persistence",
     };
   }
-
-  await recordCrowdLocationQualityOutcome({
-    source,
-    outcome: "accepted",
-    occurredAt,
-  });
-
   const activeTrip =
     await getActiveVehicleTrip({
       supabase,
       organizationId,
       vehicleId,
     });
-
   const activeTripId =
     activeTrip?.id || tripId || null;
-
   await runPostLocationUpdateLifecycle({
     supabase,
     organizationId,
@@ -313,7 +310,6 @@ export async function processVehicleLocationUpdate({
     harshCorneringCandidate,
     speedingCandidate,
   });
-
   return {
     ok: true,
     skipped: null,
@@ -332,5 +328,10 @@ export async function processVehicleLocationUpdate({
       recordedAt: occurredAt,
     },
     activeTripId,
+    observabilityEvent: {
+      source,
+      outcome: "accepted",
+      occurredAt,
+    },
   };
 }

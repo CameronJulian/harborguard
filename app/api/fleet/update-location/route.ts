@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import {
   parseUpdateLocationInput,
   type UpdateLocationBody,
@@ -6,6 +6,9 @@ import {
 import {
   processVehicleLocationUpdate,
 } from "@/lib/fleet/processVehicleLocationUpdate";
+import {
+  recordCrowdLocationQualityOutcome,
+} from "@/lib/fleet/recordCrowdLocationQualityOutcome";
 
 import { requireOrganizationVerifiedClaims } from "@/lib/server-auth";
 import {
@@ -69,6 +72,12 @@ export async function POST(req: Request) {
         }
       );
     }
+    after(async () => {
+      await recordCrowdLocationQualityOutcome(
+        result.observabilityEvent
+      );
+    });
+
 
     if (result.skipped === "jitter") {
       return NextResponse.json({
