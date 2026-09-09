@@ -49,7 +49,7 @@ test(
   () => {
     const busyIndex =
       executableSource.indexOf(
-        'leaseAcquisition.state ===\n    "BUSY"',
+        'leaseAcquisition.state === "BUSY"',
       );
 
     const selectionIndex =

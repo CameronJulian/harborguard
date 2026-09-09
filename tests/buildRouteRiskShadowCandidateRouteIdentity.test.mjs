@@ -324,7 +324,7 @@ test("persists exact candidate-route identity inside the isolated shadow metadat
   );
   assert.match(
     productionRoute,
-    /metadata:\s*\{\s*evidenceSufficiency,\s*routeEvidenceScope,\s*candidateRouteIdentity,\s*advisoryRouteForecast,\s*travelCostProvenance,\s*\}/
+    /metadata:\s*\{\s*evidenceSufficiency,\s*forecastSufficiency,\s*routeEvidenceScope,\s*candidateRouteIdentity,\s*advisoryRouteForecast,\s*travelCostProvenance,\s*\}/
   );
   assert.match(
     productionRoute,

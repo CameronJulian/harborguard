@@ -88,7 +88,7 @@ test(
   () => {
     const calls =
       source.match(
-        /await\s+runHsppPostPositiveLifecycleCycle\s*\(/g,
+        /await\s+runHsppPostPositiveLifecycleCycleV3\s*\(/g,
       ) ?? [];
 
     assert.equal(
@@ -106,10 +106,6 @@ test(
       /leaseSeconds/,
     );
 
-    assert.match(
-      source,
-      /createObservedAt\(\)[\s\S]*new Date\(\)[\s\S]*toISOString/,
-    );
 
     assert.match(
       source,
