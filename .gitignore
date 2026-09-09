@@ -98,3 +98,58 @@ _audit-backups/
 *.backup
 Weather*.txt
 _audit-output/
+# ========================================
+# HarborGuard Local Development Artifacts
+# ========================================
+
+# Local HSPP integration harnesses
+/tests/hsppLocalCanonicalH1Decision.integration.ts
+/tests/hsppLocalCanonicalH1PositiveCheckpoint.integration.ts
+/tests/hsppLocalCanonicalR1Selection.integration.ts
+/tests/hsppLocalCanonicalR1SelectionV2.integration.ts
+/tests/hsppLocalH1Decision.integration.ts
+/tests/hsppLocalH1PositiveCheckpoint.integration.ts
+/tests/hsppLocalQ13fRecoveryQ12.integration.ts
+
+# Historical implementation / validation scripts
+/c1-controlled-validation.ps1
+/c1a-reprocess-validation.ts
+/representativeness-implementation.ps1
+/scoring-version-distribution.ps1
+
+# Local HarborGuard progress snapshots
+/HarborGuard_Progress_Invention_Implementation_*.md
+
+# Local engineering-master snapshots
+/HarborGuard_Engineering_Master_CURRENT.md
+/HarborGuard_Engineering_Master_UPDATED_*.md
+
+# Historical source snapshots
+*.before-*
+*.before-*.ts
+*.before-*.tsx
+*.before-*.mjs
+*.before-*.md
+*.repair-temp
+*.b4-backup
+
+# Historical local HarborGuard evidence
+/B7490-*.txt
+/HarborGuard-B7490-*.txt
+/HERE-Live-Flow-Identity-Shape-*.txt
+/Here-Traffic-Flow-*.txt
+/Traffic-Flow-*.txt
+/*-Insertion-Point.txt
+/*-Insertion-Points.txt
+/*-Validation-*.txt
+/*-Verification-*.txt
+
+# Local audit archives
+/_audit-output.zip
+/_audit-output (*.zip
+# Final classified local-only artifacts
+/Existing-Intelligence-Source-Registry-Usage.txt
+/Fleet-Telemetry-First-Implementation-Decision.txt
+/HarborGuard-Supabase-Migration-Debug-RAW-*.txt
+/HarborGuard-Supabase-Migration-Debug-SAFE-*.txt
+/HarborGuard_Engineering_Master.*.bak.md
