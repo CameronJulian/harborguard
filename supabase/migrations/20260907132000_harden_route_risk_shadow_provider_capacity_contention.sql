@@ -1,4 +1,4 @@
-﻿-- HarborGuard: bound route-risk shadow provider-capacity lock contention.
+-- HarborGuard: bound route-risk shadow provider-capacity lock contention.
 --
 -- The global advisory-lock identity is deliberately preserved because
 -- reservation decisions enforce global call and concurrency limits atomically.
