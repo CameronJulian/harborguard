@@ -11,3 +11,8 @@ export const ratelimit = new Ratelimit({
   limiter: Ratelimit.slidingWindow(10, "10 s"),
   analytics: true,
 });
+export const fleetLiveRatelimit = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(120, "10 s"),
+  analytics: true,
+});

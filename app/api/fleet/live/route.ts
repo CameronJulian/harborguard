@@ -1,5 +1,6 @@
-﻿import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
+import { fleetLiveRatelimit } from "@/lib/ratelimit";
 
 import {
   readHsppEvidenceForOperationalUse,
@@ -101,10 +102,30 @@ function buildDriverProfile(params: {
   };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const { supabase, organizationId } =
       await requireOrganization();
+
+    const ip =
+      request.headers.get("x-forwarded-for") ??
+      request.headers.get("x-real-ip") ??
+      "anonymous";
+
+    const rate =
+      await fleetLiveRatelimit.limit(
+        `fleet-live:${organizationId}:${ip}`
+      );
+
+    if (!rate.success) {
+      return NextResponse.json(
+        {
+          error:
+            "Too many Fleet Live requests. Please retry shortly.",
+        },
+        { status: 429 }
+      );
+    }
 
     const { data: vehicles, error: vehiclesError } =
       await supabase
