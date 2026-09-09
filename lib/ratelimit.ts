@@ -17,11 +17,60 @@ export const fleetLiveRatelimit = new Ratelimit({
   limiter: Ratelimit.slidingWindow(120, "10 s"),
   analytics: true,
 });
+export const fleetPanicRatelimit = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(10, "60 s"),
+  analytics: true,
+  prefix: "ratelimit:fleet-panic",
+});
+
 export const routeSafetyPredictRatelimit = new Ratelimit({
   redis,
   limiter: Ratelimit.slidingWindow(10, "10 s"),
   analytics: true,
 });
+class LocalFleetPanicRatelimit {
+  private readonly requests = new Map<string, number[]>();
+  private readonly maxRequests = 10;
+  private readonly windowMs = 60_000;
+
+  async limit(identifier: string) {
+    const now = Date.now();
+    const windowStart = now - this.windowMs;
+    const prior = this.requests.get(identifier) ?? [];
+    const active = prior.filter((timestamp) => timestamp > windowStart);
+    const success = active.length < this.maxRequests;
+
+    if (success) {
+      active.push(now);
+    }
+
+    this.requests.set(identifier, active);
+
+    const oldest = active[0] ?? now;
+    const reset = oldest + this.windowMs;
+
+    return {
+      success,
+      limit: this.maxRequests,
+      remaining: Math.max(
+        0,
+        this.maxRequests - active.length
+      ),
+      reset,
+    };
+  }
+}
+
+export const localFleetPanicRatelimit =
+  new LocalFleetPanicRatelimit();
+
+export function shouldUseLocalFleetPanicRatelimit(): boolean {
+  return (
+    process.env.HARBORGUARD_LOCAL_LOAD_TEST === "true"
+  );
+}
+
 class LocalRouteSafetyPredictRatelimit {
   private readonly requests =
     new Map<string, number[]>();

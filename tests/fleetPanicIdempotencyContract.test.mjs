@@ -268,11 +268,25 @@ test(
 );
 
 test(
-  "panic idempotency change does not add rate limiting yet",
+  "existing Panic idempotency remains ahead of rate limiting",
   () => {
-    assert.doesNotMatch(
-      route,
-      /panicRatelimit|panicRateLimit|fleetPanicRatelimit/
-    );
+    const duplicateReturn =
+      route.indexOf(
+        'skipped: "duplicate_open_panic"'
+      );
+
+    const limiter =
+      route.indexOf(
+        "panicRateLimitResult"
+      );
+
+    const canonicalRecovery =
+      route.indexOf(
+        'alertError.code === "23505"'
+      );
+
+    assert.ok(duplicateReturn >= 0);
+    assert.ok(limiter > duplicateReturn);
+    assert.ok(canonicalRecovery > limiter);
   }
 );

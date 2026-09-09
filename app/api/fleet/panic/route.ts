@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import webpush from "web-push";
 import { requireOrganization } from "@/lib/server-auth";
+import {
+  fleetPanicRatelimit,
+  localFleetPanicRatelimit,
+  shouldUseLocalFleetPanicRatelimit,
+} from "@/lib/ratelimit";
 import { createCommandCenterNotification } from "@/lib/command-center/notifications";
 
 webpush.setVapidDetails(
@@ -21,7 +26,7 @@ function getBaseUrl(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const { supabase, organizationId } = await requireOrganization();
+    const { supabase, organizationId, user } = await requireOrganization();
 
     const body = (await req.json()) as PanicBody;
 
@@ -90,6 +95,33 @@ export async function POST(req: Request) {
           error: null,
         },
       });
+    }
+
+    const ip =
+      req.headers.get("x-forwarded-for") ??
+      req.headers.get("x-real-ip") ??
+      "unknown";
+
+    const panicRateLimitKey =
+      `fleet-panic:${organizationId}:${user.id}:${ip}`;
+
+    const panicRateLimitResult =
+      shouldUseLocalFleetPanicRatelimit()
+        ? await localFleetPanicRatelimit.limit(
+            panicRateLimitKey
+          )
+        : await fleetPanicRatelimit.limit(
+            panicRateLimitKey
+          );
+
+    if (!panicRateLimitResult.success) {
+      return NextResponse.json(
+        {
+          error:
+            "Too many new panic alert requests. Please retry shortly.",
+        },
+        { status: 429 }
+      );
     }
 
     const { data: latestLocation } = await supabase
