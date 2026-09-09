@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
-import { fleetLiveRatelimit } from "@/lib/ratelimit";
+import {
+  fleetLiveRatelimit,
+  localFleetLiveRatelimit,
+  shouldUseLocalFleetLiveRatelimit,
+} from "@/lib/ratelimit";
 
 import {
   readHsppEvidenceForOperationalUse,
@@ -113,9 +117,13 @@ export async function GET(request: NextRequest) {
       "anonymous";
 
     const rate =
-      await fleetLiveRatelimit.limit(
-        `fleet-live:${organizationId}:${ip}`
-      );
+      shouldUseLocalFleetLiveRatelimit()
+        ? await localFleetLiveRatelimit.limit(
+            `fleet-live:${organizationId}:${ip}`
+          )
+        : await fleetLiveRatelimit.limit(
+            `fleet-live:${organizationId}:${ip}`
+          );
 
     if (!rate.success) {
       return NextResponse.json(

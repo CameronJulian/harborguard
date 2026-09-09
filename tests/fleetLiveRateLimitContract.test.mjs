@@ -27,7 +27,7 @@ test("Fleet Live owns a dedicated rate limiter", () => {
 test("Fleet Live imports its dedicated limiter", () => {
   assert.match(
     route,
-    /import\s+\{\s*fleetLiveRatelimit\s*\}\s+from\s+"@\/lib\/ratelimit"/
+    /import\s+\{[\s\S]*?\bfleetLiveRatelimit\b[\s\S]*?\}\s+from\s+"@\/lib\/ratelimit"/
   );
 });
 
