@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import webpush from "web-push";
 import { requireOrganization } from "@/lib/server-auth";
 import { createCommandCenterNotification } from "@/lib/command-center/notifications";
@@ -52,6 +52,46 @@ export async function POST(req: Request) {
       );
     }
 
+    const { data: existingOpenPanic, error: existingOpenPanicError } =
+      await supabase
+        .from("vehicle_alerts")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .eq("vehicle_id", vehicleId)
+        .eq("alert_type", "panic")
+        .eq("is_resolved", false)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (existingOpenPanicError) {
+      return NextResponse.json(
+        { error: existingOpenPanicError.message },
+        { status: 500 }
+      );
+    }
+
+    if (existingOpenPanic) {
+      return NextResponse.json({
+        success: true,
+        skipped: "duplicate_open_panic",
+        message: "A panic alert is already active for this vehicle.",
+        vehicle: {
+          id: vehicle.id,
+          nickname: vehicle.nickname,
+          registrationNumber: vehicle.registration_number,
+        },
+        alert: existingOpenPanic,
+        activeTripId:
+          existingOpenPanic.trip_id ?? requestedTripId ?? null,
+        notification: {
+          sent: false,
+          result: { skipped: "duplicate_open_panic" },
+          error: null,
+        },
+      });
+    }
+
     const { data: latestLocation } = await supabase
       .from("vehicle_locations")
       .select("latitude, longitude, recorded_at")
@@ -94,7 +134,48 @@ export async function POST(req: Request) {
       .single();
 
     if (alertError) {
-      return NextResponse.json({ error: alertError.message }, { status: 500 });
+      if (alertError.code === "23505") {
+        const {
+          data: canonicalOpenPanic,
+          error: canonicalOpenPanicError,
+        } = await supabase
+          .from("vehicle_alerts")
+          .select("*")
+          .eq("organization_id", organizationId)
+          .eq("vehicle_id", vehicleId)
+          .eq("alert_type", "panic")
+          .eq("is_resolved", false)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (!canonicalOpenPanicError && canonicalOpenPanic) {
+          return NextResponse.json({
+            success: true,
+            skipped: "duplicate_open_panic",
+            message:
+              "A panic alert is already active for this vehicle.",
+            vehicle: {
+              id: vehicle.id,
+              nickname: vehicle.nickname,
+              registrationNumber: vehicle.registration_number,
+            },
+            alert: canonicalOpenPanic,
+            activeTripId:
+              canonicalOpenPanic.trip_id ?? finalTripId,
+            notification: {
+              sent: false,
+              result: { skipped: "duplicate_open_panic" },
+              error: null,
+            },
+          });
+        }
+      }
+
+      return NextResponse.json(
+        { error: alertError.message },
+        { status: 500 }
+      );
     }
 
     const { error: incidentError } = await supabase
