@@ -26,7 +26,7 @@ const securityHeaders = [
   {
     key: "Content-Security-Policy-Report-Only",
     value:
-      "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https://*.tile.openstreetmap.org; connect-src 'self' https://ubdgpebpxuimrxvrjjet.supabase.co wss://ubdgpebpxuimrxvrjjet.supabase.co https://o4511467222204416.ingest.us.sentry.io; worker-src 'self' blob:; manifest-src 'self'; media-src 'self' blob:; frame-src 'none';",
+      "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https://*.tile.openstreetmap.org; connect-src 'self' https://ubdgpebpxuimrxvrjjet.supabase.co wss://ubdgpebpxuimrxvrjjet.supabase.co https://o4511467222204416.ingest.us.sentry.io; worker-src 'self' blob:; manifest-src 'self'; media-src 'self' blob:; frame-src 'none'; report-uri /api/security/csp-report;",
   },
 ];
 
