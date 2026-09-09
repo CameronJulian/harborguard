@@ -86,7 +86,7 @@ const runtime =
 const hardeningSql =
   readFileSync(
     new URL(
-      "../supabase/migrations/20260905134500_harden_hspp_post_positive_lifecycle_scan_state_contention.sql",
+      "../supabase/migrations/20260909154500_fix_hspp_post_positive_lifecycle_scan_state_organization_ambiguity.sql",
       import.meta.url,
     ),
     "utf8",
@@ -478,6 +478,20 @@ test(
     assert.match(
       runtimeTestSource,
       /2026-08-23T12:00:00\.000001\+00:00/,
+    );
+  },
+);
+test(
+  "latest CAS migration qualifies organization_id in the final update",
+  () => {
+    assert.match(
+      hardeningSql,
+      /update\s+public\.hspp_post_positive_lifecycle_scan_states\s+as\s+scan_state[\s\S]*?where\s+scan_state\.organization_id\s*=\s*p_organization_id/i,
+    );
+
+    assert.doesNotMatch(
+      hardeningSql,
+      /where\s+organization_id\s*=\s*p_organization_id/i,
     );
   },
 );
