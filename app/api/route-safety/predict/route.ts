@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
+import {
+  localRouteSafetyPredictRatelimit,
+  routeSafetyPredictRatelimit,
+  shouldUseLocalRouteSafetyPredictRatelimit,
+} from "@/lib/ratelimit";
 import { loadWeather } from "@/lib/weather/provider";
 import {
   buildTrafficIntelligence,
@@ -454,6 +459,27 @@ function recommendationFor(type: string | null, severity: string | null) {
 export async function POST(req: NextRequest) {
   try {
     const { supabase, organizationId, user } = await requireOrganization();
+
+    const ip =
+      req.headers.get("x-forwarded-for") ??
+      req.headers.get("x-real-ip") ??
+      "unknown";
+
+    const rate =
+      shouldUseLocalRouteSafetyPredictRatelimit()
+        ? await localRouteSafetyPredictRatelimit.limit(
+            `route-safety-predict:${organizationId}:${user.id}:${ip}`
+          )
+        : await routeSafetyPredictRatelimit.limit(
+            `route-safety-predict:${organizationId}:${user.id}:${ip}`
+          );
+
+    if (!rate.success) {
+      return NextResponse.json(
+        { error: "Too many route safety prediction requests." },
+        { status: 429 }
+      );
+    }
     const body = await req.json();
 
     const origin = body.origin;
