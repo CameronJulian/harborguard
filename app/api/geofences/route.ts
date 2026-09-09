@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireOrganization, requireRole } from "@/lib/server-auth";
+import { invalidateActiveGeofenceCache } from "@/lib/fleet/activeGeofenceCache";
 
 function getStatus(error: any) {
   const message = error?.message || "";
@@ -77,6 +78,10 @@ export async function POST(req: Request) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    invalidateActiveGeofenceCache(
+      organizationId
+    );
 
     return NextResponse.json({
       success: true,
@@ -175,6 +180,10 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    invalidateActiveGeofenceCache(
+      organizationId
+    );
+
     return NextResponse.json({
       success: true,
       geofence: data,
@@ -212,6 +221,10 @@ export async function DELETE(req: Request) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    invalidateActiveGeofenceCache(
+      organizationId
+    );
 
     return NextResponse.json({
       success: true,

@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 import { createCommandCenterNotification } from "@/lib/command-center/notifications";
 import { correlateVehicleAlertToIncident } from "@/lib/incidents/correlation";
+import { loadActiveGeofences } from "@/lib/fleet/activeGeofenceCache";
 
 import {
   readHsppEvidenceForOperationalUse,
@@ -203,15 +204,11 @@ export async function detectFleetRisks(params: {
     throw new Error(vehiclesError.message);
   }
 
-  const { data: geofences, error: geofencesError } = await supabase
-    .from("geofences")
-    .select("*")
-    .eq("organization_id", organizationId)
-    .eq("is_active", true);
-
-  if (geofencesError) {
-    throw new Error(geofencesError.message);
-  }
+  const geofences =
+    await loadActiveGeofences(
+      supabase,
+      organizationId
+    );
 
   const createdAlerts: any[] = [];
 
@@ -229,36 +226,46 @@ export async function detectFleetRisks(params: {
     const lastSeen = latest.recorded_at ? new Date(latest.recorded_at).getTime() : 0;
     const minutes = (Date.now() - lastSeen) / (1000 * 60);
 
-    const { data: openAlerts, error: openAlertsError } = await supabase
-      .from("vehicle_alerts")
-      .select("alert_type")
-      .eq("vehicle_id", vehicle.id)
-      .eq("is_resolved", false);
+    const activeTripStatuses = [
+      "en_route_to_port",
+      "collecting",
+      "en_route_to_fishery",
+      "emergency",
+    ];
+
+    const [
+      {
+        data: openAlerts,
+        error: openAlertsError,
+      },
+      {
+        data: activeTrip,
+        error: activeTripError,
+      },
+    ] = await Promise.all([
+      supabase
+        .from("vehicle_alerts")
+        .select("alert_type")
+        .eq("vehicle_id", vehicle.id)
+        .eq("is_resolved", false),
+
+      supabase
+        .from("vehicle_trips")
+        .select("id, actual_departure, status")
+        .eq("organization_id", organizationId)
+        .eq("vehicle_id", vehicle.id)
+        .in("status", activeTripStatuses)
+        .not("actual_departure", "is", null)
+        .order("actual_departure", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
 
     if (openAlertsError) continue;
 
     const openTypes = new Set((openAlerts || []).map((a: any) => a.alert_type));
 
     try {
-      const activeTripStatuses = [
-        "en_route_to_port",
-        "collecting",
-        "en_route_to_fishery",
-        "emergency",
-      ];
-
-      const { data: activeTrip, error: activeTripError } =
-        await supabase
-          .from("vehicle_trips")
-          .select("id, actual_departure, status")
-          .eq("organization_id", organizationId)
-          .eq("vehicle_id", vehicle.id)
-          .in("status", activeTripStatuses)
-          .not("actual_departure", "is", null)
-          .order("actual_departure", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
       if (activeTripError) {
         console.error(
           "Driver fatigue active-trip lookup failed:",
