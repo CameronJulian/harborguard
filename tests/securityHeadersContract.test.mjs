@@ -43,11 +43,17 @@ test("global baseline security headers are configured", () => {
   );
 });
 
-test("CSP remains deliberately outside this baseline change", () => {
+test("enforced CSP remains absent while Report-Only CSP is allowed", () => {
   assert.doesNotMatch(
     source,
-    /Content-Security-Policy/,
-    "CSP requires a separate provider and endpoint audit before enforcement",
+    /key:\s*["']Content-Security-Policy["']/,
+    "enforced CSP must remain absent during the Report-Only observation phase",
+  );
+
+  assert.match(
+    source,
+    /key:\s*["']Content-Security-Policy-Report-Only["']/,
+    "Report-Only CSP should be present during the observation phase",
   );
 });
 
