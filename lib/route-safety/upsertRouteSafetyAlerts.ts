@@ -267,6 +267,9 @@ export async function insertNewProviderAlerts(
   let existingSelectMs = 0;
   let sameProviderUpdateMs = 0;
   let sameProviderUpdateCount = 0;
+
+  const sameProviderTargetIds =
+    new Set<string>();
   let crossProviderUpdateMs = 0;
   let crossProviderUpdateCount = 0;
 
@@ -392,6 +395,10 @@ provider_sources,
       existingSameProviderByKey.get(key);
 
     if (sameProviderMatch) {
+      sameProviderTargetIds.add(
+        String(sameProviderMatch.id)
+      );
+
       const confirmedAt = new Date().toISOString();
 
       const providerLastSeen = {
@@ -812,6 +819,19 @@ provider_sources,
     );
 
     logPersistenceTiming(
+      "same-provider-unique-targets",
+      0,
+      sameProviderTargetIds.size
+    );
+
+    logPersistenceTiming(
+      "same-provider-repeat-updates",
+      0,
+      sameProviderUpdateCount -
+        sameProviderTargetIds.size
+    );
+
+    logPersistenceTiming(
       "cross-provider-updates",
       crossProviderUpdateMs,
       crossProviderUpdateCount
@@ -972,6 +992,19 @@ provider_sources,
     "same-provider-updates",
     sameProviderUpdateMs,
     sameProviderUpdateCount
+  );
+
+  logPersistenceTiming(
+    "same-provider-unique-targets",
+    0,
+    sameProviderTargetIds.size
+  );
+
+  logPersistenceTiming(
+    "same-provider-repeat-updates",
+    0,
+    sameProviderUpdateCount -
+      sameProviderTargetIds.size
   );
 
   logPersistenceTiming(
