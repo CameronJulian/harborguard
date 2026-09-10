@@ -261,6 +261,33 @@ export async function insertNewProviderAlerts(
     };
   }
 
+  const persistenceStartedAt =
+    Date.now();
+
+  let existingSelectMs = 0;
+  let sameProviderUpdateMs = 0;
+  let sameProviderUpdateCount = 0;
+  let crossProviderUpdateMs = 0;
+  let crossProviderUpdateCount = 0;
+
+  const logPersistenceTiming = (
+    stage: string,
+    durationMs: number,
+    count: number
+  ): void => {
+    console.info(
+      "[Provider alert persistence timing]",
+      {
+        stage,
+        durationMs,
+        count,
+      }
+    );
+  };
+
+  const existingSelectStartedAt =
+    Date.now();
+
   const { data: existingAlerts, error: existingError } =
   await supabase
     .from("route_safety_alerts")
@@ -285,6 +312,10 @@ provider_sources,
     .eq("organization_id", organizationId)
     .eq("status", "active")
     .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
+
+  existingSelectMs =
+    Date.now() -
+    existingSelectStartedAt;
 
   if (existingError) {
     throw existingError;
@@ -412,6 +443,9 @@ provider_sources,
         existingRoadName ||
         incomingRoadName ||
         null;
+      const sameProviderUpdateStartedAt =
+        Date.now();
+
       const { error: refreshError } = await supabase
         .from("route_safety_alerts")
         .update({
@@ -430,6 +464,12 @@ provider_sources,
         })
         .eq("organization_id", organizationId)
         .eq("id", sameProviderMatch.id);
+
+      sameProviderUpdateMs +=
+        Date.now() -
+        sameProviderUpdateStartedAt;
+
+      sameProviderUpdateCount += 1;
 
       if (refreshError) {
         throw refreshError;
@@ -646,6 +686,9 @@ provider_sources,
             : row.expires_at;
       }
 
+      const crossProviderUpdateStartedAt =
+        Date.now();
+
       const { error: mergeError } = await supabase
         .from("route_safety_alerts")
         .update({
@@ -660,6 +703,12 @@ provider_sources,
         })
         .eq("organization_id", organizationId)
         .eq("id", crossProviderMatch.id);
+
+      crossProviderUpdateMs +=
+        Date.now() -
+        crossProviderUpdateStartedAt;
+
+      crossProviderUpdateCount += 1;
 
       if (mergeError) {
         throw mergeError;
@@ -750,6 +799,36 @@ provider_sources,
   }
 
   if (uniqueRows.length === 0) {
+    logPersistenceTiming(
+      "existing-select",
+      existingSelectMs,
+      1
+    );
+
+    logPersistenceTiming(
+      "same-provider-updates",
+      sameProviderUpdateMs,
+      sameProviderUpdateCount
+    );
+
+    logPersistenceTiming(
+      "cross-provider-updates",
+      crossProviderUpdateMs,
+      crossProviderUpdateCount
+    );
+
+    logPersistenceTiming(
+      "bulk-insert",
+      0,
+      0
+    );
+
+    logPersistenceTiming(
+      "total",
+      Date.now() - persistenceStartedAt,
+      rows.length
+    );
+
     return {
       imported: 0,
       refreshedExisting,
@@ -768,6 +847,9 @@ provider_sources,
       }
     ) => persistedRow);
 
+  const bulkInsertStartedAt =
+    Date.now();
+
   const { data: inserted, error: insertError } =
     await supabase
       .from("route_safety_alerts")
@@ -782,6 +864,10 @@ provider_sources,
         provider_confirmation_count,
         provider_confidence
       `);
+
+  const bulkInsertMs =
+    Date.now() -
+    bulkInsertStartedAt;
 
   if (insertError) {
     throw insertError;
@@ -874,6 +960,36 @@ provider_sources,
   resolutions.sort(
     (a, b) =>
       a.inputIndex - b.inputIndex
+  );
+
+  logPersistenceTiming(
+    "existing-select",
+    existingSelectMs,
+    1
+  );
+
+  logPersistenceTiming(
+    "same-provider-updates",
+    sameProviderUpdateMs,
+    sameProviderUpdateCount
+  );
+
+  logPersistenceTiming(
+    "cross-provider-updates",
+    crossProviderUpdateMs,
+    crossProviderUpdateCount
+  );
+
+  logPersistenceTiming(
+    "bulk-insert",
+    bulkInsertMs,
+    rowsToInsert.length
+  );
+
+  logPersistenceTiming(
+    "total",
+    Date.now() - persistenceStartedAt,
+    rows.length
   );
 
   return {
