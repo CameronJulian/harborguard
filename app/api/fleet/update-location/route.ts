@@ -11,6 +11,8 @@ import {
 } from "@/lib/fleet/recordCrowdLocationQualityOutcome";
 
 import { requireOrganizationVerifiedClaims } from "@/lib/server-auth";
+
+import { reportServerError } from "@/lib/server/reportServerError";
 import {
   authorizeRoadUserVehicle,
 } from "@/lib/fleet/authorizeRoadUserVehicle";
@@ -62,6 +64,17 @@ export async function POST(req: Request) {
       });
 
     if (!result.ok) {
+      if (result.errorType === "location_persistence") {
+        reportServerError(
+          new Error(result.error),
+          {
+            domain: "fleet",
+            operation: "update-location",
+            boundary: "location-persistence",
+          }
+        );
+      }
+
       return NextResponse.json(
         { error: result.error },
         {
@@ -73,9 +86,20 @@ export async function POST(req: Request) {
       );
     }
     after(async () => {
-      await recordCrowdLocationQualityOutcome(
-        result.observabilityEvent
-      );
+      try {
+        await recordCrowdLocationQualityOutcome(
+          result.observabilityEvent
+        );
+      } catch (qualityError: unknown) {
+        reportServerError(
+          qualityError,
+          {
+            domain: "fleet",
+            operation: "update-location",
+            boundary: "post-response-quality",
+          }
+        );
+      }
     });
 
 
@@ -110,7 +134,7 @@ export async function POST(req: Request) {
     console.error(err);
 
     const message =
-      err.message ||
+      err?.message ||
       "Failed to update vehicle location.";
 
     const status =
@@ -119,6 +143,17 @@ export async function POST(req: Request) {
         : message === "Permission denied"
         ? 403
         : 500;
+
+    if (status === 500) {
+      reportServerError(
+        err,
+        {
+          domain: "fleet",
+          operation: "update-location",
+          boundary: "outer-request",
+        }
+      );
+    }
 
     return NextResponse.json(
       { error: message },
