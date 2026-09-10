@@ -149,13 +149,10 @@ export async function GET(request: Request) {
         const message =
           error instanceof Error
             ? error.message
-            : typeof error === "object" &&
-                error !== null
-              ? JSON.stringify(error)
-              : String(
-                  error ||
-                    "Traccar position sync failed."
-                );
+            : typeof error === "string" &&
+                error.trim()
+              ? error.trim()
+              : "Traccar position sync failed.";
 
         console.error(
           "[traccar position cron organization]",
@@ -222,13 +219,10 @@ export async function GET(request: Request) {
     const errorMessage =
       error instanceof Error
         ? error.message
-        : typeof error === "object" &&
-            error !== null
-          ? JSON.stringify(error)
-          : String(
-              error ||
-                "Traccar position sync failed."
-            );
+        : typeof error === "string" &&
+            error.trim()
+          ? error.trim()
+          : "Traccar position sync failed.";
 
     return NextResponse.json(
       {
