@@ -14,15 +14,21 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error
-    ? error.message
-    : typeof error === "object" &&
-        error !== null
-      ? JSON.stringify(error)
-      : String(
-          error ||
-            "Traffic-flow collection failed."
-        );
+  if (error instanceof Error) {
+    return (
+      error.message.trim() ||
+      "Traffic-flow collection failed."
+    );
+  }
+
+  if (typeof error === "string") {
+    return (
+      error.trim() ||
+      "Traffic-flow collection failed."
+    );
+  }
+
+  return "Traffic-flow collection failed.";
 }
 
 export async function GET(request: Request) {
