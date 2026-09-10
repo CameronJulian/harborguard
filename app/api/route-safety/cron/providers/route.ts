@@ -133,9 +133,9 @@ export async function GET(request: Request) {
     const errorMessage =
       error instanceof Error
         ? error.message
-        : typeof error === "object" && error !== null
-          ? JSON.stringify(error)
-          : String(error || "External provider cron failed.");
+        : typeof error === "string" && error.trim()
+          ? error.trim()
+          : "External provider cron failed.";
 
     return NextResponse.json(
       {
