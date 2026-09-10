@@ -7,6 +7,7 @@ import {
   shouldUseLocalFleetPanicRatelimit,
 } from "@/lib/ratelimit";
 import { createCommandCenterNotification } from "@/lib/command-center/notifications";
+import { reportServerError } from "@/lib/server/reportServerError";
 
 webpush.setVapidDetails(
   process.env.VAPID_SUBJECT || "mailto:cameron@healthsystems.co.za",
@@ -309,6 +310,21 @@ export async function POST(req: Request) {
                   .from("push_subscriptions")
                   .update({ is_active: false })
                   .eq("id", subscription.id);
+              } else {
+                reportServerError(
+                  pushSendError,
+                  {
+                    domain: "fleet",
+                    operation: "panic",
+                    boundary: "push-send",
+                    extra: {
+                      statusCode:
+                        typeof pushSendError?.statusCode === "number"
+                          ? pushSendError.statusCode
+                          : null,
+                    },
+                  }
+                );
               }
             }
           })
@@ -316,6 +332,15 @@ export async function POST(req: Request) {
       }
     } catch (pushError) {
       console.error("Panic push notification failed:", pushError);
+
+      reportServerError(
+        pushError,
+        {
+          domain: "fleet",
+          operation: "panic",
+          boundary: "push-notification",
+        }
+      );
     }
 
 
@@ -337,6 +362,15 @@ export async function POST(req: Request) {
       },
     });
   } catch (err: unknown) {
+    reportServerError(
+      err,
+      {
+        domain: "fleet",
+        operation: "panic",
+        boundary: "outer-request",
+      }
+    );
+
     const message =
       err instanceof Error ? err.message : "Failed to create panic alert.";
 
