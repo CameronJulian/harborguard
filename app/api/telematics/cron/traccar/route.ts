@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { reportServerError } from "@/lib/server/reportServerError";
 import {
   runTraccarPositionSync,
 } from "@/lib/telematics/runTraccarPositionSync";
@@ -16,6 +17,15 @@ export async function GET(request: Request) {
       process.env.CRON_SECRET;
 
     if (!cronSecret) {
+      reportServerError(
+        new Error("CRON_SECRET is not configured."),
+        {
+          domain: "telematics",
+          operation: "traccar-cron",
+          boundary: "cron-secret-missing",
+        }
+      );
+
       return NextResponse.json(
         {
           error:
@@ -49,6 +59,15 @@ export async function GET(request: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !serviceRoleKey) {
+      reportServerError(
+        new Error("Supabase service-role configuration is incomplete."),
+        {
+          domain: "telematics",
+          operation: "traccar-cron",
+          boundary: "supabase-service-role-config",
+        }
+      );
+
       return NextResponse.json(
         {
           error:
@@ -126,6 +145,7 @@ export async function GET(request: Request) {
           result,
         });
       } catch (error: unknown) {
+
         const message =
           error instanceof Error
             ? error.message
@@ -142,6 +162,18 @@ export async function GET(request: Request) {
           {
             organizationId,
             error,
+          }
+        );
+
+        reportServerError(
+          error,
+          {
+            domain: "telematics",
+            operation: "traccar-cron",
+            boundary: "organization-sync",
+            extra: {
+              organizationId,
+            },
           }
         );
 
@@ -172,9 +204,19 @@ export async function GET(request: Request) {
     });
   }
   catch (error: unknown) {
+
     console.error(
       "[traccar position cron]",
       error
+    );
+
+    reportServerError(
+      error,
+      {
+        domain: "telematics",
+        operation: "traccar-cron",
+        boundary: "outer-request",
+      }
     );
 
     const errorMessage =
