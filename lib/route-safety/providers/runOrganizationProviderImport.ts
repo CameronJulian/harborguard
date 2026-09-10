@@ -36,11 +36,38 @@ export async function runOrganizationProviderImport(
   organizationId: string,
   staleProviderThresholdHours = 48
 ): Promise<OrganizationProviderImportResult> {
+  const logStageTiming = (
+    stage: string,
+    startedAt: number
+  ): void => {
+    console.info(
+      "[Route Safety provider timing]",
+      {
+        stage,
+        durationMs:
+          Date.now() - startedAt,
+      }
+    );
+  };
+
+  const overallStartedAt =
+    Date.now();
+  const expireAlertsStartedAt =
+    Date.now();
+
   const expiredAlertsTransitioned =
     await expireRouteSafetyAlerts(
       supabase,
       organizationId
     );
+
+  logStageTiming(
+    "expire-alerts",
+    expireAlertsStartedAt
+  );
+
+  const hereStartedAt =
+    Date.now();
 
   const hereResult =
     await importHereIncidents(
@@ -49,12 +76,28 @@ export async function runOrganizationProviderImport(
       getIntelligenceSourceConfiguration
     );
 
+  logStageTiming(
+    "here",
+    hereStartedAt
+  );
+
+  const tomTomStartedAt =
+    Date.now();
+
   const tomTomResult =
     await importTomTomIncidents(
       supabase,
       organizationId,
       getIntelligenceSourceConfiguration
     );
+
+  logStageTiming(
+    "tomtom",
+    tomTomStartedAt
+  );
+
+  const azureMapsStartedAt =
+    Date.now();
 
   const azureMapsResult =
     await importAzureMapsIncidents(
@@ -63,6 +106,14 @@ export async function runOrganizationProviderImport(
       getIntelligenceSourceConfiguration
     );
 
+  logStageTiming(
+    "azure-maps",
+    azureMapsStartedAt
+  );
+
+  const reconciliationStartedAt =
+    Date.now();
+
   const reconciliationMetrics =
     await reconcileProviderObservations(
       supabase,
@@ -70,6 +121,16 @@ export async function runOrganizationProviderImport(
       getIntelligenceSourceConfiguration,
       staleProviderThresholdHours
     );
+
+  logStageTiming(
+    "reconciliation",
+    reconciliationStartedAt
+  );
+
+  logStageTiming(
+    "total",
+    overallStartedAt
+  );
 
   return {
     providerResults: [
