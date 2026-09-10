@@ -105,11 +105,35 @@ export async function importTomTomIncidents(
   organizationId: string,
   getSourceConfiguration: IntelligenceSourceConfigurationLoader
 ): Promise<ProviderResult> {
+  const logTomTomTiming = (
+    stage: string,
+    startedAt: number
+  ): void => {
+    console.info(
+      "[TomTom provider timing]",
+      {
+        stage,
+        durationMs:
+          Date.now() - startedAt,
+      }
+    );
+  };
+
+  const totalStartedAt =
+    Date.now();
+  const sourceConfigStartedAt =
+    Date.now();
+
   const sourceLookup =
     await getSourceConfiguration(
       supabase,
       "tomtom"
     );
+
+  logTomTomTiming(
+    "source-config",
+    sourceConfigStartedAt
+  );
 
   if (!sourceLookup.configuration) {
     return {
@@ -183,10 +207,18 @@ export async function importTomTomIncidents(
       "&timeValidityFilter=present" +
       `&key=${process.env.TOMTOM_API_KEY}`;
 
+    const fetchStartedAt =
+      Date.now();
+
     const response = await fetch(url, {
       cache: "no-store",
       signal: AbortSignal.timeout(10_000),
     });
+
+    logTomTomTiming(
+      "fetch",
+      fetchStartedAt
+    );
 
     const receivedAt =
       new Date().toISOString();
@@ -228,7 +260,15 @@ export async function importTomTomIncidents(
       providerRequestIdCandidate ||
       null;
 
+    const responseJsonStartedAt =
+      Date.now();
+
     const data = await response.json();
+
+    logTomTomTiming(
+      "response-json",
+      responseJsonStartedAt
+    );
 
     if (!response.ok) {
       throw new Error(
@@ -428,6 +468,9 @@ export async function importTomTomIncidents(
       const immutableNormalizedPayload =
         snapshotAssertion.normalizedPayload;
 
+      const observationStartedAt =
+        Date.now();
+
       const providerObservation =
         await persistRouteSafetyProviderObservation({
         supabase,
@@ -445,6 +488,11 @@ export async function importTomTomIncidents(
         normalizedPayload:
           immutableNormalizedPayload,
       });
+
+      logTomTomTiming(
+        "persist-observation",
+        observationStartedAt
+      );
 
       snapshotAssertion.providerMessageId =
         providerObservation.providerMessageId;
@@ -488,6 +536,9 @@ export async function importTomTomIncidents(
             providerObservation.normalizedPayload,
         });
 
+      const evidenceStartedAt =
+        Date.now();
+
       const persistedEvidence =
         await persistHsppEvidenceForProviderObservation({
         supabase,
@@ -496,6 +547,11 @@ export async function importTomTomIncidents(
           providerObservation.id,
         evidence,
       });
+
+      logTomTomTiming(
+        "persist-hspp-evidence",
+        evidenceStartedAt
+      );
 
       hsppAssessmentContexts[inputIndex] = {
         evidence,
@@ -512,6 +568,9 @@ export async function importTomTomIncidents(
         "[TomTom provider ingestion] Snapshot provenance skipped because at least one normalized incident is missing provider identity."
       );
     } else {
+      const snapshotStartedAt =
+        Date.now();
+
       const snapshotPersistence =
         await persistRouteSafetyProviderSnapshotRetrieval({
           supabase,
@@ -542,6 +601,11 @@ export async function importTomTomIncidents(
           "TomTom provider snapshot persistence did not return one assertion per normalized incident."
         );
       }
+
+      logTomTomTiming(
+        "snapshot-persistence",
+        snapshotStartedAt
+      );
     }
 
     const normalizedRows =
@@ -553,6 +617,9 @@ export async function importTomTomIncidents(
         }) => item.row
       );
 
+    const roadContextStartedAt =
+      Date.now();
+
     const roadContextEnrichment =
 
       await enrichRouteSafetyAlertsWithRoadContext(
@@ -563,8 +630,16 @@ export async function importTomTomIncidents(
 
       );
 
+    logTomTomTiming(
+      "road-context",
+      roadContextStartedAt
+    );
+
 
     const rows = roadContextEnrichment.rows;
+
+    const insertAlertsStartedAt =
+      Date.now();
 
     const result = await insertNewProviderAlerts(
       supabase,
@@ -572,6 +647,11 @@ export async function importTomTomIncidents(
       "tomtom",
       sourceConfiguration.baseConfidence,
       rows
+    );
+
+    logTomTomTiming(
+      "insert-alerts",
+      insertAlertsStartedAt
     );
 
     if (
@@ -704,6 +784,9 @@ export async function importTomTomIncidents(
           providerLastSeenValid,
         });
 
+      const assessmentStartedAt =
+        Date.now();
+
       await applyHsppAssessmentDecision({
         supabase,
         organizationId,
@@ -714,7 +797,17 @@ export async function importTomTomIncidents(
             .integrityFingerprint,
         assessment,
       });
+
+      logTomTomTiming(
+        "apply-hspp-assessment",
+        assessmentStartedAt
+      );
     }
+
+    logTomTomTiming(
+      "total",
+      totalStartedAt
+    );
 
     return {
       provider: "tomtom",
