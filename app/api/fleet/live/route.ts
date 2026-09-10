@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
+import { reportServerError } from "@/lib/server/reportServerError";
 import {
   fleetLiveRatelimit,
   localFleetLiveRatelimit,
@@ -483,6 +484,17 @@ export async function GET(request: NextRequest) {
     const status = message === "Unauthorized" ? 401 : 500;
 
     console.error("Fleet live error:", error);
+
+    if (status === 500) {
+      reportServerError(
+        error,
+        {
+          domain: "fleet",
+          operation: "live",
+          boundary: "outer-request",
+        }
+      );
+    }
 
     return NextResponse.json(
       { error: message },
