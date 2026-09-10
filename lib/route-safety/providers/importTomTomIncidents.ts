@@ -185,6 +185,7 @@ export async function importTomTomIncidents(
 
     const response = await fetch(url, {
       cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
     });
 
     const receivedAt =

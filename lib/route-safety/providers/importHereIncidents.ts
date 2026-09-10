@@ -216,6 +216,7 @@ export async function importHereIncidents(
 
     const response = await fetch(url, {
       cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
     });
 
     const data = await response.json();

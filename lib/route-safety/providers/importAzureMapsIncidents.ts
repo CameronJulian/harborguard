@@ -291,6 +291,7 @@ export async function importAzureMapsIncidents(
             "Accept-Language":
               "en-GB",
           },
+          signal: AbortSignal.timeout(10_000),
         }
       );
 
