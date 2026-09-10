@@ -21,14 +21,23 @@ export function reportServerError(
   error: unknown,
   context: ServerErrorReportContext
 ): void {
+  const structuredMessage =
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof error.message === "string" &&
+    error.message.trim()
+      ? error.message.trim()
+      : null;
+
   const normalizedError =
     error instanceof Error
       ? error
-      : new Error(
-          typeof error === "string"
-            ? error
-            : "Unknown server error"
-        );
+      : typeof error === "string"
+        ? new Error(error)
+        : structuredMessage
+          ? new Error(structuredMessage)
+          : new Error("Unknown server error");
 
   Sentry.captureException(
     normalizedError,
