@@ -496,6 +496,19 @@ provider_sources,
 
       refreshedExisting += 1;
 
+      if (
+        sameProviderUpdateCount % 25 === 0
+      ) {
+        console.info(
+          "[Provider alert persistence progress]",
+          {
+            stage: "same-provider",
+            processed: sameProviderUpdateCount,
+            uniqueTargets: sameProviderTargetIds.size,
+          }
+        );
+      }
+
       resolutions.push({
         inputIndex,
         outcome: "refreshed_existing",
