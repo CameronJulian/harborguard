@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { reportServerError } from "@/lib/server/reportServerError";
 import {
   collectTrafficFlowObservations,
 } from "@/lib/traffic/collectTrafficFlowObservations";
@@ -30,6 +31,16 @@ export async function GET(request: Request) {
       process.env.CRON_SECRET;
 
     if (!cronSecret) {
+      reportServerError(
+        new Error("CRON_SECRET is not configured."),
+        {
+          domain: "traffic-flow",
+          operation: "cron",
+          boundary: "cron-secret-missing",
+        }
+      );
+
+
       return NextResponse.json(
         {
           error:
@@ -63,6 +74,16 @@ export async function GET(request: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !serviceRoleKey) {
+      reportServerError(
+        new Error("Supabase service-role configuration is incomplete."),
+        {
+          domain: "traffic-flow",
+          operation: "cron",
+          boundary: "supabase-service-role-config",
+        }
+      );
+
+
       return NextResponse.json(
         {
           error:
@@ -89,6 +110,16 @@ export async function GET(request: Request) {
       process.env.TRAFFIC_IMPORT_ORGANIZATION_ID?.trim();
 
     if (!trafficOrganizationId) {
+      reportServerError(
+        new Error("TRAFFIC_IMPORT_ORGANIZATION_ID is not configured."),
+        {
+          domain: "traffic-flow",
+          operation: "cron",
+          boundary: "traffic-organization-id-missing",
+        }
+      );
+
+
       return NextResponse.json(
         {
           error:
@@ -114,6 +145,16 @@ export async function GET(request: Request) {
     }
 
     if (!organization) {
+      reportServerError(
+        new Error("TRAFFIC_IMPORT_ORGANIZATION_ID does not match an organization."),
+        {
+          domain: "traffic-flow",
+          operation: "cron",
+          boundary: "traffic-organization-not-found",
+        }
+      );
+
+
       return NextResponse.json(
         {
           error:
@@ -234,9 +275,19 @@ export async function GET(request: Request) {
     }
   }
   catch (error: unknown) {
+
     console.error(
       "[traffic-flow collection cron]",
       error
+    );
+
+    reportServerError(
+      error,
+      {
+        domain: "traffic-flow",
+        operation: "cron",
+        boundary: "outer-request",
+      }
     );
 
     return NextResponse.json(
