@@ -813,7 +813,11 @@ export async function importHereIncidents(
 
         normalizedRows,
 
-        resolveRoadContext
+        resolveRoadContext,
+
+        {
+          maxLookups: 1,
+        }
 
       );
 
