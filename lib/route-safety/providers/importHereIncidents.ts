@@ -11,7 +11,10 @@ import type { RouteSafetyAlertRow } from "@/lib/route-safety/types";
 import { insertNewProviderAlerts } from "@/lib/route-safety/upsertRouteSafetyAlerts";
 import { enrichRouteSafetyAlertsWithRoadContext } from "@/lib/route-safety/enrichRouteSafetyAlertsWithRoadContext";
 import { resolveRoadContext } from "@/lib/road-context/provider";
-import { persistRouteSafetyProviderObservation } from "@/lib/hspp/persistRouteSafetyProviderObservation";
+import {
+  persistRouteSafetyProviderObservation,
+  prefetchRouteSafetyProviderObservations,
+} from "@/lib/hspp/persistRouteSafetyProviderObservation";
 import { buildHsppEvidence } from "@/lib/hspp/buildHsppEvidence";
 import { persistHsppEvidenceForProviderObservation } from "@/lib/hspp/persistHsppEvidenceForProviderObservation";
 import {
@@ -585,6 +588,81 @@ export async function importHereIncidents(
           () => null
         );
 
+    const prefetchedProviderObservations =
+      await prefetchRouteSafetyProviderObservations({
+        supabase,
+        organizationId,
+        provider:
+          "here",
+        sourceStream:
+          "here_traffic",
+        payloadSchemaVersion:
+          HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION_V2,
+        observations:
+          normalizedIncidents
+            .filter(
+              (normalized: {
+                row: RouteSafetyAlertRow;
+                providerMessageId: string;
+                providerIncidentId: string;
+                providerOriginalId: string;
+                observedAt: string | null;
+              }) =>
+                Boolean(
+                  normalized.providerMessageId &&
+                    normalized.observedAt
+                )
+            )
+            .map(
+              (normalized: {
+                row: RouteSafetyAlertRow;
+                providerMessageId: string;
+                providerIncidentId: string;
+                providerOriginalId: string;
+                observedAt: string | null;
+              }) => {
+                const immutableNormalizedPayload:
+                  Record<string, unknown> = {
+                    ...(
+                      normalized.row as unknown as
+                        Record<string, unknown>
+                    ),
+                  };
+
+                delete immutableNormalizedPayload.verified_at;
+
+                if (normalized.providerOriginalId) {
+                  immutableNormalizedPayload.here_original_id =
+                    normalized.providerOriginalId;
+                }
+
+                immutableNormalizedPayload.here_incident_id =
+                  normalized.providerIncidentId;
+
+                return {
+                  providerMessageId:
+                    normalized.providerMessageId,
+                  observedAt:
+                    normalized.observedAt as string,
+                  normalizedPayload:
+                    immutableNormalizedPayload,
+                };
+              }
+            ),
+      });
+
+    console.info(
+      "[HERE provider diagnostic]",
+      {
+        stage:
+          "provider-observation-prefetch",
+        requested:
+          completeObservationIdentityCount,
+        found:
+          prefetchedProviderObservations.size,
+      }
+    );
+
     let persistedProviderObservationCount =
       0;
 
@@ -635,6 +713,9 @@ export async function importHereIncidents(
 
       try {
         providerObservation =
+          prefetchedProviderObservations.get(
+            normalized.providerMessageId
+          ) ??
           await persistRouteSafetyProviderObservation({
             supabase,
             organizationId,

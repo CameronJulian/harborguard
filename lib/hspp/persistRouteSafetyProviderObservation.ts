@@ -244,6 +244,208 @@ function assertExistingObservationMatches(
   }
 }
 
+export type PrefetchRouteSafetyProviderObservationInput = {
+  supabase: any;
+
+  organizationId: string;
+  provider: string;
+  sourceStream: string;
+  payloadSchemaVersion: string;
+
+  observations: Array<{
+    providerMessageId: string;
+    observedAt: string;
+    normalizedPayload: Record<string, unknown>;
+  }>;
+};
+
+export async function prefetchRouteSafetyProviderObservations({
+  supabase,
+  organizationId,
+  provider,
+  sourceStream,
+  payloadSchemaVersion,
+  observations,
+}: PrefetchRouteSafetyProviderObservationInput): Promise<
+  Map<string, PersistedRouteSafetyProviderObservation>
+> {
+  const normalizedOrganizationId =
+    requireNonBlank(
+      organizationId,
+      "organizationId"
+    );
+
+  const normalizedProvider =
+    requireNonBlank(
+      provider,
+      "provider"
+    );
+
+  const normalizedSourceStream =
+    requireNonBlank(
+      sourceStream,
+      "sourceStream"
+    );
+
+  const normalizedPayloadSchemaVersion =
+    requireNonBlank(
+      payloadSchemaVersion,
+      "payloadSchemaVersion"
+    );
+
+  const expectedByProviderMessageId =
+    new Map<
+      string,
+      {
+        observedAt: string;
+        payloadSchemaVersion: string;
+        normalizedPayload: Record<string, unknown>;
+      }
+    >();
+
+  for (const observation of observations) {
+    const normalizedProviderMessageId =
+      requireNonBlank(
+        observation.providerMessageId,
+        "providerMessageId"
+      );
+
+    const expected = {
+      observedAt:
+        requireTimestamp(
+          observation.observedAt,
+          "observedAt"
+        ),
+
+      payloadSchemaVersion:
+        normalizedPayloadSchemaVersion,
+
+      normalizedPayload:
+        requirePayload(
+          observation.normalizedPayload
+        ),
+    };
+
+    const prior =
+      expectedByProviderMessageId.get(
+        normalizedProviderMessageId
+      );
+
+    if (prior) {
+      if (
+        prior.observedAt !== expected.observedAt ||
+        prior.payloadSchemaVersion !==
+          expected.payloadSchemaVersion ||
+        canonicalJsonString(
+          prior.normalizedPayload
+        ) !==
+          canonicalJsonString(
+            expected.normalizedPayload
+          )
+      ) {
+        throw new Error(
+          "Provider observation prefetch received conflicting duplicate identities."
+        );
+      }
+
+      continue;
+    }
+
+    expectedByProviderMessageId.set(
+      normalizedProviderMessageId,
+      expected
+    );
+  }
+
+  if (expectedByProviderMessageId.size === 0) {
+    return new Map();
+  }
+
+  const {
+    data,
+    error,
+  } =
+    await supabase
+      .from(
+        "route_safety_provider_observations"
+      )
+      .select(
+        [
+          "id",
+          "organization_id",
+          "provider",
+          "source_stream",
+          "provider_message_id",
+          "observed_at",
+          "received_at",
+          "payload_schema_version",
+          "normalized_payload",
+        ].join(",")
+      )
+      .eq(
+        "organization_id",
+        normalizedOrganizationId
+      )
+      .eq(
+        "provider",
+        normalizedProvider
+      )
+      .eq(
+        "source_stream",
+        normalizedSourceStream
+      )
+      .eq(
+        "payload_schema_version",
+        normalizedPayloadSchemaVersion
+      )
+      .in(
+        "provider_message_id",
+        Array.from(
+          expectedByProviderMessageId.keys()
+        )
+      );
+
+  if (error) {
+    throw error;
+  }
+
+  const existingByProviderMessageId =
+    new Map<
+      string,
+      PersistedRouteSafetyProviderObservation
+    >();
+
+  for (const row of data ?? []) {
+    const existing =
+      mapPersistedObservation(
+        row,
+        false
+      );
+
+    const expected =
+      expectedByProviderMessageId.get(
+        existing.providerMessageId
+      );
+
+    if (!expected) {
+      throw new Error(
+        "Provider observation prefetch returned an unexpected identity."
+      );
+    }
+
+    assertExistingObservationMatches(
+      existing,
+      expected
+    );
+
+    existingByProviderMessageId.set(
+      existing.providerMessageId,
+      existing
+    );
+  }
+
+  return existingByProviderMessageId;
+}
 export async function persistRouteSafetyProviderObservation({
   supabase,
   organizationId,
