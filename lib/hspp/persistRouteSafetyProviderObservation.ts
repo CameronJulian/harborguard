@@ -371,6 +371,41 @@ export async function persistRouteSafetyProviderObservation({
     throw error;
   }
 
+  const duplicateErrorText =
+    [
+      error.message,
+      error.details,
+      error.hint,
+    ]
+      .filter(
+        (value): value is string =>
+          typeof value === "string"
+      )
+      .join(" ");
+
+  const duplicateConstraintClass =
+    duplicateErrorText.includes(
+      "route_safety_provider_observations_identity"
+    )
+      ? "canonical_identity"
+      : duplicateErrorText.includes(
+            "route_safety_provider_observations"
+          )
+        ? "other_unique"
+        : "unknown";
+
+  console.info(
+    "[Provider observation 23505 diagnostic]",
+    {
+      stage:
+        "duplicate-detected",
+      errorCode:
+        error.code,
+      constraintClass:
+        duplicateConstraintClass,
+    }
+  );
+
   const {
     data: existingData,
     error: existingError,
@@ -419,6 +454,16 @@ export async function persistRouteSafetyProviderObservation({
   }
 
   if (!existingData) {
+    console.info(
+      "[Provider observation 23505 diagnostic]",
+      {
+        stage:
+          "duplicate-lookup",
+        existingRowFound:
+          false,
+      }
+    );
+
     throw new Error(
       "Provider observation duplicate was reported but the existing row could not be found."
     );
@@ -429,6 +474,35 @@ export async function persistRouteSafetyProviderObservation({
       existingData,
       false
     );
+
+  const observedAtMatches =
+    existing.observedAt ===
+    normalizedObservedAt;
+
+  const payloadSchemaMatches =
+    existing.payloadSchemaVersion ===
+    normalizedPayloadSchemaVersion;
+
+  const normalizedPayloadMatches =
+    JSON.stringify(
+      existing.normalizedPayload
+    ) ===
+    JSON.stringify(
+      validatedPayload
+    );
+
+  console.info(
+    "[Provider observation 23505 diagnostic]",
+    {
+      stage:
+        "duplicate-lookup",
+      existingRowFound:
+        true,
+      observedAtMatches,
+      payloadSchemaMatches,
+      normalizedPayloadMatches,
+    }
+  );
 
   assertExistingObservationMatches(
     existing,
