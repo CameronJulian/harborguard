@@ -385,7 +385,7 @@ export async function persistRouteSafetyProviderObservation({
 
   const duplicateConstraintClass =
     duplicateErrorText.includes(
-      "route_safety_provider_observations_identity"
+      "route_safety_provider_observations_source_identity_unique"
     )
       ? "canonical_identity"
       : duplicateErrorText.includes(
