@@ -1,6 +1,11 @@
+import { randomUUID } from "node:crypto";
 import type {
   IntelligenceSourceConfigurationLoader,
 } from "@/lib/route-safety/providers/getIntelligenceSourceConfiguration";
+import {
+  persistRouteSafetyProviderSnapshotRetrieval,
+  type RouteSafetyProviderSnapshotAssertionInput,
+} from "@/lib/route-safety/providers/persistRouteSafetyProviderSnapshotRetrieval";
 import type { ProviderResult } from "@/lib/route-safety/providers/types";
 import type { RouteSafetyAlertRow } from "@/lib/route-safety/types";
 import { insertNewProviderAlerts } from "@/lib/route-safety/upsertRouteSafetyAlerts";
@@ -219,6 +224,41 @@ export async function importHereIncidents(
       signal: AbortSignal.timeout(10_000),
     });
 
+    const receivedAt =
+      new Date().toISOString();
+
+    const retrievalId =
+      randomUUID();
+
+    const responseOriginatedAtCandidate =
+      response.headers
+        .get("Date")
+        ?.trim() || "";
+
+    const responseOriginatedAtMilliseconds =
+      Date.parse(
+        responseOriginatedAtCandidate
+      );
+
+    const responseOriginatedAt =
+      responseOriginatedAtCandidate &&
+      Number.isFinite(
+        responseOriginatedAtMilliseconds
+      )
+        ? new Date(
+            responseOriginatedAtMilliseconds
+          ).toISOString()
+        : null;
+
+    const providerRequestIdCandidate =
+      response.headers
+        .get("X-Request-Id")
+        ?.trim() || "";
+
+    const providerRequestId =
+      providerRequestIdCandidate ||
+      null;
+
     const data = await response.json();
 
     if (!response.ok) {
@@ -232,6 +272,26 @@ export async function importHereIncidents(
     const incidents = Array.isArray(data?.results)
       ? data.results
       : [];
+
+    const sourceUpdatedCandidate =
+      typeof data?.sourceUpdated === "string"
+        ? data.sourceUpdated.trim()
+        : "";
+
+    const sourceUpdatedMilliseconds =
+      Date.parse(
+        sourceUpdatedCandidate
+      );
+
+    const sourceUpdatedAt =
+      sourceUpdatedCandidate &&
+      Number.isFinite(
+        sourceUpdatedMilliseconds
+      )
+        ? new Date(
+            sourceUpdatedMilliseconds
+          ).toISOString()
+        : null;
 
     const normalizedIncidents = incidents
       .map((incident: any) => {
@@ -348,6 +408,48 @@ export async function importHereIncidents(
           item !== null
       );
 
+    const snapshotAssertions:
+      RouteSafetyProviderSnapshotAssertionInput[] =
+        normalizedIncidents.map(
+          (normalized: {
+            row: RouteSafetyAlertRow;
+            providerMessageId: string;
+            observedAt: string | null;
+          }) => {
+            const immutableSnapshotPayload:
+              Record<string, unknown> = {
+                ...(
+                  normalized.row as unknown as
+                    Record<string, unknown>
+                ),
+              };
+
+            delete immutableSnapshotPayload.verified_at;
+            delete immutableSnapshotPayload.expires_at;
+
+            return {
+              providerMessageId:
+                normalized.providerMessageId,
+              payloadSchemaVersion:
+                HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION_V2,
+              eventObservedAt:
+                normalized.observedAt,
+              providerObservationId:
+                null,
+              normalizedPayload:
+                immutableSnapshotPayload,
+            };
+          }
+        );
+
+    const hasCompleteSnapshotAssertionIdentity =
+      snapshotAssertions.every(
+        (assertion) =>
+          assertion.providerMessageId
+            .trim()
+            .length > 0
+      );
+
     const hsppAssessmentContexts:
       HereHsppAssessmentContext[] =
         Array.from(
@@ -371,6 +473,9 @@ export async function importHereIncidents(
       ) {
         continue;
       }
+
+      const snapshotAssertion =
+        snapshotAssertions[inputIndex];
 
       const immutableNormalizedPayload:
         Record<string, unknown> = {
@@ -399,6 +504,21 @@ export async function importHereIncidents(
           normalizedPayload:
             immutableNormalizedPayload,
         });
+
+      snapshotAssertion.providerMessageId =
+        providerObservation.providerMessageId;
+
+      snapshotAssertion.payloadSchemaVersion =
+        providerObservation.payloadSchemaVersion;
+
+      snapshotAssertion.eventObservedAt =
+        providerObservation.observedAt;
+
+      snapshotAssertion.providerObservationId =
+        providerObservation.id;
+
+      snapshotAssertion.normalizedPayload =
+        providerObservation.normalizedPayload;
 
       const evidence =
         buildHsppEvidence({
@@ -440,6 +560,47 @@ export async function importHereIncidents(
         evidence,
         persistedEvidence,
       };
+    }
+
+    if (!sourceUpdatedAt) {
+      console.warn(
+        "[HERE provider ingestion] Snapshot provenance skipped because sourceUpdated was not present or invalid."
+      );
+    } else if (!hasCompleteSnapshotAssertionIdentity) {
+      console.warn(
+        "[HERE provider ingestion] Snapshot provenance skipped because at least one normalized incident is missing provider identity."
+      );
+    } else {
+      const snapshotPersistence =
+        await persistRouteSafetyProviderSnapshotRetrieval({
+          supabase,
+          organizationId,
+          provider:
+            "here",
+          sourceStream:
+            "here_traffic",
+          snapshotIdentityKind:
+            "source_updated",
+          snapshotIdentityValue:
+            sourceUpdatedCandidate,
+          providerSourceUpdatedAt:
+            sourceUpdatedAt,
+          retrievalId,
+          responseOriginatedAt,
+          receivedAt,
+          providerRequestId,
+          assertions:
+            snapshotAssertions,
+        });
+
+      if (
+        snapshotPersistence.assertionCount !==
+        snapshotAssertions.length
+      ) {
+        throw new Error(
+          "HERE provider snapshot persistence did not return one assertion per normalized incident."
+        );
+      }
     }
 
     const normalizedRows =
