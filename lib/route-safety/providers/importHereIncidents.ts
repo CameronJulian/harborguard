@@ -366,7 +366,7 @@ export async function importHereIncidents(
             ? details.originalId.trim()
             : "";
 
-        const providerMessageId =
+        const providerIncidentId =
           typeof details?.id === "string"
             ? details.id.trim()
             : providerOriginalId;
@@ -390,9 +390,15 @@ export async function importHereIncidents(
               ).toISOString()
             : null;
 
+        const providerMessageId =
+          providerIncidentId && observedAt
+            ? `${providerIncidentId}@${observedAt}`
+            : "";
+
         return {
           row,
           providerMessageId,
+          providerIncidentId,
           providerOriginalId,
           observedAt,
         };
@@ -402,12 +408,14 @@ export async function importHereIncidents(
           item: {
             row: RouteSafetyAlertRow;
             providerMessageId: string;
+            providerIncidentId: string;
             providerOriginalId: string;
             observedAt: string | null;
           } | null
         ): item is {
           row: RouteSafetyAlertRow;
           providerMessageId: string;
+          providerIncidentId: string;
           providerOriginalId: string;
           observedAt: string | null;
         } =>
@@ -477,6 +485,7 @@ export async function importHereIncidents(
           (normalized: {
             row: RouteSafetyAlertRow;
             providerMessageId: string;
+            providerIncidentId: string;
             providerOriginalId: string;
             observedAt: string | null;
           }) => {
@@ -495,6 +504,9 @@ export async function importHereIncidents(
               immutableSnapshotPayload.here_original_id =
                 normalized.providerOriginalId;
             }
+
+            immutableSnapshotPayload.here_incident_id =
+              normalized.providerIncidentId;
 
             return {
               providerMessageId:
@@ -563,6 +575,9 @@ export async function importHereIncidents(
         immutableNormalizedPayload.here_original_id =
           normalized.providerOriginalId;
       }
+
+      immutableNormalizedPayload.here_incident_id =
+        normalized.providerIncidentId;
 
       let providerObservation:
         Awaited<

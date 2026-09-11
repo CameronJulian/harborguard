@@ -11,7 +11,7 @@ const source = fs.readFileSync(
 );
 
 test(
-  "HERE uses incident version id as immutable provider message identity",
+  "HERE separates incident-chain identity from incident identity",
   () => {
     assert.match(
       source,
@@ -20,23 +20,34 @@ test(
 
     assert.match(
       source,
-      /const providerMessageId\s*=[\s\S]*details\?\.id[\s\S]*providerOriginalId/
+      /const providerIncidentId\s*=[\s\S]*details\?\.id[\s\S]*providerOriginalId/
     );
-
-    const originalIdPosition =
-      source.indexOf("const providerOriginalId");
-
-    const messageIdPosition =
-      source.indexOf("const providerMessageId");
-
-    assert.ok(originalIdPosition >= 0);
-    assert.ok(messageIdPosition > originalIdPosition);
   }
 );
 
 test(
-  "HERE preserves original incident-chain identity as immutable provenance",
+  "HERE providerMessageId combines incident id and canonical observedAt",
   () => {
+    assert.match(
+      source,
+      /const providerMessageId\s*=[\s\S]*providerIncidentId\s*&&\s*observedAt[\s\S]*`\$\{providerIncidentId\}@\$\{observedAt\}`/
+    );
+  }
+);
+
+test(
+  "HERE immutable payload preserves original and incident identifiers",
+  () => {
+    assert.match(
+      source,
+      /immutableSnapshotPayload\.here_original_id\s*=[\s\S]*normalized\.providerOriginalId/
+    );
+
+    assert.match(
+      source,
+      /immutableSnapshotPayload\.here_incident_id\s*=[\s\S]*normalized\.providerIncidentId/
+    );
+
     assert.match(
       source,
       /immutableNormalizedPayload\.here_original_id\s*=[\s\S]*normalized\.providerOriginalId/
@@ -44,13 +55,13 @@ test(
 
     assert.match(
       source,
-      /immutableSnapshotPayload\.here_original_id\s*=[\s\S]*normalized\.providerOriginalId/
+      /immutableNormalizedPayload\.here_incident_id\s*=[\s\S]*normalized\.providerIncidentId/
     );
   }
 );
 
 test(
-  "HSPP source identity continues from persisted provider observation",
+  "HSPP source identity remains persisted provider observation identity",
   () => {
     assert.match(
       source,
