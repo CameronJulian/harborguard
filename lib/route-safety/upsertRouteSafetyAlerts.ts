@@ -357,6 +357,17 @@ provider_sources,
 
   const resolutions: ProviderAlertResolution[] = [];
 
+  const SAME_PROVIDER_UPDATE_CONCURRENCY = 4;
+
+  type SameProviderUpdateTask = {
+    inputIndex: number;
+    row: RouteSafetyAlertRow;
+    sameProviderMatch: any;
+  };
+
+  const sameProviderQueuesByTarget =
+    new Map<string, SameProviderUpdateTask[]>();
+
   const pendingInsertedByKey =
     new Map<
       string,
@@ -395,133 +406,35 @@ provider_sources,
       existingSameProviderByKey.get(key);
 
     if (sameProviderMatch) {
+      const sameProviderTargetId =
+        String(sameProviderMatch.id);
+
       sameProviderTargetIds.add(
-        String(sameProviderMatch.id)
+        sameProviderTargetId
       );
 
-      const confirmedAt = new Date().toISOString();
-
-      const providerLastSeen = {
-        ...(sameProviderMatch.provider_last_seen || {}),
-        [source]: confirmedAt,
+      const sameProviderTask: SameProviderUpdateTask = {
+        inputIndex,
+        row,
+        sameProviderMatch,
       };
 
-      const providerQuality =
-        deriveProviderQualityState({
-          providerLastSeen,
-          providerSources: [source],
-          primarySource: source,
-          primarySourceBaseConfidence:
-            baseConfidence,
-        });
+      const sameProviderQueue =
+        sameProviderQueuesByTarget.get(
+          sameProviderTargetId
+        );
 
-      const existingExpiryTime = sameProviderMatch.expires_at
-        ? new Date(sameProviderMatch.expires_at).getTime()
-        : Number.NaN;
-
-      const incomingExpiryTime = row.expires_at
-        ? new Date(row.expires_at).getTime()
-        : Number.NaN;
-
-      let refreshedExpiresAt: string | null =
-        sameProviderMatch.expires_at || row.expires_at || null;
-
-      if (
-        Number.isFinite(existingExpiryTime) &&
-        Number.isFinite(incomingExpiryTime)
-      ) {
-        refreshedExpiresAt =
-          incomingExpiryTime > existingExpiryTime
-            ? row.expires_at
-            : sameProviderMatch.expires_at;
-      }
-
-      const existingRoadName =
-        typeof sameProviderMatch.road_name === "string"
-          ? sameProviderMatch.road_name.trim()
-          : "";
-
-      const incomingRoadName =
-        typeof row.road_name === "string"
-          ? row.road_name.trim()
-          : "";
-
-      const refreshedRoadName =
-        existingRoadName ||
-        incomingRoadName ||
-        null;
-      const sameProviderUpdateStartedAt =
-        Date.now();
-
-      const { error: refreshError } = await supabase
-        .from("route_safety_alerts")
-        .update({
-          provider_sources:
-            providerQuality.providerSources,
-          provider_confirmation_count:
-            providerQuality.providerConfirmationCount,
-          provider_confidence:
-            providerQuality.providerConfidence,
-          last_provider_confirmation_at: confirmedAt,
-          provider_last_seen: providerLastSeen,
-          verified_at: confirmedAt,
-          verification_status: "verified",
-          expires_at: refreshedExpiresAt,
-          road_name: refreshedRoadName,
-        })
-        .eq("organization_id", organizationId)
-        .eq("id", sameProviderMatch.id);
-
-      sameProviderUpdateMs +=
-        Date.now() -
-        sameProviderUpdateStartedAt;
-
-      sameProviderUpdateCount += 1;
-
-      if (refreshError) {
-        throw refreshError;
-      }
-
-      sameProviderMatch.provider_sources =
-        providerQuality.providerSources;
-      sameProviderMatch.provider_confirmation_count =
-        providerQuality.providerConfirmationCount;
-      sameProviderMatch.provider_confidence =
-        providerQuality.providerConfidence;
-      sameProviderMatch.last_provider_confirmation_at =
-        confirmedAt;
-      sameProviderMatch.provider_last_seen = providerLastSeen;
-      sameProviderMatch.expires_at = refreshedExpiresAt;
-      sameProviderMatch.road_name = refreshedRoadName;
-
-      refreshedExisting += 1;
-
-      if (
-        sameProviderUpdateCount % 25 === 0
-      ) {
-        console.info(
-          "[Provider alert persistence progress]",
-          {
-            stage: "same-provider",
-            processed: sameProviderUpdateCount,
-            uniqueTargets: sameProviderTargetIds.size,
-          }
+      if (sameProviderQueue) {
+        sameProviderQueue.push(
+          sameProviderTask
+        );
+      } else {
+        sameProviderQueuesByTarget.set(
+          sameProviderTargetId,
+          [sameProviderTask]
         );
       }
 
-      resolutions.push({
-        inputIndex,
-        outcome: "refreshed_existing",
-        alertId:
-          String(sameProviderMatch.id),
-        providerSources:
-          providerQuality.providerSources,
-        providerLastSeen,
-        providerConfirmationCount:
-          providerQuality.providerConfirmationCount,
-        providerConfidence:
-          providerQuality.providerConfidence,
-      });
       continue;
     }
 
@@ -816,6 +729,260 @@ provider_sources,
     });
 
     queuedSameProviderKeys.add(key);
+  }
+
+  let sameProviderNextQueueIndex = 0;
+  let sameProviderSchedulingStopped = false;
+  let sameProviderFailure: unknown = null;
+
+  const sameProviderQueueEntries =
+    Array.from(
+      sameProviderQueuesByTarget.values()
+    );
+
+  const runSameProviderQueue = async (
+    sameProviderQueue: SameProviderUpdateTask[]
+  ): Promise<void> => {
+    for (const sameProviderTask of sameProviderQueue) {
+      if (sameProviderSchedulingStopped) {
+        return;
+      }
+
+      const {
+        inputIndex,
+        row,
+        sameProviderMatch,
+      } = sameProviderTask;
+
+      const confirmedAt =
+        new Date().toISOString();
+
+      const providerLastSeen = {
+        ...(sameProviderMatch.provider_last_seen || {}),
+        [source]: confirmedAt,
+      };
+
+      const providerQuality =
+        deriveProviderQualityState({
+          providerLastSeen,
+          providerSources: [source],
+          primarySource: source,
+          primarySourceBaseConfidence:
+            baseConfidence,
+        });
+
+      const existingExpiryTime =
+        sameProviderMatch.expires_at
+          ? new Date(
+              sameProviderMatch.expires_at
+            ).getTime()
+          : Number.NaN;
+
+      const incomingExpiryTime =
+        row.expires_at
+          ? new Date(
+              row.expires_at
+            ).getTime()
+          : Number.NaN;
+
+      let refreshedExpiresAt: string | null =
+        sameProviderMatch.expires_at ||
+        row.expires_at ||
+        null;
+
+      if (
+        Number.isFinite(existingExpiryTime) &&
+        Number.isFinite(incomingExpiryTime)
+      ) {
+        refreshedExpiresAt =
+          incomingExpiryTime > existingExpiryTime
+            ? row.expires_at
+            : sameProviderMatch.expires_at;
+      }
+
+      const existingRoadName =
+        typeof sameProviderMatch.road_name === "string"
+          ? sameProviderMatch.road_name.trim()
+          : "";
+
+      const incomingRoadName =
+        typeof row.road_name === "string"
+          ? row.road_name.trim()
+          : "";
+
+      const refreshedRoadName =
+        existingRoadName ||
+        incomingRoadName ||
+        null;
+
+      const sameProviderUpdateStartedAt =
+        Date.now();
+
+      const { error: refreshError } =
+        await supabase
+          .from("route_safety_alerts")
+          .update({
+            provider_sources:
+              providerQuality.providerSources,
+            provider_confirmation_count:
+              providerQuality.providerConfirmationCount,
+            provider_confidence:
+              providerQuality.providerConfidence,
+            last_provider_confirmation_at:
+              confirmedAt,
+            provider_last_seen:
+              providerLastSeen,
+            verified_at:
+              confirmedAt,
+            verification_status:
+              "verified",
+            expires_at:
+              refreshedExpiresAt,
+            road_name:
+              refreshedRoadName,
+          })
+          .eq(
+            "organization_id",
+            organizationId
+          )
+          .eq(
+            "id",
+            sameProviderMatch.id
+          );
+
+      sameProviderUpdateMs +=
+        Date.now() -
+        sameProviderUpdateStartedAt;
+
+      sameProviderUpdateCount += 1;
+
+      if (refreshError) {
+        throw refreshError;
+      }
+
+      sameProviderMatch.provider_sources =
+        providerQuality.providerSources;
+
+      sameProviderMatch.provider_confirmation_count =
+        providerQuality.providerConfirmationCount;
+
+      sameProviderMatch.provider_confidence =
+        providerQuality.providerConfidence;
+
+      sameProviderMatch.last_provider_confirmation_at =
+        confirmedAt;
+
+      sameProviderMatch.provider_last_seen =
+        providerLastSeen;
+
+      sameProviderMatch.expires_at =
+        refreshedExpiresAt;
+
+      sameProviderMatch.road_name =
+        refreshedRoadName;
+
+      refreshedExisting += 1;
+
+      if (
+        sameProviderUpdateCount % 25 === 0
+      ) {
+        console.info(
+          "[Provider alert persistence progress]",
+          {
+            stage: "same-provider",
+            processed:
+              sameProviderUpdateCount,
+            uniqueTargets:
+              sameProviderTargetIds.size,
+          }
+        );
+      }
+
+      resolutions.push({
+        inputIndex,
+        outcome:
+          "refreshed_existing",
+        alertId:
+          String(
+            sameProviderMatch.id
+          ),
+        providerSources:
+          providerQuality.providerSources,
+        providerLastSeen,
+        providerConfirmationCount:
+          providerQuality.providerConfirmationCount,
+        providerConfidence:
+          providerQuality.providerConfidence,
+      });
+    }
+  };
+
+  const runSameProviderWorker =
+    async (): Promise<void> => {
+      while (true) {
+        if (sameProviderSchedulingStopped) {
+          return;
+        }
+
+        const queueIndex =
+          sameProviderNextQueueIndex;
+
+        sameProviderNextQueueIndex += 1;
+
+        if (
+          queueIndex >=
+          sameProviderQueueEntries.length
+        ) {
+          return;
+        }
+
+        try {
+          await runSameProviderQueue(
+            sameProviderQueueEntries[
+              queueIndex
+            ]
+          );
+        } catch (error) {
+          if (
+            !sameProviderSchedulingStopped
+          ) {
+            sameProviderSchedulingStopped =
+              true;
+
+            sameProviderFailure =
+              error;
+          }
+
+          return;
+        }
+      }
+    };
+
+  const sameProviderWorkerCount =
+    Math.min(
+      SAME_PROVIDER_UPDATE_CONCURRENCY,
+      sameProviderQueueEntries.length
+    );
+
+  const sameProviderWorkers =
+    Array.from(
+      {
+        length:
+          sameProviderWorkerCount,
+      },
+      () =>
+        runSameProviderWorker()
+    );
+
+  for (
+    const sameProviderWorker
+    of sameProviderWorkers
+  ) {
+    await sameProviderWorker;
+  }
+
+  if (sameProviderSchedulingStopped) {
+    throw sameProviderFailure;
   }
 
   if (uniqueRows.length === 0) {

@@ -108,21 +108,26 @@ test(
 );
 
 test(
-  "same-provider database update remains sequential",
+  "same-provider progress remains inside serialized target processing",
   () => {
     assert.match(
       source,
-      /const \{ error: refreshError \} = await supabase/
+      /for\s*\(\s*const\s+sameProviderTask\s+of\s+sameProviderQueue\s*\)/
+    );
+
+    assert.match(
+      source,
+      /if\s*\(\s*refreshError\s*\)\s*\{[\s\S]*?throw\s+refreshError[\s\S]*?\[Provider alert persistence progress\]/
     );
 
     assert.doesNotMatch(
       source,
-      /Promise\.all\s*\(/
+      /Promise\.all\s*\(\s*rows\.map/
     );
 
     assert.doesNotMatch(
       source,
-      /Promise\.allSettled\s*\(/
+      /Promise\.allSettled\s*\(\s*rows\.map/
     );
   }
 );

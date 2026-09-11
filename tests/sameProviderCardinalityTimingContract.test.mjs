@@ -20,7 +20,12 @@ test(
 
     assert.match(
       source,
-      /sameProviderTargetIds\.add\s*\(\s*String\s*\(\s*sameProviderMatch\.id\s*\)\s*\)/
+      /const\s+sameProviderTargetId\s*=\s*String\(\s*sameProviderMatch\.id\s*\)/
+    );
+
+    assert.match(
+      source,
+      /sameProviderTargetIds\.add\s*\(\s*sameProviderTargetId\s*\)/
     );
   }
 );
@@ -67,21 +72,31 @@ test(
 );
 
 test(
-  "same-provider database updates remain sequential",
+  "same-provider database updates remain serialized within each target queue",
   () => {
     assert.match(
       source,
-      /const \{ error: refreshError \} = await supabase/
+      /SAME_PROVIDER_UPDATE_CONCURRENCY\s*=\s*4/
+    );
+
+    assert.match(
+      source,
+      /for\s*\(\s*const\s+sameProviderTask\s+of\s+sameProviderQueue\s*\)/
+    );
+
+    assert.match(
+      source,
+      /const\s+\{\s*error:\s*refreshError\s*\}\s*=\s*[\s\S]*?await\s+supabase/
     );
 
     assert.doesNotMatch(
       source,
-      /Promise\.all\s*\(/
+      /Promise\.all\s*\(\s*rows\.map/
     );
 
     assert.doesNotMatch(
       source,
-      /Promise\.allSettled\s*\(/
+      /Promise\.allSettled\s*\(\s*rows\.map/
     );
   }
 );

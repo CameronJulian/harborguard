@@ -41,7 +41,7 @@ test("upsert resolution domain covers every terminal outcome", () => {
 test("same-provider resolution uses the exact matched alert id", () => {
   assert.match(
     source,
-    /outcome: "refreshed_existing"[\s\S]*String\(sameProviderMatch\.id\)/
+    /outcome:\s*"refreshed_existing"[\s\S]*alertId:\s*String\(\s*sameProviderMatch\.id\s*\)/
   );
 });
 
