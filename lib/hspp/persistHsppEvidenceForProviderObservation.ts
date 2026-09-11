@@ -61,6 +61,122 @@ function mapExistingHsppEvidence(
   };
 }
 
+export type PrefetchedHsppEvidenceForProviderObservation = {
+  id: string;
+  integrityFingerprint: string;
+};
+
+type PrefetchedHsppEvidenceRow = {
+  id: unknown;
+  provider_observation_id: unknown;
+  integrity_fingerprint: unknown;
+};
+
+export async function prefetchHsppEvidenceForProviderObservations({
+  supabase,
+  organizationId,
+  providerObservationIds,
+}: {
+  supabase: any;
+  organizationId: string;
+  providerObservationIds: string[];
+}): Promise<
+  Map<
+    string,
+    PrefetchedHsppEvidenceForProviderObservation
+  >
+> {
+  const normalizedOrganizationId =
+    requireNonBlank(
+      organizationId,
+      "organizationId"
+    );
+
+  const normalizedProviderObservationIds =
+    Array.from(
+      new Set(
+        providerObservationIds
+          .map((value) => value.trim())
+          .filter(Boolean)
+      )
+    );
+
+  const result =
+    new Map<
+      string,
+      PrefetchedHsppEvidenceForProviderObservation
+    >();
+
+  if (
+    normalizedProviderObservationIds.length === 0
+  ) {
+    return result;
+  }
+
+  const {
+    data,
+    error,
+  } =
+    await supabase
+      .from(
+        "hspp_evidence"
+      )
+      .select(
+        "id, provider_observation_id, integrity_fingerprint"
+      )
+      .eq(
+        "organization_id",
+        normalizedOrganizationId
+      )
+      .in(
+        "provider_observation_id",
+        normalizedProviderObservationIds
+      );
+
+  if (error) {
+    throw error;
+  }
+
+  for (
+    const row of
+      (data ?? []) as PrefetchedHsppEvidenceRow[]
+  ) {
+
+    if (
+      typeof row.id !== "string" ||
+      typeof row.provider_observation_id !==
+        "string" ||
+      typeof row.integrity_fingerprint !==
+        "string"
+    ) {
+      throw new Error(
+        "Prefetched HSPP evidence returned an invalid result."
+      );
+    }
+
+    if (
+      result.has(
+        row.provider_observation_id
+      )
+    ) {
+      throw new Error(
+        "Prefetched HSPP evidence returned duplicate provider-observation identities."
+      );
+    }
+
+    result.set(
+      row.provider_observation_id,
+      {
+        id:
+          row.id,
+        integrityFingerprint:
+          row.integrity_fingerprint,
+      }
+    );
+  }
+
+  return result;
+}
 export async function persistHsppEvidenceForProviderObservation({
   supabase,
   organizationId,

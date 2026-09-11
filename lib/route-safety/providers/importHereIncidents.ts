@@ -16,7 +16,10 @@ import {
   prefetchRouteSafetyProviderObservations,
 } from "@/lib/hspp/persistRouteSafetyProviderObservation";
 import { buildHsppEvidence } from "@/lib/hspp/buildHsppEvidence";
-import { persistHsppEvidenceForProviderObservation } from "@/lib/hspp/persistHsppEvidenceForProviderObservation";
+import {
+  persistHsppEvidenceForProviderObservation,
+  prefetchHsppEvidenceForProviderObservations,
+} from "@/lib/hspp/persistHsppEvidenceForProviderObservation";
 import {
   assessHsppExternalIntelligenceEvidence,
   HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION_V2,
@@ -668,6 +671,30 @@ export async function importHereIncidents(
 
     const observationEvidenceStartedAt =
       Date.now();
+    const prefetchedEvidence =
+      await prefetchHsppEvidenceForProviderObservations({
+        supabase,
+        organizationId,
+        providerObservationIds:
+          Array.from(
+            prefetchedProviderObservations.values()
+          ).map(
+            (observation) =>
+              observation.id
+          ),
+      });
+
+    console.info(
+      "[HERE provider diagnostic]",
+      {
+        stage:
+          "hspp-evidence-prefetch",
+        requested:
+          prefetchedProviderObservations.size,
+        found:
+          prefetchedEvidence.size,
+      }
+    );
 
     for (
       let inputIndex = 0;
@@ -806,14 +833,36 @@ export async function importHereIncidents(
             providerObservation.normalizedPayload,
         });
 
+      const prefetchedExistingEvidence =
+        prefetchedEvidence.get(
+          providerObservation.id
+        );
+
       const persistedEvidence =
-        await persistHsppEvidenceForProviderObservation({
-        supabase,
-        organizationId,
-        providerObservationId:
-          providerObservation.id,
-        evidence,
-      });
+        prefetchedExistingEvidence
+          ? (() => {
+              if (
+                prefetchedExistingEvidence.integrityFingerprint !==
+                evidence.integrityFingerprint
+              ) {
+                throw new Error(
+                  "Existing HSPP evidence does not match the provider observation evidence being persisted."
+                );
+              }
+
+              return {
+                ...prefetchedExistingEvidence,
+                created:
+                  false,
+              };
+            })()
+          : await persistHsppEvidenceForProviderObservation({
+              supabase,
+              organizationId,
+              providerObservationId:
+                providerObservation.id,
+              evidence,
+            });
 
       hsppAssessmentContexts[inputIndex] = {
         evidence,
