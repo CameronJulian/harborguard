@@ -1,32 +1,44 @@
 {
-  "crons": [
-    {
-      "path": "/api/reports/cron?period=daily",
-      "schedule": "0 7 * * *"
-    },
-    {
-      "path": "/api/reports/cron?period=weekly",
-      "schedule": "0 8 * * 1"
-    },
-    {
-      "path": "/api/route-safety/cron/providers",
-      "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/fleet/cron/route-risk-training",
-      "schedule": "0 2 * * *"
-    },
-    {
-      "path": "/api/fleet/cron/route-risk-shadow-model-health",
-      "schedule": "30 2 * * *"
-    },
-    {
-      "path": "/api/hspp/cron/post-positive-lifecycle",
-      "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/hspp/cron/recovery",
-      "schedule": "0 3 * * *"
-    }
-  ]
+    "crons":  [
+                  {
+                      "path":  "/api/reports/cron?period=daily",
+                      "schedule":  "0 7 * * *"
+                  },
+                  {
+                      "path":  "/api/reports/cron?period=weekly",
+                      "schedule":  "0 8 * * 1"
+                  },
+                  {
+                      "path":  "/api/fleet/cron/route-risk-training",
+                      "schedule":  "0 2 * * *"
+                  },
+                  {
+                      "path":  "/api/fleet/cron/route-risk-shadow-model-health",
+                      "schedule":  "30 2 * * *"
+                  },
+                  {
+                      "path":  "/api/hspp/cron/post-positive-lifecycle",
+                      "schedule":  "0 0 * * *"
+                  },
+                  {
+                      "path":  "/api/hspp/cron/recovery",
+                      "schedule":  "0 3 * * *"
+                  },
+                  {
+                      "path":  "/api/route-safety/cron/providers/here",
+                      "schedule":  "0 6 * * *"
+                  },
+                  {
+                      "path":  "/api/route-safety/cron/providers/tomtom",
+                      "schedule":  "5 6 * * *"
+                  },
+                  {
+                      "path":  "/api/route-safety/cron/providers/azure-maps",
+                      "schedule":  "10 6 * * *"
+                  },
+                  {
+                      "path":  "/api/route-safety/cron/providers/reconcile",
+                      "schedule":  "15 6 * * *"
+                  }
+              ]
 }
