@@ -140,11 +140,39 @@ export async function importHereIncidents(
   organizationId: string,
   getSourceConfiguration: IntelligenceSourceConfigurationLoader
 ): Promise<ProviderResult> {
+  const importStartedAt = Date.now();
+
+  const logHereTiming = (
+    stage: string,
+    startedAt: number,
+    count?: number
+  ) => {
+    console.info(
+      "[HERE provider timing]",
+      {
+        stage,
+        durationMs:
+          Date.now() - startedAt,
+        ...(typeof count === "number"
+          ? { count }
+          : {}),
+      }
+    );
+  };
+
+  const sourceConfigStartedAt =
+    Date.now();
+
   const sourceLookup =
     await getSourceConfiguration(
       supabase,
       "here_traffic"
     );
+
+  logHereTiming(
+    "source-config",
+    sourceConfigStartedAt
+  );
 
   if (!sourceLookup.configuration) {
     return {
@@ -219,10 +247,18 @@ export async function importHereIncidents(
       "&locationReferencing=shape" +
       `&apikey=${process.env.HERE_API_KEY}`;
 
+    const fetchStartedAt =
+      Date.now();
+
     const response = await fetch(url, {
       cache: "no-store",
       signal: AbortSignal.timeout(10_000),
     });
+
+    logHereTiming(
+      "fetch",
+      fetchStartedAt
+    );
 
     const receivedAt =
       new Date().toISOString();
@@ -259,7 +295,15 @@ export async function importHereIncidents(
       providerRequestIdCandidate ||
       null;
 
+    const responseJsonStartedAt =
+      Date.now();
+
     const data = await response.json();
+
+    logHereTiming(
+      "response-json",
+      responseJsonStartedAt
+    );
 
     if (!response.ok) {
       throw new Error(
@@ -544,6 +588,9 @@ export async function importHereIncidents(
     let persistedProviderObservationCount =
       0;
 
+    const observationEvidenceStartedAt =
+      Date.now();
+
     for (
       let inputIndex = 0;
       inputIndex < normalizedIncidents.length;
@@ -693,6 +740,12 @@ export async function importHereIncidents(
       };
     }
 
+    logHereTiming(
+      "observation-evidence-persistence",
+      observationEvidenceStartedAt,
+      persistedProviderObservationCount
+    );
+
     if (!sourceUpdatedAt) {
       console.warn(
         "[HERE provider ingestion] Snapshot provenance skipped because sourceUpdated was not present or invalid."
@@ -702,6 +755,9 @@ export async function importHereIncidents(
         "[HERE provider ingestion] Snapshot provenance skipped because at least one normalized incident is missing provider identity."
       );
     } else {
+      const snapshotStartedAt =
+        Date.now();
+
       const snapshotPersistence =
         await persistRouteSafetyProviderSnapshotRetrieval({
           supabase,
@@ -732,6 +788,12 @@ export async function importHereIncidents(
           "HERE provider snapshot persistence did not return one assertion per normalized incident."
         );
       }
+
+      logHereTiming(
+        "snapshot-persistence",
+        snapshotStartedAt,
+        snapshotAssertions.length
+      );
     }
 
     const normalizedRows =
@@ -742,6 +804,9 @@ export async function importHereIncidents(
           observedAt: string | null;
         }) => item.row
       );
+    const roadContextStartedAt =
+      Date.now();
+
     const roadContextEnrichment =
 
       await enrichRouteSafetyAlertsWithRoadContext(
@@ -752,8 +817,17 @@ export async function importHereIncidents(
 
       );
 
+    logHereTiming(
+      "road-context",
+      roadContextStartedAt,
+      normalizedRows.length
+    );
+
 
     const rows = roadContextEnrichment.rows;
+
+    const alertUpsertStartedAt =
+      Date.now();
 
     const result = await insertNewProviderAlerts(
       supabase,
@@ -761,6 +835,12 @@ export async function importHereIncidents(
       "here_traffic",
       sourceConfiguration.baseConfidence,
       rows
+    );
+
+    logHereTiming(
+      "insert-alerts",
+      alertUpsertStartedAt,
+      rows.length
     );
 
     if (
@@ -776,6 +856,12 @@ export async function importHereIncidents(
       Date.now() -
       HSPP_PROVIDER_FRESHNESS_HOURS *
         60 * 60 * 1000;
+
+    const assessmentStartedAt =
+      Date.now();
+
+    let assessmentCount =
+      0;
 
     for (
       let inputIndex = 0;
@@ -903,7 +989,21 @@ export async function importHereIncidents(
             .integrityFingerprint,
         assessment,
       });
+
+      assessmentCount += 1;
     }
+
+    logHereTiming(
+      "apply-hspp-assessment",
+      assessmentStartedAt,
+      assessmentCount
+    );
+
+    logHereTiming(
+      "total",
+      importStartedAt,
+      normalizedIncidents.length
+    );
 
     return {
       provider: "here",
