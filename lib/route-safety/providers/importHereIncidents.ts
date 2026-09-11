@@ -361,12 +361,15 @@ export async function importHereIncidents(
             null,
         };
 
-        const providerMessageId =
+        const providerOriginalId =
           typeof details?.originalId === "string"
             ? details.originalId.trim()
-            : typeof details?.id === "string"
-              ? details.id.trim()
-              : "";
+            : "";
+
+        const providerMessageId =
+          typeof details?.id === "string"
+            ? details.id.trim()
+            : providerOriginalId;
 
         const observedAtCandidate =
           typeof details?.entryTime === "string"
@@ -390,6 +393,7 @@ export async function importHereIncidents(
         return {
           row,
           providerMessageId,
+          providerOriginalId,
           observedAt,
         };
       })
@@ -398,11 +402,13 @@ export async function importHereIncidents(
           item: {
             row: RouteSafetyAlertRow;
             providerMessageId: string;
+            providerOriginalId: string;
             observedAt: string | null;
           } | null
         ): item is {
           row: RouteSafetyAlertRow;
           providerMessageId: string;
+          providerOriginalId: string;
           observedAt: string | null;
         } =>
           item !== null
@@ -471,6 +477,7 @@ export async function importHereIncidents(
           (normalized: {
             row: RouteSafetyAlertRow;
             providerMessageId: string;
+            providerOriginalId: string;
             observedAt: string | null;
           }) => {
             const immutableSnapshotPayload:
@@ -483,6 +490,11 @@ export async function importHereIncidents(
 
             delete immutableSnapshotPayload.verified_at;
             delete immutableSnapshotPayload.expires_at;
+
+            if (normalized.providerOriginalId) {
+              immutableSnapshotPayload.here_original_id =
+                normalized.providerOriginalId;
+            }
 
             return {
               providerMessageId:
@@ -546,6 +558,11 @@ export async function importHereIncidents(
         };
 
       delete immutableNormalizedPayload.verified_at;
+
+      if (normalized.providerOriginalId) {
+        immutableNormalizedPayload.here_original_id =
+          normalized.providerOriginalId;
+      }
 
       let providerObservation:
         Awaited<
