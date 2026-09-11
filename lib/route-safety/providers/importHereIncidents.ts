@@ -408,6 +408,63 @@ export async function importHereIncidents(
           item !== null
       );
 
+    const providerIdCounts =
+      new Map<string, number>();
+
+    for (const normalized of normalizedIncidents) {
+      if (!normalized.providerMessageId) {
+        continue;
+      }
+
+      providerIdCounts.set(
+        normalized.providerMessageId,
+        (providerIdCounts.get(
+          normalized.providerMessageId
+        ) ?? 0) + 1
+      );
+    }
+
+    const duplicateProviderIdGroups =
+      Array.from(
+        providerIdCounts.values()
+      ).filter(
+        (count) =>
+          count > 1
+      ).length;
+
+    const completeObservationIdentityCount =
+      normalizedIncidents.filter(
+        (normalized: {
+          row: RouteSafetyAlertRow;
+          providerMessageId: string;
+          observedAt: string | null;
+        }) =>
+          Boolean(
+            normalized.providerMessageId &&
+              normalized.observedAt
+          )
+      ).length;
+
+    console.info(
+      "[HERE provider diagnostic]",
+      {
+        stage:
+          "normalized",
+        httpStatus:
+          response.status,
+        rawCount:
+          incidents.length,
+        normalizedCount:
+          normalizedIncidents.length,
+        uniqueProviderIds:
+          providerIdCounts.size,
+        duplicateProviderIdGroups,
+        completeObservationIdentityCount,
+        sourceUpdatedPresent:
+          Boolean(sourceUpdatedAt),
+      }
+    );
+
     const snapshotAssertions:
       RouteSafetyProviderSnapshotAssertionInput[] =
         normalizedIncidents.map(
@@ -460,6 +517,9 @@ export async function importHereIncidents(
           () => null
         );
 
+    let persistedProviderObservationCount =
+      0;
+
     for (
       let inputIndex = 0;
       inputIndex < normalizedIncidents.length;
@@ -487,23 +547,62 @@ export async function importHereIncidents(
 
       delete immutableNormalizedPayload.verified_at;
 
-      const providerObservation =
-        await persistRouteSafetyProviderObservation({
-          supabase,
-          organizationId,
-          provider:
-            "here",
-          sourceStream:
-            "here_traffic",
-          providerMessageId:
-            normalized.providerMessageId,
-          observedAt:
-            normalized.observedAt,
-          payloadSchemaVersion:
-            HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION_V2,
-          normalizedPayload:
-            immutableNormalizedPayload,
-        });
+      let providerObservation:
+        Awaited<
+          ReturnType<
+            typeof persistRouteSafetyProviderObservation
+          >
+        >;
+
+      try {
+        providerObservation =
+          await persistRouteSafetyProviderObservation({
+            supabase,
+            organizationId,
+            provider:
+              "here",
+            sourceStream:
+              "here_traffic",
+            providerMessageId:
+              normalized.providerMessageId,
+            observedAt:
+              normalized.observedAt,
+            payloadSchemaVersion:
+              HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION_V2,
+            normalizedPayload:
+              immutableNormalizedPayload,
+          });
+      } catch (error) {
+        console.error(
+          "[HERE provider diagnostic]",
+          {
+            stage:
+              "provider-observation-error",
+            inputIndex,
+            normalizedCount:
+              normalizedIncidents.length,
+            persistedBeforeFailure:
+              persistedProviderObservationCount,
+            hasProviderMessageId:
+              Boolean(
+                normalized.providerMessageId
+              ),
+            hasObservedAt:
+              Boolean(
+                normalized.observedAt
+              ),
+            errorClass:
+              error instanceof Error
+                ? error.name
+                : typeof error,
+          }
+        );
+
+        throw error;
+      }
+
+      persistedProviderObservationCount +=
+        1;
 
       snapshotAssertion.providerMessageId =
         providerObservation.providerMessageId;
