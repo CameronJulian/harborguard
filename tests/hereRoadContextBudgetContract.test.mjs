@@ -12,7 +12,7 @@ test(
   () => {
     assert.match(
       source,
-      /enrichRouteSafetyAlertsWithRoadContext\s*\([\s\S]*?normalizedRows[\s\S]*?resolveRoadContext\s*,[\s\S]*?maxLookups\s*:\s*1[\s\S]*?\)/
+      /enrichRouteSafetyAlertsWithRoadContext\s*\([\s\S]*?normalizedRows[\s\S]*?(?:resolveRoadContext\s*,|\(params\)\s*=>\s*resolveRoadContext\(\s*\{[\s\S]*?timeoutMs\s*:\s*HERE_ROAD_CONTEXT_TIMEOUT_MS[\s\S]*?\}\)\s*,)[\s\S]*?maxLookups\s*:\s*1[\s\S]*?\)/
     );
   }
 );

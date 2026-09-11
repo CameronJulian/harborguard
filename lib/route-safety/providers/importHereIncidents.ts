@@ -31,6 +31,8 @@ import { verifyHsppEvidenceIntegrity } from "@/lib/hspp/verifyHsppEvidenceIntegr
 
 const HSPP_PROVIDER_FRESHNESS_HOURS = 48;
 
+const HERE_ROAD_CONTEXT_TIMEOUT_MS = 2_000;
+
 type HereHsppAssessmentContext = {
   evidence: ReturnType<typeof buildHsppEvidence>;
   persistedEvidence: Awaited<
@@ -943,8 +945,12 @@ export async function importHereIncidents(
 
         normalizedRows,
 
-        resolveRoadContext,
-
+        (params) =>
+          resolveRoadContext({
+            ...params,
+            timeoutMs:
+              HERE_ROAD_CONTEXT_TIMEOUT_MS,
+          }),
         {
           maxLookups: 1,
         }

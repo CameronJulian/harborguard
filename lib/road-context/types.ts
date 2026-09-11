@@ -1,4 +1,4 @@
-﻿export type RoadContext = {
+export type RoadContext = {
   provider: string;
 
   providerSegmentId: string | null;
@@ -23,6 +23,7 @@
 };
 
 export type ResolveRoadContextParams = {
+  timeoutMs?: number;
   latitude: number;
   longitude: number;
 

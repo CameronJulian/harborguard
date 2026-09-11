@@ -388,7 +388,7 @@ function buildQueryUrl({
   latitude,
   longitude,
   searchRadiusMeters,
-}: Required<ResolveRoadContextParams>) {
+}: Pick<Required<ResolveRoadContextParams>, "latitude" | "longitude" | "searchRadiusMeters">) {
   const baseUrl =
     process.env
       .CITY_OF_CAPE_TOWN_ROAD_CENTRELINE_URL
@@ -548,6 +548,7 @@ export async function resolveCityOfCapeTownRoadContext({
   longitude,
   searchRadiusMeters =
     DEFAULT_SEARCH_RADIUS_METERS,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
 }: ResolveRoadContextParams): Promise<RoadContext | null> {
   if (
     !isValidCoordinate(
@@ -583,7 +584,16 @@ export async function resolveCityOfCapeTownRoadContext({
     const timeout =
       setTimeout(
         () => controller.abort(),
-        DEFAULT_TIMEOUT_MS
+        Math.min(
+          10_000,
+          Math.max(
+            1,
+            Math.round(
+              Number(timeoutMs) ||
+                DEFAULT_TIMEOUT_MS
+            )
+          )
+        )
       );
 
     try {
