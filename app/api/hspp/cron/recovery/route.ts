@@ -7,9 +7,17 @@ import {
   createClient,
 } from "@supabase/supabase-js";
 
+import type {
+  SupabaseClient,
+} from "@supabase/supabase-js";
+
 import {
   NextResponse,
 } from "next/server";
+
+import {
+  recordScheduledWorkerState,
+} from "@/lib/server/recordScheduledWorkerState";
 
 import {
   HSPP_ASSEMBLY_RECOVERY_DISCOVERY_MAX_LIMIT,
@@ -84,6 +92,84 @@ function errorMessage(
 }
 
 
+type HsppRecoveryWorkerContext = {
+  supabase:
+    SupabaseClient;
+
+  organizationId:
+    string;
+};
+
+
+async function recordHsppRecoveryWorkerState(
+  context: HsppRecoveryWorkerContext,
+  event:
+    | "started"
+    | "succeeded"
+    | "failed",
+  failureMessage?: string
+): Promise<void> {
+  try {
+    await recordScheduledWorkerState({
+      supabase:
+        context.supabase,
+
+      organizationId:
+        context.organizationId,
+
+      workerKey:
+        "hspp-recovery",
+
+      event,
+
+      failureMessage,
+
+      metadata: {
+        source:
+          "vercel-cron",
+      },
+    });
+  }
+  catch (workerStateError: unknown) {
+    /*
+     * Scheduled-worker health is operational observability only.
+     *
+     * A failure to persist worker-state evidence must never acquire
+     * HSPP lifecycle authority, roll back completed recovery work,
+     * change recovery success semantics, or prevent the cron route
+     * from preserving its existing HTTP behavior.
+     */
+    Sentry.captureException(
+      workerStateError,
+      {
+        tags: {
+          domain:
+            "hspp",
+
+          operation:
+            "recovery-cron",
+
+          boundary:
+            "worker-state",
+        },
+
+        extra: {
+          workerKey:
+            "hspp-recovery",
+
+          workerEvent:
+            event,
+        },
+      }
+    );
+
+    console.error(
+      "[hspp recovery cron worker-state]",
+      workerStateError
+    );
+  }
+}
+
 function requireIntegerEnvironment(
   name: string,
   minimum: number,
@@ -149,6 +235,11 @@ function requireIntegerEnvironment(
 export async function GET(
   request: Request
 ) {
+  let workerContext:
+    HsppRecoveryWorkerContext |
+    null =
+    null;
+
   try {
     const cronSecret =
       process.env.CRON_SECRET;
@@ -296,6 +387,21 @@ export async function GET(
         }
       );
     }
+
+
+    const trustedWorkerContext:
+      HsppRecoveryWorkerContext = {
+        supabase,
+        organizationId,
+      };
+
+    workerContext =
+      trustedWorkerContext;
+
+    await recordHsppRecoveryWorkerState(
+      trustedWorkerContext,
+      "started"
+    );
 
 
     const cycle =
@@ -1006,6 +1112,12 @@ export async function GET(
       ).length;
 
 
+    await recordHsppRecoveryWorkerState(
+      trustedWorkerContext,
+      "succeeded"
+    );
+
+
     return NextResponse.json({
       success:
         openFailed === 0 &&
@@ -1087,6 +1199,17 @@ export async function GET(
     });
   }
   catch (error: unknown) {
+    if (workerContext) {
+      await recordHsppRecoveryWorkerState(
+        workerContext,
+        "failed",
+        errorMessage(
+          error
+        )
+      );
+    }
+
+
     Sentry.captureException(
       error,
       {
