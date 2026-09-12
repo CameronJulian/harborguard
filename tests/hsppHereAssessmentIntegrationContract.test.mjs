@@ -23,7 +23,7 @@ test("missing immutable HERE identity leaves assessment context empty", () => {
 test("HERE retains provider evidence persistence result", () => {
   assert.match(
     source,
-    /const persistedEvidence =[\s\S]*persistHsppEvidenceForProviderObservation/
+    /\b(?:const|let)\s+persistedEvidence\b[\s\S]*persistHsppEvidenceForProviderObservation/
   );
   assert.match(source, /persistedEvidence\.id/);
   assert.match(

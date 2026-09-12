@@ -857,31 +857,87 @@ export async function importHereIncidents(
           providerObservation.id
         );
 
-      const persistedEvidence =
-        prefetchedExistingEvidence
-          ? (() => {
-              if (
-                prefetchedExistingEvidence.integrityFingerprint !==
-                evidence.integrityFingerprint
-              ) {
-                throw new Error(
-                  "Existing HSPP evidence does not match the provider observation evidence being persisted."
-                );
-              }
+      let persistedEvidence:
+        Awaited<
+          ReturnType<
+            typeof persistHsppEvidenceForProviderObservation
+          >
+        >;
 
-              return {
-                ...prefetchedExistingEvidence,
-                created:
-                  false,
-              };
-            })()
-          : await persistHsppEvidenceForProviderObservation({
-              supabase,
-              organizationId,
-              providerObservationId:
-                providerObservation.id,
-              evidence,
-            });
+      try {
+        persistedEvidence =
+          prefetchedExistingEvidence
+            ? (() => {
+                if (
+                  prefetchedExistingEvidence.integrityFingerprint !==
+                  evidence.integrityFingerprint
+                ) {
+                  throw new Error(
+                    "Existing HSPP evidence does not match the provider observation evidence being persisted."
+                  );
+                }
+
+                return {
+                  ...prefetchedExistingEvidence,
+                  created:
+                    false,
+                };
+              })()
+            : await persistHsppEvidenceForProviderObservation({
+                supabase,
+                organizationId,
+                providerObservationId:
+                  providerObservation.id,
+                evidence,
+              });
+      } catch (error: unknown) {
+        const diagnosticError =
+          error as {
+            code?: unknown;
+            message?: unknown;
+            details?: unknown;
+            hint?: unknown;
+          };
+
+        console.error(
+          "[HERE provider diagnostic]",
+          {
+            stage:
+              "hspp-evidence-persistence-error",
+            inputIndex,
+            normalizedCount:
+              normalizedIncidents.length,
+            providerObservationId:
+              providerObservation.id,
+            hadPrefetchedEvidence:
+              Boolean(prefetchedExistingEvidence),
+            errorClass:
+              error instanceof Error
+                ? error.name
+                : typeof error,
+            errorCode:
+              typeof diagnosticError?.code === "string"
+                ? diagnosticError.code
+                : null,
+            errorMessage:
+              error instanceof Error
+                ? error.message
+                : typeof diagnosticError?.message === "string"
+                  ? diagnosticError.message
+                  : null,
+            errorDetails:
+              typeof diagnosticError?.details === "string"
+                ? diagnosticError.details
+                : null,
+            errorHint:
+              typeof diagnosticError?.hint === "string"
+                ? diagnosticError.hint
+                : null,
+          }
+        );
+
+        throw error;
+      }
 
       hsppAssessmentContexts[inputIndex] = {
         evidence,
