@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { reportServerError } from "@/lib/server/reportServerError";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -170,6 +171,14 @@ export async function GET(
     console.error(
       "[route-safety TomTom cron]",
       error
+    );
+    reportServerError(
+      error,
+      {
+        domain: "route-safety",
+        operation: "tomtom-cron",
+        boundary: "outer-request",
+      }
     );
 
     return NextResponse.json(

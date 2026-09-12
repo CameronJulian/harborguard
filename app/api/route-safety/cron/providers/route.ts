@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import {
   runProviderImportCycle,
 } from "@/lib/route-safety/providers/runProviderImportCycle";
+import { reportServerError } from "@/lib/server/reportServerError";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -128,6 +129,14 @@ export async function GET(request: Request) {
     console.error(
       "[route-safety provider cron]",
       error
+    );
+    reportServerError(
+      error,
+      {
+        domain: "route-safety",
+        operation: "provider-cron",
+        boundary: "outer-request",
+      }
     );
 
     const errorMessage =
