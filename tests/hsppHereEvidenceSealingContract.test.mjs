@@ -41,9 +41,14 @@ test("HERE evidence links to the exact provider observation", () => {
 
 test("provider observation persistence precedes evidence sealing", () => {
   const observation =
-    source.indexOf("persistRouteSafetyProviderObservation({");
+    source.indexOf(
+      "await persistRouteSafetyProviderObservationsBatch({"
+    );
+
   const evidence =
-    source.indexOf("persistHsppEvidenceForProviderObservation({");
+    source.indexOf(
+      "persistHsppEvidenceForProviderObservation({"
+    );
 
   assert.ok(observation >= 0);
   assert.ok(evidence > observation);

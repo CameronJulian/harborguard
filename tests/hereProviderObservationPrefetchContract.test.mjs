@@ -84,29 +84,43 @@ test(
 );
 
 test(
-  "HERE performs prefetch before its sequential evidence loop",
+  "HERE performs provider observation prefetch and batching before its sequential evidence loop",
   () => {
     const prefetchIndex =
       hereSource.indexOf(
         "await prefetchRouteSafetyProviderObservations({"
       );
 
-    const loopIndex =
+    const batchIndex =
       hereSource.indexOf(
-        "for (\n      let inputIndex = 0;"
+        "await persistRouteSafetyProviderObservationsBatch({"
       );
 
+    const loopMatch =
+      /for\s*\(\s*let\s+inputIndex\s*=\s*0\s*;[\s\S]*?inputIndex\s*<\s*normalizedIncidents\.length\s*;[\s\S]*?inputIndex\s*\+=\s*1\s*\)/.exec(
+        hereSource
+      );
+
+    const loopIndex =
+      loopMatch?.index ?? -1;
+
     assert.ok(prefetchIndex >= 0);
-    assert.ok(loopIndex > prefetchIndex);
+    assert.ok(batchIndex > prefetchIndex);
+    assert.ok(loopIndex > batchIndex);
   }
 );
 
 test(
-  "HERE falls back to normal persistence for non-prefetched identities",
+  "HERE batches non-prefetched provider observation identities",
   () => {
     assert.match(
       hereSource,
-      /prefetchedProviderObservations\.get\([\s\S]*?\)\s*\?\?[\s\S]*?await persistRouteSafetyProviderObservation\(/
+      /await\s+persistRouteSafetyProviderObservationsBatch\s*\(\s*\{/
+    );
+
+    assert.doesNotMatch(
+      hereSource,
+      /await\s+persistRouteSafetyProviderObservation\s*\(/
     );
   }
 );
@@ -116,7 +130,7 @@ test(
   () => {
     const observationIndex =
       hereSource.indexOf(
-        "prefetchedProviderObservations.get("
+        "const resolvedProviderObservations"
       );
 
     const evidenceIndex =

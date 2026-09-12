@@ -83,7 +83,7 @@ test(
   () => {
     const persistenceIndex =
       source.indexOf(
-        "persistRouteSafetyProviderObservation({"
+        "await persistRouteSafetyProviderObservationsBatch({"
       );
 
     const routeSafetyIndex =
@@ -107,11 +107,11 @@ test(
 );
 
 test(
-  "HERE provider observation persistence still precedes assessment and mutable Route Safety persistence",
+  "HERE provider observation batch persistence still precedes mutable Route Safety persistence and assessment",
   () => {
     const providerObservation =
       source.indexOf(
-        "persistRouteSafetyProviderObservation({"
+        "await persistRouteSafetyProviderObservationsBatch({"
       );
 
     const routeSafety =
