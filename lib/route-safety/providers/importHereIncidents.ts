@@ -24,7 +24,10 @@ import {
   assessHsppExternalIntelligenceEvidence,
   HSPP_EXTERNAL_INTELLIGENCE_PAYLOAD_SCHEMA_VERSION_V2,
 } from "@/lib/hspp/assessHsppExternalIntelligenceEvidence";
-import { applyHsppAssessmentDecision } from "@/lib/hspp/applyHsppAssessmentDecision";
+import {
+  applyHsppAssessmentDecisionsBatch,
+  type ApplyHsppAssessmentDecisionBatchItem,
+} from "@/lib/hspp/applyHsppAssessmentDecisionsBatch";
 import { verifyHsppEvidenceIntegrity } from "@/lib/hspp/verifyHsppEvidenceIntegrity";
 
 
@@ -1000,8 +1003,9 @@ export async function importHereIncidents(
     const assessmentStartedAt =
       Date.now();
 
-    let assessmentCount =
-      0;
+    const assessmentDecisions:
+      ApplyHsppAssessmentDecisionBatchItem[] =
+        [];
 
     for (
       let inputIndex = 0;
@@ -1119,19 +1123,26 @@ export async function importHereIncidents(
           providerLastSeenValid,
         });
 
-      await applyHsppAssessmentDecision({
-        supabase,
-        organizationId,
+      assessmentDecisions.push({
         evidenceId:
           context.persistedEvidence.id,
         integrityFingerprint:
           context.persistedEvidence
             .integrityFingerprint,
         assessment,
+        assessedAt:
+          new Date().toISOString(),
       });
-
-      assessmentCount += 1;
     }
+    await applyHsppAssessmentDecisionsBatch({
+      supabase,
+      organizationId,
+      decisions:
+        assessmentDecisions,
+    });
+
+    const assessmentCount =
+      assessmentDecisions.length;
 
     logHereTiming(
       "apply-hspp-assessment",

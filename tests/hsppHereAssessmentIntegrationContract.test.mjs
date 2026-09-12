@@ -62,7 +62,7 @@ test("HERE assessment consumes authoritative provider quality", () => {
   assert.match(source, /resolution\.providerLastSeen/);
 });
 
-test("HERE verifies then assesses then persists decision", () => {
+test("HERE verifies then assesses then batch persists decisions", () => {
   const verify =
     source.indexOf("verifyHsppEvidenceIntegrity({");
 
@@ -70,7 +70,7 @@ test("HERE verifies then assesses then persists decision", () => {
     source.indexOf("assessHsppExternalIntelligenceEvidence({");
 
   const apply =
-    source.indexOf("applyHsppAssessmentDecision({");
+    source.indexOf("applyHsppAssessmentDecisionsBatch({");
 
   assert.ok(verify >= 0);
   assert.ok(assess > verify);
