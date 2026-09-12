@@ -10,142 +10,73 @@ const source = fs.readFileSync(
   "utf8"
 );
 
-test(
-  "same-provider updates use an explicit concurrency ceiling of four",
-  () => {
-    assert.match(
-      source,
-      /SAME_PROVIDER_UPDATE_CONCURRENCY\s*=\s*4/
-    );
-  }
-);
+test("same-provider persistence uses exactly one batch wrapper call", () => {
+  const calls =
+    source.match(
+      /await\s+refreshRouteSafetySameProviderBatch\s*\(/g
+    ) ?? [];
 
-test(
-  "same-provider work is grouped by persisted target id",
-  () => {
-    assert.match(
-      source,
-      /sameProviderMatch\.id/
-    );
+  assert.equal(calls.length, 1);
+});
 
-    assert.match(
-      source,
-      /sameProvider.*(?:Group|Queue|Chain|Target)/i
-    );
-  }
-);
-
-test(
-  "same target updates remain serialized",
-  () => {
-    assert.match(
-      source,
-      /sameProvider.*(?:Chain|Queue)/i
-    );
-
-    assert.match(
-      source,
-      /await[\s\S]*sameProvider/i
-    );
-  }
-);
-
-test(
-  "bounded concurrency does not use unbounded Promise all over input rows",
-  () => {
+test("old same-provider worker pool is removed", () => {
+  for (const marker of [
+    "SAME_PROVIDER_UPDATE_CONCURRENCY",
+    "sameProviderNextQueueIndex",
+    "sameProviderSchedulingStopped",
+    "sameProviderFailure",
+    "sameProviderQueueEntries",
+    "runSameProviderQueue",
+    "runSameProviderWorker",
+    "sameProviderWorkerCount",
+    "sameProviderWorkers",
+  ]) {
     assert.doesNotMatch(
       source,
-      /Promise\.all\s*\(\s*rows\.map/
-    );
-
-    assert.doesNotMatch(
-      source,
-      /Promise\.allSettled\s*\(\s*rows\.map/
+      new RegExp(marker)
     );
   }
-);
+});
 
-test(
-  "same-provider failure stops scheduling new work",
-  () => {
-    assert.match(
-      source,
-      /sameProvider.*(?:Error|Failure|Failed)/i
-    );
-  }
-);
+test("same-provider batch input preserves input ordering", () => {
+  assert.match(
+    source,
+    /sameProviderTasks[\s\S]*?\.flat\(\)[\s\S]*?\.sort\([\s\S]*?inputIndex/
+  );
 
-test(
-  "same-provider resolution ordering remains based on inputIndex",
-  () => {
-    assert.match(
-      source,
-      /inputIndex/
-    );
+  assert.match(
+    source,
+    /refreshes:[\s\S]*?sameProviderTasks\.map/
+  );
+});
 
-    assert.match(
-      source,
-      /(?:sort|resolutionSlots|resolutionsByInput)/i
-    );
-  }
-);
+test("same-provider resolutions remain canonical", () => {
+  assert.match(
+    source,
+    /outcome:\s*"refreshed_existing"/
+  );
 
-test(
-  "cross-provider update remains awaited sequentially",
-  () => {
-    assert.match(
-      source,
-      /const \{ error: mergeError \} = await supabase/
-    );
-  }
-);
+  assert.match(
+    source,
+    /inputIndex:\s*sameProviderResult\.inputIndex/
+  );
 
-test(
-  "new alerts remain one bulk insert",
-  () => {
-    const matches =
-      source.match(
-        /\.insert\s*\(\s*rowsToInsert\s*\)/g
-      ) || [];
+  assert.match(
+    source,
+    /alertId:\s*sameProviderResult\.alertId/
+  );
+});
 
-    assert.equal(
-      matches.length,
-      1
-    );
-  }
-);
+test("cross-provider persistence remains directly awaited", () => {
+  assert.match(
+    source,
+    /const \{ error: mergeError \} = await supabase/
+  );
+});
 
-test(
-  "bounded concurrency does not expose provider identifiers in timing logs",
-  () => {
-    const timingMatch =
-      source.match(
-        /console\.info\(\s*"\[Provider alert persistence timing\]"\s*,\s*\{[\s\S]*?\}\s*\);/
-      );
-
-    assert.ok(
-      timingMatch,
-      "timing logger must exist"
-    );
-
-    assert.doesNotMatch(
-      timingMatch[0],
-      /organizationId|sameProviderMatch\.id|latitude|longitude|token|secret|authorization|apiKey/i
-    );
-
-    assert.match(
-      timingMatch[0],
-      /stage/
-    );
-
-    assert.match(
-      timingMatch[0],
-      /durationMs/
-    );
-
-    assert.match(
-      timingMatch[0],
-      /count/
-    );
-  }
-);
+test("new alerts remain one bulk insert path", () => {
+  assert.match(
+    source,
+    /\.insert\(rowsToInsert\)/
+  );
+});

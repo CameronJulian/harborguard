@@ -45,6 +45,70 @@ function makeSupabase(params: {
   let insertedInput: AnyRow[] = [];
 
   const supabase = {
+    async rpc(
+      name: string,
+      args: Record<string, any>
+    ) {
+      assert.equal(
+        name,
+        "refresh_route_safety_same_provider_batch"
+      );
+
+      const source =
+        String(args.p_source);
+
+      const baseConfidence =
+        Number(args.p_base_confidence);
+
+      const refreshes =
+        Array.isArray(args.p_refreshes)
+          ? args.p_refreshes
+          : [];
+
+      const data =
+        refreshes.map(
+          (refresh: AnyRow) => {
+            const target =
+              existing.find(
+                (row) =>
+                  String(row.id) ===
+                  String(refresh.alertId)
+              );
+
+            assert.ok(
+              target,
+              "RPC mock requires an existing same-provider target"
+            );
+
+            const confirmedAt =
+              "2026-09-12T09:00:00.000Z";
+
+            return {
+              input_index:
+                refresh.inputIndex,
+              alert_id:
+                String(target.id),
+              provider_sources: [
+                source,
+              ],
+              provider_last_seen: {
+                ...(target.provider_last_seen || {}),
+                [source]:
+                  confirmedAt,
+              },
+              provider_confirmation_count:
+                1,
+              provider_confidence:
+                baseConfidence,
+            };
+          }
+        );
+
+      return {
+        data,
+        error: null,
+      };
+    },
     from(table: string) {
       assert.equal(
         table,

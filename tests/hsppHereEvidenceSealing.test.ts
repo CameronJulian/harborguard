@@ -7,11 +7,17 @@ const source = fs.readFileSync(
   "utf8"
 );
 
-test("provider observation is captured before evidence is built", () => {
-  const observation = source.indexOf("const providerObservation =");
-  const evidence = source.indexOf("const evidence =");
-  assert.ok(observation >= 0);
-  assert.ok(evidence > observation);
+test("provider observation is resolved before evidence is built", () => {
+  const resolution =
+    source.indexOf("const resolvedProviderObservation =");
+  const assignment =
+    source.indexOf("providerObservation =");
+  const evidence =
+    source.indexOf("const evidence =");
+
+  assert.ok(resolution >= 0);
+  assert.ok(assignment > resolution);
+  assert.ok(evidence > assignment);
 });
 
 test("sealed evidence reuses immutable provider observation provenance", () => {
@@ -29,11 +35,20 @@ test("sealed evidence reuses immutable provider observation provenance", () => {
   }
 });
 
-test("missing HERE provenance still skips evidence creation", () => {
-  const guard = source.indexOf("!normalized.providerMessageId");
-  const observation = source.indexOf("const providerObservation =");
+test("missing HERE provenance is guarded before observation batching and evidence creation", () => {
+  const guard =
+    source.indexOf("!normalized.providerMessageId");
+  const batchInput =
+    source.indexOf("providerObservationBatchInputs.push({");
+  const resolution =
+    source.indexOf("const resolvedProviderObservation =");
+  const evidence =
+    source.indexOf("const evidence =");
+
   assert.ok(guard >= 0);
-  assert.ok(observation > guard);
+  assert.ok(batchInput > guard);
+  assert.ok(resolution > batchInput);
+  assert.ok(evidence > resolution);
 });
 
 test("road context enrichment remains after evidence sealing", () => {

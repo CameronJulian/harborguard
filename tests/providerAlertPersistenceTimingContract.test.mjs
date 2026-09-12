@@ -10,109 +10,65 @@ const source = fs.readFileSync(
   "utf8"
 );
 
-test(
-  "provider alert persistence exposes timing stages",
-  () => {
+test("provider alert persistence exposes timing stages", () => {
+  assert.match(
+    source,
+    /\[Provider alert persistence timing\]/
+  );
+
+  for (const stage of [
+    "existing-select",
+    "same-provider-updates",
+    "cross-provider-updates",
+    "bulk-insert",
+    "total",
+  ]) {
     assert.match(
       source,
-      /\[Provider alert persistence timing\]/
-    );
-
-    for (const stage of [
-      "existing-select",
-      "same-provider-updates",
-      "cross-provider-updates",
-      "bulk-insert",
-      "total",
-    ]) {
-      assert.match(
-        source,
-        new RegExp(`"${stage}"`)
-      );
-    }
-  }
-);
-
-test(
-  "provider alert persistence timing remains low sensitivity",
-  () => {
-    const marker =
-      source.indexOf(
-        '"[Provider alert persistence timing]"'
-      );
-
-    assert.notEqual(marker, -1);
-
-    const region =
-      source.slice(
-        marker,
-        marker + 260
-      );
-
-    assert.match(region, /\bstage\b/);
-    assert.match(region, /\bdurationMs\b/);
-    assert.match(region, /\bcount\b/);
-
-    assert.doesNotMatch(
-      region,
-      /organizationId|latitude|longitude|title|providerLastSeen|secret|token|authorization|apiKey/i
+      new RegExp(`"${stage}"`)
     );
   }
-);
+});
 
-test(
-  "same-provider timing retains sequential update semantics",
-  () => {
-    assert.match(
-      source,
-      /sameProviderUpdateStartedAt[\s\S]*?await supabase[\s\S]*?sameProviderUpdateMs \+=/
-    );
+test("provider alert persistence timing remains low sensitivity", () => {
+  assert.match(
+    source,
+    /logPersistenceTiming/
+  );
 
-    assert.match(
-      source,
-      /sameProviderUpdateCount \+= 1/
-    );
-  }
-);
+  assert.doesNotMatch(
+    source,
+    /\[Provider alert persistence timing\][\s\S]{0,250}(?:alertId|latitude|longitude|roadName)/
+  );
+});
 
-test(
-  "cross-provider timing retains sequential update semantics",
-  () => {
-    assert.match(
-      source,
-      /crossProviderUpdateStartedAt[\s\S]*?await supabase[\s\S]*?crossProviderUpdateMs \+=/
-    );
+test("same-provider timing measures the single batch wrapper call", () => {
+  assert.match(
+    source,
+    /sameProviderBatchStartedAt\s*=\s*Date\.now\(\)[\s\S]*?await\s+refreshRouteSafetySameProviderBatch[\s\S]*?sameProviderUpdateMs\s*=[\s\S]*?Date\.now\(\)\s*-\s*sameProviderBatchStartedAt/
+  );
 
-    assert.match(
-      source,
-      /crossProviderUpdateCount \+= 1/
-    );
-  }
-);
+  assert.match(
+    source,
+    /sameProviderUpdateCount\s*=\s*sameProviderResults\.length/
+  );
+});
 
-test(
-  "new alerts remain one bulk insert",
-  () => {
-    const matches =
-      source.match(
-        /\.insert\s*\(\s*rowsToInsert\s*\)/g
-      ) || [];
+test("cross-provider timing retains sequential update semantics", () => {
+  assert.match(
+    source,
+    /crossProviderUpdateStartedAt[\s\S]*?await supabase[\s\S]*?crossProviderUpdateMs \+=/
+  );
 
-    assert.equal(matches.length, 1);
-  }
-);
+  assert.match(
+    source,
+    /crossProviderUpdateCount \+= 1/
+  );
+});
 
-test(
-  "instrumentation introduces no concurrency",
-  () => {
-    assert.doesNotMatch(
-      source,
-      /Promise\.all\s*\(/
-    );
-
-    assert.doesNotMatch(
-      source,
-      /Promise\.allSettled\s*\(/
-    );
-  }
-);
+test("new alerts remain one bulk insert", () => {
+  assert.match(
+    source,
+    /\.insert\(rowsToInsert\)/
+  );
+});

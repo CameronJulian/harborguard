@@ -1,5 +1,6 @@
 import type { RouteSafetyAlertRow } from "@/lib/route-safety/types";
 import { deriveProviderQualityState } from "@/lib/route-safety/deriveProviderQualityState";
+import { refreshRouteSafetySameProviderBatch } from "@/lib/route-safety/refreshRouteSafetySameProviderBatch";
 
 export type ProviderAlertResolution = {
   inputIndex: number;
@@ -357,7 +358,6 @@ provider_sources,
 
   const resolutions: ProviderAlertResolution[] = [];
 
-  const SAME_PROVIDER_UPDATE_CONCURRENCY = 4;
 
   type SameProviderUpdateTask = {
     inputIndex: number;
@@ -731,260 +731,137 @@ provider_sources,
     queuedSameProviderKeys.add(key);
   }
 
-  let sameProviderNextQueueIndex = 0;
-  let sameProviderSchedulingStopped = false;
-  let sameProviderFailure: unknown = null;
-
-  const sameProviderQueueEntries =
+  const sameProviderTasks =
     Array.from(
       sameProviderQueuesByTarget.values()
-    );
+    )
+      .flat()
+      .sort(
+        (left, right) =>
+          left.inputIndex -
+          right.inputIndex
+      );
 
-  const runSameProviderQueue = async (
-    sameProviderQueue: SameProviderUpdateTask[]
-  ): Promise<void> => {
-    for (const sameProviderTask of sameProviderQueue) {
-      if (sameProviderSchedulingStopped) {
-        return;
-      }
+  if (sameProviderTasks.length > 0) {
+    const sameProviderBatchStartedAt =
+      Date.now();
 
-      const {
-        inputIndex,
-        row,
-        sameProviderMatch,
-      } = sameProviderTask;
+    const sameProviderResults =
+      await refreshRouteSafetySameProviderBatch({
+        supabase,
+        organizationId,
+        source,
+        baseConfidence,
+        refreshes:
+          sameProviderTasks.map(
+            ({
+              inputIndex,
+              row,
+              sameProviderMatch,
+            }) => ({
+              inputIndex,
+              alertId:
+                String(
+                  sameProviderMatch.id
+                ),
+              expiresAt:
+                row.expires_at ?? null,
+              roadName:
+                row.road_name ?? null,
+            })
+          ),
+      });
 
-      const confirmedAt =
-        new Date().toISOString();
+    sameProviderUpdateMs =
+      Date.now() -
+      sameProviderBatchStartedAt;
 
-      const providerLastSeen = {
-        ...(sameProviderMatch.provider_last_seen || {}),
-        [source]: confirmedAt,
-      };
+    sameProviderUpdateCount =
+      sameProviderResults.length;
 
-      const providerQuality =
-        deriveProviderQualityState({
-          providerLastSeen,
-          providerSources: [source],
-          primarySource: source,
-          primarySourceBaseConfidence:
-            baseConfidence,
-        });
+    const sameProviderTaskByInputIndex =
+      new Map(
+        sameProviderTasks.map(
+          (sameProviderTask) => [
+            sameProviderTask.inputIndex,
+            sameProviderTask,
+          ] as const
+        )
+      );
 
-      const existingExpiryTime =
-        sameProviderMatch.expires_at
-          ? new Date(
-              sameProviderMatch.expires_at
-            ).getTime()
-          : Number.NaN;
+    for (
+      const sameProviderResult
+      of sameProviderResults
+    ) {
+      const sameProviderTask =
+        sameProviderTaskByInputIndex.get(
+          sameProviderResult.inputIndex
+        );
 
-      const incomingExpiryTime =
-        row.expires_at
-          ? new Date(
-              row.expires_at
-            ).getTime()
-          : Number.NaN;
-
-      let refreshedExpiresAt: string | null =
-        sameProviderMatch.expires_at ||
-        row.expires_at ||
-        null;
-
-      if (
-        Number.isFinite(existingExpiryTime) &&
-        Number.isFinite(incomingExpiryTime)
-      ) {
-        refreshedExpiresAt =
-          incomingExpiryTime > existingExpiryTime
-            ? row.expires_at
-            : sameProviderMatch.expires_at;
-      }
-
-      const existingRoadName =
-        typeof sameProviderMatch.road_name === "string"
-          ? sameProviderMatch.road_name.trim()
-          : "";
-
-      const incomingRoadName =
-        typeof row.road_name === "string"
-          ? row.road_name.trim()
-          : "";
-
-      const refreshedRoadName =
-        existingRoadName ||
-        incomingRoadName ||
-        null;
-
-      const sameProviderUpdateStartedAt =
-        Date.now();
-
-      const { error: refreshError } =
-        await supabase
-          .from("route_safety_alerts")
-          .update({
-            provider_sources:
-              providerQuality.providerSources,
-            provider_confirmation_count:
-              providerQuality.providerConfirmationCount,
-            provider_confidence:
-              providerQuality.providerConfidence,
-            last_provider_confirmation_at:
-              confirmedAt,
-            provider_last_seen:
-              providerLastSeen,
-            verified_at:
-              confirmedAt,
-            verification_status:
-              "verified",
-            expires_at:
-              refreshedExpiresAt,
-            road_name:
-              refreshedRoadName,
-          })
-          .eq(
-            "organization_id",
-            organizationId
-          )
-          .eq(
-            "id",
-            sameProviderMatch.id
-          );
-
-      sameProviderUpdateMs +=
-        Date.now() -
-        sameProviderUpdateStartedAt;
-
-      sameProviderUpdateCount += 1;
-
-      if (refreshError) {
-        throw refreshError;
-      }
-
-      sameProviderMatch.provider_sources =
-        providerQuality.providerSources;
-
-      sameProviderMatch.provider_confirmation_count =
-        providerQuality.providerConfirmationCount;
-
-      sameProviderMatch.provider_confidence =
-        providerQuality.providerConfidence;
-
-      sameProviderMatch.last_provider_confirmation_at =
-        confirmedAt;
-
-      sameProviderMatch.provider_last_seen =
-        providerLastSeen;
-
-      sameProviderMatch.expires_at =
-        refreshedExpiresAt;
-
-      sameProviderMatch.road_name =
-        refreshedRoadName;
-
-      refreshedExisting += 1;
-
-      if (
-        sameProviderUpdateCount % 25 === 0
-      ) {
-        console.info(
-          "[Provider alert persistence progress]",
-          {
-            stage: "same-provider",
-            processed:
-              sameProviderUpdateCount,
-            uniqueTargets:
-              sameProviderTargetIds.size,
-          }
+      if (!sameProviderTask) {
+        throw new Error(
+          `Missing same-provider task for inputIndex ${sameProviderResult.inputIndex}.`
         );
       }
 
+      const {
+        sameProviderMatch,
+      } = sameProviderTask;
+
+      if (
+        String(
+          sameProviderMatch.id
+        ) !==
+        sameProviderResult.alertId
+      ) {
+        throw new Error(
+          `Same-provider batch resolution alert mismatch for inputIndex ${sameProviderResult.inputIndex}.`
+        );
+      }
+
+      sameProviderMatch.provider_sources =
+        sameProviderResult.providerSources;
+
+      sameProviderMatch.provider_confirmation_count =
+        sameProviderResult.providerConfirmationCount;
+
+      sameProviderMatch.provider_confidence =
+        sameProviderResult.providerConfidence;
+
+      sameProviderMatch.provider_last_seen =
+        sameProviderResult.providerLastSeen;
+
+      refreshedExisting += 1;
+
       resolutions.push({
-        inputIndex,
+        inputIndex:
+          sameProviderResult.inputIndex,
         outcome:
           "refreshed_existing",
         alertId:
-          String(
-            sameProviderMatch.id
-          ),
+          sameProviderResult.alertId,
         providerSources:
-          providerQuality.providerSources,
-        providerLastSeen,
+          sameProviderResult.providerSources,
+        providerLastSeen:
+          sameProviderResult.providerLastSeen,
         providerConfirmationCount:
-          providerQuality.providerConfirmationCount,
+          sameProviderResult.providerConfirmationCount,
         providerConfidence:
-          providerQuality.providerConfidence,
+          sameProviderResult.providerConfidence,
       });
     }
-  };
 
-  const runSameProviderWorker =
-    async (): Promise<void> => {
-      while (true) {
-        if (sameProviderSchedulingStopped) {
-          return;
-        }
-
-        const queueIndex =
-          sameProviderNextQueueIndex;
-
-        sameProviderNextQueueIndex += 1;
-
-        if (
-          queueIndex >=
-          sameProviderQueueEntries.length
-        ) {
-          return;
-        }
-
-        try {
-          await runSameProviderQueue(
-            sameProviderQueueEntries[
-              queueIndex
-            ]
-          );
-        } catch (error) {
-          if (
-            !sameProviderSchedulingStopped
-          ) {
-            sameProviderSchedulingStopped =
-              true;
-
-            sameProviderFailure =
-              error;
-          }
-
-          return;
-        }
-      }
-    };
-
-  const sameProviderWorkerCount =
-    Math.min(
-      SAME_PROVIDER_UPDATE_CONCURRENCY,
-      sameProviderQueueEntries.length
-    );
-
-  const sameProviderWorkers =
-    Array.from(
+    console.info(
+      "[Provider alert persistence progress]",
       {
-        length:
-          sameProviderWorkerCount,
-      },
-      () =>
-        runSameProviderWorker()
+        stage: "same-provider",
+        processed:
+          sameProviderUpdateCount,
+        uniqueTargets:
+          sameProviderTargetIds.size,
+      }
     );
-
-  for (
-    const sameProviderWorker
-    of sameProviderWorkers
-  ) {
-    await sameProviderWorker;
   }
-
-  if (sameProviderSchedulingStopped) {
-    throw sameProviderFailure;
-  }
-
   if (uniqueRows.length === 0) {
     logPersistenceTiming(
       "existing-select",

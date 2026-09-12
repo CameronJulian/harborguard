@@ -16,7 +16,32 @@ test("Route Safety upsert consumes centralized provider-quality derivation", () 
   const calls =
     source.match(/deriveProviderQualityState\(\{/g) || [];
 
-  assert.equal(calls.length, 3);
+  assert.equal(calls.length, 2);
+
+  assert.match(
+    source,
+    /await\s+refreshRouteSafetySameProviderBatch\s*\(/
+  );
+
+  assert.match(
+    source,
+    /sameProviderMatch\.provider_sources\s*=\s*sameProviderResult\.providerSources/
+  );
+
+  assert.match(
+    source,
+    /sameProviderMatch\.provider_confirmation_count\s*=\s*sameProviderResult\.providerConfirmationCount/
+  );
+
+  assert.match(
+    source,
+    /sameProviderMatch\.provider_confidence\s*=\s*sameProviderResult\.providerConfidence/
+  );
+
+  assert.match(
+    source,
+    /sameProviderMatch\.provider_last_seen\s*=\s*sameProviderResult\.providerLastSeen/
+  );
 });
 
 test("same-provider refresh preserves one active provider", () => {
