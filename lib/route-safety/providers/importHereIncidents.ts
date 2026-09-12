@@ -317,10 +317,24 @@ export async function importHereIncidents(
     );
 
     if (!response.ok) {
-      throw new Error(
+      const upstreamMessage =
         data?.title ||
-          data?.error ||
-          "HERE Traffic request failed."
+        data?.error ||
+        response.statusText ||
+        "HERE Traffic request failed.";
+
+      console.error(
+        "[HERE provider upstream failure]",
+        {
+          stage: "fetch",
+          httpStatus: response.status,
+          statusText: response.statusText,
+          message: upstreamMessage,
+        }
+      );
+
+      throw new Error(
+        `HERE Traffic request failed with HTTP ${response.status}: ${upstreamMessage}`
       );
     }
 
