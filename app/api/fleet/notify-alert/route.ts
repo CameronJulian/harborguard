@@ -4,9 +4,6 @@ import { hasPermission } from "@/lib/rbac";
 import { ratelimit } from "@/lib/ratelimit";
 import { Resend } from "resend";
 import { getTwilioClient } from "@/lib/twilio";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 type NotifyAlertBody = {
   vehicleNickname?: string | null;
   registrationNumber?: string | null;
@@ -306,8 +303,18 @@ let whatsappError: string | null = null;
     let smsError: string | null = null;
 
     if (recipientEmail) {
-      const { data, error } =
-        await resend.emails.send({
+      const resendKey =
+        process.env.RESEND_API_KEY?.trim();
+
+      if (!resendKey) {
+        emailError =
+          "RESEND_API_KEY is not configured.";
+      } else {
+        const resend =
+          new Resend(resendKey);
+
+        const { data, error } =
+          await resend.emails.send({
           from:
             process.env.RESEND_FROM_EMAIL ||
             "HarborGuard <onboarding@resend.dev>",
@@ -322,6 +329,7 @@ let whatsappError: string | null = null;
           "Failed to send email.";
       } else {
         emailData = data;
+      }
       }
     }
 
