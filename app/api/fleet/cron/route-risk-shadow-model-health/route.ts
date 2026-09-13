@@ -5,6 +5,8 @@ import {
 import {
   NextResponse,
 } from "next/server";
+import { reportServerError } from "@/lib/server/reportServerError";
+
 
 import {
   analyzeRouteRiskShadowModelHealth,
@@ -494,6 +496,12 @@ export async function GET(
       },
     });
   } catch (error: unknown) {
+    reportServerError(error, {
+      domain: "fleet",
+      operation: "route-risk-shadow-model-health-cron",
+      boundary: "top-level",
+    });
+
     console.error(
       "[route-risk shadow model-health cron]",
       error
