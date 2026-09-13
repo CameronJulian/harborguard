@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { NextResponse } from "next/server";
+import { reportServerError } from "@/lib/server/reportServerError";
 
 import {
   createClient,
@@ -432,6 +433,12 @@ export async function GET(
     });
   }
   catch (error: unknown) {
+    reportServerError(error, {
+      domain: "hspp",
+      operation: "post-positive-lifecycle-cron",
+      boundary: "top-level",
+    });
+
     console.error(
       "[hspp post-positive lifecycle cron]",
       error,
