@@ -1,13 +1,7 @@
-﻿import { NextRequest, NextResponse } from "next/server";
-import webpush from "web-push";
+import { NextRequest, NextResponse } from "next/server";
+import { sendWebPushNotification } from "@/lib/web-push";
 import { requireOrganization, requireRole } from "@/lib/server-auth";
 import { createCommandCenterNotification } from "@/lib/command-center/notifications";
-
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT || "mailto:cameron@healthsystems.co.za",
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
 
 type EscalateBody = {
   vehicleId?: string;
@@ -50,7 +44,7 @@ async function sendRouteSafetyPush(
   await Promise.all(
     subscriptions.map(async (subscription: any) => {
       try {
-        await webpush.sendNotification(
+        await sendWebPushNotification(
           {
             endpoint: subscription.endpoint,
             keys: {
@@ -242,5 +236,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-
-

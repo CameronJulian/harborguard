@@ -3,18 +3,9 @@ import { requireOrganization } from "@/lib/server-auth";
 import { hasPermission } from "@/lib/rbac";
 import { ratelimit } from "@/lib/ratelimit";
 import { Resend } from "resend";
-import twilio from "twilio";
+import { getTwilioClient } from "@/lib/twilio";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-
-const twilioClient =
-  process.env.TWILIO_ACCOUNT_SID &&
-  process.env.TWILIO_AUTH_TOKEN
-    ? twilio(
-        process.env.TWILIO_ACCOUNT_SID,
-        process.env.TWILIO_AUTH_TOKEN
-      )
-    : null;
 
 type NotifyAlertBody = {
   vehicleNickname?: string | null;
@@ -114,6 +105,7 @@ function determineEscalationLevel(
 export async function POST(req: Request) {
   try {
     const { role } = await requireOrganization();
+    const twilioClient = getTwilioClient();
 
     if (!hasPermission(role, "vehicles:manage")) {
       return NextResponse.json({ error: "Permission denied." }, { status: 403 });
@@ -382,7 +374,7 @@ let whatsappError: string | null = null;
         .filter(Boolean);
 
     const whatsAppBody =
-      `🚨 HARBORGUARD ${escalation.level}\n\n` +
+      `ðŸš¨ HARBORGUARD ${escalation.level}\n\n` +
       `Alert: ${titleCase(alertType)}\n` +
       `Severity: ${titleCase(severity)}\n` +
       `Vehicle: ${vehicleLabel}\n` +

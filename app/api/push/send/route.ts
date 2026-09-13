@@ -1,12 +1,6 @@
-﻿import { NextResponse } from "next/server";
-import webpush from "web-push";
+import { NextResponse } from "next/server";
+import { sendWebPushNotification } from "@/lib/web-push";
 import { requireOrganization } from "@/lib/server-auth";
-
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT || "mailto:cameron@healthsystems.co.za",
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
 
 export async function POST(req: Request) {
   try {
@@ -42,7 +36,7 @@ export async function POST(req: Request) {
     await Promise.all(
       subscriptions.map(async (sub) => {
         try {
-          await webpush.sendNotification(
+          await sendWebPushNotification(
             {
               endpoint: sub.endpoint,
               keys: {

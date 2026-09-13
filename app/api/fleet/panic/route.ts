@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import webpush from "web-push";
+import { sendWebPushNotification } from "@/lib/web-push";
 import { requireOrganization } from "@/lib/server-auth";
 import {
   fleetPanicRatelimit,
@@ -8,12 +8,6 @@ import {
 } from "@/lib/ratelimit";
 import { createCommandCenterNotification } from "@/lib/command-center/notifications";
 import { reportServerError } from "@/lib/server/reportServerError";
-
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT || "mailto:cameron@healthsystems.co.za",
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
 
 type PanicBody = {
   vehicleId?: string;
@@ -287,7 +281,7 @@ export async function POST(req: Request) {
         await Promise.all(
           pushSubscriptions.map(async (subscription) => {
             try {
-              await webpush.sendNotification(
+              await sendWebPushNotification(
                 {
                   endpoint: subscription.endpoint,
                   keys: {
@@ -377,14 +371,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-
-
-
-
-
-
-
-
-
-
-
