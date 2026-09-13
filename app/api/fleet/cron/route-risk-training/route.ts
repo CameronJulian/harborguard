@@ -4,6 +4,8 @@ import {
 import {
   NextResponse,
 } from "next/server";
+import { reportServerError } from "@/lib/server/reportServerError";
+
 
 import {
   assessRouteRiskRetrainingReadiness,
@@ -451,6 +453,12 @@ export async function GET(
     });
   }
   catch (error: unknown) {
+    reportServerError(error, {
+      domain: "fleet",
+      operation: "route-risk-training-cron",
+      boundary: "top-level",
+    });
+
     console.error(
       "[route-risk training cron]",
       error
