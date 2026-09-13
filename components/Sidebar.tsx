@@ -130,6 +130,15 @@ export default function Sidebar({
         <Link href="/command-center" style={navStyle("/command-center")} onClick={onNavigate}>
           Command Center
         </Link>
+        {(role === "owner" || role === "admin") && (
+          <Link
+            href="/operations-health"
+            style={navStyle("/operations-health")}
+            onClick={onNavigate}
+          >
+            Operations Health
+          </Link>
+        )}
 
         {canManageReports && (
           <>
@@ -211,7 +220,3 @@ export default function Sidebar({
     </aside>
   );
 }
-
-
-
-
