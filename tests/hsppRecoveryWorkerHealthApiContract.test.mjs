@@ -78,16 +78,86 @@ test(
 );
 
 test(
-  "HSPP health does not invent stale-worker policy",
+  "HSPP recovery stale policy is one daily interval plus six hours grace",
   () => {
-    assert.doesNotMatch(
+    assert.match(
       route,
-      /\b(staleAfter|stale_after|overdueAfter|expectedInterval|thresholdMs)\b/
+      /HSPP_RECOVERY_SCHEDULE_INTERVAL_HOURS\s*=\s*[\r\n\s]*24/
+    );
+
+    assert.match(
+      route,
+      /HSPP_RECOVERY_STALE_GRACE_HOURS\s*=\s*[\r\n\s]*6/
+    );
+
+    assert.match(
+      route,
+      /HSPP_RECOVERY_STALE_AFTER_HOURS\s*=[\s\S]*?HSPP_RECOVERY_SCHEDULE_INTERVAL_HOURS\s*\+[\s\S]*?HSPP_RECOVERY_STALE_GRACE_HOURS/
+    );
+  }
+);
+
+test(
+  "HSPP recovery freshness is derived from last successful execution",
+  () => {
+    assert.match(
+      route,
+      /Date\.parse\s*\(\s*lastSuccessfulAt\s*\)/
+    );
+
+    assert.match(
+      route,
+      /Date\.now\s*\(\s*\)\s*-\s*lastSuccessfulAtMs/
+    );
+
+    assert.match(
+      route,
+      /successfulAgeMs\s*>[\s\S]*?HSPP_RECOVERY_STALE_AFTER_MS/
+    );
+  }
+);
+
+test(
+  "HSPP recovery health exposes unknown healthy and stale semantics",
+  () => {
+    assert.match(
+      route,
+      /"unknown"[\s\S]*?"healthy"[\s\S]*?"stale"/
+    );
+
+    assert.match(
+      route,
+      /\?\s*"stale"\s*:\s*"healthy"/
+    );
+
+    assert.match(
+      route,
+      /status,/
+    );
+
+    assert.match(
+      route,
+      /staleAfterHours:/
+    );
+  }
+);
+
+test(
+  "HSPP recovery failure evidence remains separate from stale classification",
+  () => {
+    assert.match(
+      route,
+      /lastFailureAt:/
+    );
+
+    assert.match(
+      route,
+      /lastFailureMessage:/
     );
 
     assert.doesNotMatch(
       route,
-      /status\s*:\s*["'](?:stale|overdue|healthy|unhealthy)["']/
+      /lastFailureAt[\s\S]{0,120}\?\s*"stale"/
     );
   }
 );

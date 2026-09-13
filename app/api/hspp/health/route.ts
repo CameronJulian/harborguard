@@ -8,6 +8,22 @@ import {
 const HSPP_RECOVERY_WORKER_KEY =
   "hspp-recovery";
 
+const HSPP_RECOVERY_SCHEDULE_INTERVAL_HOURS =
+  24;
+
+const HSPP_RECOVERY_STALE_GRACE_HOURS =
+  6;
+
+const HSPP_RECOVERY_STALE_AFTER_HOURS =
+  HSPP_RECOVERY_SCHEDULE_INTERVAL_HOURS +
+  HSPP_RECOVERY_STALE_GRACE_HOURS;
+
+const HSPP_RECOVERY_STALE_AFTER_MS =
+  HSPP_RECOVERY_STALE_AFTER_HOURS *
+  60 *
+  60 *
+  1000;
+
 export async function GET() {
   try {
     const {
@@ -59,6 +75,36 @@ export async function GET() {
      * healthy, unhealthy, or SLA-compliant. Those semantics
      * require an explicit schedule-derived policy.
      */
+    const lastSuccessfulAt =
+      workerState?.last_successful_at ??
+      null;
+
+    const lastSuccessfulAtMs =
+      lastSuccessfulAt === null
+        ? null
+        : Date.parse(lastSuccessfulAt);
+
+    const successfulAgeMs =
+      lastSuccessfulAtMs === null ||
+      !Number.isFinite(lastSuccessfulAtMs)
+        ? null
+        : Math.max(
+            0,
+            Date.now() -
+              lastSuccessfulAtMs
+          );
+
+    const status:
+      | "unknown"
+      | "healthy"
+      | "stale" =
+      successfulAgeMs === null
+        ? "unknown"
+        : successfulAgeMs >
+            HSPP_RECOVERY_STALE_AFTER_MS
+          ? "stale"
+          : "healthy";
+
     return NextResponse.json({
       success: true,
 
@@ -69,13 +115,24 @@ export async function GET() {
         stateRecorded:
           Boolean(workerState),
 
+        status,
+
+        scheduleIntervalHours:
+          HSPP_RECOVERY_SCHEDULE_INTERVAL_HOURS,
+
+        staleGraceHours:
+          HSPP_RECOVERY_STALE_GRACE_HOURS,
+
+        staleAfterHours:
+          HSPP_RECOVERY_STALE_AFTER_HOURS,
+
+        successfulAgeMs,
+
         lastStartedAt:
           workerState?.last_started_at ??
           null,
 
-        lastSuccessfulAt:
-          workerState?.last_successful_at ??
-          null,
+        lastSuccessfulAt,
 
         lastFailureAt:
           workerState?.last_failure_at ??
