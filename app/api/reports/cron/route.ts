@@ -1,4 +1,5 @@
 ﻿import { NextResponse } from "next/server";
+import { reportServerError } from "@/lib/server/reportServerError";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -235,14 +236,16 @@ export async function GET(req: Request) {
       results: sendResults,
     });
   } catch (err: any) {
+    reportServerError(err, {
+      domain: "reports",
+      operation: "scheduled-report-cron",
+      boundary: "top-level",
+    });
+
     return NextResponse.json(
       { error: err.message || "Cron report failed." },
       { status: 500 }
     );
   }
 }
-
-
-
-
 
