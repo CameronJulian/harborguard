@@ -1,34 +1,89 @@
-import { Redis } from "@upstash/redis";
 import { Ratelimit } from "@upstash/ratelimit";
+import { getRedis } from "@/lib/redis";
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
+type LazyRatelimitConfig =
+  Omit<
+    ConstructorParameters<typeof Ratelimit>[0],
+    "redis"
+  >;
 
-export const ratelimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(10, "10 s"),
-  analytics: true,
-});
+type RatelimitLike = {
+  limit: Ratelimit["limit"];
+};
 
-export const fleetLiveRatelimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(120, "10 s"),
-  analytics: true,
-});
-export const fleetPanicRatelimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(10, "60 s"),
-  analytics: true,
-  prefix: "ratelimit:fleet-panic",
-});
+function createLazyRatelimit(
+  config: LazyRatelimitConfig,
+): RatelimitLike {
+  let instance: Ratelimit | null = null;
 
-export const routeSafetyPredictRatelimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(10, "10 s"),
-  analytics: true,
-});
+  function getInstance(): Ratelimit {
+    if (instance) {
+      return instance;
+    }
+
+    const redis = getRedis();
+
+    if (!redis) {
+      throw new Error(
+        "Upstash Redis is not configured.",
+      );
+    }
+
+    instance = new Ratelimit({
+      ...config,
+      redis,
+    });
+
+    return instance;
+  }
+
+  return {
+    limit(...args) {
+      return getInstance().limit(...args);
+    },
+  };
+}
+
+export const ratelimit =
+  createLazyRatelimit({
+    limiter:
+      Ratelimit.slidingWindow(
+        10,
+        "10 s",
+      ),
+    analytics: true,
+  });
+
+export const fleetLiveRatelimit =
+  createLazyRatelimit({
+    limiter:
+      Ratelimit.slidingWindow(
+        120,
+        "10 s",
+      ),
+    analytics: true,
+  });
+
+export const fleetPanicRatelimit =
+  createLazyRatelimit({
+    limiter:
+      Ratelimit.slidingWindow(
+        10,
+        "60 s",
+      ),
+    analytics: true,
+    prefix: "ratelimit:fleet-panic",
+  });
+
+export const routeSafetyPredictRatelimit =
+  createLazyRatelimit({
+    limiter:
+      Ratelimit.slidingWindow(
+        10,
+        "10 s",
+      ),
+    analytics: true,
+  });
 class LocalFleetPanicRatelimit {
   private readonly requests = new Map<string, number[]>();
   private readonly maxRequests = 10;
@@ -303,9 +358,13 @@ export function shouldUseLocalFleetLiveRatelimit(): boolean {
     return false;
   }
 }
-export const cspReportRatelimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(30, "60 s"),
-  analytics: true,
-  prefix: "ratelimit:csp-report",
-});
+export const cspReportRatelimit =
+  createLazyRatelimit({
+    limiter:
+      Ratelimit.slidingWindow(
+        30,
+        "60 s",
+      ),
+    analytics: true,
+    prefix: "ratelimit:csp-report",
+  });

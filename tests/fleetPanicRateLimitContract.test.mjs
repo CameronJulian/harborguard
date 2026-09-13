@@ -25,12 +25,12 @@ test(
   () => {
     assert.match(
       rateLimit,
-      /export const fleetPanicRatelimit = new Ratelimit/
+      /export\s+const\s+fleetPanicRatelimit\s*=\s*createLazyRatelimit/
     );
 
     assert.match(
       rateLimit,
-      /fleetPanicRatelimit[\s\S]*?slidingWindow\(10,\s*"60 s"\)/
+      /fleetPanicRatelimit[\s\S]*?slidingWindow\(\s*10,\s*"60 s"\s*,?\s*\)/
     );
   }
 );

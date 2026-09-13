@@ -25,12 +25,12 @@ test(
   () => {
     assert.match(
       limiter,
-      /export\s+const\s+fleetLiveRatelimit\s*=\s*new\s+Ratelimit/
+      /export\s+const\s+fleetLiveRatelimit\s*=\s*createLazyRatelimit/
     );
 
     assert.match(
       limiter,
-      /Ratelimit\.slidingWindow\(\s*120\s*,\s*"10 s"\s*\)/
+      /Ratelimit\.slidingWindow\(\s*120\s*,\s*"10 s"\s*,?\s*\)/
     );
   }
 );

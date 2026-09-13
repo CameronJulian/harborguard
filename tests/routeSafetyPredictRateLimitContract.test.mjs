@@ -22,7 +22,7 @@ test(
   () => {
     assert.match(
       limiter,
-      /export\s+const\s+routeSafetyPredictRatelimit\s*=\s*new\s+Ratelimit/
+      /export\s+const\s+routeSafetyPredictRatelimit\s*=\s*createLazyRatelimit/
     );
   }
 );
@@ -42,7 +42,7 @@ test(
 
     assert.match(
       section,
-      /Ratelimit\.slidingWindow\(\s*10\s*,\s*"10 s"\s*\)/
+      /Ratelimit\.slidingWindow\(\s*10\s*,\s*"10 s"\s*,?\s*\)/
     );
   }
 );
@@ -192,7 +192,7 @@ test(
 
     assert.match(
       section,
-      /Ratelimit\.slidingWindow\(\s*120\s*,\s*"10 s"\s*\)/
+      /Ratelimit\.slidingWindow\(\s*120\s*,\s*"10 s"\s*,?\s*\)/
     );
   }
 );
