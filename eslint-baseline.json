@@ -1,0 +1,2753 @@
+[
+    {
+        "file":  "app/admin/archive-manifests/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react/no-unescaped-entities",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/admin/archive-manifests/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/admin/audit-logs/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/admin/create-organization/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/admin/create-organization/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/exhaustive-deps",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "app/admin/create-organization/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/immutability",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/admin/organizations/[id]/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "app/admin/organizations/[id]/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/exhaustive-deps",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "app/admin/organizations/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/admin/organizations/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/immutability",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/admin/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/admin/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/exhaustive-deps",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "app/admin/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/immutability",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/admin/push-test/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "app/admin/reroute-test/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/admin/route-safety-import/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "app/analytics/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "app/analytics/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/exhaustive-deps",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "app/analytics/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/immutability",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "app/analytics/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/ai/shift-summary/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  10,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/batches/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/billing/professional/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/command-center/accident-detection/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  8,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/command-center/anpr/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/command-center/assistant/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  8,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/command-center/automation/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  4,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/command-center/cctv/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/command-center/computer-vision/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  6,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/command-center/computer-vision/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "app/api/command-center/correlations/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  7,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/command-center/correlations/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "app/api/command-center/dashcam/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  5,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/command-center/escalations/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/command-center/insurance/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/command-center/mission-queue/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  4,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/command-center/notifications/read/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/command-center/notifications/resolve/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/command-center/notifications/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/command-center/predictive-incidents/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  10,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/command-center/prescriptive-response/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/command-center/traffic-flow/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  5,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/copilot/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  17,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/dispatch/assignment/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/dispatch/missions/[id]/evidence/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/dispatch/missions/[id]/messages/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/dispatch/missions/[id]/notes/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/dispatch/missions/[id]/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/dispatch/missions/[id]/timeline/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/dispatch/missions/[id]/tracking/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/dispatch/missions/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  9,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/dispatch/tracking/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  4,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/dispatcher/recommendations/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/fleet/acknowledge-alert/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/fleet/acknowledge-alert/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "app/api/fleet/acknowledge-route/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/fleet/alerts/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  11,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/fleet/assign-route/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/fleet/detect-risks/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/fleet/digital-twin/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  7,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/fleet/health/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  14,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/fleet/notify-alert/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  6,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/fleet/notify-alert/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "prefer-const",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/fleet/operations-timeline/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  10,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/fleet/optimization/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/fleet/panic/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/fleet/panic/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "app/api/fleet/panic/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "prefer-const",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/fleet/predict-eta/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/fleet/predict-threats/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  4,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/fleet/resolve-alert/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/fleet/route-assignments/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/fleet/time-machine/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  8,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/fleet/trips/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/fleet/update-location/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/fleet/vehicles/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/geofences/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  6,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/incidents/command/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/incidents/investigation/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  8,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/mobile/missions/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/operations/autonomous/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/operations/story/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  17,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/organization-invitations/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/push/send/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/push/subscribe/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/reports/cron/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/reports/run/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/reports/run/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "app/api/reports/send/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  23,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/road-incidents/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  6,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/route-safety/active/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/route-safety/escalate/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  4,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/route-safety/import-csv/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/route-safety/ingest/here/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  5,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/route-safety/ingest/tomtom/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/route-safety/nearby/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/route-safety/predict/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  28,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/route-safety/predict/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  2
+    },
+    {
+        "file":  "app/api/route-safety/report/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/route-safety/reroute/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/route-safety/segments/route.before-effective-risk.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/route-safety/segments/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  5,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/route-safety/verify/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/api/traffic-intelligence/route.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/batches/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/billing/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "app/billing/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/immutability",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/command-center/components/FleetVehicleLayers.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  6,
+        "warnings":  0
+    },
+    {
+        "file":  "app/command-center/components/RouteOverlayLayers.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  11,
+        "warnings":  0
+    },
+    {
+        "file":  "app/command-center/hooks/useCommandCenterAnalytics.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/command-center/hooks/useCommandCenterData.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  8,
+        "warnings":  0
+    },
+    {
+        "file":  "app/command-center/hooks/useCommandCenterMap.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "app/command-center/hooks/useCommandCenterNotifications.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/command-center/hooks/useCommandCenterOperations.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "app/command-center/hooks/useCommandCenterRealtime.ts",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/exhaustive-deps",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "app/command-center/hooks/useCommandCenterRouteSafety.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  10,
+        "warnings":  0
+    },
+    {
+        "file":  "app/command-center/hooks/useCommandCenterVoice.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "app/command-center/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  59
+    },
+    {
+        "file":  "app/command-center/sections/CommandCenterActiveOperationsSection.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "app/command-center/sections/CommandCenterDashboardColumnSection.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  32,
+        "warnings":  0
+    },
+    {
+        "file":  "app/command-center/sections/CommandCenterHeaderSection.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  8,
+        "warnings":  0
+    },
+    {
+        "file":  "app/command-center/sections/CommandCenterIntelligenceModulesSection.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/command-center/sections/CommandCenterLiveFleetMapSection.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "app/command-center/sections/CommandCenterOperationsPanelSection.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  39,
+        "warnings":  0
+    },
+    {
+        "file":  "app/command-center/sections/CommandCenterOperationsSection.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "app/command-center/sections/CommandCenterRouteSafetySection.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  5,
+        "warnings":  0
+    },
+    {
+        "file":  "app/command-center/sections/CommandCenterStatusSection.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/command-center/sections/CommandCenterSummaryCards.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/command-center/sections/CommandCenterVehicleCard.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "app/command-center/sections/CommandCenterVehicleTimelineSection.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "app/command-center/types.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/command-center/utils.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/dashboard/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  5,
+        "warnings":  0
+    },
+    {
+        "file":  "app/dashboard/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  2
+    },
+    {
+        "file":  "app/driver/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  8,
+        "warnings":  0
+    },
+    {
+        "file":  "app/driver/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  2
+    },
+    {
+        "file":  "app/driver/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/immutability",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/driver/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "app/fleet/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "app/fleet/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  2
+    },
+    {
+        "file":  "app/fleet/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "app/fleet/vehicles/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  3
+    },
+    {
+        "file":  "app/fleet/vehicles/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/fleet-time-machine/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  8,
+        "warnings":  0
+    },
+    {
+        "file":  "app/geofences/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  5,
+        "warnings":  0
+    },
+    {
+        "file":  "app/geofences/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/incidents/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/mobile-tracker/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  6,
+        "warnings":  0
+    },
+    {
+        "file":  "app/operations-health/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/exhaustive-deps",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "app/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/report-admin/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  4,
+        "warnings":  0
+    },
+    {
+        "file":  "app/report-admin/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/purity",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/report-admin/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/report-history/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "app/report-history/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/report-settings/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/risk-dashboard/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "app/risk-dashboard/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "app/route-replay/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "app/route-replay/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/exhaustive-deps",
+        "errors":  0,
+        "warnings":  2
+    },
+    {
+        "file":  "app/route-replay/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  4,
+        "warnings":  0
+    },
+    {
+        "file":  "app/route-safety/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/route-safety/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/exhaustive-deps",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "app/trips/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/trips/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "app/vehicle-alerts/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "app/vehicle-alerts/page.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/AppShell.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/AIAccidentDetection.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/AICommandAssistant.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/AICommandAssistant.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/AIIncidentCorrelationDashboard.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/AIShiftSummary.before-refresh-coordination-20260808.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/AIShiftSummary.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/ANPRDashboard.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/CCTVMonitoring.before-polling-coordination-20260808.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/CCTVMonitoring.before-polling-coordination-20260808.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/CCTVMonitoring.before-realtime-loop-fix-20260808.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/CCTVMonitoring.before-realtime-loop-fix-20260808.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/CCTVMonitoring.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/CCTVMonitoring.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/CommandCenterThemeSwitcher.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/ComputerVisionAnalytics.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@next/next/no-img-element",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "components/command-center/ComputerVisionAnalytics.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/DashcamMonitoring.before-polling-coordination-20260808.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/DashcamMonitoring.before-polling-coordination-20260808.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/DashcamMonitoring.before-realtime-loop-fix-20260808.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/DashcamMonitoring.before-realtime-loop-fix-20260808.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/DashcamMonitoring.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/DashcamMonitoring.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/DispatcherCollaboration.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  6,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/DispatcherCollaboration.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/exhaustive-deps",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "components/command-center/DispatcherRecommendations.before-refresh-coordination-20260808.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/ExecutiveOperationsDashboard.before-refresh-coalescing-20260808.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/FleetDigitalTwinDashboard.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/FleetMissionQueue.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/FleetMissionQueue.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "components/command-center/FleetOptimizationDashboard.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/FleetRiskHeatMap.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/HERETrafficOverlay.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  6,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/IncidentAssignmentBoard.before-refresh-coordination-20260808.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/IncidentAssignmentBoard.before-refresh-coordination-20260808.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/IncidentAssignmentBoard.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/IncidentCommandDashboard.before-refresh-coordination-20260808.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/IncidentCommandDashboard.before-refresh-coordination-20260808.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/exhaustive-deps",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "components/command-center/IncidentCommandDashboard.before-refresh-coordination-20260808.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/IncidentCommandDashboard.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/IncidentCommandDashboard.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/exhaustive-deps",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "components/command-center/IncidentCommandDashboard.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/IncidentInvestigationTimeline.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/IncidentInvestigationTimeline.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/exhaustive-deps",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "components/command-center/IncidentInvestigationTimeline.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/InsuranceResponseCenter.before-refresh-coordination-20260808.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/InsuranceResponseCenter.before-refresh-coordination-20260808.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/InsuranceResponseCenter.before-visibility-coordination-20260808.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/InsuranceResponseCenter.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/LiveFleetOperationsMap.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/LiveMissionTrackingDashboard.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/LiveMissionTrackingDashboard.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "components/command-center/MissionAutomationRules.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/MissionAutomationRules.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "components/command-center/MissionBoard.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  4,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/MissionBoard.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "components/command-center/PredictiveIncidentIntelligence.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/PrescriptiveResponseIntelligence.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/RoadRiskSegmentsLayer.before-effective-risk-20260808.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/RoadRiskSegmentsLayer.before-effective-risk-20260808.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/RoadRiskSegmentsLayer.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/RoadRiskSegmentsLayer.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/SupervisorEscalationCenter.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/SupervisorEscalationCenter.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/TrafficFlowDashboard.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "components/command-center/VehicleIntelligencePanel.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  14,
+        "warnings":  0
+    },
+    {
+        "file":  "components/dispatch/MissionDetailsPanel.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@next/next/no-img-element",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "components/dispatch/MissionDetailsPanel.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  16,
+        "warnings":  0
+    },
+    {
+        "file":  "components/dispatch/MissionMap.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/dispatch/MissionMap.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/preserve-manual-memoization",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/dispatch/MissionMap.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/purity",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/driver/DriverMissionConsole.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  11,
+        "warnings":  0
+    },
+    {
+        "file":  "components/driver/DriverMissionConsole.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  2
+    },
+    {
+        "file":  "components/driver/DriverMissionConsole.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/exhaustive-deps",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "components/driver/DriverMissionConsole.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/driver/DriverVoiceSafetyAlerts.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "components/driver/DriverVoiceSafetyAlerts.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/InstallPrompt.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/InstallPrompt.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "components/road-intelligence/RoadIntelligenceDashboard.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "components/road-intelligence/RoadIntelligenceDashboard.tsx",
+        "category":  "PRODUCTION",
+        "rule":  "react-hooks/set-state-in-effect",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/anpr/provider.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/audit.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/cctv/provider.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/command-center/notifications.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/dispatch/copilot.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/dispatch/etaRanking.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/dispatch/missionAssignment.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/dispatch/missionTimeline.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/fleet/activeGeofenceCache.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  4,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/fleet/authorizeRoadUserVehicle.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/fleet/createAnonymousJourneyExposure.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/fleet/createCompletedTripOutcome.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/fleet/createGpsAnomalyAlert.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/fleet/createHarshBrakingAlert.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/fleet/createHarshCorneringAlert.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/fleet/createLocationBehaviorAlerts.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/fleet/createRapidAccelerationAlert.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/fleet/createSpeedingAlert.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/fleet/createVehicleLocation.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/fleet/detectSustainedSpeedingCandidate.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/fleet/evaluateCompletedTripPrediction.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/fleet/getActiveVehicleTrip.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/fleet/getLatestVehicleLocation.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/fleet/getVehicleForLocationUpdate.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/fleet/harshBrakingCorroboration.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/fleet/harshCorneringCorroboration.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/fleet/optimizationEngine.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  16,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/fleet/processVehicleLocationUpdate.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/fleet/rapidAccelerationCorroboration.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/fleet/risk-detection.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  8,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/fleet/risk-detection.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  4
+    },
+    {
+        "file":  "lib/fleet/runPostLocationUpdateLifecycle.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/fleet/trainRouteRiskModel.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "lib/fleet/updateActiveTripFromLocation.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/fleet/updateVehicleStopLifecycle.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/here/traffic.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  7,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/hspp/applyHsppAssessmentDecision.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/hspp/persistHsppAssemblyMemberEffectiveCessationUnderExecutionLease.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/hspp/persistHsppCorroboratedMemberAssessment.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/hspp/persistHsppCorroboratedMemberAssessment.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "lib/hspp/persistHsppCorroboratedOperationalAssessment.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/hspp/persistHsppDeniedCorroboratedMemberAssessment.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/hspp/persistHsppEvidence.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/hspp/persistHsppEvidenceForProviderObservation.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/hspp/persistHsppMemberUnsuitabilityCheckpointUnderExecutionLease.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/hspp/persistHsppMemberUnsuitabilityCheckpointWithRevalidationUnderExecutionLease.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/hspp/persistHsppPositiveAssessmentCheckpointUnderExecutionLease.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/hspp/persistRouteSafetyProviderObservation.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/hspp/persistRouteSafetyProviderObservationsBatch.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/hspp/readHsppEvidenceForOperationalUse.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/hspp/runHsppAssemblyEncounterContributionLifecycle.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/incidents/correlation.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  4,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/realtime/missionMessages.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/realtime/missionTracking.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/road-context/trafficCalmingProvider.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "lib/route-safety/promoteHarshBrakingTelemetry.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/route-safety/providers/expireRouteSafetyAlerts.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/route-safety/providers/getIntelligenceSourceConfiguration.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/route-safety/providers/importAzureMapsIncidents.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/route-safety/providers/importHereIncidents.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/route-safety/providers/importTomTomIncidents.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/route-safety/providers/reconcileProviderObservations.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/route-safety/providers/runOrganizationProviderImport.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/route-safety/providers/runProviderImportCycle.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/route-safety/refreshRouteSafetySameProviderBatch.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/route-safety/upsertRouteSafetyAlerts.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  14,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/route-safety/upsertRouteSafetyAlerts.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  2
+    },
+    {
+        "file":  "lib/routing/hereRouting.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  11,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/routing/hereRoutingProviderCache.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/server-auth.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  4,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/telematics/messageReceiptLifecycle.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/telematics/processTelematicsPosition.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/telematics/resolveVehicleForProviderDevice.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/telematics/runTraccarPositionSync.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/traffic/collectionReceiptLifecycle.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/traffic/collectTrafficFlowObservations.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/traffic/intelligence.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  8,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/traffic/loadRecentTrafficFlowObservations.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  4,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/traffic/persistTrafficFlowObservations.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/traffic/resolveTrafficFlowCollectionScope.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/vision/provider.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  5,
+        "warnings":  0
+    },
+    {
+        "file":  "lib/vision/types.ts",
+        "category":  "PRODUCTION",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppAssemblyAssessmentCompletionUnderExecutionLease.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  12,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppAssemblyAssessmentExecutionLease.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppAssemblyDecisionPersistenceIdempotency.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppAssemblyDecisionPersistenceIdempotency.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  3
+    },
+    {
+        "file":  "tests/hsppAssessmentDecisionTimestampNormalization.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppAssessmentDecisionUnderExecutionLease.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  10,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppAzureMapsExternalIntelligenceAssessment.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppCorroboratedMemberPersistence.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppCorroboratedOperationalAssessmentPersistence.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppDeniedCorroboratedMemberAssessmentPersistence.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppEvidenceAssemblyPersistence.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  6,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppEvidenceAssemblyReconstructionMemberPlanner.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  45,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppEvidenceAssemblyReconstructionPersistenceWrapper.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppEvidenceAssemblyReconstructionRecoveryReader.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppEvidenceAssemblySealing.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  8,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppEvidenceFoundation.test.mjs",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "tests/hsppExternalIntelligencePayloadSchemaV2.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppHistoricalReconstructionContextReader.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  13,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppLocalCanonicalR1Selection.integration.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppLocalCanonicalR1SelectionV2.integration.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppLocalQ13fRecoveryQ12.integration.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppLocalRecursiveReconstructionLifecycle.integration.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "tests/hsppMemberUnsuitabilityCheckpointWithRevalidationUnderExecutionLease.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppOperationalConsumption.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppOperationalReadBoundary.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  1
+    },
+    {
+        "file":  "tests/hsppPostPositiveLifecycleCycleRunner.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  20,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppPostPositiveLifecycleCycleRunnerV3.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  23,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppPostPositiveLifecycleFairWorkReaderV2.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppPostPositiveLifecycleWorkReader.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppPostPositiveMemberEffectiveCessationRunner.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  10,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppPostPositiveMemberUnsuitabilityAssessmentRunner.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  15,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppPostPositiveMemberUnsuitabilityEvaluator.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppPostPositiveRevalidationCandidateReaderV2.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  19,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppPostPositiveRevalidationCandidateScanStateCas.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppPostPositiveRevalidationSelectionRunnerV2.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  26,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppPostPositiveRevalidationUnsuitabilityAssessmentRunnerV2.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  16,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppProviderUpsertResolution.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppReconstructionActivationCycleRunner.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppReconstructionActivationCycleRunner.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  6
+    },
+    {
+        "file":  "tests/hsppReconstructionExecutionIntentClaimRunner.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppReconstructionExecutionIntentClaimWrapper.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppReconstructionExecutionIntentCycleRunner.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppReconstructionExecutionIntentReader.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppReconstructionExecutionIntentRunner.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppReconstructionIntentReplacementCandidateReader.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppReservoirAssemblyHandoff.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  41,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppReservoirCandidateRead.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  5,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppReservoirDiscoveryScheduling.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  3,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppReservoirEligibleEvidenceByIds.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  7,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppReservoirReconstructionRunner.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppReservoirReevaluation.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  6,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppRouteSafetyProviderObservationPersistence.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppSealedEvidenceAssemblyAssessmentContextRunner.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  7,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppSealedEvidenceAssemblyAuthorityRunner.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  7,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppSealedEvidenceAssemblyCorroborationSupportRunner.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  7,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppSealedEvidenceAssemblyDecisionPersistenceRunner.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  8,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppSealedEvidenceAssemblyDecisionRunner.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  7,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppSealedEvidenceAssemblyRead.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  23,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/hsppSealedEvidenceAssemblyScanRunner.test.ts",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-explicit-any",
+        "errors":  7,
+        "warnings":  0
+    },
+    {
+        "file":  "tests/orchestrateRouteRiskShadowGoogleAlternativeRoutes.test.mjs",
+        "category":  "TEST",
+        "rule":  "@typescript-eslint/no-unused-vars",
+        "errors":  0,
+        "warnings":  2
+    },
+    {
+        "file":  "tools/architecture-analyzer.cjs",
+        "category":  "TOOLING",
+        "rule":  "@typescript-eslint/no-require-imports",
+        "errors":  2,
+        "warnings":  0
+    },
+    {
+        "file":  "tools/wire-notification-hook.cjs",
+        "category":  "TOOLING",
+        "rule":  "@typescript-eslint/no-require-imports",
+        "errors":  1,
+        "warnings":  0
+    },
+    {
+        "file":  "tools/wire-shared-types.cjs",
+        "category":  "TOOLING",
+        "rule":  "@typescript-eslint/no-require-imports",
+        "errors":  1,
+        "warnings":  0
+    }
+]

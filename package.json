@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "lint:baseline": "node tools/check-eslint-baseline.mjs",
     "test:neural": "tsx --test tests/routeRiskNeuralCandidateBehavior.test.mjs tests/routeRiskNeuralCandidateEvaluation.test.mjs tests/routeRiskNeuralGenericEndToEnd.test.mjs"
   },
   "dependencies": {
