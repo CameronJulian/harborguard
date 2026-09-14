@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRealtimeRefresh } from "@/lib/realtime/useRealtimeRefresh";
 import { fetchWithAuth } from "@/lib/auth-fetch";
 
@@ -35,12 +35,14 @@ export default function ANPRDashboard() {
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const initialANPRRefreshRef = useRef(true);
 
-  async function loadANPR() {
+  async function loadANPR(method: "GET" | "POST" = "GET") {
     try {
       setMessage("");
 
       const response = await fetchWithAuth("/api/command-center/anpr", {
+        method,
         cache: "no-store",
       });
 
@@ -60,9 +62,19 @@ export default function ANPRDashboard() {
     }
   }
 
+  async function refreshANPR() {
+    const method =
+      initialANPRRefreshRef.current
+        ? "POST"
+        : "GET";
+
+    initialANPRRefreshRef.current = false;
+
+    await loadANPR(method);
+  }
   useRealtimeRefresh({
     tables: ["anpr_events"],
-    refresh: loadANPR,
+    refresh: refreshANPR,
     pollingMs: 30000,
   });
 
@@ -94,7 +106,7 @@ export default function ANPRDashboard() {
 
         <button
           type="button"
-          onClick={loadANPR}
+          onClick={() => loadANPR("POST")}
           style={{
             height: "fit-content",
             padding: "10px 14px",

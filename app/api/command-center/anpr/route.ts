@@ -2,102 +2,239 @@
 import { requireOrganization } from "@/lib/server-auth";
 import { loadANPRDetections } from "@/lib/anpr/provider";
 
+type ANPRSupabaseClient =
+  Awaited<
+    ReturnType<typeof requireOrganization>
+  >["supabase"];
+
+type PersistedANPREvent = {
+  id: unknown;
+  vehicle_id: unknown;
+  plate_number: unknown;
+  vehicle_name: unknown;
+  nickname: unknown;
+  camera_name: unknown;
+  provider: unknown;
+  source: unknown;
+  confidence: unknown;
+  status: unknown;
+  watchlist_match: unknown;
+  detected_at: unknown;
+  location: unknown;
+  recommended_action: unknown;
+};
+async function loadPersistedANPRDashboard(
+  supabase: ANPRSupabaseClient,
+  organizationId: string,
+  providerFallback: string,
+  generatedAt: string
+) {
+  const { data: persisted, error: readError } = await supabase
+    .from("anpr_events")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("detected_at", { ascending: false })
+    .limit(100);
+
+  if (readError) {
+    throw readError;
+  }
+
+  const persistedEvents =
+    (persisted || []) as PersistedANPREvent[];
+
+  const detectionsToReturn = persistedEvents.map((item) => ({
+    id: item.id,
+    vehicleId: item.vehicle_id,
+    plateNumber: item.plate_number,
+    vehicleName: item.vehicle_name,
+    nickname: item.nickname,
+    cameraName: item.camera_name,
+    provider: item.provider,
+    source: item.source,
+    confidence: Number(item.confidence || 0),
+    status: item.status,
+    watchlistMatch: item.watchlist_match,
+    detectedAt: item.detected_at,
+    location: item.location,
+    recommendedAction: item.recommended_action,
+  }));
+
+  const summary = {
+    scannedPlates: detectionsToReturn.length,
+    verified: detectionsToReturn.filter(
+      (item) => item.status === "verified"
+    ).length,
+    review: detectionsToReturn.filter(
+      (item) => item.status === "review"
+    ).length,
+    watchlist: detectionsToReturn.filter(
+      (item) => item.watchlistMatch
+    ).length,
+    averageConfidence: detectionsToReturn.length
+      ? Math.round(
+          detectionsToReturn.reduce(
+            (sum, item) =>
+              sum + item.confidence,
+            0
+          ) / detectionsToReturn.length
+        )
+      : 0,
+    provider:
+      persistedEvents[0]?.provider ||
+      providerFallback,
+  };
+
+  return NextResponse.json({
+    success: true,
+    summary,
+    detections: detectionsToReturn,
+    provider: summary.provider,
+    generatedAt,
+  });
+}
+
 export async function GET() {
   try {
-    const { supabase, organizationId } = await requireOrganization();
+    const { supabase, organizationId } =
+      await requireOrganization();
 
-    const { data: vehicles, error } = await supabase
-      .from("vehicles")
-      .select("id, registration_number, nickname, is_active, created_at")
-      .eq("organization_id", organizationId)
-      .order("created_at", { ascending: false })
-      .limit(12);
+    const providerFallback =
+      String(
+        process.env.ANPR_PROVIDER || "mock"
+      ).toLowerCase();
+
+    return await loadPersistedANPRDashboard(
+      supabase,
+      organizationId,
+      providerFallback,
+      new Date().toISOString()
+    );
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        error:
+          error.message ||
+          "Failed to load ANPR dashboard.",
+      },
+      {
+        status:
+          error.message === "Unauthorized"
+            ? 401
+            : 500,
+      }
+    );
+  }
+}
+
+export async function POST() {
+  try {
+    const { supabase, organizationId } =
+      await requireOrganization();
+
+    const { data: vehicles, error } =
+      await supabase
+        .from("vehicles")
+        .select(
+          "id, registration_number, nickname, is_active, created_at"
+        )
+        .eq(
+          "organization_id",
+          organizationId
+        )
+        .order(
+          "created_at",
+          { ascending: false }
+        )
+        .limit(12);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json(
+        { error: error.message },
+        { status: 500 }
+      );
     }
 
-    const result = await loadANPRDetections(vehicles || []);
-    const detections = result.detections;
+    const result =
+      await loadANPRDetections(
+        vehicles || []
+      );
 
-    const rows = detections.map((detection) => ({
-      organization_id: organizationId,
-      vehicle_id: detection.vehicleId || null,
-      plate_number: detection.plateNumber,
-      vehicle_name: detection.vehicleName || null,
-      nickname: detection.nickname || null,
-      camera_name: detection.cameraName || null,
-      provider: result.provider,
-      source: detection.source || null,
-      confidence: detection.confidence,
-      status: detection.status,
-      watchlist_match: detection.watchlistMatch,
-      detected_at: detection.detectedAt,
-      location: detection.location || null,
-      recommended_action: detection.recommendedAction || null,
-      raw_response: detection,
-    }));
+    const rows =
+      result.detections.map(
+        (detection) => ({
+          organization_id:
+            organizationId,
+          vehicle_id:
+            detection.vehicleId ||
+            null,
+          plate_number:
+            detection.plateNumber,
+          vehicle_name:
+            detection.vehicleName ||
+            null,
+          nickname:
+            detection.nickname ||
+            null,
+          camera_name:
+            detection.cameraName ||
+            null,
+          provider:
+            result.provider,
+          source:
+            detection.source ||
+            null,
+          confidence:
+            detection.confidence,
+          status:
+            detection.status,
+          watchlist_match:
+            detection.watchlistMatch,
+          detected_at:
+            detection.detectedAt,
+          location:
+            detection.location ||
+            null,
+          recommended_action:
+            detection.recommendedAction ||
+            null,
+          raw_response:
+            detection,
+        })
+      );
 
     if (rows.length > 0) {
-      const { error: insertError } = await supabase
-        .from("anpr_events")
-        .insert(rows);
+      const {
+        error: insertError,
+      } =
+        await supabase
+          .from("anpr_events")
+          .insert(rows);
 
       if (insertError) {
         throw insertError;
       }
     }
 
-    const { data: persisted, error: readError } = await supabase
-      .from("anpr_events")
-      .select("*")
-      .eq("organization_id", organizationId)
-      .order("detected_at", { ascending: false })
-      .limit(100);
-
-    if (readError) {
-      throw readError;
-    }
-
-    const detectionsToReturn = (persisted || []).map((item: any) => ({
-      id: item.id,
-      vehicleId: item.vehicle_id,
-      plateNumber: item.plate_number,
-      vehicleName: item.vehicle_name,
-      nickname: item.nickname,
-      cameraName: item.camera_name,
-      provider: item.provider,
-      source: item.source,
-      confidence: Number(item.confidence || 0),
-      status: item.status,
-      watchlistMatch: item.watchlist_match,
-      detectedAt: item.detected_at,
-      location: item.location,
-      recommendedAction: item.recommended_action,
-    }));
-
-    const summary = {
-      scannedPlates: detectionsToReturn.length,
-      verified: detectionsToReturn.filter((item) => item.status === "verified").length,
-      review: detectionsToReturn.filter((item) => item.status === "review").length,
-      watchlist: detectionsToReturn.filter((item) => item.watchlistMatch).length,
-      averageConfidence: detectionsToReturn.length
-        ? Math.round(detectionsToReturn.reduce((sum, item) => sum + item.confidence, 0) / detectionsToReturn.length)
-        : 0,
-      provider: persisted?.[0]?.provider || result.provider,
-    };
-
-    return NextResponse.json({
-      success: true,
-      summary,
-      detections: detectionsToReturn,
-      provider: summary.provider,
-      generatedAt: result.generatedAt,
-    });
+    return await loadPersistedANPRDashboard(
+      supabase,
+      organizationId,
+      result.provider,
+      result.generatedAt
+    );
   } catch (error: any) {
     return NextResponse.json(
-      { error: error.message || "Failed to load ANPR dashboard." },
-      { status: error.message === "Unauthorized" ? 401 : 500 }
+      {
+        error:
+          error.message ||
+          "Failed to refresh ANPR dashboard.",
+      },
+      {
+        status:
+          error.message === "Unauthorized"
+            ? 401
+            : 500,
+      }
     );
   }
 }
