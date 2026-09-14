@@ -170,11 +170,11 @@ test(
 );
 
 test(
-  "service caller keeps JSON request body contract",
+  "service caller sends application/json for notification read",
   () => {
     assert.match(
       serviceCaller,
-      /fetchWithAuth\("\/api\/command-center\/notifications\/read"[\s\S]*?method:\s*"POST"[\s\S]*?body:\s*JSON\.stringify\(\{\s*notificationId\s*\}\)/
+      /fetchWithAuth\("\/api\/command-center\/notifications\/read"[\s\S]*?method:\s*"POST"[\s\S]*?headers:\s*\{[\s\S]*?"Content-Type":\s*"application\/json"[\s\S]*?\}[\s\S]*?body:\s*JSON\.stringify\(\{\s*notificationId\s*\}\)/
     );
   }
 );

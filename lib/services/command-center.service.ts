@@ -11,6 +11,9 @@ export async function getCommandCenterNotifications() {
 export async function markCommandCenterNotificationRead(notificationId: string) {
   const response = await fetchWithAuth("/api/command-center/notifications/read", {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({ notificationId }),
   });
 
