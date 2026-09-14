@@ -174,7 +174,7 @@ export default function AdminInvitationsPage() {
             <option value="viewer">Viewer</option>
             <option value="operator">Operator</option>
             <option value="manager">Manager</option>
-            <option value="admin">Admin</option>
+            {/* Platform-wide roles cannot be granted through organization invitations. */}
           </select>
 
           <button

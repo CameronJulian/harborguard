@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { requireOrganization, requireRole } from "@/lib/server-auth";
 
-const ALLOWED_ROLES = ["viewer", "operator", "manager", "admin"];
+const ALLOWED_ROLES = ["viewer", "operator", "manager"];
 
 export async function GET() {
   try {
