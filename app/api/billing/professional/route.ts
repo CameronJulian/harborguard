@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { parseProfessionalBillingRequest } from "@/lib/payfast/parseProfessionalBillingRequest";
 import { generatePayFastSignature } from "@/lib/payfast/signature";
 import { createClient } from "@supabase/supabase-js";
 import { hasPermission } from "@/lib/rbac";
@@ -16,16 +17,6 @@ const PAYFAST_URL =
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const billingEmail = body.billingEmail;
-
-    if (!billingEmail) {
-      return NextResponse.json(
-        { error: "Billing email required." },
-        { status: 400 }
-      );
-    }
-
     const authHeader = req.headers.get("authorization");
 
     if (!authHeader) {
@@ -72,6 +63,16 @@ export async function POST(req: Request) {
     }
 
     const organizationId = profile.organization_id;
+
+    const parsed = await parseProfessionalBillingRequest(req);
+    if (!parsed.ok) {
+      return NextResponse.json(
+        { error: parsed.error },
+        { status: parsed.status }
+      );
+    }
+
+    const billingEmail = parsed.billingEmail;
 
     const merchantId = process.env.PAYFAST_MERCHANT_ID!;
     const merchantKey = process.env.PAYFAST_MERCHANT_KEY!;
