@@ -13,6 +13,27 @@ export async function POST(req: Request) {
       "manager",
     ]);
 
+    const contentType =
+      req.headers.get("content-type") || "";
+
+    const mediaType =
+      contentType
+        .split(";", 1)[0]
+        .trim()
+        .toLowerCase();
+
+    if (mediaType !== "application/json") {
+      return NextResponse.json(
+        {
+          error:
+            "Content-Type application/json is required.",
+        },
+        {
+          status: 415,
+        }
+      );
+    }
+
     const { alertId } = await req.json();
 
     if (!alertId) {

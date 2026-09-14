@@ -125,16 +125,43 @@ test(
 );
 
 test(
-  "JSON media-type hardening remains a separate future change",
+  "HTTP hardening preserves the tenant boundary",
   () => {
-    assert.doesNotMatch(
-      route,
-      /mediaType !== "application\/json"/
-    );
+    const gateIndex =
+      route.indexOf(
+        'mediaType !== "application/json"'
+      );
 
-    assert.doesNotMatch(
-      route,
-      /status:\s*415/
-    );
+    const lookupIndex =
+      route.indexOf(
+        '.from("vehicle_alerts")'
+      );
+
+    const alertIdIndex =
+      route.indexOf(
+        '.eq("id", alertId)'
+      );
+
+    const organizationIndex =
+      route.indexOf(
+        '.eq("organization_id", organizationId)'
+      );
+
+    const notFoundIndex =
+      route.indexOf(
+        "if (!ownedAlert)"
+      );
+
+    const mutationIndex =
+      route.indexOf(
+        '.from("emergency_response_events")'
+      );
+
+    assert.ok(gateIndex >= 0);
+    assert.ok(lookupIndex > gateIndex);
+    assert.ok(alertIdIndex > lookupIndex);
+    assert.ok(organizationIndex > alertIdIndex);
+    assert.ok(notFoundIndex > organizationIndex);
+    assert.ok(mutationIndex > notFoundIndex);
   }
 );
