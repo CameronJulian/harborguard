@@ -40,7 +40,7 @@ export default function CCTVMonitoring() {
   const [message, setMessage] = useState("");
   const refreshInFlightRef = useRef(false);
 
-  async function loadCCTV() {
+  async function loadCCTV(method: "GET" | "POST" = "GET") {
     if (refreshInFlightRef.current) {
       return;
     }
@@ -51,6 +51,7 @@ export default function CCTVMonitoring() {
       setMessage("");
 
       const response = await fetchWithAuth("/api/command-center/cctv", {
+        method,
         cache: "no-store",
       });
 
@@ -72,8 +73,7 @@ export default function CCTVMonitoring() {
   }
 
   useEffect(() => {
-    loadCCTV();
-
+    void loadCCTV("POST");
     function refreshCCTVIfVisible() {
       if (document.visibilityState === "visible") {
         void loadCCTV();
@@ -128,7 +128,7 @@ export default function CCTVMonitoring() {
 
         <button
           type="button"
-          onClick={loadCCTV}
+          onClick={() => loadCCTV("POST")}
           style={{
             height: "fit-content",
             padding: "10px 14px",
