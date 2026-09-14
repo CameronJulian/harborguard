@@ -27,6 +27,27 @@ export async function POST(req: Request) {
   try {
     const { supabase, organizationId } = await requireOrganization();
 
+    const contentType =
+      req.headers.get("content-type") || "";
+
+    const mediaType =
+      contentType
+        .split(";", 1)[0]
+        .trim()
+        .toLowerCase();
+
+    if (mediaType !== "text/csv") {
+      return NextResponse.json(
+        {
+          error:
+            "Content-Type text/csv is required.",
+        },
+        {
+          status: 415,
+        }
+      );
+    }
+
     const text = await req.text();
     const lines = text.split(/\r?\n/).filter(Boolean);
 
