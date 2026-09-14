@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+import { verifyPayFastSignature } from "@/lib/payfast/signature";
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -43,6 +44,20 @@ export async function POST(req: Request) {
       payload[key] = String(value);
     });
 
+    const payFastPassphrase =
+      process.env.PAYFAST_PASSPHRASE?.trim();
+
+    if (
+      !verifyPayFastSignature(
+        payload,
+        payFastPassphrase
+      )
+    ) {
+      return NextResponse.json(
+        { error: "Invalid PayFast signature." },
+        { status: 400 }
+      );
+    }
     const isValidPayFastITN = await validatePayFastITN(payload);
 
     if (!isValidPayFastITN) {

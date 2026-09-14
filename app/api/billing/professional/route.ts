@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
+import { generatePayFastSignature } from "@/lib/payfast/signature";
 import { createClient } from "@supabase/supabase-js";
 import { hasPermission } from "@/lib/rbac";
 import { createAuditLog } from "@/lib/audit";
@@ -13,22 +13,6 @@ const PAYFAST_URL =
   process.env.PAYFAST_SANDBOX === "true"
     ? "https://sandbox.payfast.co.za/eng/process"
     : "https://www.payfast.co.za/eng/process";
-
-function generateSignature(data: Record<string, string>, passphrase?: string) {
-  const pfOutput = Object.keys(data)
-  .filter((key) => data[key] !== "")
-  .map(
-      (key) =>
-        `${key}=${encodeURIComponent(data[key]).replace(/%20/g, "+")}`
-    )
-    .join("&");
-
-  const payload = passphrase
-    ? `${pfOutput}&passphrase=${encodeURIComponent(passphrase).replace(/%20/g, "+")}`
-    : pfOutput;
-
-  return crypto.createHash("md5").update(payload).digest("hex");
-}
 
 export async function POST(req: Request) {
   try {
@@ -119,7 +103,7 @@ cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing?canceled=true`,
       cycles: "0",
     };
 
-    const signature = generateSignature(paymentData, passphrase);
+    const signature = generatePayFastSignature(paymentData, passphrase);
 
     const paymentUrl =
       `${PAYFAST_URL}?` +
