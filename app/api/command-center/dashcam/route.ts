@@ -185,6 +185,245 @@ location_recorded_at:
 }
 export async function GET() {
   try {
+    const {
+      supabase,
+      organizationId,
+    } = await requireOrganization();
+
+    const {
+      data: persistedEvents,
+      error: eventsError,
+    } = await supabase
+      .from("dashcam_events")
+      .select("*")
+      .eq(
+        "organization_id",
+        organizationId
+      )
+      .order(
+        "captured_at",
+        { ascending: false }
+      )
+      .limit(100);
+
+    if (eventsError) {
+      throw eventsError;
+    }
+
+    const persistedCameras =
+      (persistedEvents || []).map((event) => ({
+        id: event.id,
+        vehicleId: event.vehicle_id,
+        vehicleName:
+          event.vehicle_name ||
+          "Unknown vehicle",
+        nickname: null,
+        cameraName:
+          event.camera_name ||
+          "Unknown camera",
+        vendor:
+          event.vendor ||
+          event.provider ||
+          "mock",
+        status: event.status,
+        recording: event.recording,
+        storageUsedPercent:
+          Number(
+            event.storage_used_percent || 0
+          ),
+        lastHeartbeat:
+          event.last_heartbeat,
+        lastClipAt:
+          event.last_clip_at,
+        latestClipLabel:
+          event.latest_clip_label,
+        aiEvents:
+          Array.isArray(event.ai_events)
+            ? event.ai_events
+            : [],
+      }));
+
+    const {
+      data: recentVisionRows,
+      error: recentVisionError,
+    } = await supabase
+      .from("vision_events")
+      .select(`
+        id,
+        vehicle_id,
+        vehicle_name,
+        camera_name,
+        provider,
+        event_type,
+        severity,
+        confidence,
+        status,
+        description,
+        recommended_action,
+        detected_at,
+        incident_id,
+        reviewed_at,
+        reviewed_by,
+        review_note
+      `)
+      .eq(
+        "organization_id",
+        organizationId
+      )
+      .order(
+        "detected_at",
+        { ascending: false }
+      )
+      .limit(8);
+
+    if (recentVisionError) {
+      throw recentVisionError;
+    }
+
+    const recentVisionEvents =
+      (recentVisionRows || []).map((event) => ({
+        id: event.id,
+        vehicleId: event.vehicle_id,
+        vehicleName:
+          event.vehicle_name ||
+          "Unknown vehicle",
+        cameraName:
+          event.camera_name ||
+          "Unknown camera",
+        provider:
+          event.provider ||
+          "unknown",
+        eventType:
+          event.event_type ||
+          "vision_event",
+        severity:
+          event.severity ||
+          "low",
+        confidence:
+          Number(
+            event.confidence || 0
+          ),
+        status:
+          event.status ||
+          "monitoring",
+        description:
+          event.description ||
+          "Vision event detected.",
+        recommendedAction:
+          event.recommended_action ||
+          "Review the detection.",
+        detectedAt:
+          event.detected_at,
+        incidentId:
+          event.incident_id ||
+          null,
+        reviewedAt:
+          event.reviewed_at ||
+          null,
+        reviewedBy:
+          event.reviewed_by ||
+          null,
+        reviewNote:
+          event.review_note ||
+          null,
+      }));
+
+    const provider =
+      persistedEvents?.[0]?.provider ||
+      String(
+        process.env.DASHCAM_PROVIDER ||
+        "mock"
+      )
+        .trim()
+        .toLowerCase();
+
+    const summary = {
+      totalCameras:
+        persistedCameras.length,
+      online:
+        persistedCameras.filter(
+          (item) =>
+            item.status === "online"
+        ).length,
+      warning:
+        persistedCameras.filter(
+          (item) =>
+            item.status === "warning"
+        ).length,
+      offline:
+        persistedCameras.filter(
+          (item) =>
+            item.status === "offline"
+        ).length,
+      recording:
+        persistedCameras.filter(
+          (item) =>
+            item.recording
+        ).length,
+      provider,
+
+      totalVisionEvents:
+        recentVisionEvents.length,
+
+      reviewRequired:
+        recentVisionEvents.filter(
+          (event) =>
+            event.status ===
+            "review_required"
+        ).length,
+
+      reviewed:
+        recentVisionEvents.filter(
+          (event) =>
+            Boolean(
+              event.reviewedAt
+            )
+        ).length,
+
+      linkedIncidents:
+        recentVisionEvents.filter(
+          (event) =>
+            Boolean(
+              event.incidentId
+            )
+        ).length,
+
+      highConfidence:
+        recentVisionEvents.filter(
+          (event) =>
+            Number(
+              event.confidence || 0
+            ) >= 85
+        ).length,
+    };
+
+    return NextResponse.json({
+      success: true,
+      summary,
+      cameras: persistedCameras,
+      recentVisionEvents,
+      provider,
+      generatedAt:
+        new Date().toISOString(),
+    });
+  } catch (error: unknown) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error ? error.message :
+          "Failed to load dashcam monitoring.",
+      },
+      {
+        status:
+          error instanceof Error && error.message === "Unauthorized"
+            ? 401
+            : 500,
+      }
+    );
+  }
+}
+export async function POST() {
+  try {
     const { supabase, organizationId } = await requireOrganization();
 
     const { data: vehicles, error: vehiclesError } = await supabase

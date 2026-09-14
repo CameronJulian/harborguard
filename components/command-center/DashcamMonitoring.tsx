@@ -122,7 +122,7 @@ export default function DashcamMonitoring() {
       return true;
     });
 
-  async function loadDashcams() {
+  async function loadDashcams(method: "GET" | "POST" = "GET") {
     if (refreshInFlightRef.current) {
       return;
     }
@@ -133,6 +133,7 @@ export default function DashcamMonitoring() {
       setMessage("");
 
       const response = await fetchWithAuth("/api/command-center/dashcam", {
+        method,
         cache: "no-store",
       });
 
@@ -145,9 +146,11 @@ export default function DashcamMonitoring() {
 
       setSummary(result.summary);
       setCameras(result.cameras || []);
-      setAutomaticVision(
-        result.automaticVision || null
-      );
+      if (method === "POST") {
+        setAutomaticVision(
+          result.automaticVision || null
+        );
+      }
 
       setRecentVisionEvents(
         result.recentVisionEvents || []
@@ -259,7 +262,7 @@ export default function DashcamMonitoring() {
   }
 
   useEffect(() => {
-    loadDashcams();
+    void loadDashcams("POST");
     loadOpenIncidents();
 
     function refreshDashcamsIfVisible() {
@@ -316,7 +319,7 @@ export default function DashcamMonitoring() {
 
         <button
           type="button"
-          onClick={loadDashcams}
+          onClick={() => loadDashcams("POST")}
           style={{
             height: "fit-content",
             padding: "10px 14px",
