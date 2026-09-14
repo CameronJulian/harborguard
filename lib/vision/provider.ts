@@ -155,18 +155,9 @@ async function analyseWithOllamaProvider(
   }
 
   if (!imageBase64 && input.imageUrl) {
-    const imageResponse = await fetch(input.imageUrl);
-
-    if (!imageResponse.ok) {
-      throw new Error(
-        `Failed to download image: ${imageResponse.status}`
-      );
-    }
-
-    const imageBuffer =
-      Buffer.from(await imageResponse.arrayBuffer());
-
-    imageBase64 = imageBuffer.toString("base64");
+    throw new Error(
+      "Ollama Vision does not fetch remote image URLs. Supply frameBase64 instead."
+    );
   }
 
   const prompt = `
