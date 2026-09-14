@@ -23,6 +23,9 @@ export async function markCommandCenterNotificationRead(notificationId: string) 
 export async function resolveCommandCenterNotification(notificationId: string) {
   const response = await fetchWithAuth("/api/command-center/notifications/resolve", {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({ notificationId }),
   });
 
