@@ -7,6 +7,82 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+const MAX_PAYFAST_ITN_BYTES = 32 * 1024;
+
+class PayFastPayloadTooLargeError extends Error {}
+
+async function readPayFastItnBody(
+  request: Request
+) {
+  const contentLengthHeader =
+    request.headers.get("content-length");
+
+  if (contentLengthHeader) {
+    const contentLength =
+      Number(contentLengthHeader);
+
+    if (
+      Number.isFinite(contentLength) &&
+      contentLength > MAX_PAYFAST_ITN_BYTES
+    ) {
+      throw new PayFastPayloadTooLargeError(
+        "PayFast ITN payload too large."
+      );
+    }
+  }
+
+  if (!request.body) {
+    return "";
+  }
+
+  const reader =
+    request.body.getReader();
+
+  const chunks: Uint8Array[] = [];
+
+  let totalBytes = 0;
+
+  while (true) {
+    const { done, value } =
+      await reader.read();
+
+    if (done) {
+      break;
+    }
+
+    if (!value) {
+      continue;
+    }
+
+    totalBytes += value.byteLength;
+
+    if (
+      totalBytes >
+      MAX_PAYFAST_ITN_BYTES
+    ) {
+      await reader.cancel();
+
+      throw new PayFastPayloadTooLargeError(
+        "PayFast ITN payload too large."
+      );
+    }
+
+    chunks.push(value);
+  }
+
+  const body =
+    new Uint8Array(totalBytes);
+
+  let offset = 0;
+
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  return new TextDecoder().decode(body);
+}
+
 function moneyEquals(actual: string | undefined, expected: string | undefined) {
   const actualValue = Number(actual || 0);
   const expectedValue = Number(expected || 0);
@@ -37,11 +113,17 @@ async function validatePayFastITN(payload: Record<string, string>) {
 
 export async function POST(req: Request) {
   try {
-    const formData = await req.formData();
+
+    const rawBody =
+      await readPayFastItnBody(req);
+
+    const formData =
+      new URLSearchParams(rawBody);
+
     const payload: Record<string, string> = {};
 
     formData.forEach((value, key) => {
-      payload[key] = String(value);
+      payload[key] = value;
     });
 
     const payFastPassphrase =
@@ -197,6 +279,15 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
+    if (
+      err instanceof PayFastPayloadTooLargeError
+    ) {
+      return NextResponse.json(
+        { error: err.message },
+        { status: 413 }
+      );
+    }
+
     const message =
       err instanceof Error ? err.message : "Webhook processing failed.";
 
