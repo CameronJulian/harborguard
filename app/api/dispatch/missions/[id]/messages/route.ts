@@ -35,10 +35,14 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { supabase, organizationId, user } = await requireOrganization();
+    const { supabase, organizationId, user, role } = await requireOrganization();
     const { id } = await params;
     const body = await req.json();
 
+    const trustedSenderRole =
+      role === "driver"
+        ? "driver"
+        : "dispatcher";
     const message = String(body.message || "").trim();
 
     if (!message) {
@@ -54,7 +58,7 @@ export async function POST(
         organization_id: organizationId,
         mission_id: id,
         sender_id: user?.id || null,
-        sender_role: body.senderRole || "dispatcher",
+        sender_role: trustedSenderRole,
         message,
         metadata: body.metadata || {},
       })
