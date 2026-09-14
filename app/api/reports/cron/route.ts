@@ -55,16 +55,69 @@ export async function GET(req: Request) {
     const period: "daily" | "weekly" =
       periodParam === "weekly" ? "weekly" : "daily";
 
+    const organizationId =
+      url.searchParams.get("organizationId")?.trim() || null;
+
     const { startDate, endDate } = getDateRange(period);
 
     // Use the actual request origin instead of NEXT_PUBLIC_SITE_URL
     const origin = url.origin;
 
-    const { data: subscriptions, error: subscriptionsError } = await supabase
+    let scopedUserIds: string[] | null = null;
+
+    if (organizationId) {
+      const { data: organizationProfiles, error: profilesError } =
+        await supabase
+          .from("profiles")
+          .select("id")
+          .eq("organization_id", organizationId);
+
+      if (profilesError) {
+        return NextResponse.json(
+          { error: profilesError.message },
+          { status: 500 }
+        );
+      }
+
+      scopedUserIds =
+        (organizationProfiles || []).map(
+          (profile) => profile.id
+        );
+
+      if (scopedUserIds.length === 0) {
+        return NextResponse.json({
+          success: true,
+          message:
+            `No active ${period} subscriptions found for the requested organization.`,
+          period,
+          startDate,
+          endDate,
+          totalRecipients: 0,
+          successCount: 0,
+          failedCount: 0,
+          results: [],
+        });
+      }
+    }
+
+    let subscriptionsQuery = supabase
       .from("report_subscriptions")
       .select("id, user_id, email, full_name, is_enabled, report_frequency")
       .eq("is_enabled", true)
       .eq("report_frequency", period);
+
+    if (scopedUserIds !== null) {
+      subscriptionsQuery =
+        subscriptionsQuery.in(
+          "user_id",
+          scopedUserIds
+        );
+    }
+
+    const {
+      data: subscriptions,
+      error: subscriptionsError,
+    } = await subscriptionsQuery;
 
     if (subscriptionsError) {
       return NextResponse.json(
