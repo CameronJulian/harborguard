@@ -22,6 +22,33 @@ export async function POST(req: Request) {
       );
     }
 
+    const { data: ownedAlert, error: alertLookupError } =
+      await supabase
+        .from("vehicle_alerts")
+        .select("id")
+        .eq("id", alertId)
+        .eq("organization_id", organizationId)
+        .maybeSingle();
+
+    if (alertLookupError) {
+      console.error(
+        "ACKNOWLEDGE ALERT OWNERSHIP LOOKUP ERROR:",
+        alertLookupError
+      );
+
+      return NextResponse.json(
+        { error: "Unable to verify alert ownership." },
+        { status: 500 }
+      );
+    }
+
+    if (!ownedAlert) {
+      return NextResponse.json(
+        { error: "Alert not found." },
+        { status: 404 }
+      );
+    }
+
     const { error } = await supabase
       .from("emergency_response_events")
       .insert({
