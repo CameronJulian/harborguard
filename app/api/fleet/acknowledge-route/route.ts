@@ -4,6 +4,27 @@ import { requireOrganization } from "@/lib/server-auth";
 export async function POST(req: Request) {
   try {
     const { supabase, organizationId } = await requireOrganization();
+    const contentType =
+      req.headers.get("content-type") || "";
+
+    const mediaType =
+      contentType
+        .split(";", 1)[0]
+        .trim()
+        .toLowerCase();
+
+    if (mediaType !== "application/json") {
+      return NextResponse.json(
+        {
+          error:
+            "Content-Type application/json is required.",
+        },
+        {
+          status: 415,
+        }
+      );
+    }
+
     const body = await req.json();
 
     const assignmentId = String(body.assignmentId || "").trim();
