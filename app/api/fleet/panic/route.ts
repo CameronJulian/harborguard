@@ -144,6 +144,36 @@ export async function POST(req: Request) {
       .limit(1)
       .maybeSingle();
 
+    if (requestedTripId) {
+      const {
+        data: requestedTrip,
+        error: requestedTripError,
+      } = await supabase
+        .from("vehicle_trips")
+        .select("id")
+        .eq("id", requestedTripId)
+        .eq("vehicle_id", vehicleId)
+        .eq("organization_id", organizationId)
+        .maybeSingle();
+
+      if (requestedTripError) {
+        return NextResponse.json(
+          { error: requestedTripError.message },
+          { status: 500 }
+        );
+      }
+
+      if (!requestedTrip) {
+        return NextResponse.json(
+          {
+            error:
+              "Trip not found for this vehicle and organization.",
+          },
+          { status: 404 }
+        );
+      }
+    }
+
     const finalTripId = requestedTripId || activeTrip?.id || null;
 
     const { data: insertedAlert, error: alertError } = await supabase
