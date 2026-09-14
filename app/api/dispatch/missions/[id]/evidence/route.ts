@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
 import { createMissionTimelineEvent } from "@/lib/dispatch/missionTimeline";
+import {
+  isMissionEvidenceStorageKey,
+  looksLikeMissionEvidenceStorageKey,
+} from "@/lib/security/missionEvidenceStoragePath";
 
 const allowedTypes = ["photo", "signature", "note", "barcode", "qr"];
 
@@ -12,6 +16,17 @@ export async function POST(
     const { supabase, organizationId, user } = await requireOrganization();
     const { id } = await params;
     const body = await req.json();
+    if (
+      looksLikeMissionEvidenceStorageKey(body.filePath) &&
+      !isMissionEvidenceStorageKey(body.filePath, id)
+    ) {
+      return NextResponse.json(
+        {
+          error: "Invalid mission evidence storage path.",
+        },
+        { status: 400 }
+      );
+    }
 
     const evidenceType = String(body.evidenceType || "note").toLowerCase();
 
@@ -105,9 +120,6 @@ export async function GET(
       .order("created_at", { ascending: false });
 
     if (error) throw error;
-
-    const missionStoragePrefix = `missions/${id}/`;
-
     const evidenceWithSignedUrls = await Promise.all(
       (evidence || []).map(async (item) => {
         const filePath =
@@ -115,7 +127,7 @@ export async function GET(
             ? item.file_path
             : "";
 
-        if (!filePath.startsWith(missionStoragePrefix)) {
+        if (!isMissionEvidenceStorageKey(filePath, id)) {
           return item;
         }
 
