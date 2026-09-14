@@ -40,7 +40,11 @@ export default function LiveMissionTrackingDashboard() {
       setMessage("");
 
       const response = await fetchWithAuth("/api/dispatch/tracking", {
-        method: "GET",
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({}),
         cache: "no-store",
       });
 

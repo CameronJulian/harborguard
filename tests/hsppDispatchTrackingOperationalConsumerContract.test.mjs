@@ -85,7 +85,7 @@ test(
 
     const transitionIndex =
       route.indexOf(
-        'mission.status === "Accepted"'
+        'previousStatus === "Accepted"'
       );
 
     const updateIndex =

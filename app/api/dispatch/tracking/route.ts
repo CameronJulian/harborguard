@@ -1,5 +1,6 @@
 ﻿import { NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
+import { createMissionTimelineEvent, missionStatusTimelineTitle } from "@/lib/dispatch/missionTimeline";
 import { readHsppEvidenceForOperationalUse } from "@/lib/hspp/readHsppEvidenceForOperationalUse";
 
 const ARRIVAL_RADIUS_METERS = 120;
@@ -30,7 +31,7 @@ function etaMinutes(distance: number, speedKmh: number) {
   return Math.round(((distance / 1000) / safeSpeed) * 60);
 }
 
-export async function GET() {
+async function loadTracking(applyTransitions: boolean) {
   try {
     const { supabase, organizationId } = await requireOrganization();
 
@@ -158,28 +159,88 @@ export async function GET() {
       const arrived = remainingMeters <= ARRIVAL_RADIUS_METERS;
 
       let autoTransition: string | null = null;
-      const update: any = {};
 
-      if (mission.status === "Accepted" && speedKmh >= MOVING_SPEED_KMH) {
-        autoTransition = "En Route";
-        update.status = "En Route";
-      }
+      if (applyTransitions) {
+        const previousStatus = mission.status;
+        const update: any = {};
 
-      if (mission.status === "En Route" && arrived) {
-        autoTransition = "Arrived";
-        update.status = "Arrived";
-        update.arrived_at = new Date().toISOString();
-      }
+        if (
+          previousStatus === "Accepted" &&
+          speedKmh >= MOVING_SPEED_KMH
+        ) {
+          autoTransition = "En Route";
+          update.status = "En Route";
+        }
 
-      if (autoTransition) {
-        const { error: updateError } = await supabase
-          .from("dispatch_missions")
-          .update(update)
-          .eq("organization_id", organizationId)
-          .eq("id", mission.id);
+        if (
+          previousStatus === "En Route" &&
+          arrived
+        ) {
+          autoTransition = "Arrived";
+          update.status = "Arrived";
+          update.arrived_at =
+            new Date().toISOString();
+        }
 
-        if (!updateError) {
-          mission.status = autoTransition;
+        if (autoTransition) {
+          const {
+            data: transitionedMission,
+            error: updateError,
+          } = await supabase
+            .from("dispatch_missions")
+            .update(update)
+            .eq(
+              "organization_id",
+              organizationId
+            )
+            .eq("id", mission.id)
+            .eq(
+              "status",
+              previousStatus
+            )
+            .select("id, status")
+            .maybeSingle();
+
+          if (updateError) {
+            console.error(
+              "DISPATCH TRACKING AUTO-TRANSITION ERROR:",
+              updateError.message
+            );
+            autoTransition = null;
+          } else if (transitionedMission) {
+            mission.status =
+              transitionedMission.status;
+
+            await createMissionTimelineEvent(
+              supabase,
+              {
+                organizationId,
+                missionId: mission.id,
+                eventType: "status_change",
+                title:
+                  missionStatusTimelineTitle(
+                    transitionedMission.status
+                  ),
+                detail:
+                  `Mission status auto-transitioned from ${previousStatus} to ${transitionedMission.status}.`,
+                actorId: null,
+                source:
+                  "dispatch_tracking_auto",
+                metadata: {
+                  fromStatus:
+                    previousStatus,
+                  toStatus:
+                    transitionedMission.status,
+                  speedKmh,
+                  remainingMeters,
+                  arrivalRadiusMeters:
+                    ARRIVAL_RADIUS_METERS,
+                },
+              }
+            );
+          } else {
+            autoTransition = null;
+          }
         }
       }
 
@@ -220,4 +281,47 @@ export async function GET() {
       { status: error.message === "Unauthorized" ? 401 : 500 }
     );
   }
+}
+export async function GET() {
+  return loadTracking(false);
+}
+
+export async function POST(
+  request: Request
+) {
+  const contentType =
+    request.headers.get("content-type") ||
+    "";
+
+  if (
+    !contentType
+      .toLowerCase()
+      .startsWith("application/json")
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Content-Type application/json is required.",
+      },
+      {
+        status: 415,
+      }
+    );
+  }
+
+  try {
+    await request.json();
+  } catch {
+    return NextResponse.json(
+      {
+        error:
+          "A valid JSON request body is required.",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
+
+  return loadTracking(true);
 }
