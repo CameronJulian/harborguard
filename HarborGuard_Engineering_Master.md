@@ -6,9 +6,9 @@
 **Repository:** `C:\Users\cameron\harborguard`
 **Primary branch:** `main`
 **Current active development branch:** `main`
-**Latest verified feature commit:** `69171f7c9039551f12a14602dee787b79e3b5d8a`
+**Latest verified feature commit:** `643fc6332475b714d796537852d5040603755365`
 **Last updated:** 2026-09-15
-**Current status:** Onboarding atomicity, invitation role restriction, invitation inviter-role alignment, and invitation acceptance are closed for their tested production scopes. The deployed invitation-acceptance flow has been proven end to end with authenticated acceptance, organization membership application, `accepted_at` transition, replay rejection, and complete disposable-fixture cleanup. The next precise production-hardening priority is local-versus-production tenant schema/RLS policy reconciliation outside the closed invitation boundary. Historical readiness percentages remain superseded.
+**Current status:** Onboarding atomicity, invitation role restriction, invitation inviter-role alignment, invitation acceptance, and profile read-RLS reconciliation are closed for their tested production scopes. The profile-RLS workstream is reproducible from tracked migrations and has completed local structural verification, multi-organization behavioral validation, full regression/build verification, hosted CI, controlled production migration, post-deployment schema verification, and deployed anonymous-access smoke testing. Billing request validation also remains verified for its tested scope. Remaining production-hardening work must continue audit-first and must not reopen these closed workstreams merely to increase a completion score.
 
 
 # HarborGuard — Current Progress Update, 15 September 2026
@@ -93,15 +93,70 @@ Authoritative application commit: `69171f7c9039551f12a14602dee787b79e3b5d8a`.
 Verified evidence includes the atomic acceptance RPC, authenticated-only execution, invite page and API deployment, hosted CI, production migration verification, controlled production end-to-end acceptance, correct `viewer` membership, non-null `accepted_at`, replay rejection with HTTP 409 semantics, no duplicate profile, and cleanup of the disposable invitation, profile, auth user and organization.
 
 This closure does not prove that every local tenant policy matches production, that every authorization path has undergone adversarial testing, or that customer-scale operation has been demonstrated.
+## Profile RLS reconciliation - production closure
+
+The `public.profiles` read-RLS reconciliation workstream is now **closed for its tested production scope**.
+
+Authoritative feature commit: `643fc6332475b714d796537852d5040603755365`.
+
+Tracked reconciliation migration: `20260915203000_reconcile_profile_read_rls.sql`.
+
+Verified migration SHA-256: `43ec266accc213d98bb0f0b3d2844b1e70d7b933b3c7448bc597b495773a40b4`.
+
+The reconciliation removed the stale permissive baseline policies `Allow all for now` and `authenticated can read profiles` from the reproducible migration path while preserving the audited production profile-read contract.
+
+The resulting tracked policy set is:
+
+- `admins_can_read_all_profiles`;
+- `profiles_self_select`;
+- `users_can_read_own_profile`;
+- `users_can_read_profiles_in_own_organization`.
+
+The tracked `public.is_admin()` helper preserves the audited platform-wide role boundary for `admin`, `platform_admin` and `super_admin` while excluding `owner` from platform-wide authority. The profile-role compatibility contract, including legacy operational roles such as `processing`, `dock` and `warehouse`, remains preserved.
+
+Local structural verification proved the exact four-policy set, `SECURITY DEFINER` helper semantics, authenticated execution boundaries, preservation of the compatibility role constraint and removal of the permissive local baseline policies.
+
+Local multi-organization behavioral testing proved:
+
+- `admin` can read all controlled fixture profiles;
+- `platform_admin` can read all controlled fixture profiles;
+- `super_admin` can read all controlled fixture profiles;
+- `owner` cannot read across organizations;
+- `manager` cannot read across organizations;
+- `viewer` cannot read across organizations;
+- `operator` cannot read across organizations;
+- anonymous callers cannot read profile rows.
+
+The behavioral test used disposable `auth.users` and profile fixtures inside a transaction and verified complete rollback cleanup.
+
+The focused profile-RLS tests passed together with the broader regression suite, incremental lint baseline, direct lint, TypeScript verification and production build before commit and push.
+
+Hosted GitHub Actions run `35008113479` completed successfully for authoritative feature commit `643fc6332475b714d796537852d5040603755365`.
+
+Production migration `20260915203000` was then applied successfully. Post-deployment migration history proved matching local and remote versions, and a subsequent Supabase dry run reported that the remote database was up to date.
+
+Fresh post-deployment production schema verification proved the intended four profile policies, the expected `is_admin()` contract and the absence of the permissive baseline policies.
+
+The deployed application smoke test subsequently proved:
+
+- HarborGuard root HTTP status `200`;
+- tested application route boundaries remained reachable;
+- an anonymous Supabase REST request to `public.profiles` returned `[]`;
+- verified anonymous visible-profile count was `0`;
+- migration history remained synchronized;
+- the remote database remained up to date.
+
+This closes the tested profile-read authorization and migration-reproducibility gap. It does **not** prove every HarborGuard authorization path, every future role configuration, every adversarial security condition, or customer-scale operational maturity. Those remain separate audit-first hardening concerns.
+
 ## Remaining work and resume instructions
 
-The latest verified application commit for the completed invitation-acceptance application flow is `69171f7c9039551f12a14602dee787b79e3b5d8a`. Onboarding atomicity, invitation role restriction, invitation inviter authorization and invitation acceptance have completed their audited deployment and verification sequence for the tested scopes. Do not repeat those deployments or E2E tests merely to increase a completion score.
+The latest verified application/security feature commit is `643fc6332475b714d796537852d5040603755365`. Onboarding atomicity, invitation role restriction, invitation inviter authorization, invitation acceptance and profile read-RLS reconciliation have completed their audited deployment and verification sequences for their tested production scopes. Do not repeat those deployments or E2E tests merely to increase a completion score.
 
 Before the next roadmap item, integrate this updated progress document into the repository's canonical progress log, review the documentation diff, commit and push it. This assessment is incorporated into the tracked engineering master. Verify its documentation commit is pushed before starting the next work item.
 
-Do not resume the earlier onboarding atomicity or invitation-acceptance gaps: both are now closed for their tested production scopes. The next audit-first work item is local-versus-production tenant schema/RLS policy reconciliation outside the closed invitation boundary. Audit the actual local migrations, local catalog, production catalog and application authorization helpers before changing any policy.
+Do not resume the earlier onboarding atomicity, invitation-acceptance, invitation-RLS, or profile read-RLS reconciliation gaps: those workstreams are closed for their tested production scopes. The next audit-first production-hardening item must be selected from the remaining open work after inspecting the current source, migrations, production state and existing test coverage.
 
-Additional open work includes local/production schema-policy reconciliation outside the now-closed invitation boundary; billing mutation-error handling and live checkout proof; independent adversarial authorization testing; sustained multi-vehicle field operation; broader load/soak and recovery exercises beyond previously tested scope; and repeatable customer onboarding, billing, support and incident operations. Invitation acceptance is no longer an open item for the tested production scope. Earlier backup/restore and load-test accomplishments remain valid for their recorded scopes.
+Additional open work includes billing mutation/error handling and live checkout proof; independent adversarial authorization testing outside the already-closed invitation/profile-RLS boundaries; sustained multi-vehicle field operation; broader load/soak and recovery exercises beyond previously tested scope; and repeatable customer onboarding, billing, support and incident operations. Invitation acceptance and profile read-RLS reconciliation are no longer open items for their tested production scopes. Earlier backup/restore and load-test accomplishments remain valid for their recorded scopes and should not be treated as universal proof.
 
 No new valuation is asserted here. Historical sale-price ranges below are prior speculative estimates, not an appraisal supported by this update. No novelty or patentability conclusion is established by these engineering closures.
 
