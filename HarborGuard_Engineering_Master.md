@@ -6,9 +6,101 @@
 **Repository:** `C:\Users\cameron\harborguard`
 **Primary branch:** `main`
 **Current active development branch:** `main`
-**Latest verified feature commit:** `ab9d923`
-**Last updated:** 2026-08-20
-**Current status:** HarborGuard Safety Provenance Protocol (HSPP) is implemented through HSPP-007C. Traccar telemetry can now be sealed as cryptographic evidence, verified, assessed under versioned policy, linked exactly to persisted vehicle locations, and enforced by the Fleet Digital Twin through a fail-closed operational-use boundary. HSPP-linked telemetry denied by the trust policy is excluded from Digital Twin operational intelligence, while unlinked legacy/mobile/manual location behavior remains unchanged.
+**Latest verified feature commit:** `94dacf0f83d5c9698c228f499ebaee5d1ccf01c6`
+**Last updated:** 2026-09-15
+**Current status:** Invitation-role restriction passed hosted CI and its production database constraint is verified. Billing request validation also passed hosted CI. Onboarding atomicity, invitation acceptance, and local/production policy reconciliation remain open. See the September 15 assessment below; historical readiness percentages are superseded.
+
+
+# HarborGuard — Current Progress Update, 15 September 2026
+
+## Read this assessment first
+
+This section supersedes earlier current-state assessments and next-step instructions retained below. Earlier entries remain as project history. In particular, the prior **~98% production/commercial hardening** claim is withdrawn: the available evidence does not support that precision or a combined engineering/commercial readiness score. No code was lost; the assessment became more accurate as audits exposed gaps.
+
+This update is based on the attached progress history and the code, command outputs, local database checks, and production catalog exports supplied in this conversation. It is not a fresh full-repository audit, independent penetration test, or live fleet evaluation.
+
+## How far the project is
+
+| Area | Current evidence-based assessment | Treatment of earlier estimates |
+| --- | --- | --- |
+| SaaS product implementation | Advanced working implementation with production deployments, broad fleet/route-safety functionality and reproducible test/build evidence; some customer workflows remain incomplete | Earlier ~98% is a rough historical roadmap estimate, not measured completion. Do not increase it or treat it as independently verified. |
+| Billiskills/HSPP architecture | Substantially represented in the documented implementation | Earlier ~99% architecture estimate is historical and approximate. |
+| Billiskills/HSPP implementation | Substantially implemented, including documented recursive evidence lifecycle work | Earlier ~96–97% remains an inherited estimate, not newly calculated or independently reverified. |
+| Recursive HSPP evidence | The history records H1→H2→H3 reconstruction/revalidation and ancestry preservation in the tested scope | Earlier ~97% is an informal evidence estimate; current billing/invitation work adds no recursive-mechanism proof. |
+| Production security and operations | Active hardening with specific verified closures and material open items | No defensible overall percentage from the supplied evidence. |
+| Commercial readiness | Not established by code completion or CI; requires customer, fleet, onboarding, support and revenue evidence | No defensible percentage. |
+| Technical novelty | The combined lifecycle mechanism is the project's invention hypothesis | No new prior-art research was performed here; implementation evidence does not establish novelty. |
+
+The practical conclusion is that HarborGuard has a substantial working software product and a substantially implemented HSPP mechanism. The next phase is closing specific correctness/security gaps and demonstrating reliable customer operation. A percentage near 100 must not obscure incomplete invitations, onboarding concurrency risks, or missing operating evidence.
+
+The historical HSPP description includes evidence identity/provenance, independent verification, unresolved Reservoir state, compatibility/corroboration, assembly lifecycle, trust-driven membership cessation, descendant reconstruction, retained ancestry, revalidation and recursive continuation. These are described as implemented/tested in the project history, not independently re-executed during this update. Billing and invitation hardening improve the host SaaS but do not add invention primitives.
+
+## Billing request validation — hosted CI closure
+
+- Commit: `9d1946c50e22228e66708ab07f0e8b2329c80c46`.
+- Hosted CI run: `34876355502`, successful.
+- Validation now follows authentication and billing permission checks. Unsupported media types return 415; malformed JSON, invalid body shapes and invalid billing-email values return 400. Valid email input is trimmed.
+- Existing organization scoping, permitted billing roles, pricing and shared PayFast signature behavior were preserved.
+- Behavioral validation-helper tests and route wiring checks were added. The PayFast signature source-contract test was also included in the curated test command.
+- Local regression count at this closure: 362, zero failures. Incremental lint and production build passed; hosted CI passed the configured tests, lint and build.
+- Scope limitation: source-contract checks are not runtime checkout tests. Live PayFast checkout and production application deployment were not independently verified by these results.
+- Follow-up findings remain: ignored organization-update errors, raw error-message exposure, and a billing authorization error message that says owners only despite broader configured billing permissions.
+
+## Organization invitation roles — source and production constraint closure
+
+| Evidence | Verified result |
+| --- | --- |
+| Source commit | `94dacf0f83d5c9698c228f499ebaee5d1ccf01c6` |
+| Hosted CI | Run `34880843909`, successful |
+| API/UI allowed invitation roles | `viewer`, `operator`, `manager` |
+| Focused source-contract tests | 4 passed |
+| Local curated regressions | 366 passed, zero failures |
+| Incremental lint | Passed; existing error baseline remained 1,302, so this is not a clean-lint claim |
+| Production build | Passed |
+| Migration | `20260914201500_reconcile_invitation_role_boundary.sql` |
+| Linked project | `ubdgpebpxuimrxvrjjet` |
+| Remote migration history | Version `20260914201500` recorded as applied |
+| Post-push dry run | Remote database up to date |
+| Production catalog, 15 September | `organization_invitations_tenant_role_check` present and validated |
+| Constraint definition | `CHECK (role IN ('viewer', 'operator', 'manager'))` |
+| Invitation RLS | Enabled |
+| Incompatible invitation rows | 0 at verification time |
+
+The migration creates the previously untracked invitation table on databases where it is missing. For an existing table, it adds the role constraint while retaining existing policies and grants. Local rollback tests exercised new-table application and the existing-table path; table identity, grants and policies were preserved in the latter test. Separate temporary-table tests rejected forbidden role inserts and updates, and null values. These checks are not a complete end-to-end invitation or adversarial RLS test.
+
+Production catalog evidence independently confirms the constraint after deployment. The scope closed is **organization invitation-role restriction**, not the entire invitation workflow or all tenant authorization.
+
+## Deployment incident and resolution
+
+The Supabase CLI initially failed to parse `.env.local`. The first three bytes were confirmed as `efbbbf`, a UTF-8 BOM. The original was backed up outside the repository; only the BOM was removed and every remaining byte was verified unchanged. No environment secrets are included here. Migration listing and dry run then succeeded, showing exactly the reviewed migration pending.
+
+During the production push, CLI 2.108.0 printed a missing `pgdelta-target-ca.crt` runtime error, then reported completion. Subsequent remote history, an up-to-date dry run and the production constraint export established successful installation of the intended constraint. The underlying CLI error remains undiagnosed; it should not be described as fixed or used to justify blindly rerunning the migration.
+
+## Authorization findings — preserve the distinctions
+
+1. **Local policy mismatch remains open.** The local database showed unrestricted profile policies and broad organization policies. Production exports did not contain those same unrestricted policies. Successful local tests therefore do not establish production-equivalent tenant isolation.
+2. **Production helper behavior was inspected.** `current_user_org_id()` and `is_admin()` derive identity from `auth.uid()` and the caller's profile. Both are postgres-owned SECURITY DEFINER functions with a configured public search path and qualified profile references. This is source/catalog evidence, not proof that every access path is secure.
+3. **Admin meaning is mixed across surfaces.** Platform console behavior and production policies support platform-wide use of `admin`; the invitation UI previously offered that same role for organization invitations. The new restriction prevents that invitation role value, without changing existing administrator accounts.
+4. **Inviter authorization is not harmonized.** The API permits `owner` and `admin`; production invitation policies permit organization-scoped `admin`, `platform_admin`, and `super_admin`. Whether callers succeed also depends on the actual database client credentials. Do not silently widen either boundary.
+5. **Invitation acceptance was not found in tracked source.** Searches found the invitation management page and API only, with no tracked acceptance page/handler or earlier table migration. A complete privilege-escalation chain was not demonstrated. Acceptance remains unimplemented or unlocated, not verified complete.
+
+## Remaining work and resume instructions
+
+The latest verified application commit is `94dacf0f83d5c9698c228f499ebaee5d1ccf01c6`; the invitation migration is installed remotely. Do not repeat deployment merely to increase a completion score.
+
+Before the next roadmap item, integrate this updated progress document into the repository's canonical progress log, review the documentation diff, commit and push it. This assessment is incorporated into the tracked engineering master. Verify its documentation commit is pushed before starting the next work item.
+
+Resume the interrupted onboarding work after documenting closure. The audited route performs organization insertion and profile upsert as separate operations, ignores a profile lookup error, parses JSON before session verification, and lacks robust input validation. A safe atomic design must preserve existing membership and account for concurrent onboarding or membership assignment, including the case where no profile row exists. No onboarding fix or migration was implemented in this sequence.
+
+Additional open work includes local/production schema-policy reconciliation with role-based isolation tests; invitation acceptance and inviter-role alignment; billing mutation-error handling and live checkout proof; independent adversarial testing; sustained multi-vehicle field operation; broader load/soak and recovery exercises beyond previously tested scope; and repeatable customer onboarding, billing, support and incident operations. Earlier backup/restore and load-test accomplishments remain valid for their recorded scopes and should not be erased or treated as universal proof.
+
+No new valuation is asserted here. Historical sale-price ranges below are prior speculative estimates, not an appraisal supported by this update. No novelty or patentability conclusion is established by these engineering closures.
+
+---
+
+## Earlier master history
+
+The following sections preserve earlier milestones. Use the September 15 assessment above for current status and resume priorities.
 
 ---
 
