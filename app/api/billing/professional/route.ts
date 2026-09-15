@@ -113,12 +113,19 @@ cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing?canceled=true`,
         signature,
       }).toString();
 
-    await supabase
+    const { error: billingUpdateError } = await supabase
       .from("organizations")
       .update({
         billing_email: billingEmail,
       })
       .eq("id", organizationId);
+
+    if (billingUpdateError) {
+      return NextResponse.json(
+        { error: "Failed to update billing details." },
+        { status: 500 }
+      );
+    }
 
     await createAuditLog({
       organizationId,

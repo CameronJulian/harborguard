@@ -106,3 +106,31 @@ test("route wiring places validation after permissions and before side effects",
   assert.ok(email > rejection && signature > email && mutation > email);
   assert.doesNotMatch(source, /await req\.json\(/);
 });
+
+test("checkout stops before success flow when billing email persistence fails", () => {
+  const source = fs.readFileSync(
+    "app/api/billing/professional/route.ts",
+    "utf8"
+  );
+
+  const mutation = source.indexOf(
+    "const { error: billingUpdateError } = await supabase"
+  );
+  const failureCheck = source.indexOf("if (billingUpdateError)");
+  const safeError = source.indexOf(
+    'error: "Failed to update billing details."'
+  );
+  const audit = source.indexOf(
+    'action: "billing.checkout.started"'
+  );
+  const successReturn = source.indexOf(
+    "return NextResponse.json({",
+    audit
+  );
+
+  assert.ok(mutation >= 0);
+  assert.ok(failureCheck > mutation);
+  assert.ok(safeError > failureCheck);
+  assert.ok(audit > safeError);
+  assert.ok(successReturn > audit);
+});
