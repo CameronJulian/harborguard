@@ -6,9 +6,9 @@
 **Repository:** `C:\Users\cameron\harborguard`
 **Primary branch:** `main`
 **Current active development branch:** `main`
-**Latest verified feature commit:** `5c00931243c0d2e271fc26a88bc82cba6c128e8a`
+**Latest verified feature commit:** `69171f7c9039551f12a14602dee787b79e3b5d8a`
 **Last updated:** 2026-09-15
-**Current status:** Onboarding atomicity and invitation inviter-role alignment are closed for the tested production scope. The atomic onboarding RPC is deployed and concurrency-verified. Invitation RLS now uses the canonical tenant-level `owner` + `admin` inviter boundary, while invited roles remain restricted to `viewer`, `operator`, and `manager`. Billing request validation and invitation-role restriction also remain verified closures for their tested scopes. Invitation acceptance, local/production policy reconciliation outside this closed invitation boundary, remaining billing mutation/error handling, broader adversarial testing, and customer-operational maturity remain open. See the September 15 assessment below; historical readiness percentages are superseded.
+**Current status:** Onboarding atomicity, invitation role restriction, invitation inviter-role alignment, and invitation acceptance are closed for their tested production scopes. The deployed invitation-acceptance flow has been proven end to end with authenticated acceptance, organization membership application, `accepted_at` transition, replay rejection, and complete disposable-fixture cleanup. The next precise production-hardening priority is local-versus-production tenant schema/RLS policy reconciliation outside the closed invitation boundary. Historical readiness percentages remain superseded.
 
 
 # HarborGuard — Current Progress Update, 15 September 2026
@@ -82,17 +82,26 @@ During the production push, CLI 2.108.0 printed a missing `pgdelta-target-ca.crt
 2. **Production helper behavior was inspected.** `current_user_org_id()` and `is_admin()` derive identity from `auth.uid()` and the caller's profile. Both are postgres-owned SECURITY DEFINER functions with a configured public search path and qualified profile references. This is source/catalog evidence, not proof that every access path is secure.
 3. **Admin meaning is mixed across surfaces.** Platform console behavior can still use platform-wide administrator roles, but organization invitations are now explicitly separated from that boundary. Invited roles remain restricted to `viewer`, `operator`, and `manager`.
 4. **Inviter authorization is now harmonized for the tested production scope.** The API and all four live production invitation RLS policies use the canonical tenant-level `owner` + `admin` boundary. `manager`, `platform_admin`, and `super_admin` are excluded from those invitation-management policies, and tenant scoping remains tied to `auth.uid()` plus the caller's organization.
-5. **Invitation acceptance was not found in tracked source.** Searches found the invitation management page and API only, with no tracked acceptance page/handler or earlier acceptance implementation. A complete acceptance path has not been demonstrated. Acceptance remains the next invitation-specific gap.
+5. **Invitation acceptance is now closed for the tested production scope.** The tracked application contains the deployed invite page, authenticated acceptance API and atomic database acceptance RPC. Production E2E validation proved successful acceptance, intended organization membership and `viewer` role, non-null `accepted_at`, replay rejection, no duplicate profile, and complete cleanup of disposable test artifacts.
 
+## Invitation acceptance - production end-to-end closure
+
+The organization-invitation acceptance workstream is now **closed for its tested production scope**.
+
+Authoritative application commit: `69171f7c9039551f12a14602dee787b79e3b5d8a`.
+
+Verified evidence includes the atomic acceptance RPC, authenticated-only execution, invite page and API deployment, hosted CI, production migration verification, controlled production end-to-end acceptance, correct `viewer` membership, non-null `accepted_at`, replay rejection with HTTP 409 semantics, no duplicate profile, and cleanup of the disposable invitation, profile, auth user and organization.
+
+This closure does not prove that every local tenant policy matches production, that every authorization path has undergone adversarial testing, or that customer-scale operation has been demonstrated.
 ## Remaining work and resume instructions
 
-The latest verified application commit is `94dacf0f83d5c9698c228f499ebaee5d1ccf01c6`; the invitation migration is installed remotely. Do not repeat deployment merely to increase a completion score.
+The latest verified application commit for the completed invitation-acceptance application flow is `69171f7c9039551f12a14602dee787b79e3b5d8a`. Onboarding atomicity, invitation role restriction, invitation inviter authorization and invitation acceptance have completed their audited deployment and verification sequence for the tested scopes. Do not repeat those deployments or E2E tests merely to increase a completion score.
 
 Before the next roadmap item, integrate this updated progress document into the repository's canonical progress log, review the documentation diff, commit and push it. This assessment is incorporated into the tracked engineering master. Verify its documentation commit is pushed before starting the next work item.
 
-Resume the interrupted onboarding work after documenting closure. The audited route performs organization insertion and profile upsert as separate operations, ignores a profile lookup error, parses JSON before session verification, and lacks robust input validation. A safe atomic design must preserve existing membership and account for concurrent onboarding or membership assignment, including the case where no profile row exists. No onboarding fix or migration was implemented in this sequence.
+Do not resume the earlier onboarding atomicity or invitation-acceptance gaps: both are now closed for their tested production scopes. The next audit-first work item is local-versus-production tenant schema/RLS policy reconciliation outside the closed invitation boundary. Audit the actual local migrations, local catalog, production catalog and application authorization helpers before changing any policy.
 
-Additional open work includes local/production schema-policy reconciliation outside the now-closed invitation inviter boundary; invitation acceptance end-to-end behavior; billing mutation-error handling and live checkout proof; independent adversarial testing; sustained multi-vehicle field operation; broader load/soak and recovery exercises beyond previously tested scope; and repeatable customer onboarding, billing, support and incident operations. Earlier backup/restore and load-test accomplishments remain valid for their recorded scopes and should not be erased or treated as universal proof.
+Additional open work includes local/production schema-policy reconciliation outside the now-closed invitation boundary; billing mutation-error handling and live checkout proof; independent adversarial authorization testing; sustained multi-vehicle field operation; broader load/soak and recovery exercises beyond previously tested scope; and repeatable customer onboarding, billing, support and incident operations. Invitation acceptance is no longer an open item for the tested production scope. Earlier backup/restore and load-test accomplishments remain valid for their recorded scopes.
 
 No new valuation is asserted here. Historical sale-price ranges below are prior speculative estimates, not an appraisal supported by this update. No novelty or patentability conclusion is established by these engineering closures.
 
