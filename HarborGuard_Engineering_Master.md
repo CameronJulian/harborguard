@@ -6,9 +6,9 @@
 **Repository:** `C:\Users\cameron\harborguard`
 **Primary branch:** `main`
 **Current active development branch:** `main`
-**Latest verified feature commit:** `94dacf0f83d5c9698c228f499ebaee5d1ccf01c6`
+**Latest verified feature commit:** `ecffeac5ddb67f061459d3330d92cd7870513e51`
 **Last updated:** 2026-09-15
-**Current status:** Invitation-role restriction passed hosted CI and its production database constraint is verified. Billing request validation also passed hosted CI. Onboarding atomicity, invitation acceptance, and local/production policy reconciliation remain open. See the September 15 assessment below; historical readiness percentages are superseded.
+**Current status:** Onboarding atomicity is closed for the tested production scope: the atomic onboarding RPC is committed, pushed, passed hosted CI, deployed to production, verified in the live schema, and backed by a successful two-session concurrency test. Invitation-role restriction and billing request validation also remain verified closures for their tested scopes. Invitation acceptance, inviter-role alignment, local/production policy reconciliation, remaining billing mutation/error handling, broader adversarial testing, and customer-operational maturity remain open. See the September 15 assessment below; historical readiness percentages are superseded.
 
 
 # HarborGuard — Current Progress Update, 15 September 2026
@@ -103,6 +103,100 @@ No new valuation is asserted here. Historical sale-price ranges below are prior 
 The following sections preserve earlier milestones. Use the September 15 assessment above for current status and resume priorities.
 
 ---
+
+
+## Onboarding atomicity — production closure
+
+The onboarding atomicity thread is now **closed for its tested production scope**. This is a production-hardening closure, not a new Billiskills/HSPP invention primitive, and it should not be used to inflate invention-implementation percentages.
+
+Verified source commit:
+
+```text
+ecffeac5ddb67f061459d3330d92cd7870513e51
+```
+
+Migration:
+
+```text
+20260915150000_complete_onboarding_atomically.sql
+```
+
+Production RPC:
+
+```text
+public.complete_onboarding_atomic(text, integer, text)
+```
+
+Verified production implementation and authority shape:
+
+```text
+auth.uid() identity source                         PASS
+SECURITY DEFINER                                  PASS
+empty search_path                                 PASS
+auth.users row lock                               PASS
+profiles row lock                                 PASS
+profile INSERT ... ON CONFLICT DO NOTHING         PASS
+organization creation inside RPC                  PASS
+membership assignment inside RPC                  PASS
+NULL membership guard                             PASS
+PUBLIC function authority revoked                 PASS
+authenticated function authority granted          PASS
+anon explicit authority absent                    PASS
+service_role explicit authority absent            PASS
+```
+
+Concurrency proof:
+
+```text
+second concurrent request waited for first        PASS
+both requests returned same organization          PASS
+duplicate organization prevented                  PASS
+two-session onboarding test                       PASS
+```
+
+Delivery and production evidence:
+
+```text
+regression suite                                  PASS
+route lint                                        PASS
+TypeScript / production build evidence            PASS
+hosted CI                                         PASS
+production migration applied                      PASS
+remote migration history aligned                  PASS
+post-deployment remote database up to date        PASS
+production function schema verification           PASS
+final repository clean                            PASS
+```
+
+Final closure result:
+
+```text
+ONBOARDING_ATOMICITY_PRODUCTION_CLOSURE=PASS
+PRODUCTION_FUNCTION_PRESENT=PASS
+PRODUCTION_ROW_LOCKS=PASS
+PRODUCTION_SEARCH_PATH=PASS
+PRODUCTION_FUNCTION_PRIVILEGES=PASS
+HOSTED_CI=PASS
+PRODUCTION_MIGRATION=PASS
+LOCAL_CONCURRENCY_TEST=PASS
+```
+
+This closes the previously identified race in which organization creation and profile membership assignment occurred as separate application-level operations. The onboarding route now delegates the lifecycle to one database transaction, and concurrent onboarding for the same authenticated user is serialized by row locks.
+
+A production runtime smoke test using a real unassigned user was deliberately not required because it could create real customer/account state. Local two-session concurrency execution together with production migration, catalog, function-shape and privilege verification provides the closure evidence for the tested scope.
+
+### Remaining adjacent onboarding / tenant-hardening work
+
+The following items are **not** closed by this result and should remain on the roadmap:
+
+- invitation acceptance end-to-end behavior;
+- inviter-role and accepted-membership role alignment;
+- local/production policy reconciliation;
+- remaining billing mutation/error handling, including ignored organization-update failures and raw error-message exposure;
+- broader adversarial and authorization testing;
+- repeatable customer onboarding, billing, support and tenant-operations maturity.
+
+The next audit-first milestone should select **one** of these remaining gaps, inspect the existing implementation and production state, identify one precise deficiency, make one focused change only if required, verify it, run the appropriate regression/build gates, commit, push, and re-establish a clean `HEAD == origin/main` source fence before moving on.
 
 # 1. How to use this document
 
