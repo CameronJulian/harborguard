@@ -144,10 +144,12 @@ cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing?canceled=true`,
       success: true,
       paymentUrl,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    console.error("Professional billing checkout failed:", err);
+
     return NextResponse.json(
       {
-        error: err.message || "Failed to create subscription session.",
+        error: "Failed to create subscription session.",
       },
       { status: 500 }
     );

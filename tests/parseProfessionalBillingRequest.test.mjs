@@ -134,3 +134,24 @@ test("checkout stops before success flow when billing email persistence fails", 
   assert.ok(audit > safeError);
   assert.ok(successReturn > audit);
 });
+
+test("checkout catch logs internally but returns a fixed safe error", () => {
+  const source = fs.readFileSync(
+    "app/api/billing/professional/route.ts",
+    "utf8"
+  );
+
+  const catchBoundary = source.indexOf("catch (err: unknown)");
+  const serverLog = source.indexOf(
+    'console.error("Professional billing checkout failed:", err)'
+  );
+  const safeResponse = source.indexOf(
+    'error: "Failed to create subscription session."'
+  );
+
+  assert.ok(catchBoundary >= 0);
+  assert.ok(serverLog > catchBoundary);
+  assert.ok(safeResponse > serverLog);
+  assert.doesNotMatch(source, /error:\s*err\.message/);
+  assert.doesNotMatch(source, /catch\s*\(\s*err\s*:\s*any\s*\)/);
+});
