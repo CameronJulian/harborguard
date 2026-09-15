@@ -196,8 +196,13 @@ export async function POST(req: Request) {
         .maybeSingle();
 
     if (organizationLookupError) {
+      console.error(
+        "PayFast ITN organization lookup failed:",
+        organizationLookupError
+      );
+
       return NextResponse.json(
-        { error: organizationLookupError.message },
+        { error: "Webhook processing failed." },
         { status: 500 }
       );
     }
@@ -217,8 +222,13 @@ export async function POST(req: Request) {
         .maybeSingle();
 
     if (invoiceLookupError) {
+      console.error(
+        "PayFast ITN invoice lookup failed:",
+        invoiceLookupError
+      );
+
       return NextResponse.json(
-        { error: invoiceLookupError.message },
+        { error: "Webhook processing failed." },
         { status: 500 }
       );
     }
@@ -245,8 +255,13 @@ export async function POST(req: Request) {
         .eq("id", organizationId);
 
       if (organizationError) {
+        console.error(
+          "PayFast ITN subscription update failed:",
+          organizationError
+        );
+
         return NextResponse.json(
-          { error: organizationError.message },
+          { error: "Webhook processing failed." },
           { status: 500 }
         );
       }
@@ -270,8 +285,13 @@ export async function POST(req: Request) {
         });
 
       if (invoiceError) {
+        console.error(
+          "PayFast ITN invoice insert failed:",
+          invoiceError
+        );
+
         return NextResponse.json(
-          { error: invoiceError.message },
+          { error: "Webhook processing failed." },
           { status: 500 }
         );
       }
@@ -288,11 +308,10 @@ export async function POST(req: Request) {
       );
     }
 
-    const message =
-      err instanceof Error ? err.message : "Webhook processing failed.";
+    console.error("PayFast ITN processing failed:", err);
 
     return NextResponse.json(
-      { error: message },
+      { error: "Webhook processing failed." },
       { status: 500 }
     );
   }
