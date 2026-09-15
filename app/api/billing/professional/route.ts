@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     if (!hasPermission(profile.role, "billing:manage")) {
       return NextResponse.json(
         {
-          error: "Only organization owners can manage billing.",
+          error: "You do not have permission to manage billing.",
         },
         { status: 403 }
       );

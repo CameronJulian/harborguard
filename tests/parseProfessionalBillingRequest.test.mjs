@@ -155,3 +155,24 @@ test("checkout catch logs internally but returns a fixed safe error", () => {
   assert.doesNotMatch(source, /error:\s*err\.message/);
   assert.doesNotMatch(source, /catch\s*\(\s*err\s*:\s*any\s*\)/);
 });
+
+test("billing denial message follows billing manage permission contract", () => {
+  const source = fs.readFileSync(
+    "app/api/billing/professional/route.ts",
+    "utf8"
+  );
+
+  const permission = source.indexOf(
+    'hasPermission(profile.role, "billing:manage")'
+  );
+  const denial = source.indexOf(
+    'error: "You do not have permission to manage billing."'
+  );
+
+  assert.ok(permission >= 0);
+  assert.ok(denial > permission);
+  assert.doesNotMatch(
+    source,
+    /Only organization owners can manage billing\./
+  );
+});
