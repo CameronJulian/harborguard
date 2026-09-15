@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+import { PROFESSIONAL_MONTHLY_AMOUNT } from "@/lib/billing";
 import { verifyPayFastSignature } from "@/lib/payfast/signature";
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -162,7 +163,7 @@ export async function POST(req: Request) {
     if (
       !moneyEquals(
         payload.amount_gross,
-        process.env.PAYFAST_PROFESSIONAL_AMOUNT
+        PROFESSIONAL_MONTHLY_AMOUNT
       )
     ) {
       return NextResponse.json(

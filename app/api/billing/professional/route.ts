@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { PROFESSIONAL_MONTHLY_AMOUNT } from "@/lib/billing";
 import { parseProfessionalBillingRequest } from "@/lib/payfast/parseProfessionalBillingRequest";
 import { generatePayFastSignature } from "@/lib/payfast/signature";
 import { createClient } from "@supabase/supabase-js";
@@ -93,13 +94,13 @@ cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing?canceled=true`,
 
       m_payment_id: organizationId,
 
-      amount: "499.00",
+      amount: PROFESSIONAL_MONTHLY_AMOUNT,
       item_name: "HarborGuard Professional",
       item_description: "Fleet Intelligence Subscription",
 
       subscription_type: "1",
       billing_date: new Date().toISOString().split("T")[0],
-      recurring_amount: "499.00",
+      recurring_amount: PROFESSIONAL_MONTHLY_AMOUNT,
       frequency: "3",
       cycles: "0",
     };
@@ -134,7 +135,7 @@ cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing?canceled=true`,
       target: "professional-plan",
       metadata: {
         billingEmail,
-        amount: "499.00",
+        amount: PROFESSIONAL_MONTHLY_AMOUNT,
         provider: "payfast",
         startedAt: new Date().toISOString(),
       },

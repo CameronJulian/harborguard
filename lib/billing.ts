@@ -3,6 +3,9 @@ export type HarborGuardPlan =
   | "professional"
   | "enterprise";
 
+export const PROFESSIONAL_MONTHLY_AMOUNT = "499.00" as const;
+
+export const PROFESSIONAL_MONTHLY_PRICE_ZAR = 499 as const;
 export const PLAN_FEATURES = {
   starter: {
     maxVehicles: 5,
