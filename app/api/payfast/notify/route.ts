@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 import { PROFESSIONAL_MONTHLY_AMOUNT } from "@/lib/billing";
@@ -253,23 +253,30 @@ export async function POST(req: Request) {
     }
 
     if (payload.payment_status === "COMPLETE") {
-      const { error: organizationError } = await supabase
-        .from("organizations")
-        .update({
-          subscription_status: "active",
-          plan: "professional",
-          trial_ends_at: null,
-          payfast_subscription_id: payload.token || null,
-          next_billing_date: new Date(
-            Date.now() + 30 * 24 * 60 * 60 * 1000
-          ).toISOString(),
-        })
-        .eq("id", organizationId);
+      const nextBillingDate = new Date(
+        Date.now() + 30 * 24 * 60 * 60 * 1000
+      ).toISOString();
 
-      if (organizationError) {
+      const {
+        data: activationRows,
+        error: activationError,
+      } = await supabase.rpc(
+        "activate_payfast_subscription_atomically",
+        {
+          p_organization_id: organizationId,
+          p_payfast_payment_id: payfastPaymentId,
+          p_payfast_subscription_id: payload.token || null,
+          p_next_billing_date: nextBillingDate,
+          p_amount: Number(payload.amount_gross || 0),
+          p_currency: payload.currency || "ZAR",
+          p_payload: payload,
+        }
+      );
+
+      if (activationError) {
         console.error(
-          "PayFast ITN subscription update failed:",
-          organizationError
+          "PayFast ITN atomic activation failed:",
+          activationError
         );
 
         return NextResponse.json(
@@ -278,28 +285,21 @@ export async function POST(req: Request) {
         );
       }
 
-      await supabase.from("billing_events").insert({
-        organization_id: organizationId,
-        event_type: "subscription_activated",
-        provider: "payfast",
-        payload,
-      });
+      const activation =
+        Array.isArray(activationRows)
+          ? activationRows[0]
+          : activationRows;
 
-      const { error: invoiceError } = await supabase
-        .from("invoices")
-        .insert({
-          organization_id: organizationId,
-          payfast_payment_id: payfastPaymentId,
-          amount: Number(payload.amount_gross || 0),
-          currency: payload.currency || "ZAR",
-          status: "paid",
-          invoice_url: null,
+      if (activation?.duplicate === true) {
+        return NextResponse.json({
+          success: true,
+          duplicate: true,
         });
+      }
 
-      if (invoiceError) {
+      if (activation?.processed !== true) {
         console.error(
-          "PayFast ITN invoice insert failed:",
-          invoiceError
+          "PayFast ITN atomic activation returned an invalid result."
         );
 
         return NextResponse.json(

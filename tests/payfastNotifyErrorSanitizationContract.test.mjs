@@ -39,12 +39,12 @@ test("PayFast ITN sanitizes internal 500 errors while preserving controlled 413 
 
   assert.match(
     source,
-    /console\.error\(\s*"PayFast ITN subscription update failed:"/
+    /console\.error\(\s*"PayFast ITN atomic activation failed:"/
   );
 
   assert.match(
     source,
-    /console\.error\(\s*"PayFast ITN invoice insert failed:"/
+    /console\.error\(\s*"PayFast ITN atomic activation failed:"/
   );
 
   assert.match(
