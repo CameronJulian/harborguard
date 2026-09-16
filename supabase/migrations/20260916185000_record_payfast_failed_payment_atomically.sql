@@ -1,4 +1,4 @@
-﻿-- HarborGuard PayFast failed-payment evidence persistence.
+-- HarborGuard PayFast failed-payment evidence persistence.
 --
 -- Scope:
 -- - persist authenticated PayFast FAILED ITN evidence;
