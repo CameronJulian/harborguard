@@ -11,6 +11,7 @@ test("PayFast ITN sanitizes internal 500 errors while preserving controlled 413 
   assert.doesNotMatch(source, /invoiceLookupError\.message/);
   assert.doesNotMatch(source, /organizationError\.message/);
   assert.doesNotMatch(source, /invoiceError\.message/);
+  assert.doesNotMatch(source, /failedPaymentError\.message/);
 
   assert.doesNotMatch(
     source,
@@ -20,7 +21,19 @@ test("PayFast ITN sanitizes internal 500 errors while preserving controlled 413 
   const safe500Matches =
     source.match(/\{ error: "Webhook processing failed\." \}/g) ?? [];
 
-  assert.equal(safe500Matches.length, 5);
+  const status500Matches =
+    source.match(/\{ status: 500 \}/g) ?? [];
+
+  assert.ok(
+    status500Matches.length > 0,
+    "Expected at least one internal 500 response"
+  );
+
+  assert.equal(
+    safe500Matches.length,
+    status500Matches.length,
+    "Every 500 response must use the sanitized webhook error body"
+  );
 
   assert.match(
     source,

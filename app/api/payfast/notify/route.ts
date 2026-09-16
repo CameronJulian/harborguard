@@ -252,6 +252,59 @@ export async function POST(req: Request) {
       });
     }
 
+    if (payload.payment_status === "FAILED") {
+      const {
+        data: failedPaymentRows,
+        error: failedPaymentError,
+      } = await supabase.rpc(
+        "record_payfast_failed_payment_atomically",
+        {
+          p_organization_id: organizationId,
+          p_payfast_payment_id: payfastPaymentId,
+          p_payload: payload,
+          p_raw_payload: rawBody,
+        }
+      );
+
+      if (failedPaymentError) {
+        console.error(
+          "PayFast ITN failed-payment persistence failed:",
+          failedPaymentError
+        );
+
+        return NextResponse.json(
+          { error: "Webhook processing failed." },
+          { status: 500 }
+        );
+      }
+
+      const failedPayment =
+        Array.isArray(failedPaymentRows)
+          ? failedPaymentRows[0]
+          : failedPaymentRows;
+
+      if (failedPayment?.duplicate === true) {
+        return NextResponse.json({
+          success: true,
+          duplicate: true,
+        });
+      }
+
+      if (failedPayment?.processed !== true) {
+        console.error(
+          "PayFast ITN failed-payment persistence returned an invalid result."
+        );
+
+        return NextResponse.json(
+          { error: "Webhook processing failed." },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+      });
+    }
     if (payload.payment_status === "COMPLETE") {
       const nextBillingDate = new Date(
         Date.now() + 30 * 24 * 60 * 60 * 1000
@@ -329,4 +382,3 @@ export async function POST(req: Request) {
     );
   }
 }
-
