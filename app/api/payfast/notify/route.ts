@@ -305,6 +305,59 @@ export async function POST(req: Request) {
         success: true,
       });
     }
+    if (payload.payment_status === "PENDING") {
+      const {
+        data: pendingPaymentRows,
+        error: pendingPaymentError,
+      } = await supabase.rpc(
+        "record_payfast_pending_payment_atomically",
+        {
+          p_organization_id: organizationId,
+          p_payfast_payment_id: payfastPaymentId,
+          p_payload: payload,
+          p_raw_payload: rawBody,
+        }
+      );
+
+      if (pendingPaymentError) {
+        console.error(
+          "PayFast ITN pending-payment persistence failed:",
+          pendingPaymentError
+        );
+
+        return NextResponse.json(
+          { error: "Webhook processing failed." },
+          { status: 500 }
+        );
+      }
+
+      const pendingPayment =
+        Array.isArray(pendingPaymentRows)
+          ? pendingPaymentRows[0]
+          : pendingPaymentRows;
+
+      if (pendingPayment?.duplicate === true) {
+        return NextResponse.json({
+          success: true,
+          duplicate: true,
+        });
+      }
+
+      if (pendingPayment?.processed !== true) {
+        console.error(
+          "PayFast ITN pending-payment persistence returned an invalid result."
+        );
+
+        return NextResponse.json(
+          { error: "Webhook processing failed." },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+      });
+    }
     if (payload.payment_status === "COMPLETE") {
       const nextBillingDate = new Date(
         Date.now() + 30 * 24 * 60 * 60 * 1000
