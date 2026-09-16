@@ -270,6 +270,7 @@ export async function POST(req: Request) {
           p_amount: Number(payload.amount_gross || 0),
           p_currency: payload.currency || "ZAR",
           p_payload: payload,
+          p_raw_payload: rawBody,
         }
       );
 
