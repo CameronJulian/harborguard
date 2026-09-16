@@ -16,7 +16,7 @@ export default function PricingPage() {
     },
     {
       name: "Professional",
-      price: "R4,999/mo",
+      price: "R499/mo",
       description:
         "Advanced operational intelligence for growing fleets.",
       features: [
