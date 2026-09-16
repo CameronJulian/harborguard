@@ -146,17 +146,17 @@ test(
   () => {
     assert.match(
       verifiedHelper,
-      /subscriptionStatus === "trialing"/
+      /canAccessPremiumFeatures\(/
     );
 
     assert.match(
       verifiedHelper,
-      /new Date\(trialEndsAt\)\.getTime\(\) > Date\.now\(\)/
+      /nextBillingDate/
     );
 
     assert.match(
       verifiedHelper,
-      /subscriptionStatus !== "active"/
+      /nextBillingDate/
     );
   }
 );

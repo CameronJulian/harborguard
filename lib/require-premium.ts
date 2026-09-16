@@ -14,7 +14,8 @@ export async function requirePremiumAccess(
   const allowed =
     canAccessPremiumFeatures(
       subscription?.subscription_status,
-      subscription?.trial_ends_at
+      subscription?.trial_ends_at,
+      subscription?.next_billing_date
     );
 
   return {

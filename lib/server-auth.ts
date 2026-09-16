@@ -1,3 +1,4 @@
+import { canAccessPremiumFeatures } from "@/lib/subscription";
 import { cookies, headers } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
 
@@ -52,7 +53,8 @@ export async function requireOrganization() {
     name,
     plan,
     subscription_status,
-    trial_ends_at
+    trial_ends_at,
+      next_billing_date
   )
 `)
       .eq("id", user.id)
@@ -68,13 +70,15 @@ export async function requireOrganization() {
 
   const subscriptionStatus = organization?.subscription_status;
   const trialEndsAt = organization?.trial_ends_at;
+  const nextBillingDate = organization?.next_billing_date;
 
-  const trialIsActive =
-    subscriptionStatus === "trialing" &&
-    trialEndsAt &&
-    new Date(trialEndsAt).getTime() > Date.now();
-
-  if (subscriptionStatus !== "active" && !trialIsActive) {
+  if (
+    !canAccessPremiumFeatures(
+      subscriptionStatus,
+      trialEndsAt,
+      nextBillingDate
+    )
+  ) {
     throw new Error("Subscription inactive");
   }
 
@@ -251,7 +255,8 @@ async function loadVerifiedClaimsAuthorizationState(
     name,
     plan,
     subscription_status,
-    trial_ends_at
+    trial_ends_at,
+      next_billing_date
   )
 `)
         .eq("id", userId)
@@ -350,13 +355,15 @@ export async function requireOrganizationVerifiedClaims() {
 
   const subscriptionStatus = organization?.subscription_status;
   const trialEndsAt = organization?.trial_ends_at;
+  const nextBillingDate = organization?.next_billing_date;
 
-  const trialIsActive =
-    subscriptionStatus === "trialing" &&
-    trialEndsAt &&
-    new Date(trialEndsAt).getTime() > Date.now();
-
-  if (subscriptionStatus !== "active" && !trialIsActive) {
+  if (
+    !canAccessPremiumFeatures(
+      subscriptionStatus,
+      trialEndsAt,
+      nextBillingDate
+    )
+  ) {
     throw new Error("Subscription inactive");
   }
 
