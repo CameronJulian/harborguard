@@ -358,6 +358,58 @@ export async function POST(req: Request) {
         success: true,
       });
     }
+    if (payload.payment_status === "CANCELLED") {
+      const {
+        data: cancellationRows,
+        error: cancellationError,
+      } = await supabase.rpc(
+        "record_payfast_subscription_cancellation_atomically",
+        {
+          p_organization_id: organizationId,
+          p_payload: payload,
+          p_raw_payload: rawBody,
+        }
+      );
+
+      if (cancellationError) {
+        console.error(
+          "PayFast ITN cancellation persistence failed:",
+          cancellationError
+        );
+
+        return NextResponse.json(
+          { error: "Webhook processing failed." },
+          { status: 500 }
+        );
+      }
+
+      const cancellation =
+        Array.isArray(cancellationRows)
+          ? cancellationRows[0]
+          : cancellationRows;
+
+      if (cancellation?.duplicate === true) {
+        return NextResponse.json({
+          success: true,
+          duplicate: true,
+        });
+      }
+
+      if (cancellation?.processed !== true) {
+        console.error(
+          "PayFast ITN cancellation persistence returned an invalid result."
+        );
+
+        return NextResponse.json(
+          { error: "Webhook processing failed." },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+      });
+    }
     if (payload.payment_status === "COMPLETE") {
       const nextBillingDate = new Date(
         Date.now() + 30 * 24 * 60 * 60 * 1000
