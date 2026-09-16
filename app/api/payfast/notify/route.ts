@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 import { PROFESSIONAL_MONTHLY_AMOUNT } from "@/lib/billing";
@@ -135,6 +135,8 @@ export async function POST(req: Request) {
         payFastPassphrase
       )
     ) {
+      console.warn("PAYFAST_ITN_REJECTED=INVALID_SIGNATURE");
+
       return NextResponse.json(
         { error: "Invalid PayFast signature." },
         { status: 400 }
@@ -143,6 +145,8 @@ export async function POST(req: Request) {
     const isValidPayFastITN = await validatePayFastITN(payload);
 
     if (!isValidPayFastITN) {
+      console.warn("PAYFAST_ITN_REJECTED=REMOTE_VALIDATION_FAILED");
+
       return NextResponse.json(
         { error: "PayFast validation failed." },
         { status: 400 }
@@ -153,6 +157,8 @@ export async function POST(req: Request) {
       process.env.PAYFAST_MERCHANT_ID &&
       payload.merchant_id !== process.env.PAYFAST_MERCHANT_ID
     ) {
+      console.warn("PAYFAST_ITN_REJECTED=INVALID_MERCHANT");
+
       return NextResponse.json(
         { error: "Invalid PayFast merchant." },
         { status: 400 }
@@ -165,6 +171,8 @@ export async function POST(req: Request) {
         PROFESSIONAL_MONTHLY_AMOUNT
       )
     ) {
+      console.warn("PAYFAST_ITN_REJECTED=INVALID_AMOUNT");
+
       return NextResponse.json(
         { error: "Invalid PayFast amount." },
         { status: 400 }
@@ -175,6 +183,8 @@ export async function POST(req: Request) {
     const payfastPaymentId = payload.pf_payment_id;
 
     if (!organizationId) {
+      console.warn("PAYFAST_ITN_REJECTED=MISSING_ORGANIZATION_ID");
+
       return NextResponse.json(
         { error: "Missing organization ID." },
         { status: 400 }
@@ -182,6 +192,8 @@ export async function POST(req: Request) {
     }
 
     if (!payfastPaymentId) {
+      console.warn("PAYFAST_ITN_REJECTED=MISSING_PAYMENT_ID");
+
       return NextResponse.json(
         { error: "Missing PayFast payment ID." },
         { status: 400 }
@@ -316,3 +328,4 @@ export async function POST(req: Request) {
     );
   }
 }
+
