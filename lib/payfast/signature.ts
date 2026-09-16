@@ -1,5 +1,9 @@
 import { createHash, timingSafeEqual } from "crypto";
 
+function encodePayFastValue(value: string) {
+  return encodeURIComponent(value).replace(/%20/g, "+");
+}
+
 export function generatePayFastSignature(
   data: Record<string, string>,
   passphrase?: string
@@ -12,12 +16,39 @@ export function generatePayFastSignature(
     )
     .map(
       (key) =>
-        `${key}=${encodeURIComponent(data[key]).replace(/%20/g, "+")}`
+        `${key}=${encodePayFastValue(data[key])}`
     )
     .join("&");
 
   const payload = passphrase
-    ? `${pfOutput}&passphrase=${encodeURIComponent(passphrase).replace(/%20/g, "+")}`
+    ? `${pfOutput}&passphrase=${encodePayFastValue(passphrase)}`
+    : pfOutput;
+
+  return createHash("md5")
+    .update(payload)
+    .digest("hex");
+}
+
+export function generatePayFastItnSignature(
+  data: Record<string, string>,
+  passphrase?: string
+) {
+  const parts: string[] = [];
+
+  for (const [key, value] of Object.entries(data)) {
+    if (key === "signature") {
+      break;
+    }
+
+    parts.push(
+      `${key}=${encodePayFastValue(value)}`
+    );
+  }
+
+  const pfOutput = parts.join("&");
+
+  const payload = passphrase
+    ? `${pfOutput}&passphrase=${encodePayFastValue(passphrase)}`
     : pfOutput;
 
   return createHash("md5")
@@ -40,7 +71,7 @@ export function verifyPayFastSignature(
   }
 
   const expectedSignature =
-    generatePayFastSignature(
+    generatePayFastItnSignature(
       data,
       passphrase
     ).toLowerCase();

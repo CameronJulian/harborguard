@@ -37,6 +37,40 @@ test("PayFast signature logic is shared", () => {
   );
 });
 
+test("ITN signature canonicalization preserves empty returned fields", () => {
+  assert.match(
+    helper,
+    /export function generatePayFastItnSignature/
+  );
+
+  assert.match(
+    helper,
+    /for \(const \[key, value\] of Object\.entries\(data\)\)/
+  );
+
+  assert.match(
+    helper,
+    /if \(key === "signature"\)/
+  );
+
+  assert.match(
+    helper,
+    /parts\.push/
+  );
+
+  assert.doesNotMatch(
+    helper.slice(
+      helper.indexOf("export function generatePayFastItnSignature"),
+      helper.indexOf("export function verifyPayFastSignature")
+    ),
+    /value !== ""|data\[key\] !== ""/
+  );
+
+  assert.match(
+    helper,
+    /generatePayFastItnSignature\(\s*data,\s*passphrase\s*\)/
+  );
+});
 test("checkout uses shared PayFast signature generator", () => {
   assert.match(
     checkout,
