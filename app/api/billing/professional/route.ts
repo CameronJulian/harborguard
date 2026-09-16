@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { PROFESSIONAL_MONTHLY_AMOUNT } from "@/lib/billing";
 import { parseProfessionalBillingRequest } from "@/lib/payfast/parseProfessionalBillingRequest";
+import { getPayFastProcessUrl } from "@/lib/payfast/mode";
 import { generatePayFastSignature } from "@/lib/payfast/signature";
 import { createClient } from "@supabase/supabase-js";
 import { hasPermission } from "@/lib/rbac";
@@ -10,11 +11,6 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
-
-const PAYFAST_URL =
-  process.env.PAYFAST_SANDBOX === "true"
-    ? "https://sandbox.payfast.co.za/eng/process"
-    : "https://www.payfast.co.za/eng/process";
 
 export async function POST(req: Request) {
   try {
@@ -75,6 +71,8 @@ export async function POST(req: Request) {
 
     const billingEmail = parsed.billingEmail;
 
+    const payFastUrl = getPayFastProcessUrl();
+
     const merchantId = process.env.PAYFAST_MERCHANT_ID!;
     const merchantKey = process.env.PAYFAST_MERCHANT_KEY!;
     const passphrase =
@@ -108,7 +106,7 @@ cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing?canceled=true`,
     const signature = generatePayFastSignature(paymentData, passphrase);
 
     const paymentUrl =
-      `${PAYFAST_URL}?` +
+      `${payFastUrl}?` +
       new URLSearchParams({
         ...paymentData,
         signature,

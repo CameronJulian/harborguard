@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 import { PROFESSIONAL_MONTHLY_AMOUNT } from "@/lib/billing";
+import { getPayFastValidationUrl } from "@/lib/payfast/mode";
 import { verifyPayFastSignature } from "@/lib/payfast/signature";
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -93,9 +94,7 @@ function moneyEquals(actual: string | undefined, expected: string | undefined) {
 
 async function validatePayFastITN(payload: Record<string, string>) {
   const url =
-    process.env.PAYFAST_SANDBOX === "true"
-      ? "https://sandbox.payfast.co.za/eng/query/validate"
-      : "https://www.payfast.co.za/eng/query/validate";
+    getPayFastValidationUrl();
 
   const validationBody = new URLSearchParams(payload).toString();
 
