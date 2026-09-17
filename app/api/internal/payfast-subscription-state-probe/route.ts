@@ -210,45 +210,75 @@ export async function GET(request: Request) {
     parsed = null;
   }
 
-  const data =
+  const parsedObject =
     parsed &&
     typeof parsed === "object" &&
-    "data" in parsed
-      ? (parsed as { data?: unknown }).data
+    !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
       : null;
 
+  const providerTopLevelKeys =
+    parsedObject
+      ? Object.keys(parsedObject).sort()
+      : [];
+
+  const nestedKeyInventory =
+    parsedObject
+      ? Object.fromEntries(
+          Object.entries(parsedObject)
+            .filter(
+              ([, value]) =>
+                value &&
+                typeof value === "object" &&
+                !Array.isArray(value)
+            )
+            .map(
+              ([key, value]) => [
+                key,
+                Object.keys(
+                  value as Record<string, unknown>
+                ).sort(),
+              ]
+            )
+        )
+      : {};
+
   const safeData =
-    data &&
-    typeof data === "object"
+    parsedObject
       ? {
           status:
-            "status" in data
-              ? (data as Record<string, unknown>).status
+            "status" in parsedObject
+              ? parsedObject.status
               : undefined,
 
           state:
-            "state" in data
-              ? (data as Record<string, unknown>).state
+            "state" in parsedObject
+              ? parsedObject.state
+              : undefined,
+
+          subscription_status:
+            "subscription_status" in parsedObject
+              ? parsedObject.subscription_status
               : undefined,
 
           frequency:
-            "frequency" in data
-              ? (data as Record<string, unknown>).frequency
+            "frequency" in parsedObject
+              ? parsedObject.frequency
               : undefined,
 
           cycles:
-            "cycles" in data
-              ? (data as Record<string, unknown>).cycles
+            "cycles" in parsedObject
+              ? parsedObject.cycles
               : undefined,
 
           cycles_complete:
-            "cycles_complete" in data
-              ? (data as Record<string, unknown>).cycles_complete
+            "cycles_complete" in parsedObject
+              ? parsedObject.cycles_complete
               : undefined,
 
           run_date:
-            "run_date" in data
-              ? (data as Record<string, unknown>).run_date
+            "run_date" in parsedObject
+              ? parsedObject.run_date
               : undefined,
         }
       : null;
@@ -303,3 +333,4 @@ export async function GET(request: Request) {
     }
   );
 }
+
