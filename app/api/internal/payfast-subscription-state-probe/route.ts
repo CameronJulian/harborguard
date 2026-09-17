@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 import {
@@ -312,6 +312,11 @@ export async function GET(request: Request) {
       providerBodyLength:
         providerBody.length,
 
+      providerTopLevelKeys,
+
+      providerNestedKeyInventory:
+        nestedKeyInventory,
+
       localSubscriptionStatus:
         organization.subscription_status,
 
@@ -333,4 +338,3 @@ export async function GET(request: Request) {
     }
   );
 }
-
