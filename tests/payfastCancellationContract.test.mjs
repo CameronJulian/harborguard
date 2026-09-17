@@ -93,11 +93,11 @@ test(
 );
 
 test(
-  "outbound PayFast cancellation remains disabled until sandbox verification",
+  "outbound PayFast cancellation is sandbox-only until production verification",
   () => {
     assert.match(
       cancelRoute,
-      /outboundCancellationEnabled:\s*false/
+      /payfastMode !== "sandbox"[\s\S]*?outboundCancellationEnabled:\s*false/
     );
 
     assert.doesNotMatch(

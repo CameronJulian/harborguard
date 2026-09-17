@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { hasPermission } from "@/lib/rbac";
+import {
+  buildPayFastApiHeaders,
+  formatPayFastApiTimestamp,
+} from "@/lib/payfast/api";
+import {
+  getPayFastApiSubscriptionCancelUrl,
+  getPayFastMode,
+} from "@/lib/payfast/mode";
 
 export async function POST(request: Request) {
   const authorization =
@@ -126,11 +134,103 @@ export async function POST(request: Request) {
     );
   }
 
-  // Important:
-  // The outbound PayFast cancellation request is deliberately
-  // not enabled in this local-only implementation stage.
-  // This endpoint will only be activated after sandbox verification
-  // of the exact PayFast REST signature/header contract.
+  const payfastMode =
+    getPayFastMode();
+
+  /*
+   * Safety boundary:
+   * HarborGuard may exercise outbound subscription cancellation
+   * only while PAYFAST_SANDBOX=true.
+   *
+   * Production cancellation remains deliberately disabled until
+   * the sandbox request/response lifecycle has been validated.
+   */
+  if (payfastMode !== "sandbox") {
+    return NextResponse.json(
+      {
+        ready: true,
+        subscriptionIdPresent: true,
+        nextBillingDate:
+          organization.next_billing_date,
+        outboundCancellationEnabled: false,
+        sandboxOnly: true,
+      },
+      { status: 200 }
+    );
+  }
+
+  const merchantId =
+    process.env.PAYFAST_MERCHANT_ID?.trim();
+
+  const passphrase =
+    process.env.PAYFAST_PASSPHRASE?.trim();
+
+  if (!merchantId || !passphrase) {
+    return NextResponse.json(
+      {
+        error:
+          "PayFast sandbox cancellation credentials are not configured.",
+      },
+      { status: 503 }
+    );
+  }
+
+  const timestamp =
+    formatPayFastApiTimestamp();
+
+  const payfastUrl =
+    getPayFastApiSubscriptionCancelUrl(
+      organization.payfast_subscription_id
+    );
+
+  const payfastHeaders =
+    buildPayFastApiHeaders({
+      merchantId,
+      passphrase,
+      timestamp,
+    });
+
+  /*
+   * Sandbox-only outbound request.
+   *
+   * The response is intentionally not used to mutate HarborGuard
+   * subscription state here. Cancellation state continues to be
+   * driven by the existing verified PayFast cancellation lifecycle.
+   */
+  const payfastResponse =
+    await fetch(
+      payfastUrl,
+      {
+        method: "PUT",
+        headers: {
+          Accept: "application/json",
+          ...payfastHeaders,
+        },
+        cache: "no-store",
+      }
+    );
+
+  const responseText =
+    await payfastResponse.text();
+
+  if (!payfastResponse.ok) {
+    console.error(
+      "PayFast sandbox cancellation request failed",
+      {
+        status: payfastResponse.status,
+      }
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          "PayFast sandbox cancellation request failed.",
+        providerStatus:
+          payfastResponse.status,
+      },
+      { status: 502 }
+    );
+  }
 
   return NextResponse.json(
     {
@@ -138,7 +238,12 @@ export async function POST(request: Request) {
       subscriptionIdPresent: true,
       nextBillingDate:
         organization.next_billing_date,
-      outboundCancellationEnabled: false,
+      outboundCancellationEnabled: true,
+      sandboxOnly: true,
+      providerStatus:
+        payfastResponse.status,
+      providerResponseReceived:
+        responseText.length >= 0,
     },
     { status: 200 }
   );

@@ -73,6 +73,50 @@ test(
 );
 
 test(
+  "REST API timestamp includes local timezone offset",
+  () => {
+    assert.match(
+      api,
+      /getTimezoneOffset\(\)/
+    );
+
+    assert.match(
+      api,
+      /timezoneOffsetMinutes\s*>=\s*0/
+    );
+
+    assert.match(
+      api,
+      /timezoneSign/
+    );
+
+    assert.match(
+      api,
+      /absoluteOffsetMinutes/
+    );
+
+    assert.match(
+      api,
+      /timezoneHours/
+    );
+
+    assert.match(
+      api,
+      /timezoneMinutes/
+    );
+
+    assert.match(
+      api,
+      /pad\(timezoneHours\)/
+    );
+
+    assert.match(
+      api,
+      /pad\(timezoneMinutes\)/
+    );
+  }
+);
+test(
   "sandbox cancellation URL uses testing=true",
   () => {
     assert.match(
@@ -103,14 +147,34 @@ test(
 );
 
 test(
-  "cancel endpoint remains outbound-disabled",
+  "cancel endpoint permits outbound cancellation only in sandbox mode",
   () => {
+    assert.match(
+      cancelRoute,
+      /payfastMode !== "sandbox"/
+    );
+
     assert.match(
       cancelRoute,
       /outboundCancellationEnabled:\s*false/
     );
 
-    assert.doesNotMatch(
+    assert.match(
+      cancelRoute,
+      /outboundCancellationEnabled:\s*true/
+    );
+
+    assert.match(
+      cancelRoute,
+      /getPayFastApiSubscriptionCancelUrl/
+    );
+
+    assert.match(
+      cancelRoute,
+      /buildPayFastApiHeaders/
+    );
+
+    assert.match(
       cancelRoute,
       /\bfetch\s*\(/
     );

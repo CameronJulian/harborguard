@@ -65,6 +65,35 @@ export function formatPayFastApiTimestamp(
   const pad = (value: number) =>
     value.toString().padStart(2, "0");
 
+  /*
+   * Date#getTimezoneOffset returns:
+   *   UTC - local time
+   *
+   * Example:
+   * Cape Town UTC+02:00 => -120 minutes.
+   *
+   * PayFast API timestamps require the local ISO-style
+   * timezone offset to accompany the local date/time.
+   */
+  const timezoneOffsetMinutes =
+    -date.getTimezoneOffset();
+
+  const timezoneSign =
+    timezoneOffsetMinutes >= 0
+      ? "+"
+      : "-";
+
+  const absoluteOffsetMinutes =
+    Math.abs(timezoneOffsetMinutes);
+
+  const timezoneHours =
+    Math.floor(
+      absoluteOffsetMinutes / 60
+    );
+
+  const timezoneMinutes =
+    absoluteOffsetMinutes % 60;
+
   return [
     date.getFullYear(),
     "-",
@@ -77,5 +106,9 @@ export function formatPayFastApiTimestamp(
     pad(date.getMinutes()),
     ":",
     pad(date.getSeconds()),
+    timezoneSign,
+    pad(timezoneHours),
+    ":",
+    pad(timezoneMinutes),
   ].join("");
 }
