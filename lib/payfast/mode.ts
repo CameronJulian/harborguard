@@ -31,3 +31,17 @@ export function getPayFastValidationUrl(
     ? "https://sandbox.payfast.co.za/eng/query/validate"
     : "https://www.payfast.co.za/eng/query/validate";
 }
+export function getPayFastApiSubscriptionCancelUrl(
+  token: string,
+  rawValue = process.env.PAYFAST_SANDBOX
+): string {
+  const encodedToken =
+    encodeURIComponent(token);
+
+  const base =
+    `https://api.payfast.co.za/subscriptions/${encodedToken}/cancel`;
+
+  return getPayFastMode(rawValue) === "sandbox"
+    ? `${base}?testing=true`
+    : base;
+}
