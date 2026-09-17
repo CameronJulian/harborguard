@@ -27,7 +27,7 @@ test(
 
     assert.match(
       api,
-      /Object\.keys\(data\)/
+      /Object\.keys\(signatureData\)/
     );
   }
 );
@@ -42,7 +42,7 @@ test(
 
     assert.match(
       api,
-      /passphrase=/
+      /\.\.\.data,\s*passphrase/
     );
   }
 );

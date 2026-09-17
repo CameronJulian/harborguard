@@ -11,24 +11,35 @@ export function generatePayFastApiSignature(
   data: Record<string, string>,
   passphrase: string
 ): string {
-  const canonical = Object.keys(data)
+  /*
+   * PayFast API authentication requires every submitted
+   * signature variable, including the passphrase, to be
+   * sorted alphabetically before the MD5 is generated.
+   *
+   * The sandbox-only `testing` query parameter is explicitly
+   * excluded from the API signature.
+   */
+  const signatureData: Record<string, string> = {
+    ...data,
+    passphrase,
+  };
+
+  const canonical = Object.keys(signatureData)
     .filter(
       (key) =>
         key !== "signature" &&
-        data[key] !== ""
+        key !== "testing" &&
+        signatureData[key] !== ""
     )
     .sort()
     .map(
       (key) =>
-        `${key}=${encodePayFastApiValue(data[key])}`
+        `${key}=${encodePayFastApiValue(signatureData[key])}`
     )
     .join("&");
 
-  const payload =
-    `${canonical}&passphrase=${encodePayFastApiValue(passphrase)}`;
-
   return createHash("md5")
-    .update(payload)
+    .update(canonical)
     .digest("hex");
 }
 
