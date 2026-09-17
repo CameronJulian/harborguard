@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { CSSProperties, FormEvent, useEffect, useMemo, useState } from "react";
 import TrialBanner from "@/components/billing/TrialBanner";
@@ -206,7 +206,10 @@ const { data: profile } = await supabase
   .eq("id", session.user.id)
   .single();
 
-if (!profile?.organization_id) return;
+if (!profile?.organization_id) {
+  window.location.replace("/onboarding");
+  return;
+}
 
 const { data: batchData } = await supabase
   .from("batches")
