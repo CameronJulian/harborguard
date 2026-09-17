@@ -196,3 +196,28 @@ test(
     );
   }
 );
+test("platform readiness exposes only the resolved PayFast runtime mode", () => {
+  assert.match(
+    route,
+    /import\s+\{\s*getPayFastMode\s*\}\s+from\s+["']@\/lib\/payfast\/mode["']/
+  );
+
+  assert.match(
+    route,
+    /const\s+payfastMode\s*=\s*getPayFastMode\(\)/
+  );
+
+  const payfastModeOccurrences =
+    route.match(/\bpayfastMode\s*,/g) ?? [];
+
+  assert.equal(
+    payfastModeOccurrences.length,
+    3,
+    "payfastMode must be present in all three readiness responses"
+  );
+
+  assert.doesNotMatch(
+    route,
+    /PAYFAST_MERCHANT_ID|PAYFAST_MERCHANT_KEY|PAYFAST_PASSPHRASE|SUPABASE_SERVICE_ROLE_KEY|payfast_subscription_id/
+  );
+});

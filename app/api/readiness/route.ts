@@ -2,12 +2,16 @@ import { NextResponse } from "next/server";
 
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { reportServerError } from "@/lib/server/reportServerError";
+import { getPayFastMode } from "@/lib/payfast/mode";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const checkedAt =
     new Date().toISOString();
+
+  const payfastMode =
+    getPayFastMode();
 
   try {
     const {
@@ -30,6 +34,7 @@ export async function GET() {
           success: false,
           status: "not_ready",
           checkedAt,
+          payfastMode,
         },
         {
           status: 503,
@@ -46,6 +51,7 @@ export async function GET() {
         success: true,
         status: "ready",
         checkedAt,
+        payfastMode,
       },
       {
         status: 200,
@@ -68,6 +74,7 @@ export async function GET() {
         success: false,
         status: "not_ready",
         checkedAt,
+        payfastMode,
       },
       {
         status: 503,
