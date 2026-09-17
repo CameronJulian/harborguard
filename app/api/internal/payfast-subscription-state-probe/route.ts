@@ -243,6 +243,70 @@ export async function GET(request: Request) {
         )
       : {};
 
+  const responseObject =
+    parsedObject &&
+    parsedObject.data &&
+    typeof parsedObject.data === "object" &&
+    !Array.isArray(parsedObject.data) &&
+    "response" in (parsedObject.data as Record<string, unknown>) &&
+    (parsedObject.data as Record<string, unknown>).response &&
+    typeof (parsedObject.data as Record<string, unknown>).response === "object" &&
+    !Array.isArray((parsedObject.data as Record<string, unknown>).response)
+      ? (
+          (parsedObject.data as Record<string, unknown>)
+            .response as Record<string, unknown>
+        )
+      : null;
+
+  const providerResponseKeys =
+    responseObject
+      ? Object.keys(responseObject).sort()
+      : [];
+
+  const safeProviderResponse =
+    responseObject
+      ? {
+          status:
+            "status" in responseObject
+              ? responseObject.status
+              : undefined,
+
+          state:
+            "state" in responseObject
+              ? responseObject.state
+              : undefined,
+
+          subscription_status:
+            "subscription_status" in responseObject
+              ? responseObject.subscription_status
+              : undefined,
+
+          frequency:
+            "frequency" in responseObject
+              ? responseObject.frequency
+              : undefined,
+
+          cycles:
+            "cycles" in responseObject
+              ? responseObject.cycles
+              : undefined,
+
+          cycles_complete:
+            "cycles_complete" in responseObject
+              ? responseObject.cycles_complete
+              : undefined,
+
+          run_date:
+            "run_date" in responseObject
+              ? responseObject.run_date
+              : undefined,
+
+          amount:
+            "amount" in responseObject
+              ? responseObject.amount
+              : undefined,
+        }
+      : null;
   const safeData =
     parsedObject
       ? {
@@ -316,6 +380,11 @@ export async function GET(request: Request) {
 
       providerNestedKeyInventory:
         nestedKeyInventory,
+
+      providerResponseKeys,
+
+      providerResponse:
+        safeProviderResponse,
 
       localSubscriptionStatus:
         organization.subscription_status,
