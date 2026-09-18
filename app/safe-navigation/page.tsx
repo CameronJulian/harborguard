@@ -325,6 +325,24 @@ function calculateRouteProgress(
 export default function SafeNavigationPage() {
   const watchIdRef = useRef<number | null>(null);
 
+  const simulatorTimerRef =
+    useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const simulatorPointsRef =
+    useRef<LatLng[]>([]);
+
+  const simulatorIndexRef =
+    useRef(0);
+
+  const [simulatorRunning, setSimulatorRunning] =
+    useState(false);
+
+  const [simulatorMessage, setSimulatorMessage] =
+    useState("Simulator ready");
+
+  const simulatorEnabled =
+    process.env.NODE_ENV === "development";
+
   const [position, setPosition] =
     useState<PositionState | null>(null);
 
@@ -383,6 +401,15 @@ export default function SafeNavigationPage() {
         navigator.geolocation
       ) {
         navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (simulatorTimerRef.current !== null) {
+        clearInterval(simulatorTimerRef.current);
+        simulatorTimerRef.current = null;
       }
     };
   }, []);
@@ -479,6 +506,228 @@ export default function SafeNavigationPage() {
         timeout: 15000,
       }
     );
+  }
+
+  function clearSimulatorTimer() {
+    if (simulatorTimerRef.current !== null) {
+      clearInterval(simulatorTimerRef.current);
+      simulatorTimerRef.current = null;
+    }
+  }
+
+  function simulatorBearing(
+    from: LatLng,
+    to: LatLng
+  ): number {
+    const fromLat =
+      (from[0] * Math.PI) / 180;
+
+    const toLat =
+      (to[0] * Math.PI) / 180;
+
+    const deltaLng =
+      ((to[1] - from[1]) * Math.PI) / 180;
+
+    const y =
+      Math.sin(deltaLng) * Math.cos(toLat);
+
+    const x =
+      Math.cos(fromLat) * Math.sin(toLat) -
+      Math.sin(fromLat) *
+        Math.cos(toLat) *
+        Math.cos(deltaLng);
+
+    const bearing =
+      (Math.atan2(y, x) * 180) / Math.PI;
+
+    return (bearing + 360) % 360;
+  }
+
+  function buildSimulatorPlaybackPoints() {
+    if (routePoints.length < 2) {
+      return [] as LatLng[];
+    }
+
+    const maximumPlaybackPoints = 300;
+
+    const stride = Math.max(
+      1,
+      Math.floor(
+        routePoints.length /
+          maximumPlaybackPoints
+      )
+    );
+
+    const points =
+      routePoints.filter(
+        (_, index) =>
+          index % stride === 0
+      );
+
+    const finalPoint =
+      routePoints[routePoints.length - 1];
+
+    const lastPoint =
+      points[points.length - 1];
+
+    if (
+      !lastPoint ||
+      lastPoint[0] !== finalPoint[0] ||
+      lastPoint[1] !== finalPoint[1]
+    ) {
+      points.push(finalPoint);
+    }
+
+    return points;
+  }
+
+  function applySimulatorPoint(
+    points: LatLng[],
+    index: number
+  ) {
+    const point = points[index];
+
+    if (!point) {
+      return;
+    }
+
+    const nextPoint =
+      points[
+        Math.min(
+          index + 1,
+          points.length - 1
+        )
+      ] ?? point;
+
+    const heading =
+      simulatorBearing(
+        point,
+        nextPoint
+      );
+
+    setPosition({
+      lat: point[0],
+      lng: point[1],
+      speedKmh:
+        index >= points.length - 1
+          ? 0
+          : 45,
+      heading,
+      accuracy: 5,
+    });
+
+    setGpsActive(true);
+
+    setGpsMessage(
+      `DEV simulator ${index + 1}/${points.length}`
+    );
+
+    setSimulatorMessage(
+      `Playback ${index + 1} of ${points.length}`
+    );
+  }
+
+  function pauseSyntheticDrive() {
+    clearSimulatorTimer();
+    setSimulatorRunning(false);
+    setSimulatorMessage("Simulator paused");
+  }
+
+  function resetSyntheticDrive() {
+    if (!simulatorEnabled) {
+      return;
+    }
+
+    clearSimulatorTimer();
+    setSimulatorRunning(false);
+
+    const points =
+      buildSimulatorPlaybackPoints();
+
+    simulatorPointsRef.current = points;
+    simulatorIndexRef.current = 0;
+
+    if (points.length < 2) {
+      setSimulatorMessage(
+        "Calculate a route before using the simulator."
+      );
+      return;
+    }
+
+    applySimulatorPoint(points, 0);
+    setFollowVehicle(true);
+    setSimulatorMessage("Simulator reset to route start");
+  }
+
+  function startSyntheticDrive() {
+    if (!simulatorEnabled) {
+      return;
+    }
+
+    if (routePoints.length < 2) {
+      setSimulatorMessage(
+        "Calculate a route before starting playback."
+      );
+      return;
+    }
+
+    stopGps();
+    clearSimulatorTimer();
+
+    let points =
+      simulatorPointsRef.current;
+
+    if (points.length < 2) {
+      points = buildSimulatorPlaybackPoints();
+      simulatorPointsRef.current = points;
+      simulatorIndexRef.current = 0;
+    }
+
+    if (points.length < 2) {
+      setSimulatorMessage("Route playback unavailable.");
+      return;
+    }
+
+    setFollowVehicle(true);
+    setSimulatorRunning(true);
+    setSimulatorMessage("Simulator running");
+
+    applySimulatorPoint(
+      points,
+      simulatorIndexRef.current
+    );
+
+    simulatorTimerRef.current =
+      setInterval(() => {
+        const nextIndex =
+          simulatorIndexRef.current + 1;
+
+        if (nextIndex >= points.length) {
+          clearSimulatorTimer();
+          simulatorIndexRef.current =
+            points.length - 1;
+
+          applySimulatorPoint(
+            points,
+            points.length - 1
+          );
+
+          setSimulatorRunning(false);
+          setSimulatorMessage(
+            "Simulator reached route destination"
+          );
+
+          return;
+        }
+
+        simulatorIndexRef.current =
+          nextIndex;
+
+        applySimulatorPoint(
+          points,
+          nextIndex
+        );
+      }, 250);
   }
 
   async function searchDestination() {
@@ -1571,6 +1820,118 @@ export default function SafeNavigationPage() {
             followVehicle={followVehicle}
             onFollowChange={setFollowVehicle}
           />
+
+          {simulatorEnabled && (
+            <div
+              style={{
+                position: "absolute",
+                top: 18,
+                right: 18,
+                zIndex: 900,
+                width: "min(300px, calc(100vw - 36px))",
+                padding: 12,
+                borderRadius: 14,
+                border: "1px solid #334155",
+                background: "rgba(2, 6, 23, 0.94)",
+                boxShadow: "0 14px 40px rgba(0,0,0,.4)",
+                color: "#e2e8f0",
+              }}
+            >
+              <div
+                style={{
+                  fontWeight: 900,
+                  fontSize: 13,
+                  letterSpacing: ".08em",
+                  color: "#22d3ee",
+                }}
+              >
+                DEV GPS SIMULATOR
+              </div>
+
+              <div
+                style={{
+                  marginTop: 5,
+                  fontSize: 12,
+                  color: "#94a3b8",
+                }}
+              >
+                {simulatorMessage}
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 8,
+                  marginTop: 10,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={startSyntheticDrive}
+                  disabled={simulatorRunning}
+                  style={{
+                    padding: "9px 10px",
+                    borderRadius: 9,
+                    border: "1px solid #0891b2",
+                    background: simulatorRunning
+                      ? "#164e63"
+                      : "#0891b2",
+                    color: "#ffffff",
+                    cursor: simulatorRunning
+                      ? "default"
+                      : "pointer",
+                    fontWeight: 800,
+                  }}
+                >
+                  {simulatorRunning ? "Running" : "Start / Resume"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={pauseSyntheticDrive}
+                  style={{
+                    padding: "9px 10px",
+                    borderRadius: 9,
+                    border: "1px solid #475569",
+                    background: "#0f172a",
+                    color: "#ffffff",
+                    cursor: "pointer",
+                    fontWeight: 800,
+                  }}
+                >
+                  Pause
+                </button>
+
+                <button
+                  type="button"
+                  onClick={resetSyntheticDrive}
+                  style={{
+                    gridColumn: "1 / -1",
+                    padding: "9px 10px",
+                    borderRadius: 9,
+                    border: "1px solid #475569",
+                    background: "#020617",
+                    color: "#e2e8f0",
+                    cursor: "pointer",
+                    fontWeight: 800,
+                  }}
+                >
+                  Reset to Route Start
+                </button>
+              </div>
+
+              <div
+                style={{
+                  marginTop: 8,
+                  fontSize: 11,
+                  color: "#64748b",
+                }}
+              >
+                Development only. No telemetry or database writes.
+              </div>
+            </div>
+          )}
 
           <div
             className="hg-navigation-turn-card-wrap"
