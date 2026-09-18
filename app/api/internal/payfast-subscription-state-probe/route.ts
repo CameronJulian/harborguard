@@ -271,6 +271,15 @@ export async function GET(request: Request) {
               ? responseObject.status
               : undefined,
 
+          status_text:
+            "status_text" in responseObject
+              ? responseObject.status_text
+              : undefined,
+
+          status_reason:
+            "status_reason" in responseObject
+              ? responseObject.status_reason
+              : undefined,
           state:
             "state" in responseObject
               ? responseObject.state
