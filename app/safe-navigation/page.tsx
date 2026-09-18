@@ -1,0 +1,1792 @@
+"use client";
+
+import "leaflet/dist/leaflet.css";
+
+import dynamic from "next/dynamic";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
+import { fetchWithAuth } from "@/lib/auth-fetch";
+
+const SafeNavigationMap = dynamic(
+  () => import("@/components/navigation/SafeNavigationMap"),
+  { ssr: false }
+);
+
+type LatLng = [number, number];
+
+type RouteOption = {
+  index?: number;
+  label?: string | null;
+  provider?: string | null;
+  distanceMeters?: number;
+  duration?: string | null;
+  durationSeconds?: number;
+  trafficDelaySeconds?: number;
+  safetyScore?: number;
+  riskScore?: number;
+  matchedRiskSegmentCount?: number;
+  routePoints?: LatLng[];
+};
+
+type NavigationSearchResult = {
+  id: string | null;
+  title: string;
+  address: string | null;
+  lat: number;
+  lng: number;
+  resultType: string | null;
+  categories: string[];
+};
+
+type NavigationInstruction = {
+  sectionIndex?: number;
+  instructionIndex?: number;
+  text?: string | null;
+  action?: string | null;
+  direction?: string | null;
+  length?: number;
+  duration?: number;
+  offset?: number;
+  routeOffsetMeters?: number;
+};
+
+type NavigationAction = {
+  sectionIndex?: number;
+  actionIndex?: number;
+  action?: string | null;
+  direction?: string | null;
+  severity?: string | null;
+  instruction?: string | null;
+  length?: number;
+  duration?: number;
+  offset?: number;
+  routeOffsetMeters?: number;
+  exitSign?: unknown;
+};
+
+type GuidedRoute = RouteOption & {
+  navigationInstructions?:
+    NavigationInstruction[];
+  navigationActions?:
+    NavigationAction[];
+};
+
+function instructionsForRoute(
+  route: RouteOption | null | undefined
+): NavigationInstruction[] {
+  if (!route) {
+    return [];
+  }
+
+  const guidedRoute =
+    route as GuidedRoute;
+
+  if (
+    Array.isArray(
+      guidedRoute.navigationInstructions
+    ) &&
+    guidedRoute.navigationInstructions.length > 0
+  ) {
+    return guidedRoute.navigationInstructions;
+  }
+
+  if (
+    Array.isArray(
+      guidedRoute.navigationActions
+    )
+  ) {
+    return guidedRoute.navigationActions.map(
+      (action) => ({
+        text:
+          action.instruction ??
+          null,
+        action:
+          action.action ??
+          null,
+        direction:
+          action.direction ??
+          null,
+        length:
+          Number(
+            action.length || 0
+          ),
+        duration:
+          Number(
+            action.duration || 0
+          ),
+        offset:
+          Number(
+            action.offset || 0
+          ),
+        routeOffsetMeters:
+          Number(
+            action.routeOffsetMeters ??
+              action.offset ??
+              0
+          ),
+      })
+    );
+  }
+
+  return [];
+}
+type RerouteResponse = {
+  success?: boolean;
+  routingProfile?: string;
+  routes?: RouteOption[];
+  recommendedRoute?: RouteOption | null;
+  recommendation?: string | null;
+  error?: string;
+};
+
+type PositionState = {
+  lat: number;
+  lng: number;
+  speedKmh: number;
+  heading: number;
+  accuracy: number;
+};
+
+function validCoordinate(value: string) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed);
+}
+
+function durationLabel(route: RouteOption | null) {
+  if (!route) return "--";
+
+  if (route.durationSeconds != null) {
+    return `${Math.max(1, Math.round(route.durationSeconds / 60))} min`;
+  }
+
+  if (route.duration) {
+    const seconds = Number(route.duration.replace("s", ""));
+
+    if (Number.isFinite(seconds)) {
+      return `${Math.max(1, Math.round(seconds / 60))} min`;
+    }
+
+    return route.duration;
+  }
+
+  return "--";
+}
+
+function distanceLabel(route: RouteOption | null) {
+  if (!route?.distanceMeters) return "--";
+
+  return `${(route.distanceMeters / 1000).toFixed(1)} km`;
+}
+
+type RouteProgressState = {
+  progressMeters: number;
+  distanceFromRouteMeters: number;
+};
+
+function navigationDistanceMeters(
+  first: LatLng,
+  second: LatLng
+): number {
+  const radius = 6371000;
+  const lat1 = (first[0] * Math.PI) / 180;
+  const lat2 = (second[0] * Math.PI) / 180;
+  const dLat =
+    ((second[0] - first[0]) * Math.PI) / 180;
+  const dLng =
+    ((second[1] - first[1]) * Math.PI) / 180;
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) *
+      Math.cos(lat2) *
+      Math.sin(dLng / 2) ** 2;
+
+  return (
+    radius *
+    2 *
+    Math.atan2(
+      Math.sqrt(a),
+      Math.sqrt(1 - a)
+    )
+  );
+}
+
+function calculateRouteProgress(
+  position: LatLng,
+  points: LatLng[]
+): RouteProgressState | null {
+  if (points.length < 2) {
+    return null;
+  }
+
+  const radius = 6371000;
+  const referenceLat =
+    (position[0] * Math.PI) / 180;
+
+  let accumulatedMeters = 0;
+  let bestDistanceMeters =
+    Number.POSITIVE_INFINITY;
+  let bestProgressMeters = 0;
+
+  const localPoint =
+    (point: LatLng): [number, number] => [
+      radius *
+        (((point[1] - position[1]) *
+          Math.PI) /
+          180) *
+        Math.cos(referenceLat),
+      radius *
+        (((point[0] - position[0]) *
+          Math.PI) /
+          180),
+    ];
+
+  for (
+    let index = 0;
+    index < points.length - 1;
+    index += 1
+  ) {
+    const start = points[index];
+    const end = points[index + 1];
+
+    const [startX, startY] =
+      localPoint(start);
+
+    const [endX, endY] =
+      localPoint(end);
+
+    const deltaX = endX - startX;
+    const deltaY = endY - startY;
+
+    const lengthSquared =
+      deltaX * deltaX +
+      deltaY * deltaY;
+
+    const projection =
+      lengthSquared > 0
+        ? Math.max(
+            0,
+            Math.min(
+              1,
+              -(
+                startX * deltaX +
+                startY * deltaY
+              ) / lengthSquared
+            )
+          )
+        : 0;
+
+    const nearestX =
+      startX + projection * deltaX;
+
+    const nearestY =
+      startY + projection * deltaY;
+
+    const perpendicularDistance =
+      Math.sqrt(
+        nearestX * nearestX +
+          nearestY * nearestY
+      );
+
+    const segmentMeters =
+      navigationDistanceMeters(
+        start,
+        end
+      );
+
+    if (
+      perpendicularDistance <
+      bestDistanceMeters
+    ) {
+      bestDistanceMeters =
+        perpendicularDistance;
+
+      bestProgressMeters =
+        accumulatedMeters +
+        segmentMeters * projection;
+    }
+
+    accumulatedMeters +=
+      segmentMeters;
+  }
+
+  return {
+    progressMeters: bestProgressMeters,
+    distanceFromRouteMeters:
+      bestDistanceMeters,
+  };
+}
+
+export default function SafeNavigationPage() {
+  const watchIdRef = useRef<number | null>(null);
+
+  const [position, setPosition] =
+    useState<PositionState | null>(null);
+
+  const [gpsActive, setGpsActive] = useState(false);
+  const [gpsMessage, setGpsMessage] =
+    useState("GPS is off");
+
+  const [destinationLat, setDestinationLat] = useState("");
+  const [destinationLng, setDestinationLng] = useState("");
+  const [destinationName, setDestinationName] =
+    useState("Destination");
+
+  const [
+    destinationResults,
+    setDestinationResults,
+  ] =
+    useState<NavigationSearchResult[]>([]);
+
+  const [
+    destinationSearching,
+    setDestinationSearching,
+  ] =
+    useState(false);
+
+  const [
+    selectedDestination,
+    setSelectedDestination,
+  ] =
+    useState<NavigationSearchResult | null>(
+      null
+    );
+
+  const [
+    navigationInstructions,
+    setNavigationInstructions,
+  ] =
+    useState<NavigationInstruction[]>([]);
+  const [routingProfile, setRoutingProfile] =
+    useState("safest");
+
+  const [routes, setRoutes] = useState<RouteOption[]>([]);
+  const [selectedRouteIndex, setSelectedRouteIndex] =
+    useState(0);
+  const [recommendation, setRecommendation] =
+    useState<string | null>(null);
+  const [routingMessage, setRoutingMessage] =
+    useState("Start GPS and enter a destination.");
+  const [routing, setRouting] = useState(false);
+  const [followVehicle, setFollowVehicle] = useState(true);
+
+  useEffect(() => {
+    return () => {
+      if (
+        watchIdRef.current !== null &&
+        typeof navigator !== "undefined" &&
+        navigator.geolocation
+      ) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+    };
+  }, []);
+
+  const destination = useMemo<LatLng | null>(() => {
+    if (
+      !validCoordinate(destinationLat) ||
+      !validCoordinate(destinationLng)
+    ) {
+      return null;
+    }
+
+    return [
+      Number(destinationLat),
+      Number(destinationLng),
+    ];
+  }, [destinationLat, destinationLng]);
+
+  const selectedRoute =
+    routes[selectedRouteIndex] ?? routes[0] ?? null;
+
+  const routePoints = useMemo<LatLng[]>(() => {
+    if (!selectedRoute?.routePoints) return [];
+
+    return selectedRoute.routePoints.filter(
+      (point): point is LatLng =>
+        Array.isArray(point) &&
+        point.length >= 2 &&
+        Number.isFinite(Number(point[0])) &&
+        Number.isFinite(Number(point[1]))
+    );
+  }, [selectedRoute]);
+
+  function stopGps() {
+    if (
+      watchIdRef.current !== null &&
+      typeof navigator !== "undefined" &&
+      navigator.geolocation
+    ) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+
+    setGpsActive(false);
+    setGpsMessage("GPS stopped");
+  }
+
+  function startGps() {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setGpsMessage("Geolocation is unavailable on this device.");
+      return;
+    }
+
+    if (watchIdRef.current !== null) {
+      return;
+    }
+
+    setGpsMessage("Requesting precise GPS...");
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (gps) => {
+        const speedMs =
+          gps.coords.speed != null &&
+          Number.isFinite(gps.coords.speed)
+            ? gps.coords.speed
+            : 0;
+
+        const heading =
+          gps.coords.heading != null &&
+          Number.isFinite(gps.coords.heading)
+            ? gps.coords.heading
+            : 0;
+
+        setPosition({
+          lat: gps.coords.latitude,
+          lng: gps.coords.longitude,
+          speedKmh: Math.max(0, speedMs * 3.6),
+          heading,
+          accuracy: gps.coords.accuracy,
+        });
+
+        setGpsActive(true);
+        setGpsMessage(
+          `GPS live - accuracy ${Math.round(gps.coords.accuracy)} m`
+        );
+      },
+      (error) => {
+        setGpsActive(false);
+        setGpsMessage(`GPS error: ${error.message}`);
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 1000,
+        timeout: 15000,
+      }
+    );
+  }
+
+  async function searchDestination() {
+    const query =
+      destinationName.trim();
+
+    if (query.length < 2) {
+      setDestinationResults([]);
+      setRoutingMessage(
+        "Enter at least two characters to search."
+      );
+      return;
+    }
+
+    setDestinationSearching(true);
+    setRoutingMessage(
+      "Searching for destination..."
+    );
+
+    try {
+      const params =
+        new URLSearchParams({
+          q: query,
+        });
+
+      if (position) {
+        params.set(
+          "lat",
+          String(position.lat)
+        );
+
+        params.set(
+          "lng",
+          String(position.lng)
+        );
+      }
+
+      const response =
+        await fetchWithAuth(
+          `/api/navigation/search?${params.toString()}`
+        );
+
+      const result =
+        (await response.json()) as {
+          results?: NavigationSearchResult[];
+          error?: string;
+        };
+
+      if (!response.ok) {
+        setDestinationResults([]);
+        setRoutingMessage(
+          result.error ??
+          "Destination search failed."
+        );
+        return;
+      }
+
+      const nextResults =
+        Array.isArray(result.results)
+          ? result.results
+          : [];
+
+      setDestinationResults(
+        nextResults
+      );
+
+      if (nextResults.length === 0) {
+        setRoutingMessage(
+          "No matching destinations found."
+        );
+      } else {
+        setRoutingMessage(
+          `${nextResults.length} destination option${
+            nextResults.length === 1
+              ? ""
+              : "s"
+          } found.`
+        );
+      }
+    } catch {
+      setDestinationResults([]);
+      setRoutingMessage(
+        "Destination search failed."
+      );
+    } finally {
+      setDestinationSearching(false);
+    }
+  }
+  async function calculateRoute() {
+    if (!position) {
+      setRoutingMessage("Start GPS before calculating a route.");
+      return;
+    }
+
+    if (!destination) {
+      setRoutingMessage("Enter valid destination coordinates.");
+      return;
+    }
+
+    setRouting(true);
+    setRoutingMessage("Calculating HarborGuard route...");
+
+    try {
+      const response = await fetchWithAuth(
+        "/api/route-safety/reroute",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          cache: "no-store",
+          body: JSON.stringify({
+            origin: {
+              lat: position.lat,
+              lng: position.lng,
+            },
+            destination: {
+              lat: destination[0],
+              lng: destination[1],
+            },
+            routingProfile,
+          }),
+        }
+      );
+
+      const result =
+        (await response.json()) as RerouteResponse;
+
+      if (!response.ok) {
+        setRoutes([]);
+        setNavigationInstructions([]);
+        setRoutingMessage(
+          result.error ?? "Could not calculate route."
+        );
+        return;
+      }
+
+      const nextRoutes = result.routes ?? [];
+
+      setNavigationInstructions(
+        instructionsForRoute(
+          nextRoutes[0] ??
+          result.recommendedRoute ??
+          null
+        )
+      );
+
+      setRoutes(nextRoutes);
+      setSelectedRouteIndex(0);
+      setRecommendation(result.recommendation ?? null);
+      setFollowVehicle(true);
+
+      if (nextRoutes.length === 0) {
+        setRoutingMessage("No route was returned.");
+      } else {
+        setRoutingMessage(
+          `${nextRoutes.length} HarborGuard route option${
+            nextRoutes.length === 1 ? "" : "s"
+          } ready.`
+        );
+      }
+    } catch {
+      setRoutes([]);
+      setNavigationInstructions([]);
+      setRoutingMessage("Route calculation failed.");
+    } finally {
+      setRouting(false);
+    }
+  }
+
+  const currentLatitude =
+    position?.lat ?? null;
+
+  const currentLongitude =
+    position?.lng ?? null;
+
+  const currentPosition = useMemo<LatLng | null>(
+    () =>
+      currentLatitude != null &&
+      currentLongitude != null
+        ? [currentLatitude, currentLongitude]
+        : null,
+    [currentLatitude, currentLongitude]
+  );
+
+  const routeProgress =
+    currentPosition && routePoints.length >= 2
+      ? calculateRouteProgress(
+          currentPosition,
+          routePoints
+        )
+      : null;
+
+  let activeInstructionIndex =
+    navigationInstructions.length > 0
+      ? 0
+      : -1;
+
+  if (routeProgress) {
+    for (
+      let index = 0;
+      index < navigationInstructions.length;
+      index += 1
+    ) {
+      const instructionOffset =
+        Math.max(
+          0,
+          Number(
+            navigationInstructions[index]
+              ?.routeOffsetMeters ??
+              navigationInstructions[index]
+                ?.offset ??
+              0
+          )
+        );
+
+      if (
+        routeProgress.progressMeters + 20 >=
+        instructionOffset
+      ) {
+        activeInstructionIndex = index;
+      } else {
+        break;
+      }
+    }
+  }
+
+  const activeInstruction =
+    activeInstructionIndex >= 0
+      ? navigationInstructions[
+          activeInstructionIndex
+        ] ?? null
+      : null;
+
+  const nextInstruction =
+    activeInstructionIndex >= 0
+      ? navigationInstructions[
+          activeInstructionIndex + 1
+        ] ?? null
+      : null;
+
+  const distanceToNextManeuver =
+    routeProgress && nextInstruction
+      ? Math.max(
+          0,
+          Number(
+            nextInstruction.routeOffsetMeters ??
+              nextInstruction.offset ??
+              0
+          ) -
+            routeProgress.progressMeters
+        )
+      : activeInstruction
+        ? Math.max(
+            0,
+            Number(
+              activeInstruction.length || 0
+            )
+          )
+        : null;
+
+  const destinationDistanceMeters =
+    currentPosition && destination
+      ? navigationDistanceMeters(
+          currentPosition,
+          destination
+        )
+      : null;
+
+  const arrivalThresholdMeters =
+    Math.max(
+      35,
+      Math.min(
+        100,
+        Number(position?.accuracy || 35)
+      )
+    );
+
+  const hasReachedDestination =
+    navigationInstructions.length > 0 &&
+    activeInstructionIndex >=
+      Math.max(
+        0,
+        navigationInstructions.length - 2
+      ) &&
+    destinationDistanceMeters != null &&
+    destinationDistanceMeters <=
+      arrivalThresholdMeters;
+
+  const navigationHeadline =
+    hasReachedDestination
+      ? "You have arrived"
+      : activeInstruction?.text ||
+        (selectedRoute
+          ? `Continue toward ${
+              destinationName ||
+              "destination"
+            }`
+          : "Choose a destination");
+
+  const navigationDetail =
+    hasReachedDestination
+      ? destinationName
+        ? `Arrived at ${destinationName}.`
+        : "Destination reached."
+      : activeInstruction
+        ? `${
+            distanceToNextManeuver != null
+              ? `${Math.round(
+                  distanceToNextManeuver
+                )} m`
+              : "Continue"
+          } - Step ${
+            activeInstructionIndex + 1
+          } of ${
+            navigationInstructions.length
+          }`
+        : "Search a destination and calculate a HarborGuard guided route.";
+
+  return (
+    <main
+      className="hg-safe-navigation-page"
+      style={{
+        minHeight: "100dvh",
+        background: "#020617",
+        color: "#f8fafc",
+        fontFamily: "Arial, sans-serif",
+      }}
+    >
+
+        <style jsx global>{`
+          /*
+           * HARBORGUARD RESPONSIVE NAVIGATION
+           *
+           * Desktop:
+           *   persistent navigation panel + map
+           *
+           * Tablet:
+           *   compact panel + map
+           *
+           * Phone:
+           *   full-screen map + scrollable bottom control sheet
+           *
+           * Landscape phone:
+           *   compact side control sheet + full navigation map
+           */
+
+          .hg-safe-navigation-page {
+            min-height: 100dvh !important;
+            height: 100dvh;
+            overflow: hidden;
+          }
+
+          .hg-navigation-layout {
+            min-height: 100dvh !important;
+            height: 100dvh;
+          }
+
+          .hg-navigation-sidebar {
+            min-height: 100dvh;
+            padding-top:
+              max(22px, env(safe-area-inset-top)) !important;
+            padding-bottom:
+              max(22px, env(safe-area-inset-bottom)) !important;
+          }
+
+          .hg-navigation-map-shell {
+            min-height: 100dvh !important;
+            height: 100dvh;
+            touch-action: none;
+          }
+
+          .hg-navigation-map-shell .leaflet-container {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+          }
+
+          .hg-navigation-turn-card-wrap {
+            top:
+              max(18px, env(safe-area-inset-top)) !important;
+            left:
+              max(18px, env(safe-area-inset-left)) !important;
+            right:
+              max(18px, env(safe-area-inset-right)) !important;
+          }
+
+          .hg-navigation-follow-button {
+            right:
+              max(20px, env(safe-area-inset-right)) !important;
+            min-width: 48px;
+            min-height: 48px;
+          }
+
+          .hg-navigation-metrics-wrap {
+            bottom:
+              max(18px, env(safe-area-inset-bottom)) !important;
+            left:
+              max(18px, env(safe-area-inset-left)) !important;
+            right:
+              max(18px, env(safe-area-inset-right)) !important;
+          }
+
+          .hg-navigation-metrics {
+            grid-template-columns:
+              repeat(5, minmax(0, 1fr)) !important;
+          }
+
+          @media (max-width: 1023px) {
+            .hg-navigation-layout {
+              grid-template-columns:
+                minmax(260px, 300px) minmax(0, 1fr) !important;
+            }
+
+            .hg-navigation-sidebar {
+              padding-left: 16px !important;
+              padding-right: 16px !important;
+            }
+
+            .hg-navigation-metrics {
+              width: min(650px, 100%) !important;
+            }
+          }
+
+          @media (max-width: 767px) {
+            .hg-safe-navigation-page {
+              position: relative;
+              width: 100%;
+              min-height: 100dvh !important;
+              height: 100dvh;
+            }
+
+            .hg-navigation-layout {
+              display: block !important;
+              position: relative;
+              width: 100%;
+              height: 100dvh;
+              min-height: 100dvh !important;
+            }
+
+            .hg-navigation-map-shell {
+              position: absolute !important;
+              inset: 0;
+              width: 100%;
+              height: 100dvh !important;
+              min-height: 100dvh !important;
+            }
+
+            .hg-navigation-sidebar {
+              position: absolute;
+              z-index: 900;
+              left:
+                max(8px, env(safe-area-inset-left));
+              right:
+                max(8px, env(safe-area-inset-right));
+              bottom:
+                max(8px, env(safe-area-inset-bottom));
+              width: auto;
+              min-height: 0;
+              max-height: 38dvh;
+              overflow-y: auto;
+              overscroll-behavior: contain;
+              padding: 14px !important;
+              border: 1px solid rgba(71, 85, 105, 0.92);
+              border-radius: 22px;
+              background: rgba(7, 17, 31, 0.95) !important;
+              box-shadow:
+                0 -12px 40px rgba(0, 0, 0, 0.48);
+              backdrop-filter: blur(18px);
+              -webkit-backdrop-filter: blur(18px);
+            }
+
+            .hg-navigation-turn-card-wrap {
+              top:
+                max(8px, env(safe-area-inset-top)) !important;
+              left:
+                max(8px, env(safe-area-inset-left)) !important;
+              right:
+                max(8px, env(safe-area-inset-right)) !important;
+            }
+
+            .hg-navigation-turn-card-wrap > div {
+              padding: 12px 14px !important;
+              border-radius: 18px !important;
+            }
+
+            .hg-navigation-metrics-wrap {
+              left:
+                max(8px, env(safe-area-inset-left)) !important;
+              right:
+                max(8px, env(safe-area-inset-right)) !important;
+              bottom:
+                calc(
+                  38dvh +
+                  max(18px, env(safe-area-inset-bottom))
+                ) !important;
+            }
+
+            .hg-navigation-metrics {
+              width: 100% !important;
+              grid-template-columns:
+                repeat(3, minmax(0, 1fr)) !important;
+              border-radius: 18px !important;
+            }
+
+            .hg-navigation-metrics > div {
+              padding: 9px 5px !important;
+            }
+
+            .hg-navigation-follow-button {
+              right:
+                max(12px, env(safe-area-inset-right)) !important;
+              bottom:
+                calc(
+                  38dvh +
+                  112px +
+                  max(12px, env(safe-area-inset-bottom))
+                ) !important;
+              width: 50px !important;
+              height: 50px !important;
+            }
+
+            .hg-navigation-recommendation {
+              display: none;
+            }
+          }
+
+          @media (max-width: 430px) {
+            .hg-navigation-sidebar {
+              max-height: 34dvh;
+            }
+
+            .hg-navigation-metrics-wrap {
+              bottom:
+                calc(
+                  34dvh +
+                  max(18px, env(safe-area-inset-bottom))
+                ) !important;
+            }
+
+            .hg-navigation-metrics {
+              grid-template-columns:
+                repeat(3, minmax(0, 1fr)) !important;
+            }
+
+            .hg-navigation-follow-button {
+              bottom:
+                calc(
+                  34dvh +
+                  112px +
+                  max(12px, env(safe-area-inset-bottom))
+                ) !important;
+            }
+          }
+
+          @media
+            (orientation: landscape)
+            and (max-height: 600px)
+            and (max-width: 1000px) {
+
+            .hg-navigation-sidebar {
+              top:
+                max(8px, env(safe-area-inset-top));
+              left:
+                max(8px, env(safe-area-inset-left));
+              right: auto;
+              bottom:
+                max(8px, env(safe-area-inset-bottom));
+              width: min(320px, 42vw);
+              max-height: none;
+            }
+
+            .hg-navigation-turn-card-wrap {
+              left:
+                calc(
+                  min(320px, 42vw) +
+                  max(24px, env(safe-area-inset-left))
+                ) !important;
+            }
+
+            .hg-navigation-metrics-wrap {
+              left:
+                calc(
+                  min(320px, 42vw) +
+                  max(24px, env(safe-area-inset-left))
+                ) !important;
+              bottom:
+                max(8px, env(safe-area-inset-bottom)) !important;
+            }
+
+            .hg-navigation-metrics {
+              grid-template-columns:
+                repeat(5, minmax(0, 1fr)) !important;
+            }
+
+            .hg-navigation-follow-button {
+              bottom:
+                max(86px, env(safe-area-inset-bottom)) !important;
+            }
+          }
+        `}</style>
+
+      <div
+        className="hg-navigation-layout"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(290px, 360px) minmax(0, 1fr)",
+          minHeight: "100dvh",
+        }}
+      >
+        <aside
+          className="hg-navigation-sidebar"
+          style={{
+            padding: 22,
+            background: "#07111f",
+            borderRight: "1px solid #1e293b",
+            overflowY: "auto",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 12,
+              letterSpacing: 1.8,
+              fontWeight: 900,
+              color: "#22d3ee",
+              marginBottom: 8,
+            }}
+          >
+            HARBORGUARD
+          </div>
+
+          <h1 style={{ margin: 0, fontSize: "clamp(24px, 4vw, 30px)" }}>
+            Safe Navigation
+          </h1>
+
+          <p
+            style={{
+              color: "#94a3b8",
+              lineHeight: 1.5,
+            }}
+          >
+            Live driver navigation with HarborGuard route-risk intelligence.
+          </p>
+
+          <section
+            style={{
+              padding: 16,
+              borderRadius: 18,
+              background: "#0f172a",
+              border: "1px solid #1e293b",
+              marginBottom: 14,
+            }}
+          >
+            <div style={{ fontWeight: 900, marginBottom: 10 }}>
+              Live GPS
+            </div>
+
+            <div
+              style={{
+                color: gpsActive ? "#5eead4" : "#94a3b8",
+                marginBottom: 12,
+                fontSize: 14,
+              }}
+            >
+              {gpsMessage}
+            </div>
+
+            <button
+              type="button"
+              onClick={gpsActive ? stopGps : startGps}
+              style={{
+                width: "100%",
+                border: 0,
+                borderRadius: 12,
+                padding: "12px 14px",
+                background: gpsActive ? "#334155" : "#0891b2",
+                color: "#ffffff",
+                fontWeight: 900,
+                cursor: "pointer",
+              }}
+            >
+              {gpsActive ? "Stop GPS" : "Start GPS"}
+            </button>
+          </section>
+
+          <section
+            style={{
+              padding: 16,
+              borderRadius: 18,
+              background: "#0f172a",
+              border: "1px solid #1e293b",
+            }}
+          >
+            <div style={{ fontWeight: 900, marginBottom: 12 }}>
+              Destination
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gap: 10,
+              }}
+            >
+              <label
+                style={{
+                  fontSize: 13,
+                  color: "#94a3b8",
+                  fontWeight: 800,
+                }}
+              >
+                Where to?
+              </label>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "minmax(0, 1fr) auto",
+                  gap: 8,
+                }}
+              >
+                <input
+                  value={destinationName}
+                  onChange={(event) => {
+                    setDestinationName(
+                      event.target.value
+                    );
+
+                    setSelectedDestination(
+                      null
+                    );
+
+                    setDestinationLat("");
+                    setDestinationLng("");
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void searchDestination();
+                    }
+                  }}
+                  placeholder="Search a place, address or landmark"
+                  autoComplete="off"
+                  style={inputStyle}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    void searchDestination();
+                  }}
+                  disabled={destinationSearching}
+                  style={{
+                    border: 0,
+                    borderRadius: 12,
+                    padding: "0 14px",
+                    background: "#0891b2",
+                    color: "#ffffff",
+                    fontWeight: 900,
+                    cursor:
+                      destinationSearching
+                        ? "wait"
+                        : "pointer",
+                    opacity:
+                      destinationSearching
+                        ? 0.7
+                        : 1,
+                  }}
+                >
+                  {destinationSearching
+                    ? "..."
+                    : "Search"}
+                </button>
+              </div>
+
+              {destinationResults.length > 0 ? (
+                <div
+                  style={{
+                    display: "grid",
+                    gap: 6,
+                    maxHeight: 220,
+                    overflowY: "auto",
+                  }}
+                >
+                  {destinationResults.map(
+                    (result) => (
+                      <button
+                        key={
+                          result.id ??
+                          `${result.lat}-${result.lng}`
+                        }
+                        type="button"
+                        onClick={() => {
+                          setSelectedDestination(
+                            result
+                          );
+
+                          setDestinationName(
+                            result.title
+                          );
+
+                          setDestinationLat(
+                            String(result.lat)
+                          );
+
+                          setDestinationLng(
+                            String(result.lng)
+                          );
+
+                          setDestinationResults(
+                            []
+                          );
+
+                          setRoutingMessage(
+                            `Destination selected: ${result.title}`
+                          );
+                        }}
+                        style={{
+                          textAlign: "left",
+                          border:
+                            "1px solid #334155",
+                          borderRadius: 10,
+                          background:
+                            "#020617",
+                          color:
+                            "#e2e8f0",
+                          padding: 10,
+                          cursor: "pointer",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontWeight: 900,
+                          }}
+                        >
+                          {result.title}
+                        </div>
+
+                        {result.address ? (
+                          <div
+                            style={{
+                              marginTop: 3,
+                              fontSize: 12,
+                              color:
+                                "#94a3b8",
+                              lineHeight: 1.35,
+                            }}
+                          >
+                            {result.address}
+                          </div>
+                        ) : null}
+
+                        {result.categories.length > 0 ? (
+                          <div
+                            style={{
+                              marginTop: 4,
+                              fontSize: 11,
+                              color:
+                                "#67e8f9",
+                            }}
+                          >
+                            {result.categories
+                              .slice(0, 3)
+                              .join(" \u2022 ")}
+                          </div>
+                        ) : null}
+                      </button>
+                    )
+                  )}
+                </div>
+              ) : null}
+
+              {selectedDestination ? (
+                <div
+                  style={{
+                    borderRadius: 10,
+                    padding: 9,
+                    background:
+                      "rgba(13,148,136,0.12)",
+                    border:
+                      "1px solid rgba(45,212,191,0.35)",
+                    color: "#5eead4",
+                    fontSize: 12,
+                    fontWeight: 800,
+                  }}
+                >
+                  Destination selected:
+                  {" "}
+                  {selectedDestination.title}
+                </div>
+              ) : null}
+            </div>
+
+            <select
+              value={routingProfile}
+              onChange={(event) =>
+                setRoutingProfile(event.target.value)
+              }
+              style={inputStyle}
+            >
+              <option value="safest">Safest</option>
+              <option value="balanced">Balanced</option>
+              <option value="fastest">Fastest</option>
+            </select>
+
+            <button
+              type="button"
+              disabled={routing}
+              onClick={calculateRoute}
+              style={{
+                width: "100%",
+                border: 0,
+                borderRadius: 12,
+                padding: "13px 14px",
+                background: "#0f766e",
+                color: "#ffffff",
+                fontWeight: 900,
+                cursor: routing ? "wait" : "pointer",
+                opacity: routing ? 0.7 : 1,
+              }}
+            >
+              {routing ? "Calculating..." : "Calculate Safe Route"}
+            </button>
+
+            <div
+              style={{
+                color: "#94a3b8",
+                marginTop: 10,
+                fontSize: 13,
+                lineHeight: 1.45,
+              }}
+            >
+              {routingMessage}
+            </div>
+            {navigationInstructions.length > 0 ? (
+              <div
+                style={{
+                  marginTop: 16,
+                  display: "grid",
+                  gap: 9,
+                }}
+              >
+                <div
+                  style={{
+                    fontWeight: 900,
+                    fontSize: 15,
+                  }}
+                >
+                  Turn-by-turn directions
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gap: 8,
+                    maxHeight: 300,
+                    overflowY: "auto",
+                  }}
+                >
+                  {navigationInstructions.map(
+                    (
+                      instruction,
+                      index
+                    ) => (
+                      <div
+                        key={`${index}-${instruction.offset ?? 0}`}
+                        style={{
+                          border:
+                            "1px solid #243244",
+                          borderRadius: 12,
+                          padding: 10,
+                          background:
+                            "#0b1324",
+                        }}
+                      >
+                        <div
+                          style={{
+                            color:
+                              "#5eead4",
+                            fontWeight: 900,
+                            fontSize: 11,
+                            letterSpacing:
+                              "0.05em",
+                          }}
+                        >
+                          STEP {index + 1}
+                        </div>
+
+                        <div
+                          style={{
+                            marginTop: 4,
+                            color:
+                              "#f8fafc",
+                            fontWeight: 700,
+                            lineHeight: 1.35,
+                          }}
+                        >
+                          {instruction.text ||
+                            `${instruction.action ?? "Continue"} ${
+                              instruction.direction ?? ""
+                            }`}
+                        </div>
+
+                        {Number(
+                          instruction.length
+                        ) > 0 ? (
+                          <div
+                            style={{
+                              marginTop: 4,
+                              color:
+                                "#94a3b8",
+                              fontSize: 12,
+                            }}
+                          >
+                            {Math.round(
+                              Number(
+                                instruction.length
+                              )
+                            )} m
+                          </div>
+                        ) : null}
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </section>
+
+          {routes.length > 1 && (
+            <section style={{ marginTop: 14 }}>
+              <div style={{ fontWeight: 900, marginBottom: 8 }}>
+                Route options
+              </div>
+
+              <div style={{ display: "grid", gap: 8 }}>
+                {routes.slice(0, 4).map((route, index) => (
+                  <button
+                    key={`${route.index ?? index}-${index}`}
+                    type="button"
+                    onClick={() => {
+                      setSelectedRouteIndex(index);
+                      setNavigationInstructions(
+                        instructionsForRoute(route)
+                      );
+                      setFollowVehicle(true);
+                    }}
+                    style={{
+                      textAlign: "left",
+                      borderRadius: 12,
+                      padding: 11,
+                      border:
+                        selectedRouteIndex === index
+                          ? "1px solid #22d3ee"
+                          : "1px solid #334155",
+                      background:
+                        selectedRouteIndex === index
+                          ? "#083344"
+                          : "#0f172a",
+                      color: "#e2e8f0",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <strong>
+                      {route.label ?? `Route ${index + 1}`}
+                    </strong>
+                    <div style={{ marginTop: 4, fontSize: 12 }}>
+                      {distanceLabel(route)} - {durationLabel(route)}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+        </aside>
+
+        <section
+          className="hg-navigation-map-shell"
+          style={{
+            position: "relative",
+            minHeight: "100dvh",
+            overflow: "hidden",
+          }}
+        >
+          <SafeNavigationMap
+            position={currentPosition}
+            heading={position?.heading ?? 0}
+            routePoints={routePoints}
+            destination={destination}
+            followVehicle={followVehicle}
+            onFollowChange={setFollowVehicle}
+          />
+
+          <div
+            className="hg-navigation-turn-card-wrap"
+            style={{
+              position: "absolute",
+              left: 18,
+              right: 18,
+              top: 18,
+              zIndex: 700,
+              pointerEvents: "none",
+            }}
+          >
+            <div
+              style={{
+                maxWidth: 650,
+                margin: "0 auto",
+                padding: "16px 20px",
+                borderRadius: 22,
+                background: "rgba(4, 47, 46, 0.94)",
+                border: "1px solid rgba(94,234,212,.32)",
+                boxShadow: "0 18px 45px rgba(0,0,0,.38)",
+                backdropFilter: "blur(12px)",
+              }}
+            >
+              <div
+                style={{
+                  color: "#99f6e4",
+                  fontSize: 12,
+                  fontWeight: 900,
+                  letterSpacing: 1.5,
+                }}
+              >
+                HARBORGUARD NAVIGATION
+              </div>
+
+              <div
+                style={{
+                  fontSize: "clamp(18px, 4.5vw, 25px)",
+                  fontWeight: 900,
+                  marginTop: 5,
+                }}
+              >
+                {navigationHeadline}
+              </div>
+
+              <div
+                style={{
+                  marginTop: 5,
+                  color: "#ccfbf1",
+                  fontSize: 14,
+                }}
+              >
+                {navigationDetail}
+              </div>
+            </div>
+          </div>
+
+          <button
+            className="hg-navigation-follow-button"
+            type="button"
+            onClick={() => setFollowVehicle(true)}
+            style={{
+              position: "absolute",
+              right: 20,
+              bottom: 150,
+              zIndex: 750,
+              width: 56,
+              height: 56,
+              borderRadius: "50%",
+              border: "1px solid #334155",
+              background: followVehicle ? "#0891b2" : "#020617",
+              color: "#ffffff",
+              fontSize: 24,
+              fontWeight: 900,
+              cursor: "pointer",
+              boxShadow: "0 10px 28px rgba(0,0,0,.35)",
+            }}
+            aria-label="Follow vehicle"
+          >
+            {"\u2316"}
+          </button>
+
+          <div
+            className="hg-navigation-metrics-wrap"
+            style={{
+              position: "absolute",
+              left: 18,
+              right: 18,
+              bottom: 18,
+              zIndex: 700,
+              display: "flex",
+              justifyContent: "center",
+              pointerEvents: "none",
+            }}
+          >
+            <div
+              className="hg-navigation-metrics"
+              style={{
+                width: "min(760px, 100%)",
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(5, minmax(0, 1fr))",
+                gap: 1,
+                borderRadius: 24,
+                overflow: "hidden",
+                background: "#334155",
+                boxShadow: "0 18px 48px rgba(0,0,0,.48)",
+              }}
+            >
+              <Metric
+                label="ETA"
+                value={durationLabel(selectedRoute)}
+              />
+              <Metric
+                label="Distance"
+                value={distanceLabel(selectedRoute)}
+              />
+              <Metric
+                label="Speed"
+                value={`${Math.round(position?.speedKmh ?? 0)} km/h`}
+              />
+              <Metric
+                label="Safety"
+                value={
+                  selectedRoute?.safetyScore != null
+                    ? `${Math.round(selectedRoute.safetyScore)}`
+                    : "--"
+                }
+              />
+              <Metric
+                label="Risk"
+                value={
+                  selectedRoute?.riskScore != null
+                    ? `${Math.round(selectedRoute.riskScore)}`
+                    : "--"
+                }
+              />
+            </div>
+          </div>
+
+          {recommendation && (
+            <div
+              className="hg-navigation-recommendation"
+              style={{
+                position: "absolute",
+                left: 18,
+                bottom: 122,
+                zIndex: 700,
+                maxWidth: 520,
+                padding: "10px 14px",
+                borderRadius: 14,
+                background: "rgba(2, 6, 23, .9)",
+                color: "#cbd5e1",
+                border: "1px solid #334155",
+                fontSize: 13,
+              }}
+            >
+              {recommendation}
+            </div>
+          )}
+        </section>
+      </div>
+    </main>
+  );
+}
+
+function Metric({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div
+      style={{
+        background: "rgba(2,6,23,.96)",
+        padding: "14px 8px",
+        textAlign: "center",
+      }}
+    >
+      <div
+        style={{
+          color: "#64748b",
+          fontSize: 11,
+          textTransform: "uppercase",
+          letterSpacing: 1.1,
+          fontWeight: 900,
+        }}
+      >
+        {label}
+      </div>
+
+      <div
+        style={{
+          marginTop: 4,
+          fontSize: 18,
+          fontWeight: 900,
+          color: "#f8fafc",
+        }}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+const inputStyle = {
+  width: "100%",
+  boxSizing: "border-box" as const,
+  marginBottom: 9,
+  padding: "11px 12px",
+  borderRadius: 11,
+  border: "1px solid #334155",
+  background: "#020617",
+  color: "#f8fafc",
+  outline: "none",
+  fontSize: 14,
+};

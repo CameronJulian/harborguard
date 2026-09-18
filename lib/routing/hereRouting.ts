@@ -303,6 +303,42 @@ function decodeHereRouteSections(sections: any[]): RoutePoint[] {
   return points;
 }
 
+type HereNavigationAction = {
+  action?: string | null;
+  direction?: string | null;
+  severity?: string | null;
+  instruction?: string | null;
+  length?: number | string | null;
+  duration?: number | string | null;
+  offset?: number | string | null;
+  exitSign?: unknown;
+};
+
+type HereNavigationInstruction = {
+  instruction?: string | null;
+  text?: string | null;
+  action?: string | null;
+  direction?: string | null;
+  length?: number | string | null;
+  duration?: number | string | null;
+  offset?: number | string | null;
+};
+
+type HereRouteSection = {
+  summary?: {
+    length?: number | string | null;
+    duration?: number | string | null;
+    baseDuration?: number | string | null;
+  };
+  arrival?: {
+    place?: {
+      location?: unknown;
+    };
+  };
+  polyline?: unknown;
+  actions?: HereNavigationAction[];
+  instructions?: HereNavigationInstruction[];
+};
 export async function calculateHereRoutes(
   origin: any,
   destination: any,
@@ -362,7 +398,8 @@ export async function calculateHereRoutes(
   }
 
   const routes = (data.routes || []).map((route: any, index: number) => {
-    const sections = route.sections || [];
+    const sections =
+      (route.sections || []) as HereRouteSection[];
 
     const summary = sections.reduce(
       (total: any, section: any) => {
@@ -383,6 +420,167 @@ export async function calculateHereRoutes(
       }
     );
 
+    const sectionGeometry =
+      sections.map((section) =>
+        decodeHereSectionPolyline(section?.polyline)
+      );
+
+    let routeDistanceBeforeSection = 0;
+
+    const sectionRouteOffsetsMeters =
+      sectionGeometry.map((points) => {
+        const routeStartMeters =
+          routeDistanceBeforeSection;
+
+        const pointOffsetsMeters: number[] = [];
+        let sectionDistanceMeters = 0;
+
+        if (points.length > 0) {
+          pointOffsetsMeters.push(0);
+        }
+
+        for (
+          let pointIndex = 1;
+          pointIndex < points.length;
+          pointIndex += 1
+        ) {
+          const previous = points[pointIndex - 1];
+          const current = points[pointIndex];
+
+          sectionDistanceMeters +=
+            calculateDistanceMeters(
+              previous[0],
+              previous[1],
+              current[0],
+              current[1]
+            );
+
+          pointOffsetsMeters.push(
+            sectionDistanceMeters
+          );
+        }
+
+        routeDistanceBeforeSection +=
+          sectionDistanceMeters;
+
+        return {
+          routeStartMeters,
+          pointOffsetsMeters,
+        };
+      });
+
+    const routeOffsetMetersFor = (
+      sectionIndex: number,
+      rawOffset: unknown
+    ): number => {
+      const geometry =
+        sectionRouteOffsetsMeters[sectionIndex];
+
+      if (!geometry) {
+        return 0;
+      }
+
+      const rawIndex =
+        Math.floor(Number(rawOffset) || 0);
+
+      const pointOffsets =
+        geometry.pointOffsetsMeters;
+
+      if (pointOffsets.length === 0) {
+        return geometry.routeStartMeters;
+      }
+
+      const boundedIndex =
+        Math.max(
+          0,
+          Math.min(
+            rawIndex,
+            pointOffsets.length - 1
+          )
+        );
+
+      return (
+        geometry.routeStartMeters +
+        pointOffsets[boundedIndex]
+      );
+    };
+
+    const navigationActions =
+      sections.flatMap(
+        (section, sectionIndex) =>
+          Array.isArray(section?.actions)
+            ? section.actions.map(
+                (action, actionIndex) => ({
+                  sectionIndex,
+                  actionIndex,
+                  action:
+                    action?.action ?? null,
+                  direction:
+                    action?.direction ?? null,
+                  severity:
+                    action?.severity ?? null,
+                  instruction:
+                    action?.instruction ?? null,
+                  length:
+                    Number(action?.length || 0),
+                  duration:
+                    Number(action?.duration || 0),
+                  offset:
+                    Number(action?.offset || 0),
+                  routeOffsetMeters:
+                    routeOffsetMetersFor(
+                      sectionIndex,
+                      action?.offset
+                    ),
+                  exitSign:
+                    action?.exitSign ?? null,
+                })
+              )
+            : []
+      );
+
+    const navigationInstructions =
+      sections.flatMap(
+        (section, sectionIndex) =>
+          Array.isArray(section?.instructions)
+            ? section.instructions.map(
+                (
+                  instruction,
+                  instructionIndex
+                ) => ({
+                  sectionIndex,
+                  instructionIndex,
+                  text:
+                    instruction?.instruction ??
+                    instruction?.text ??
+                    null,
+                  action:
+                    instruction?.action ??
+                    null,
+                  direction:
+                    instruction?.direction ??
+                    null,
+                  length:
+                    Number(
+                      instruction?.length || 0
+                    ),
+                  duration:
+                    Number(
+                      instruction?.duration || 0
+                    ),
+                  offset:
+                    Number(
+                      instruction?.offset || 0
+                    ),
+                  routeOffsetMeters:
+                    routeOffsetMetersFor(
+                      sectionIndex,
+                      instruction?.offset
+                    ),
+                })
+              )
+            : []
+      );
     const routePoints = decodeHereRouteSections(sections);
     const routeRisk = scoreRouteRisk(routePoints, roadRiskSegments);
 
@@ -419,6 +617,8 @@ export async function calculateHereRoutes(
         ),
       routePoints,
       routePointCount: routePoints.length,
+      navigationActions,
+      navigationInstructions,
       safetyScore: routeRisk.safetyScore,
       riskScore: routeRisk.normalizedRiskScore,
       totalRiskScore: routeRisk.totalRiskScore,
