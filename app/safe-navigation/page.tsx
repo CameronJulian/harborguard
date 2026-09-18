@@ -48,6 +48,11 @@ type RouteOption = {
   riskScore?: number;
   matchedRiskSegmentCount?: number;
   routePoints?: LatLng[];
+  speedLimitSegments?: {
+    startOffsetMeters: number;
+    endOffsetMeters: number;
+    speedLimitKph: number;
+  }[];
 };
 
 type NavigationSearchResult = {
@@ -1554,6 +1559,19 @@ export default function SafeNavigationPage() {
         )
       : null;
 
+  const activeSpeedLimitKph =
+    routeProgress &&
+    Array.isArray(
+      selectedRoute?.speedLimitSegments
+    )
+      ? selectedRoute.speedLimitSegments.find(
+          (segment) =>
+            routeProgress.progressMeters >=
+              segment.startOffsetMeters &&
+            routeProgress.progressMeters <
+              segment.endOffsetMeters
+        )?.speedLimitKph ?? null
+      : null;
   let activeInstructionIndex =
     navigationInstructions.length > 0
       ? 0
@@ -3185,6 +3203,14 @@ export default function SafeNavigationPage() {
               <Metric
                 label="Speed"
                 value={`${Math.round(position?.speedKmh ?? 0)} km/h`}
+              />
+              <Metric
+                label="Speed Limit"
+                value={
+                  activeSpeedLimitKph != null
+                    ? `${Math.round(activeSpeedLimitKph)} km/h`
+                    : "--"
+                }
               />
               <Metric
                 label="Safety"

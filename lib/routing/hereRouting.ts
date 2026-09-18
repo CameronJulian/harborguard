@@ -324,6 +324,17 @@ type HereNavigationInstruction = {
   offset?: number | string | null;
 };
 
+type HereSpeedLimitSpan = {
+  offset?: number | string | null;
+  length?: number | string | null;
+  maxSpeed?: number | string | null;
+};
+
+type NormalizedSpeedLimitSegment = {
+  startOffsetMeters: number;
+  endOffsetMeters: number;
+  speedLimitKph: number;
+};
 type HereRouteSection = {
   summary?: {
     length?: number | string | null;
@@ -338,6 +349,7 @@ type HereRouteSection = {
   polyline?: unknown;
   actions?: HereNavigationAction[];
   instructions?: HereNavigationInstruction[];
+  spans?: HereSpeedLimitSpan[];
 };
 export async function calculateHereRoutes(
   origin: any,
@@ -358,6 +370,7 @@ export async function calculateHereRoutes(
     `&origin=${Number(origin.lat)},${Number(origin.lng)}` +
     `&destination=${Number(destination.lat)},${Number(destination.lng)}` +
     `&return=summary,polyline,actions,instructions` +
+    `&spans=length,maxSpeed` +
     `&alternatives=3` +
     `&departureTime=any` +
     `&apikey=${process.env.HERE_API_KEY}`;
@@ -581,6 +594,84 @@ export async function calculateHereRoutes(
               )
             : []
       );
+    const speedLimitSegments: NormalizedSpeedLimitSegment[] =
+      sections.flatMap(
+        (section, sectionIndex) => {
+          const spans =
+            Array.isArray(section?.spans)
+              ? section.spans
+              : [];
+
+          return spans.flatMap(
+            (span, spanIndex) => {
+              const rawMaxSpeed =
+                Number(span?.maxSpeed);
+
+              if (
+                !Number.isFinite(rawMaxSpeed) ||
+                rawMaxSpeed <= 0
+              ) {
+                return [];
+              }
+
+              const startOffsetMeters =
+                routeOffsetMetersFor(
+                  sectionIndex,
+                  span?.offset
+                );
+
+              const nextSpan =
+                spans[spanIndex + 1];
+
+              const nextOffsetMeters =
+                nextSpan
+                  ? routeOffsetMetersFor(
+                      sectionIndex,
+                      nextSpan?.offset
+                    )
+                  : null;
+
+              const rawLength =
+                Number(span?.length);
+
+              const fallbackEndOffsetMeters =
+                startOffsetMeters +
+                (
+                  Number.isFinite(rawLength) &&
+                  rawLength > 0
+                    ? rawLength
+                    : 0
+                );
+
+              const endOffsetMeters =
+                nextOffsetMeters != null &&
+                nextOffsetMeters > startOffsetMeters
+                  ? nextOffsetMeters
+                  : fallbackEndOffsetMeters;
+
+              const speedLimitKph =
+                rawMaxSpeed * 3.6;
+
+              if (
+                !Number.isFinite(speedLimitKph) ||
+                speedLimitKph <= 0 ||
+                endOffsetMeters <= startOffsetMeters
+              ) {
+                return [];
+              }
+
+              return [
+                {
+                  startOffsetMeters,
+                  endOffsetMeters,
+                  speedLimitKph:
+                    Math.round(speedLimitKph),
+                },
+              ];
+            }
+          );
+        }
+      );
     const routePoints = decodeHereRouteSections(sections);
     const routeRisk = scoreRouteRisk(routePoints, roadRiskSegments);
 
@@ -619,6 +710,7 @@ export async function calculateHereRoutes(
       routePointCount: routePoints.length,
       navigationActions,
       navigationInstructions,
+      speedLimitSegments,
       safetyScore: routeRisk.safetyScore,
       riskScore: routeRisk.normalizedRiskScore,
       totalRiskScore: routeRisk.totalRiskScore,

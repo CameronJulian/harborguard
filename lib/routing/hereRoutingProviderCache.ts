@@ -42,6 +42,7 @@ export function buildHereRoutingProviderCacheKey(
     "harborguard",
     "here-routing-v8",
     "provider-response",
+    "speed-limit-spans-v1",
     originLatitude,
     originLongitude,
     destinationLatitude,
