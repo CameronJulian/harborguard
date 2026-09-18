@@ -1,6 +1,7 @@
 "use client";
 
 import { supabase } from "@/lib/supabase";
+import { canAccessPremiumFeatures } from "@/lib/subscription";
 import PermissionGate from "@/components/auth/PermissionGate";
 import { useEffect, useState } from "react";
 
@@ -41,21 +42,47 @@ export default function BillingPage() {
   }
 }
 
+  const hasPremiumAccess =
+    canAccessPremiumFeatures(
+      organization?.subscription_status,
+      organization?.trial_ends_at,
+      organization?.next_billing_date
+    );
+
   const isProfessional =
     organization?.plan === "professional" &&
-    organization?.subscription_status === "active";
+    hasPremiumAccess;
+
+  const isCancelledProfessional =
+    organization?.plan === "professional" &&
+    organization?.subscription_status === "cancelled" &&
+    hasPremiumAccess;
 
   const planLabel = isProfessional
     ? "Professional Plan"
     : "Starter Plan";
 
-  const statusLabel = isProfessional
-    ? "Active subscription"
-    : "Trial Active — 14 days remaining";
+  const statusLabel = isCancelledProfessional
+    ? `Cancelled - access continues until ${
+        organization?.next_billing_date
+          ? new Date(
+              organization.next_billing_date
+            ).toLocaleDateString()
+          : "the end of the paid period"
+      }`
+    : isProfessional
+      ? "Active subscription"
+      : organization?.subscription_status === "trialing"
+        ? "Trial active"
+        : "Subscription inactive";
 
-  const statusText = isProfessional
-    ? "Active"
-    : "Trialing";
+  const statusText = isCancelledProfessional
+    ? "Cancelled"
+    : isProfessional
+      ? "Active"
+      : organization?.subscription_status === "trialing"
+        ? "Trialing"
+        : "Inactive";
 
   async function upgradeProfessional() {
     try {
