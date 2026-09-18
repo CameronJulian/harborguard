@@ -591,6 +591,30 @@ export default function SafeNavigationPage() {
     selectedDestination,
   ]);
 
+  const arrivalTarget =
+    useMemo<LatLng | null>(() => {
+      if (!routingDestination) {
+        return destination;
+      }
+
+      const lat =
+        Number(routingDestination.lat);
+
+      const lng =
+        Number(routingDestination.lng);
+
+      if (
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lng)
+      ) {
+        return destination;
+      }
+
+      return [lat, lng];
+    }, [
+      destination,
+      routingDestination,
+    ]);
   const selectedRoute =
     routes[selectedRouteIndex] ?? routes[0] ?? null;
 
@@ -885,7 +909,140 @@ export default function SafeNavigationPage() {
     }
   }
 
-  function simulatorBearing(
+  type ArrivalSide =
+  | "left"
+  | "right"
+  | null;
+
+function classifyArrivalSide(
+  routePoints: LatLng[],
+  accessPoint: LatLng | null,
+  poiPoint: LatLng | null
+): ArrivalSide {
+  if (
+    routePoints.length < 2 ||
+    !accessPoint ||
+    !poiPoint
+  ) {
+    return null;
+  }
+
+  const latitudeRadians =
+    (accessPoint[0] * Math.PI) / 180;
+
+  const metersPerDegreeLatitude =
+    111_320;
+
+  const metersPerDegreeLongitude =
+    metersPerDegreeLatitude *
+    Math.cos(latitudeRadians);
+
+  const toLocalMeters = (
+    point: LatLng
+  ) => ({
+    x:
+      (point[1] - accessPoint[1]) *
+      metersPerDegreeLongitude,
+    y:
+      (point[0] - accessPoint[0]) *
+      metersPerDegreeLatitude,
+  });
+
+  const poiVector =
+    toLocalMeters(poiPoint);
+
+  const poiDistanceMeters =
+    Math.hypot(
+      poiVector.x,
+      poiVector.y
+    );
+
+  if (poiDistanceMeters < 2) {
+    return null;
+  }
+
+  let approachPoint: LatLng | null =
+    null;
+
+  for (
+    let index = routePoints.length - 1;
+    index >= 0;
+    index -= 1
+  ) {
+    const candidate =
+      routePoints[index];
+
+    const candidateVector =
+      toLocalMeters(candidate);
+
+    const distanceFromAccessMeters =
+      Math.hypot(
+        candidateVector.x,
+        candidateVector.y
+      );
+
+    if (
+      distanceFromAccessMeters >= 15
+    ) {
+      approachPoint =
+        candidate;
+
+      break;
+    }
+  }
+
+  if (!approachPoint) {
+    return null;
+  }
+
+  const approachLocal =
+    toLocalMeters(approachPoint);
+
+  const approachVector = {
+    x: -approachLocal.x,
+    y: -approachLocal.y,
+  };
+
+  const approachMagnitude =
+    Math.hypot(
+      approachVector.x,
+      approachVector.y
+    );
+
+  if (approachMagnitude < 1) {
+    return null;
+  }
+
+  const signedCrossProduct =
+    approachVector.x *
+      poiVector.y -
+    approachVector.y *
+      poiVector.x;
+
+  const normalizedCrossProduct =
+    signedCrossProduct /
+    (
+      approachMagnitude *
+      poiDistanceMeters
+    );
+
+  /*
+   * Avoid claiming a side when the POI
+   * is nearly straight ahead or behind.
+   */
+  if (
+    Math.abs(
+      normalizedCrossProduct
+    ) < 0.21
+  ) {
+    return null;
+  }
+
+  return normalizedCrossProduct > 0
+    ? "left"
+    : "right";
+}
+function simulatorBearing(
     from: LatLng,
     to: LatLng
   ): number {
@@ -1700,10 +1857,41 @@ export default function SafeNavigationPage() {
         : null;
 
   const destinationDistanceMeters =
-    currentPosition && destination
+    currentPosition && arrivalTarget
       ? navigationDistanceMeters(
           currentPosition,
-          destination
+          arrivalTarget
+        )
+      : null;
+  const arrivalSide: ArrivalSide =
+    selectedDestination &&
+    typeof selectedDestination.accessLat ===
+      "number" &&
+    typeof selectedDestination.accessLng ===
+      "number" &&
+    Number.isFinite(
+      selectedDestination.accessLat
+    ) &&
+    Number.isFinite(
+      selectedDestination.accessLng
+    ) &&
+    Number.isFinite(
+      selectedDestination.lat
+    ) &&
+    Number.isFinite(
+      selectedDestination.lng
+    ) &&
+    routePoints.length >= 2
+      ? classifyArrivalSide(
+          routePoints,
+          [
+            selectedDestination.accessLat,
+            selectedDestination.accessLng,
+          ],
+          [
+            selectedDestination.lat,
+            selectedDestination.lng,
+          ]
         )
       : null;
 
@@ -1922,17 +2110,22 @@ export default function SafeNavigationPage() {
     if (hasReachedDestination) {
       const arrivalKey =
         `arrival:${
-          destination?.[0] ?? ""
+          arrivalTarget?.[0] ?? ""
         }:${
-          destination?.[1] ?? ""
+          arrivalTarget?.[1] ?? ""
         }`;
 
-      const arrivalMessage =
+      const arrivalBaseMessage =
         destinationName &&
         destinationName !==
           "Destination"
           ? `You have arrived at ${destinationName}.`
           : "You have arrived at your destination.";
+
+      const arrivalMessage =
+        arrivalSide
+          ? `${arrivalBaseMessage} Your destination is on the ${arrivalSide}.`
+          : arrivalBaseMessage;
 
       speakNavigationInstruction(
         arrivalKey,
@@ -2017,6 +2210,8 @@ export default function SafeNavigationPage() {
     selectedRoute,
     hasReachedDestination,
     destination,
+    arrivalTarget,
+    arrivalSide,
     destinationName,
     nextInstruction,
     distanceToNextManeuver,
@@ -2216,8 +2411,10 @@ export default function SafeNavigationPage() {
       ? "Finding a new HarborGuard safe route from your current position."
       : hasReachedDestination
       ? destinationName
-        ? `Arrived at ${destinationName}.`
-        : "Destination reached."
+        ? `Arrived at ${destinationName}.${arrivalSide ? ` Destination is on the ${arrivalSide}.` : ""}`
+        : arrivalSide
+          ? `Destination reached. Destination is on the ${arrivalSide}.`
+          : "Destination reached."
       : activeInstruction
         ? `${
             distanceToNextManeuver != null
