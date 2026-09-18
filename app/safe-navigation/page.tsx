@@ -441,6 +441,9 @@ export default function SafeNavigationPage() {
   const lastSpokenAnnouncementRef =
     useRef<Set<string>>(new Set());
 
+  const overspeedVoiceArmedRef =
+    useRef(true);
+
   const [voiceEnabled, setVoiceEnabled] =
     useState(false);
 
@@ -1844,6 +1847,37 @@ export default function SafeNavigationPage() {
     requestWakeLock,
     releaseWakeLock,
   ]);
+  useEffect(() => {
+    if (!isOverspeeding) {
+      overspeedVoiceArmedRef.current = true;
+      lastSpokenAnnouncementRef.current.delete(
+        "overspeed-warning"
+      );
+      return;
+    }
+
+    if (
+      !voiceEnabled ||
+      !overspeedVoiceArmedRef.current
+    ) {
+      return;
+    }
+
+    const didSpeak =
+      speakNavigationInstruction(
+        "overspeed-warning",
+        "Warning. You are exceeding the speed limit."
+      );
+
+    if (didSpeak) {
+      overspeedVoiceArmedRef.current = false;
+    }
+  }, [
+    isOverspeeding,
+    voiceEnabled,
+    speakNavigationInstruction,
+  ]);
+
   useEffect(() => {
     if (
       !voiceEnabled ||
