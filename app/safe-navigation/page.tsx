@@ -4,6 +4,7 @@ import "leaflet/dist/leaflet.css";
 
 import dynamic from "next/dynamic";
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -183,6 +184,10 @@ function distanceLabel(route: RouteOption | null) {
   return `${(route.distanceMeters / 1000).toFixed(1)} km`;
 }
 
+const AUTO_REROUTE_OFF_ROUTE_THRESHOLD = 45;
+const AUTO_REROUTE_ACCURACY_MULTIPLIER = 1.5;
+const AUTO_REROUTE_SUSTAINED_MS = 4000;
+const AUTO_REROUTE_COOLDOWN_MS = 15000;
 type RouteProgressState = {
   progressMeters: number;
   distanceFromRouteMeters: number;
@@ -325,6 +330,29 @@ function calculateRouteProgress(
 export default function SafeNavigationPage() {
   const watchIdRef = useRef<number | null>(null);
 
+  const offRouteStartedAtRef =
+    useRef<number | null>(null);
+
+  const lastAutoRerouteAtRef =
+    useRef(0);
+
+  const autoRerouteInFlightRef =
+    useRef(false);
+
+  const offRouteTimerRef =
+    useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const latestNavigationPositionRef =
+    useRef<PositionState | null>(null);
+
+  const latestNavigationRoutePointsRef =
+    useRef<LatLng[]>([]);
+
+  const [autoRerouteActive, setAutoRerouteActive] =
+    useState(false);
+
+  const [autoRerouteMessage, setAutoRerouteMessage] =
+    useState("");
   const simulatorTimerRef =
     useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -508,6 +536,26 @@ export default function SafeNavigationPage() {
     );
   }
 
+  const clearOffRouteTimer =
+    useCallback(() => {
+      if (
+        offRouteTimerRef.current !==
+        null
+      ) {
+        clearTimeout(
+          offRouteTimerRef.current
+        );
+
+        offRouteTimerRef.current =
+          null;
+      }
+    }, []);
+
+  useEffect(() => {
+    return () => {
+      clearOffRouteTimer();
+    };
+  }, [clearOffRouteTimer]);
   function clearSimulatorTimer() {
     if (simulatorTimerRef.current !== null) {
       clearInterval(simulatorTimerRef.current);
@@ -627,6 +675,146 @@ export default function SafeNavigationPage() {
     );
   }
 
+  function forceSimulatorOffRoute() {
+    if (!simulatorEnabled) {
+      return;
+    }
+
+    clearSimulatorTimer();
+    setSimulatorRunning(false);
+
+    const points =
+      simulatorPointsRef.current.length >= 2
+        ? simulatorPointsRef.current
+        : buildSimulatorPlaybackPoints();
+
+    if (points.length < 2) {
+      setSimulatorMessage(
+        "Calculate and reset a route before forcing off-route."
+      );
+
+      return;
+    }
+
+    simulatorPointsRef.current =
+      points;
+
+    const currentIndex =
+      Math.min(
+        Math.max(
+          simulatorIndexRef.current,
+          0
+        ),
+        points.length - 2
+      );
+
+    const current =
+      points[currentIndex];
+
+    const next =
+      points[currentIndex + 1];
+
+    const segmentLat =
+      next[0] -
+      current[0];
+
+    const segmentLng =
+      next[1] -
+      current[1];
+
+    const segmentLength =
+      Math.sqrt(
+        segmentLat *
+          segmentLat +
+        segmentLng *
+          segmentLng
+      );
+
+    if (
+      !Number.isFinite(
+        segmentLength
+      ) ||
+      segmentLength <= 0
+    ) {
+      setSimulatorMessage(
+        "Could not calculate off-route test vector."
+      );
+
+      return;
+    }
+
+    const perpendicularLat =
+      -segmentLng /
+      segmentLength;
+
+    const perpendicularLng =
+      segmentLat /
+      segmentLength;
+
+    const offsetMeters =
+      220;
+
+    const metersPerLatitudeDegree =
+      111320;
+
+    const latitudeRadians =
+      (current[0] *
+        Math.PI) /
+      180;
+
+    const metersPerLongitudeDegree =
+      Math.max(
+        1,
+        111320 *
+          Math.cos(
+            latitudeRadians
+          )
+      );
+
+    const forcedLat =
+      current[0] +
+      (perpendicularLat *
+        offsetMeters) /
+        metersPerLatitudeDegree;
+
+    const forcedLng =
+      current[1] +
+      (perpendicularLng *
+        offsetMeters) /
+        metersPerLongitudeDegree;
+
+    const heading =
+      simulatorBearing(
+        current,
+        next
+      );
+
+    clearOffRouteTimer();
+
+    offRouteStartedAtRef.current =
+      null;
+
+    setPosition({
+      lat: forcedLat,
+      lng: forcedLng,
+      speedKmh: 25,
+      heading,
+      accuracy: 5,
+    });
+
+    setGpsActive(true);
+    setFollowVehicle(true);
+
+    setGpsMessage(
+      "DEV simulator forced off route"
+    );
+
+    setSimulatorMessage(
+      `Forced approximately ${offsetMeters} m off route. Hold position to test automatic rerouting.`
+    );
+
+    setAutoRerouteMessage("");
+  }
   function pauseSyntheticDrive() {
     clearSimulatorTimer();
     setSimulatorRunning(false);
@@ -816,6 +1004,174 @@ export default function SafeNavigationPage() {
       setDestinationSearching(false);
     }
   }
+  const autoRerouteFromCurrentPosition =
+    useCallback(
+      async (
+        reroutePosition: PositionState
+      ) => {
+        if (
+          !destination ||
+          routing ||
+          autoRerouteInFlightRef.current
+        ) {
+          return;
+        }
+
+        const now =
+          Date.now();
+
+        if (
+          now -
+            lastAutoRerouteAtRef.current <
+          AUTO_REROUTE_COOLDOWN_MS
+        ) {
+          return;
+        }
+
+        autoRerouteInFlightRef.current =
+          true;
+
+        lastAutoRerouteAtRef.current =
+          now;
+
+        setAutoRerouteActive(true);
+
+        setAutoRerouteMessage(
+          "Off route detected - recalculating..."
+        );
+
+        setRoutingMessage(
+          "Off route detected. Calculating a new safe route..."
+        );
+
+        try {
+          const response =
+            await fetchWithAuth(
+              "/api/route-safety/reroute",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
+                cache: "no-store",
+                body: JSON.stringify({
+                  origin: {
+                    lat:
+                      reroutePosition.lat,
+                    lng:
+                      reroutePosition.lng,
+                  },
+                  destination: {
+                    lat: destination[0],
+                    lng: destination[1],
+                  },
+                  routingProfile,
+                }),
+              }
+            );
+
+          const result =
+            (await response.json()) as RerouteResponse;
+
+          if (!response.ok) {
+            const message =
+              result.error ??
+              "Automatic reroute failed.";
+
+            setAutoRerouteMessage(
+              message
+            );
+
+            setRoutingMessage(
+              message
+            );
+
+            return;
+          }
+
+          const nextRoutes =
+            result.routes ?? [];
+
+          if (
+            nextRoutes.length === 0
+          ) {
+            setAutoRerouteMessage(
+              "No replacement route was returned."
+            );
+
+            setRoutingMessage(
+              "No replacement route was returned."
+            );
+
+            return;
+          }
+
+          const nextRoute =
+            nextRoutes[0] ??
+            result.recommendedRoute ??
+            null;
+
+          setRoutes(
+            nextRoutes
+          );
+
+          setSelectedRouteIndex(
+            0
+          );
+
+          setNavigationInstructions(
+            instructionsForRoute(
+              nextRoute
+            )
+          );
+
+          setRecommendation(
+            result.recommendation ??
+              null
+          );
+
+          setFollowVehicle(
+            true
+          );
+
+          offRouteStartedAtRef.current =
+            null;
+
+          setAutoRerouteMessage(
+            "Route updated from current position."
+          );
+
+          setRoutingMessage(
+            `${nextRoutes.length} updated HarborGuard route option${
+              nextRoutes.length === 1
+                ? ""
+                : "s"
+            } ready.`
+          );
+        } catch {
+          setAutoRerouteMessage(
+            "Automatic reroute failed."
+          );
+
+          setRoutingMessage(
+            "Automatic reroute failed."
+          );
+        } finally {
+          autoRerouteInFlightRef.current =
+            false;
+
+          setAutoRerouteActive(
+            false
+          );
+        }
+      },
+      [
+        destination,
+        routing,
+        routingProfile,
+      ]
+    );
   async function calculateRoute() {
     if (!position) {
       setRoutingMessage("Start GPS before calculating a route.");
@@ -1017,9 +1373,186 @@ export default function SafeNavigationPage() {
     destinationDistanceMeters <=
       arrivalThresholdMeters;
 
+  const offRouteThresholdMeters =
+    position
+      ? Math.max(
+          AUTO_REROUTE_OFF_ROUTE_THRESHOLD,
+          Math.max(
+            0,
+            Number(
+              position.accuracy
+            ) || 0
+          ) *
+            AUTO_REROUTE_ACCURACY_MULTIPLIER
+        )
+      : AUTO_REROUTE_OFF_ROUTE_THRESHOLD;
+
+  useEffect(() => {
+    latestNavigationPositionRef.current =
+      position;
+
+    latestNavigationRoutePointsRef.current =
+      routePoints;
+
+    if (
+      !position ||
+      !routeProgress ||
+      !selectedRoute ||
+      !destination ||
+      hasReachedDestination ||
+      routing ||
+      autoRerouteInFlightRef.current
+    ) {
+      clearOffRouteTimer();
+
+      offRouteStartedAtRef.current =
+        null;
+
+      return;
+    }
+
+    const distanceFromRoute =
+      routeProgress.distanceFromRouteMeters;
+
+    if (
+      !Number.isFinite(
+        distanceFromRoute
+      ) ||
+      distanceFromRoute <=
+        offRouteThresholdMeters
+    ) {
+      clearOffRouteTimer();
+
+      offRouteStartedAtRef.current =
+        null;
+
+      return;
+    }
+
+    if (
+      offRouteTimerRef.current !==
+      null
+    ) {
+      return;
+    }
+
+    offRouteStartedAtRef.current =
+      Date.now();
+
+    setAutoRerouteMessage(
+      `Possible off-route movement detected (${Math.round(
+        distanceFromRoute
+      )} m from route).`
+    );
+
+    offRouteTimerRef.current =
+      setTimeout(() => {
+        offRouteTimerRef.current =
+          null;
+
+        const latestPosition =
+          latestNavigationPositionRef.current;
+
+        const latestRoutePoints =
+          latestNavigationRoutePointsRef.current;
+
+        if (
+          !latestPosition ||
+          latestRoutePoints.length < 2
+        ) {
+          offRouteStartedAtRef.current =
+            null;
+
+          return;
+        }
+
+        const latestProgress =
+          calculateRouteProgress(
+            [
+              latestPosition.lat,
+              latestPosition.lng,
+            ],
+            latestRoutePoints
+          );
+
+        if (!latestProgress) {
+          offRouteStartedAtRef.current =
+            null;
+
+          return;
+        }
+
+        const latestThresholdMeters =
+          Math.max(
+            AUTO_REROUTE_OFF_ROUTE_THRESHOLD,
+            Math.max(
+              0,
+              Number(
+                latestPosition.accuracy
+              ) || 0
+            ) *
+              AUTO_REROUTE_ACCURACY_MULTIPLIER
+          );
+
+        if (
+          !Number.isFinite(
+            latestProgress.distanceFromRouteMeters
+          ) ||
+          latestProgress.distanceFromRouteMeters <=
+            latestThresholdMeters
+        ) {
+          offRouteStartedAtRef.current =
+            null;
+
+          setAutoRerouteMessage(
+            "Vehicle returned to the active route."
+          );
+
+          return;
+        }
+
+        const now =
+          Date.now();
+
+        if (
+          now -
+            lastAutoRerouteAtRef.current <
+          AUTO_REROUTE_COOLDOWN_MS
+        ) {
+          offRouteStartedAtRef.current =
+            null;
+
+          return;
+        }
+
+        offRouteStartedAtRef.current =
+          null;
+
+        void autoRerouteFromCurrentPosition(
+          latestPosition
+        );
+      }, AUTO_REROUTE_SUSTAINED_MS);
+
+    return () => {
+      clearOffRouteTimer();
+    };
+  }, [
+    position,
+    routeProgress,
+    routePoints,
+    selectedRoute,
+    destination,
+    hasReachedDestination,
+    routing,
+    offRouteThresholdMeters,
+    autoRerouteFromCurrentPosition,
+    clearOffRouteTimer,
+  ]);
   const navigationHeadline =
-    hasReachedDestination
-      ? "You have arrived"
+    autoRerouteActive
+      ? "Rerouting..."
+      : hasReachedDestination
+        ? "You have arrived"
       : activeInstruction?.text ||
         (selectedRoute
           ? `Continue toward ${
@@ -1029,7 +1562,9 @@ export default function SafeNavigationPage() {
           : "Choose a destination");
 
   const navigationDetail =
-    hasReachedDestination
+    autoRerouteActive
+      ? "Finding a new HarborGuard safe route from your current position."
+      : hasReachedDestination
       ? destinationName
         ? `Arrived at ${destinationName}.`
         : "Destination reached."
@@ -1856,6 +2391,9 @@ export default function SafeNavigationPage() {
                 }}
               >
                 {simulatorMessage}
+                {autoRerouteMessage
+                  ? ` | ${autoRerouteMessage}`
+                  : ""}
               </div>
 
               <div
@@ -1903,6 +2441,22 @@ export default function SafeNavigationPage() {
                   Pause
                 </button>
 
+                <button
+                  type="button"
+                  onClick={forceSimulatorOffRoute}
+                  style={{
+                    gridColumn: "1 / -1",
+                    padding: "9px 10px",
+                    borderRadius: 9,
+                    border: "1px solid #f59e0b",
+                    background: "#78350f",
+                    color: "#fef3c7",
+                    cursor: "pointer",
+                    fontWeight: 800,
+                  }}
+                >
+                  Force Off Route
+                </button>
                 <button
                   type="button"
                   onClick={resetSyntheticDrive}
