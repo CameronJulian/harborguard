@@ -19,6 +19,22 @@ const SafeNavigationMap = dynamic(
 );
 
 type LatLng = [number, number];
+type WakeLockSentinelLike = {
+  released?: boolean;
+  release: () => Promise<void>;
+  addEventListener?: (
+    type: "release",
+    listener: () => void
+  ) => void;
+};
+
+type WakeLockNavigator = Navigator & {
+  wakeLock?: {
+    request: (
+      type: "screen"
+    ) => Promise<WakeLockSentinelLike>;
+  };
+};
 
 type RouteOption = {
   index?: number;
@@ -387,6 +403,11 @@ function calculateRouteProgress(
 
 export default function SafeNavigationPage() {
   const watchIdRef = useRef<number | null>(null);
+  const wakeLockRef =
+    useRef<WakeLockSentinelLike | null>(null);
+
+  const wakeLockRequestIdRef =
+    useRef(0);
 
   const offRouteStartedAtRef =
     useRef<number | null>(null);
@@ -1629,6 +1650,157 @@ export default function SafeNavigationPage() {
     destinationDistanceMeters <=
       arrivalThresholdMeters;
 
+  const releaseWakeLock =
+    useCallback(async () => {
+      /*
+       * Invalidates any in-flight request so a stale
+       * request cannot re-enable the wake lock after
+       * navigation has already stopped.
+       */
+      wakeLockRequestIdRef.current += 1;
+
+      const sentinel =
+        wakeLockRef.current;
+
+      wakeLockRef.current =
+        null;
+
+      if (!sentinel) {
+        return;
+      }
+
+      try {
+        await sentinel.release();
+      } catch {
+        /*
+         * Release failures are non-fatal. Browsers may
+         * already have released the sentinel automatically.
+         */
+      }
+    }, []);
+
+  const requestWakeLock =
+    useCallback(async () => {
+      if (
+        typeof navigator === "undefined" ||
+        typeof document === "undefined" ||
+        document.visibilityState !== "visible"
+      ) {
+        return;
+      }
+
+      const wakeLock =
+        (navigator as WakeLockNavigator)
+          .wakeLock;
+
+      if (
+        !wakeLock ||
+        wakeLockRef.current
+      ) {
+        return;
+      }
+
+      const requestId =
+        wakeLockRequestIdRef.current + 1;
+
+      wakeLockRequestIdRef.current =
+        requestId;
+
+      try {
+        const sentinel =
+          await wakeLock.request("screen");
+
+        if (
+          requestId !==
+            wakeLockRequestIdRef.current ||
+          document.visibilityState !== "visible"
+        ) {
+          try {
+            await sentinel.release();
+          } catch {
+            // Stale wake-lock cleanup is best effort.
+          }
+
+          return;
+        }
+
+        wakeLockRef.current =
+          sentinel;
+
+        sentinel.addEventListener?.(
+          "release",
+          () => {
+            if (
+              wakeLockRef.current ===
+              sentinel
+            ) {
+              wakeLockRef.current =
+                null;
+            }
+          }
+        );
+      } catch {
+        /*
+         * Wake Lock API is optional and may be denied by
+         * the browser, OS, battery policy, or permissions.
+         * Navigation must continue normally without it.
+         */
+      }
+    }, []);
+
+  useEffect(() => {
+    /*
+     * Simulator activity can set gpsActive, but only a real
+     * geolocation watch receives a wake lock.
+     */
+    const hasRealGpsWatch =
+      watchIdRef.current !== null;
+
+    const shouldHoldWakeLock =
+      gpsActive &&
+      hasRealGpsWatch &&
+      selectedRoute != null &&
+      !hasReachedDestination;
+
+    if (!shouldHoldWakeLock) {
+      void releaseWakeLock();
+      return;
+    }
+
+    void requestWakeLock();
+
+    const handleVisibilityChange =
+      () => {
+        if (
+          document.visibilityState ===
+          "visible"
+        ) {
+          void requestWakeLock();
+        } else {
+          void releaseWakeLock();
+        }
+      };
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange
+    );
+
+    return () => {
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+      );
+
+      void releaseWakeLock();
+    };
+  }, [
+    gpsActive,
+    selectedRoute,
+    hasReachedDestination,
+    requestWakeLock,
+    releaseWakeLock,
+  ]);
   useEffect(() => {
     if (
       !voiceEnabled ||
