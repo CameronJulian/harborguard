@@ -184,6 +184,64 @@ function distanceLabel(route: RouteOption | null) {
   return `${(route.distanceMeters / 1000).toFixed(1)} km`;
 }
 
+const VOICE_APPROACH_METERS = 500;
+const VOICE_NEAR_METERS = 150;
+
+function voiceDistancePhrase(
+  distanceMeters: number
+): string {
+  const safeDistance =
+    Math.max(
+      0,
+      Number(distanceMeters) || 0
+    );
+
+  if (safeDistance < 100) {
+    const rounded =
+      Math.max(
+        10,
+        Math.round(
+          safeDistance / 10
+        ) * 10
+      );
+
+    return `${rounded} meters`;
+  }
+
+  const rounded =
+    Math.max(
+      50,
+      Math.round(
+        safeDistance / 50
+      ) * 50
+    );
+
+  return `${rounded} meters`;
+}
+
+function navigationVoiceText(
+  instruction:
+    NavigationInstruction | null
+): string {
+  if (!instruction) {
+    return "";
+  }
+
+  const raw =
+    instruction.text?.trim() ||
+    [
+      instruction.action,
+      instruction.direction,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+
+  return raw
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 const AUTO_REROUTE_OFF_ROUTE_THRESHOLD = 45;
 const AUTO_REROUTE_ACCURACY_MULTIPLIER = 1.5;
 const AUTO_REROUTE_SUSTAINED_MS = 4000;
@@ -353,6 +411,17 @@ export default function SafeNavigationPage() {
 
   const [autoRerouteMessage, setAutoRerouteMessage] =
     useState("");
+  const lastSpokenAnnouncementRef =
+    useRef<Set<string>>(new Set());
+
+  const [voiceEnabled, setVoiceEnabled] =
+    useState(false);
+
+  const [
+    voiceStatusMessage,
+    setVoiceStatusMessage,
+  ] =
+    useState("Voice guidance off");
   const simulatorTimerRef =
     useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -556,6 +625,193 @@ export default function SafeNavigationPage() {
       clearOffRouteTimer();
     };
   }, [clearOffRouteTimer]);
+  const speakNavigationInstruction =
+    useCallback(
+      (
+        announcementKey: string,
+        message: string
+      ): boolean => {
+        const spokenMessage =
+          message.trim();
+
+        if (
+          !voiceEnabled ||
+          !spokenMessage ||
+          typeof window === "undefined" ||
+          !("speechSynthesis" in window) ||
+          typeof SpeechSynthesisUtterance ===
+            "undefined"
+        ) {
+          return false;
+        }
+
+        if (
+          lastSpokenAnnouncementRef.current.has(
+            announcementKey
+          )
+        ) {
+          return false;
+        }
+
+        const speechEngine =
+          window.speechSynthesis;
+
+        /*
+         * GPS progress updates frequently.
+         * Never interrupt an active or queued instruction
+         * just because the navigation effect ran again.
+         */
+        if (
+          speechEngine.speaking ||
+          speechEngine.pending
+        ) {
+          return false;
+        }
+
+        try {
+          const utterance =
+            new SpeechSynthesisUtterance(
+              spokenMessage
+            );
+
+          utterance.lang =
+            "en-ZA";
+
+          utterance.rate =
+            0.95;
+
+          utterance.pitch =
+            1;
+
+          utterance.onstart =
+            () => {
+              setVoiceStatusMessage(
+                "Voice guidance speaking"
+              );
+            };
+
+          utterance.onend =
+            () => {
+              setVoiceStatusMessage(
+                "Voice guidance on"
+              );
+            };
+
+          utterance.onerror =
+            (event) => {
+              if (
+                event.error === "canceled" ||
+                event.error === "interrupted"
+              ) {
+                return;
+              }
+
+              lastSpokenAnnouncementRef.current.delete(
+                announcementKey
+              );
+
+              setVoiceStatusMessage(
+                `Voice guidance error: ${
+                  event.error || "unknown"
+                }`
+              );
+            };
+
+          lastSpokenAnnouncementRef.current.add(
+            announcementKey
+          );
+
+          speechEngine.speak(
+            utterance
+          );
+
+          return true;
+        } catch {
+          /*
+           * Keep this path React-state free.
+           * This helper can be invoked from an effect.
+           */
+          lastSpokenAnnouncementRef.current.delete(
+            announcementKey
+          );
+
+          return false;
+        }
+      },
+      [voiceEnabled]
+    );
+  function toggleVoiceGuidance() {
+    if (voiceEnabled) {
+      setVoiceEnabled(false);
+
+      lastSpokenAnnouncementRef.current.clear();
+
+      if (
+        typeof window !== "undefined" &&
+        "speechSynthesis" in window
+      ) {
+        window.speechSynthesis.cancel();
+      }
+
+      setVoiceStatusMessage(
+        "Voice guidance off"
+      );
+
+      return;
+    }
+
+    if (
+      typeof window === "undefined" ||
+      !("speechSynthesis" in window) ||
+      typeof SpeechSynthesisUtterance ===
+        "undefined"
+    ) {
+      setVoiceStatusMessage(
+        "Voice guidance is unavailable in this browser."
+      );
+
+      return;
+    }
+
+    lastSpokenAnnouncementRef.current.clear();
+
+    window.speechSynthesis.cancel();
+
+    setVoiceEnabled(true);
+
+    setVoiceStatusMessage(
+      "Voice guidance on"
+    );
+  }
+
+  useEffect(() => {
+    lastSpokenAnnouncementRef.current.clear();
+
+    if (
+      typeof window !== "undefined" &&
+      "speechSynthesis" in window
+    ) {
+      window.speechSynthesis.cancel();
+    }
+  }, [
+    selectedRoute,
+    navigationInstructions,
+  ]);
+
+  useEffect(() => {
+    if (voiceEnabled) {
+      return;
+    }
+
+    lastSpokenAnnouncementRef.current.clear();
+
+    if (
+      typeof window !== "undefined" &&
+      "speechSynthesis" in window
+    ) {
+      window.speechSynthesis.cancel();
+    }
+  }, [voiceEnabled]);
   function clearSimulatorTimer() {
     if (simulatorTimerRef.current !== null) {
       clearInterval(simulatorTimerRef.current);
@@ -659,7 +915,7 @@ export default function SafeNavigationPage() {
       speedKmh:
         index >= points.length - 1
           ? 0
-          : 45,
+          : 20,
       heading,
       accuracy: 5,
     });
@@ -915,7 +1171,7 @@ export default function SafeNavigationPage() {
           points,
           nextIndex
         );
-      }, 250);
+      }, 1000);
   }
 
   async function searchDestination() {
@@ -1373,6 +1629,120 @@ export default function SafeNavigationPage() {
     destinationDistanceMeters <=
       arrivalThresholdMeters;
 
+  useEffect(() => {
+    if (
+      !voiceEnabled ||
+      routing ||
+      autoRerouteActive ||
+      !selectedRoute
+    ) {
+      return;
+    }
+
+    if (hasReachedDestination) {
+      const arrivalKey =
+        `arrival:${
+          destination?.[0] ?? ""
+        }:${
+          destination?.[1] ?? ""
+        }`;
+
+      const arrivalMessage =
+        destinationName &&
+        destinationName !==
+          "Destination"
+          ? `You have arrived at ${destinationName}.`
+          : "You have arrived at your destination.";
+
+      speakNavigationInstruction(
+        arrivalKey,
+        arrivalMessage
+      );
+
+      return;
+    }
+
+    if (
+      !nextInstruction ||
+      distanceToNextManeuver == null ||
+      activeInstructionIndex < 0
+    ) {
+      return;
+    }
+
+    const spokenInstruction =
+      navigationVoiceText(
+        nextInstruction
+      );
+
+    if (!spokenInstruction) {
+      return;
+    }
+
+    const nextInstructionIndex =
+      activeInstructionIndex + 1;
+
+    const routeOffset =
+      Number(
+        nextInstruction.routeOffsetMeters ??
+          nextInstruction.offset ??
+          0
+      );
+
+    const instructionIdentity =
+      `${nextInstructionIndex}:${routeOffset}:${spokenInstruction}`;
+
+    const approachKey =
+      `approach:${instructionIdentity}`;
+
+    const nearKey =
+      `near:${instructionIdentity}`;
+
+    if (
+      distanceToNextManeuver <=
+      VOICE_NEAR_METERS
+    ) {
+      const didSpeak =
+        speakNavigationInstruction(
+          nearKey,
+          `In ${voiceDistancePhrase(
+            distanceToNextManeuver
+          )}, ${spokenInstruction}`
+        );
+
+      if (didSpeak) {
+        lastSpokenAnnouncementRef.current.add(
+          approachKey
+        );
+      }
+
+      return;
+    }
+
+    if (
+      distanceToNextManeuver <=
+      VOICE_APPROACH_METERS
+    ) {
+      speakNavigationInstruction(
+        approachKey,
+        `In ${voiceDistancePhrase(
+          distanceToNextManeuver
+        )}, ${spokenInstruction}`
+      );
+    }
+  }, [
+    voiceEnabled,
+    routing,
+    autoRerouteActive,
+    selectedRoute,
+    hasReachedDestination,
+    destination,
+    destinationName,
+    nextInstruction,
+    distanceToNextManeuver,
+    activeInstructionIndex,
+    speakNavigationInstruction,
+  ]);
   const offRouteThresholdMeters =
     position
       ? Math.max(
@@ -1946,6 +2316,43 @@ export default function SafeNavigationPage() {
             >
               {gpsActive ? "Stop GPS" : "Start GPS"}
             </button>
+            <button
+              type="button"
+              onClick={toggleVoiceGuidance}
+              aria-pressed={voiceEnabled}
+              style={{
+                width: "100%",
+                marginTop: 10,
+                border:
+                  voiceEnabled
+                    ? "1px solid #22d3ee"
+                    : "1px solid #475569",
+                borderRadius: 12,
+                padding: "11px 14px",
+                background:
+                  voiceEnabled
+                    ? "#083344"
+                    : "#020617",
+                color: "#ffffff",
+                cursor: "pointer",
+                fontWeight: 800,
+              }}
+            >
+              {voiceEnabled
+                ? "Voice Guidance: On"
+                : "Voice Guidance: Off"}
+            </button>
+
+            <div
+              style={{
+                marginTop: 7,
+                color: "#94a3b8",
+                fontSize: 12,
+                lineHeight: 1.4,
+              }}
+            >
+              {voiceStatusMessage}
+            </div>
           </section>
 
           <section
