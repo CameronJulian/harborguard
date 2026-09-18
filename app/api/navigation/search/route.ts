@@ -11,6 +11,10 @@ type HereSearchItem = {
     lat?: number;
     lng?: number;
   };
+  access?: Array<{
+    lat?: number;
+    lng?: number;
+  }>;
   resultType?: string;
   categories?: Array<{
     id?: string;
@@ -131,6 +135,25 @@ export async function GET(req: NextRequest) {
         const lng =
           Number(item.position?.lng);
 
+        const firstAccess =
+          Array.isArray(item.access)
+            ? item.access[0]
+            : undefined;
+
+        const accessLat =
+          Number(firstAccess?.lat);
+
+        const accessLng =
+          Number(firstAccess?.lng);
+
+        const hasValidAccess =
+          Number.isFinite(accessLat) &&
+          Number.isFinite(accessLng) &&
+          accessLat >= -90 &&
+          accessLat <= 90 &&
+          accessLng >= -180 &&
+          accessLng <= 180;
+
         if (
           !Number.isFinite(lat) ||
           !Number.isFinite(lng)
@@ -151,6 +174,14 @@ export async function GET(req: NextRequest) {
               null,
             lat,
             lng,
+            accessLat:
+              hasValidAccess
+                ? accessLat
+                : null,
+            accessLng:
+              hasValidAccess
+                ? accessLng
+                : null,
             resultType:
               item.resultType ??
               null,

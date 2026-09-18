@@ -61,6 +61,8 @@ type NavigationSearchResult = {
   address: string | null;
   lat: number;
   lng: number;
+  accessLat: number | null;
+  accessLng: number | null;
   resultType: string | null;
   categories: string[];
 };
@@ -557,6 +559,37 @@ export default function SafeNavigationPage() {
       Number(destinationLng),
     ];
   }, [destinationLat, destinationLng]);
+  const routingDestination = useMemo(() => {
+    if (!destination) {
+      return null;
+    }
+
+    const hasAccessPoint =
+      selectedDestination !== null &&
+      typeof selectedDestination.accessLat === "number" &&
+      typeof selectedDestination.accessLng === "number" &&
+      Number.isFinite(selectedDestination.accessLat) &&
+      Number.isFinite(selectedDestination.accessLng);
+
+    if (!hasAccessPoint) {
+      return {
+        lat: destination[0],
+        lng: destination[1],
+      };
+    }
+
+    return {
+      lat: selectedDestination.accessLat as number,
+      lng: selectedDestination.accessLng as number,
+      sideOfStreetHint: {
+        lat: selectedDestination.lat,
+        lng: selectedDestination.lng,
+      },
+    };
+  }, [
+    destination,
+    selectedDestination,
+  ]);
 
   const selectedRoute =
     routes[selectedRouteIndex] ?? routes[0] ?? null;
@@ -1300,6 +1333,7 @@ export default function SafeNavigationPage() {
       ) => {
         if (
           !destination ||
+          !routingDestination ||
           routing ||
           autoRerouteInFlightRef.current
         ) {
@@ -1351,10 +1385,8 @@ export default function SafeNavigationPage() {
                     lng:
                       reroutePosition.lng,
                   },
-                  destination: {
-                    lat: destination[0],
-                    lng: destination[1],
-                  },
+                  destination:
+                    routingDestination,
                   routingProfile,
                 }),
               }
@@ -1457,6 +1489,7 @@ export default function SafeNavigationPage() {
       },
       [
         destination,
+        routingDestination,
         routing,
         routingProfile,
       ]
@@ -1467,7 +1500,7 @@ export default function SafeNavigationPage() {
       return;
     }
 
-    if (!destination) {
+    if (!destination || !routingDestination) {
       setRoutingMessage("Enter valid destination coordinates.");
       return;
     }
@@ -1489,10 +1522,8 @@ export default function SafeNavigationPage() {
               lat: position.lat,
               lng: position.lng,
             },
-            destination: {
-              lat: destination[0],
-              lng: destination[1],
-            },
+            destination:
+              routingDestination,
             routingProfile,
           }),
         }

@@ -363,23 +363,55 @@ export async function calculateHereRoutes(
   if (!process.env.HERE_API_KEY) {
     throw new Error("HERE_API_KEY is not configured.");
   }
+  const destinationLatitude =
+    Number(destination.lat);
+
+  const destinationLongitude =
+    Number(destination.lng);
+
+  const hintLatitude =
+    Number(destination?.sideOfStreetHint?.lat);
+
+  const hintLongitude =
+    Number(destination?.sideOfStreetHint?.lng);
+
+  const hasSideOfStreetHint =
+    Number.isFinite(hintLatitude) &&
+    Number.isFinite(hintLongitude) &&
+    hintLatitude >= -90 &&
+    hintLatitude <= 90 &&
+    hintLongitude >= -180 &&
+    hintLongitude <= 180;
+
+  const destinationWaypoint =
+    hasSideOfStreetHint
+      ? `${destinationLatitude},${destinationLongitude};sideOfStreetHint=${hintLatitude},${hintLongitude}`
+      : `${destinationLatitude},${destinationLongitude}`;
 
   const url =
     "https://router.hereapi.com/v8/routes" +
     `?transportMode=car` +
     `&origin=${Number(origin.lat)},${Number(origin.lng)}` +
-    `&destination=${Number(destination.lat)},${Number(destination.lng)}` +
+    `&destination=${destinationWaypoint}` +
     `&return=summary,polyline,actions,instructions` +
     `&spans=length,maxSpeed` +
     `&alternatives=3` +
     `&departureTime=any` +
     `&apikey=${process.env.HERE_API_KEY}`;
 
-  const cacheKey =
+  const baseCacheKey =
     buildHereRoutingProviderCacheKey(
       origin,
       destination
     );
+
+  const sideOfStreetCacheSuffix =
+    hasSideOfStreetHint
+      ? `|sideOfStreetHint=${hintLatitude.toFixed(5)},${hintLongitude.toFixed(5)}`
+      : "|sideOfStreetHint=none";
+
+  const cacheKey =
+    `${baseCacheKey}${sideOfStreetCacheSuffix}`;
 
   let data =
     await getCachedHereRoutingProviderResponse(
