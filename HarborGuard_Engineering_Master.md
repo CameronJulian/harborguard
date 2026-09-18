@@ -17645,3 +17645,145 @@ HSPP-007E should begin by identifying the next highest-value consumer and compar
 - latency/query cost;
 - compatibility with unlinked locations;
 - whether denial, exclusion, fallback or warning is appropriate.
+
+---
+
+# 2026-09-18 - Billing and Production Hardening Checkpoint
+
+## Source baseline
+
+- Baseline commit: 3a798d6d4face77f0caab0cc7fa635fcb4854ab9
+- HEAD and origin/main aligned.
+- Working tree clean.
+- GitHub CI passed.
+- Exact CI-clean production deployment confirmed.
+
+## PayFast billing hardening
+
+- PayFast API signature construction was audited.
+- API signature canonicalization was corrected.
+- PayFast API authentication was verified with HTTP 200.
+- Provider-side subscription cancellation was confirmed.
+- Provider status: 4.
+- Provider status text: CANCELLED.
+- Provider reason: Cancelled via API.
+
+## HarborGuard / PayFast reconciliation
+
+- HarborGuard initially remained locally active after PayFast cancellation.
+- Existing atomic reconciliation function was audited:
+- record_payfast_subscription_cancellation_atomically
+- HarborGuard was reconciled with the verified provider state.
+- Local subscription_status confirmed as cancelled.
+- cancelled_at populated.
+- next_billing_date preserved.
+- Professional paid-period entitlement preserved.
+- PayFast subscription identity preserved.
+- Cancellation billing event confirmed.
+- Duplicate cancellation event avoided.
+
+## Cancel-at-period-end entitlement
+
+Verified entitlement behavior:
+
+active -> premium access allowed
+
+cancelled + current time before next_billing_date -> premium access allowed
+
+cancelled + current time at or after next_billing_date -> premium access denied
+
+## Production regression verification
+
+Authenticated production GET tested against /api/fleet/health.
+
+Result:
+- HTTP 200.
+- No Subscription inactive denial.
+- Cancelled-but-still-paid Professional access confirmed.
+
+Synthetic entitlement boundary test confirmed:
+- FUTURE_CANCELLED_ACCESS=true
+- PAST_CANCELLED_ACCESS=false
+- EXACT_NOW_CANCELLED_ACCESS=false
+- ACTIVE_ACCESS=true
+- BOUNDARY_CONTRACT=PASS
+
+## Billing UI alignment
+
+- Billing UI was aligned with shared canAccessPremiumFeatures() logic.
+- Cancelled subscriptions retain Professional UI entitlement until paid-through expiry.
+- Incremental ESLint baseline passed.
+- TypeScript passed.
+- Production build passed.
+- GitHub CI passed.
+
+## Temporary PayFast diagnostic cleanup
+
+- Temporary subscription-state probe removed.
+- No real source references remained.
+- Stale .next generated types were cleared.
+- TypeScript passed after regeneration.
+- Production build passed.
+- GitHub CI passed.
+- Cleanup commit deployed.
+- Removed production endpoint confirmed HTTP 404.
+
+## Billing lifecycle status
+
+- PayFast API signature: PASS
+- Provider cancellation verification: PASS
+- Atomic local reconciliation: PASS
+- Paid-period entitlement: PASS
+- Post-period denial: PASS
+- Billing UI alignment: PASS
+- Production regression: PASS
+- Diagnostic cleanup: PASS
+- CI: PASS
+- Production deployment: PASS
+
+## Production hardening baseline
+
+Read-only repository inventory identified:
+- Automated test files: 609.
+- Database migrations: 200.
+- Existing GitHub CI workflow.
+- Existing load and soak tooling.
+- Existing recovery and restore-related tooling and evidence.
+- Existing rate-limiting controls.
+- Existing audit logging.
+- Existing Sentry integration.
+- Existing CSP reporting.
+
+These findings show that load testing, recovery tooling and automated regression are not completely absent.
+
+They do not by themselves prove production readiness.
+
+## Current SaaS phase
+
+Production hardening and operational readiness.
+
+Recommended audit order:
+1. Load and soak evidence audit.
+2. Current Supabase backup and restore proof.
+3. Regression coverage by subsystem.
+4. Security hardening coverage.
+5. Observability and alerting coverage.
+6. Operational recovery and remaining technical debt.
+
+## Engineering workflow
+
+AUDIT
+-> IDENTIFY ONE VERIFIED GAP
+-> MAKE ONE CONTROLLED CHANGE
+-> VERIFY LOCALLY
+-> BUILD
+-> COMMIT
+-> PUSH
+-> VERIFY CI
+-> DEPLOY EXACT CLEAN COMMIT WHEN REQUIRED
+-> REGRESSION TEST
+-> UPDATE ENGINEERING MASTER
+
+## Immediate next step
+
+Audit existing load and soak evidence and determine whether current reproducible production-capacity evidence exists.
