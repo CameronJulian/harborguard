@@ -205,6 +205,7 @@ function distanceLabel(route: RouteOption | null) {
   return `${(route.distanceMeters / 1000).toFixed(1)} km`;
 }
 
+const OVERSPEED_TOLERANCE_KPH = 5;
 const VOICE_APPROACH_METERS = 500;
 const VOICE_NEAR_METERS = 150;
 
@@ -453,6 +454,9 @@ export default function SafeNavigationPage() {
 
   const simulatorPointsRef =
     useRef<LatLng[]>([]);
+
+  const simulatorSpeedKmhRef =
+    useRef(20);
 
   const simulatorIndexRef =
     useRef(0);
@@ -941,7 +945,7 @@ export default function SafeNavigationPage() {
       speedKmh:
         index >= points.length - 1
           ? 0
-          : 20,
+          : simulatorSpeedKmhRef.current,
       heading,
       accuracy: 5,
     });
@@ -1572,6 +1576,27 @@ export default function SafeNavigationPage() {
               segment.endOffsetMeters
         )?.speedLimitKph ?? null
       : null;
+  const currentSpeedKph =
+    Math.max(
+      0,
+      Number(position?.speedKmh ?? 0)
+    );
+
+  const overspeedAmountKph =
+    activeSpeedLimitKph != null
+      ? Math.max(
+          0,
+          currentSpeedKph -
+            activeSpeedLimitKph
+        )
+      : 0;
+
+  const isOverspeeding =
+    activeSpeedLimitKph != null &&
+    currentSpeedKph >
+      activeSpeedLimitKph +
+        OVERSPEED_TOLERANCE_KPH;
+
   let activeInstructionIndex =
     navigationInstructions.length > 0
       ? 0
@@ -3040,6 +3065,48 @@ export default function SafeNavigationPage() {
 
                 <button
                   type="button"
+                  onClick={() => {
+                    simulatorSpeedKmhRef.current = 20;
+                    setSimulatorMessage(
+                      "Simulator test speed set to 20 km/h"
+                    );
+                  }}
+                  style={{
+                    padding: "9px 10px",
+                    borderRadius: 9,
+                    border: "1px solid #22c55e",
+                    background: "#14532d",
+                    color: "#dcfce7",
+                    cursor: "pointer",
+                    fontWeight: 800,
+                  }}
+                >
+                  Test 20 km/h
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    simulatorSpeedKmhRef.current = 80;
+                    setSimulatorMessage(
+                      "Simulator test speed set to 80 km/h"
+                    );
+                  }}
+                  style={{
+                    padding: "9px 10px",
+                    borderRadius: 9,
+                    border: "1px solid #ef4444",
+                    background: "#7f1d1d",
+                    color: "#fee2e2",
+                    cursor: "pointer",
+                    fontWeight: 800,
+                  }}
+                >
+                  Test 80 km/h
+                </button>
+
+                <button
+                  type="button"
                   onClick={forceSimulatorOffRoute}
                   style={{
                     gridColumn: "1 / -1",
@@ -3201,8 +3268,17 @@ export default function SafeNavigationPage() {
                 value={distanceLabel(selectedRoute)}
               />
               <Metric
-                label="Speed"
-                value={`${Math.round(position?.speedKmh ?? 0)} km/h`}
+                label={
+                  isOverspeeding
+                    ? "OVERSPEED"
+                    : "Speed"
+                }
+                value={
+                  isOverspeeding
+                    ? `${Math.round(currentSpeedKph)} km/h (+${Math.round(overspeedAmountKph)} over)`
+                    : `${Math.round(currentSpeedKph)} km/h`
+                }
+                alert={isOverspeeding}
               />
               <Metric
                 label="Speed Limit"
@@ -3260,14 +3336,18 @@ export default function SafeNavigationPage() {
 function Metric({
   label,
   value,
+  alert = false,
 }: {
   label: string;
   value: string;
+  alert?: boolean;
 }) {
   return (
     <div
       style={{
-        background: "rgba(2,6,23,.96)",
+        background: alert
+          ? "rgba(127,29,29,.97)"
+          : "rgba(2,6,23,.96)",
         padding: "14px 8px",
         textAlign: "center",
       }}
