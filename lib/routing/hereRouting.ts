@@ -314,6 +314,43 @@ type HereNavigationAction = {
   exitSign?: unknown;
 };
 
+type HereLocalizedValue = {
+  value?: string | null;
+  language?: string | null;
+};
+
+type HereRoadMetadata = {
+  name?: HereLocalizedValue[];
+  number?: HereLocalizedValue[];
+  toward?: HereLocalizedValue[];
+};
+
+type HereSignpostLabel = {
+  routeNumber?: HereLocalizedValue;
+  name?: HereLocalizedValue;
+};
+
+type HereSignpost = {
+  labels?: HereSignpostLabel[];
+};
+
+type HereExitSign = {
+  number?: HereLocalizedValue[];
+};
+
+type HereTurnByTurnAction = {
+  action?: string | null;
+  direction?: string | null;
+  severity?: string | null;
+  duration?: number | string | null;
+  length?: number | string | null;
+  offset?: number | string | null;
+  turnAngle?: number | string | null;
+  currentRoad?: HereRoadMetadata | null;
+  nextRoad?: HereRoadMetadata | null;
+  signpost?: HereSignpost | null;
+  exitSign?: HereExitSign | null;
+};
 type HereNavigationInstruction = {
   instruction?: string | null;
   text?: string | null;
@@ -349,6 +386,7 @@ type HereRouteSection = {
   polyline?: unknown;
   actions?: HereNavigationAction[];
   instructions?: HereNavigationInstruction[];
+  turnByTurnActions?: HereTurnByTurnAction[];
   spans?: HereSpeedLimitSpan[];
 };
 export async function calculateHereRoutes(
@@ -393,7 +431,7 @@ export async function calculateHereRoutes(
     `?transportMode=car` +
     `&origin=${Number(origin.lat)},${Number(origin.lng)}` +
     `&destination=${destinationWaypoint}` +
-    `&return=summary,polyline,actions,instructions` +
+    `&return=summary,polyline,actions,instructions,turnByTurnActions` +
     `&spans=length,maxSpeed` +
     `&alternatives=3` +
     `&departureTime=any` +
@@ -410,8 +448,11 @@ export async function calculateHereRoutes(
       ? `|sideOfStreetHint=${hintLatitude.toFixed(5)},${hintLongitude.toFixed(5)}`
       : "|sideOfStreetHint=none";
 
+  const guidanceContractCacheSuffix =
+    "|guidanceContract=v2";
+
   const cacheKey =
-    `${baseCacheKey}${sideOfStreetCacheSuffix}`;
+    `${baseCacheKey}${sideOfStreetCacheSuffix}${guidanceContractCacheSuffix}`;
 
   let data =
     await getCachedHereRoutingProviderResponse(
@@ -550,6 +591,104 @@ export async function calculateHereRoutes(
       );
     };
 
+    const firstLocalizedValue = (
+      values:
+        | HereLocalizedValue[]
+        | null
+        | undefined
+    ) => {
+      if (!Array.isArray(values)) {
+        return null;
+      }
+
+      for (const item of values) {
+        const value =
+          typeof item?.value === "string"
+            ? item.value.trim()
+            : "";
+
+        if (value) {
+          return value;
+        }
+      }
+
+      return null;
+    };
+
+    const localizedValues = (
+      values:
+        | HereLocalizedValue[]
+        | null
+        | undefined
+    ) => {
+      if (!Array.isArray(values)) {
+        return [];
+      }
+
+      return values
+        .map((item) =>
+          typeof item?.value === "string"
+            ? item.value.trim()
+            : ""
+        )
+        .filter(
+          (value): value is string =>
+            value.length > 0
+        );
+    };
+
+    const normalizeRoadMetadata = (
+      road:
+        | HereRoadMetadata
+        | null
+        | undefined
+    ) => ({
+      name:
+        firstLocalizedValue(
+          road?.name
+        ),
+      number:
+        firstLocalizedValue(
+          road?.number
+        ),
+      toward:
+        localizedValues(
+          road?.toward
+        ),
+    });
+
+    const normalizeSignpost = (
+      signpost:
+        | HereSignpost
+        | null
+        | undefined
+    ) => {
+      const labels =
+        Array.isArray(signpost?.labels)
+          ? signpost.labels
+          : [];
+
+      return labels
+        .map((label) => ({
+          routeNumber:
+            typeof label?.routeNumber
+              ?.value === "string"
+              ? label.routeNumber.value.trim()
+              : null,
+          name:
+            typeof label?.name?.value ===
+            "string"
+              ? label.name.value.trim()
+              : null,
+        }))
+        .filter(
+          (label) =>
+            Boolean(
+              label.routeNumber ||
+              label.name
+            )
+        );
+    };
     const navigationActions =
       sections.flatMap(
         (section, sectionIndex) =>
@@ -584,6 +723,72 @@ export async function calculateHereRoutes(
             : []
       );
 
+    const navigationTurnByTurnActions =
+      sections.flatMap(
+        (section, sectionIndex) =>
+          Array.isArray(
+            section?.turnByTurnActions
+          )
+            ? section.turnByTurnActions.map(
+                (
+                  action,
+                  actionIndex
+                ) => ({
+                  sectionIndex,
+                  actionIndex,
+                  action:
+                    action?.action ?? null,
+                  direction:
+                    action?.direction ?? null,
+                  severity:
+                    action?.severity ?? null,
+                  length:
+                    Number(
+                      action?.length || 0
+                    ),
+                  duration:
+                    Number(
+                      action?.duration || 0
+                    ),
+                  offset:
+                    Number(
+                      action?.offset || 0
+                    ),
+                  routeOffsetMeters:
+                    routeOffsetMetersFor(
+                      sectionIndex,
+                      action?.offset
+                    ),
+                  turnAngle:
+                    Number.isFinite(
+                      Number(
+                        action?.turnAngle
+                      )
+                    )
+                      ? Number(
+                          action?.turnAngle
+                        )
+                      : null,
+                  currentRoad:
+                    normalizeRoadMetadata(
+                      action?.currentRoad
+                    ),
+                  nextRoad:
+                    normalizeRoadMetadata(
+                      action?.nextRoad
+                    ),
+                  signpost:
+                    normalizeSignpost(
+                      action?.signpost
+                    ),
+                  exitNumbers:
+                    localizedValues(
+                      action?.exitSign?.number
+                    ),
+                })
+              )
+            : []
+      );
     const navigationInstructions =
       sections.flatMap(
         (section, sectionIndex) =>
@@ -741,6 +946,7 @@ export async function calculateHereRoutes(
       routePoints,
       routePointCount: routePoints.length,
       navigationActions,
+      navigationTurnByTurnActions,
       navigationInstructions,
       speedLimitSegments,
       safetyScore: routeRisk.safetyScore,

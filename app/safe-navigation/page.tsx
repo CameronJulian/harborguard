@@ -71,12 +71,16 @@ type NavigationInstruction = {
   sectionIndex?: number;
   instructionIndex?: number;
   text?: string | null;
+  voiceText?: string | null;
   action?: string | null;
   direction?: string | null;
   length?: number;
   duration?: number;
   offset?: number;
   routeOffsetMeters?: number;
+  roadLabel?: string | null;
+  towardLabel?: string | null;
+  exitNumber?: string | null;
 };
 
 type NavigationAction = {
@@ -93,13 +97,358 @@ type NavigationAction = {
   exitSign?: unknown;
 };
 
+type NavigationRoadMetadata = {
+  name?: string | null;
+  number?: string | null;
+  toward?: string[];
+};
+
+type NavigationSignpostLabel = {
+  routeNumber?: string | null;
+  name?: string | null;
+};
+
+type NavigationTurnByTurnAction = {
+  sectionIndex?: number;
+  actionIndex?: number;
+  action?: string | null;
+  direction?: string | null;
+  severity?: string | null;
+  length?: number;
+  duration?: number;
+  offset?: number;
+  routeOffsetMeters?: number;
+  turnAngle?: number | null;
+  currentRoad?: NavigationRoadMetadata | null;
+  nextRoad?: NavigationRoadMetadata | null;
+  signpost?: NavigationSignpostLabel[];
+  exitNumbers?: string[];
+};
 type GuidedRoute = RouteOption & {
   navigationInstructions?:
     NavigationInstruction[];
   navigationActions?:
     NavigationAction[];
+  navigationTurnByTurnActions?:
+    NavigationTurnByTurnAction[];
 };
 
+function uniqueNavigationLabels(
+  values: Array<string | null | undefined>
+): string[] {
+  const seen =
+    new Set<string>();
+
+  const result: string[] = [];
+
+  for (const rawValue of values) {
+    const value =
+      typeof rawValue === "string"
+        ? rawValue.trim()
+        : "";
+
+    if (!value) {
+      continue;
+    }
+
+    const key =
+      value.toLowerCase();
+
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    result.push(value);
+  }
+
+  return result;
+}
+
+function navigationRoadLabel(
+  road:
+    | NavigationRoadMetadata
+    | null
+    | undefined
+): string | null {
+  if (!road) {
+    return null;
+  }
+
+  const values =
+    uniqueNavigationLabels([
+      road.number,
+      road.name,
+    ]);
+
+  return values.length > 0
+    ? values.join(" · ")
+    : null;
+}
+
+function navigationTowardLabel(
+  action: NavigationTurnByTurnAction
+): string | null {
+  const nextRoadToward =
+    Array.isArray(
+      action.nextRoad?.toward
+    )
+      ? action.nextRoad?.toward ?? []
+      : [];
+
+  const signpostNames =
+    Array.isArray(action.signpost)
+      ? action.signpost
+          .map((label) => label?.name)
+          .filter(
+            (
+              value
+            ): value is string =>
+              typeof value === "string" &&
+              value.trim().length > 0
+          )
+      : [];
+
+  const signpostRoutes =
+    Array.isArray(action.signpost)
+      ? action.signpost
+          .map(
+            (label) =>
+              label?.routeNumber
+          )
+          .filter(
+            (
+              value
+            ): value is string =>
+              typeof value === "string" &&
+              value.trim().length > 0
+          )
+      : [];
+
+  const values =
+    uniqueNavigationLabels([
+      ...nextRoadToward,
+      ...signpostNames,
+      ...signpostRoutes,
+    ]);
+
+  return values.length > 0
+    ? values.join(" / ")
+    : null;
+}
+
+function navigationDirectionPhrase(
+  direction:
+    | string
+    | null
+    | undefined
+): string {
+  return typeof direction === "string"
+    ? direction
+        .replace(
+          /([a-z])([A-Z])/g,
+          "$1 $2"
+        )
+        .replace(/[_-]+/g, " ")
+        .trim()
+        .toLowerCase()
+    : "";
+}
+
+function richInstructionForAction(
+  action: NavigationTurnByTurnAction,
+  instructionIndex: number
+): NavigationInstruction {
+  const actionName =
+    typeof action.action === "string"
+      ? action.action.trim()
+      : "";
+
+  const direction =
+    navigationDirectionPhrase(
+      action.direction
+    );
+
+  const nextRoadLabel =
+    navigationRoadLabel(
+      action.nextRoad
+    );
+
+  const currentRoadLabel =
+    navigationRoadLabel(
+      action.currentRoad
+    );
+
+  const roadLabel =
+    nextRoadLabel ??
+    currentRoadLabel;
+
+  const towardLabel =
+    navigationTowardLabel(
+      action
+    );
+
+  const exitNumber =
+    Array.isArray(action.exitNumbers)
+      ? action.exitNumbers.find(
+          (value) =>
+            typeof value === "string" &&
+            value.trim().length > 0
+        )?.trim() ?? null
+      : null;
+
+  let text = "";
+
+  switch (actionName) {
+    case "depart":
+      text =
+        roadLabel
+          ? `Start on ${roadLabel}`
+          : "Start your route";
+      break;
+
+    case "arrive":
+      text =
+        "Arrive at your destination";
+      break;
+
+    case "turn":
+      text =
+        `Turn${
+          direction
+            ? ` ${direction}`
+            : ""
+        }${
+          roadLabel
+            ? ` onto ${roadLabel}`
+            : ""
+        }`;
+      break;
+
+    case "keep":
+      text =
+        `Keep${
+          direction
+            ? ` ${direction}`
+            : ""
+        }${
+          roadLabel
+            ? ` onto ${roadLabel}`
+            : ""
+        }`;
+      break;
+
+    case "enterHighway":
+      text =
+        roadLabel
+          ? `Enter ${roadLabel}`
+          : "Enter the highway";
+      break;
+
+    case "exitHighway":
+      text =
+        `Take${
+          exitNumber
+            ? ` exit ${exitNumber}`
+            : " the exit"
+        }${
+          towardLabel
+            ? ` toward ${towardLabel}`
+            : roadLabel
+              ? ` onto ${roadLabel}`
+              : ""
+        }`;
+      break;
+
+    case "continue":
+      text =
+        roadLabel
+          ? `Continue on ${roadLabel}`
+          : "Continue";
+      break;
+
+    default: {
+      const fallbackAction =
+        actionName
+          ? actionName
+              .replace(
+                /([a-z])([A-Z])/g,
+                "$1 $2"
+              )
+              .replace(
+                /[_-]+/g,
+                " "
+              )
+              .trim()
+          : "Continue";
+
+      text =
+        `${fallbackAction}${
+          direction
+            ? ` ${direction}`
+            : ""
+        }${
+          roadLabel
+            ? ` onto ${roadLabel}`
+            : ""
+        }`;
+    }
+  }
+
+  if (
+    towardLabel &&
+    actionName !== "exitHighway" &&
+    !text
+      .toLowerCase()
+      .includes(
+        towardLabel.toLowerCase()
+      )
+  ) {
+    text =
+      `${text} toward ${towardLabel}`;
+  }
+
+  const voiceText =
+    text
+      .replace(/\s*·\s*/g, ", ")
+      .replace(/\s*\/\s*/g, " or ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  return {
+    sectionIndex:
+      action.sectionIndex,
+    instructionIndex,
+    text:
+      text.trim(),
+    voiceText,
+    action:
+      action.action ?? null,
+    direction:
+      action.direction ?? null,
+    length:
+      Number(
+        action.length || 0
+      ),
+    duration:
+      Number(
+        action.duration || 0
+      ),
+    offset:
+      Number(
+        action.offset || 0
+      ),
+    routeOffsetMeters:
+      Number(
+        action.routeOffsetMeters ??
+        action.offset ??
+        0
+      ),
+    roadLabel,
+    towardLabel,
+    exitNumber,
+  };
+}
 function instructionsForRoute(
   route: RouteOption | null | undefined
 ): NavigationInstruction[] {
@@ -109,6 +458,20 @@ function instructionsForRoute(
 
   const guidedRoute =
     route as GuidedRoute;
+  if (
+    Array.isArray(
+      guidedRoute.navigationTurnByTurnActions
+    ) &&
+    guidedRoute.navigationTurnByTurnActions.length > 0
+  ) {
+    return guidedRoute.navigationTurnByTurnActions.map(
+      (action, index) =>
+        richInstructionForAction(
+          action,
+          index
+        )
+    );
+  }
 
   if (
     Array.isArray(
@@ -252,6 +615,7 @@ function navigationVoiceText(
   }
 
   const raw =
+    instruction.voiceText?.trim() ||
     instruction.text?.trim() ||
     [
       instruction.action,
@@ -3149,8 +3513,40 @@ function simulatorBearing(
                               instruction.direction ?? ""
                             }`}
                         </div>
+                        {(
+                          instruction.roadLabel ||
+                          instruction.towardLabel ||
+                          instruction.exitNumber
+                        ) ? (
+                          <div
+                            style={{
+                              marginTop: 5,
+                              display: "grid",
+                              gap: 2,
+                              fontSize: 12,
+                              color: "#94a3b8",
+                            }}
+                          >
+                            {instruction.roadLabel ? (
+                              <div>
+                                {instruction.roadLabel}
+                              </div>
+                            ) : null}
 
-                        {Number(
+                            {instruction.exitNumber ? (
+                              <div>
+                                Exit {instruction.exitNumber}
+                              </div>
+                            ) : null}
+
+                            {instruction.towardLabel ? (
+                              <div>
+                                Toward {instruction.towardLabel}
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
+{Number(
                           instruction.length
                         ) > 0 ? (
                           <div
