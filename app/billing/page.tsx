@@ -1,7 +1,7 @@
 "use client";
 
 import { supabase } from "@/lib/supabase";
-import { canAccessPremiumFeatures } from "@/lib/subscription";
+import { canAccessPremiumFeatures } from "@/lib/subscription-access";
 import PermissionGate from "@/components/auth/PermissionGate";
 import { useEffect, useState } from "react";
 
