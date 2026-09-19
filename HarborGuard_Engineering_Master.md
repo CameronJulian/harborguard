@@ -6,9 +6,9 @@
 **Repository:** `C:\Users\cameron\harborguard`
 **Primary branch:** `main`
 **Current active development branch:** `main`
-**Latest verified feature commit:** `643fc6332475b714d796537852d5040603755365`
-**Last updated:** 2026-09-15
-**Current status:** Onboarding atomicity, invitation role restriction, invitation inviter-role alignment, invitation acceptance, and profile read-RLS reconciliation are closed for their tested production scopes. The profile-RLS workstream is reproducible from tracked migrations and has completed local structural verification, multi-organization behavioral validation, full regression/build verification, hosted CI, controlled production migration, post-deployment schema verification, and deployed anonymous-access smoke testing. Billing request validation also remains verified for its tested scope. Remaining production-hardening work must continue audit-first and must not reopen these closed workstreams merely to increase a completion score.
+**Latest verified feature commit:** `b05a1450ebf6aa9c6b249d5a65aeaa63a2423e32`
+**Last updated:** 2026-09-19
+**Current status:** Onboarding atomicity, invitation role restriction, invitation inviter-role alignment, invitation acceptance, profile read-RLS reconciliation, billing client/server boundary correction, Safe Navigation production verification, and Phase 2L.5 routing-provider/TomTom validation are closed for their tested scopes. HarborGuard now has a server-controlled HERE/TomTom routing-provider boundary with HERE retained as the fail-safe local and production default. A controlled real TomTom route was validated end to end against HarborGuard's genuine `road_risk_segments` data and shared route-risk scorer while production remained on HERE. Remaining production-hardening work must continue audit-first; TomTom production activation remains a separate future controlled rollout with rollback, cost limits, and monitoring.
 
 
 # HarborGuard — Current Progress Update, 15 September 2026
@@ -17787,3 +17787,214 @@ AUDIT
 ## Immediate next step
 
 Audit existing load and soak evidence and determine whether current reproducible production-capacity evidence exists.
+
+---
+
+# HarborGuard — Current Progress Update, 19 September 2026
+
+## Phase 2L.5 — server-controlled routing provider and TomTom validation closure
+
+**Status:** Closed for the tested integration and production-safety scope.
+
+**Authoritative repository HEAD at closeout:** `b05a1450ebf6aa9c6b249d5a65aeaa63a2423e32`
+
+This section supersedes earlier routing-provider next-step instructions where they conflict with the verified September 19 state. Historical entries remain below as implementation history.
+
+### Routing-provider safety boundary
+
+HarborGuard now has a server-controlled routing-provider selector for the reroute path. The provider decision remains controlled by server configuration rather than a client request field.
+
+Verified closeout state:
+
+```text
+server-controlled provider selection                    PASS
+client provider selection                               DISALLOWED
+selector fallback/default                               HERE
+local ROUTING_PROVIDER                                  unset
+Vercel production ROUTING_PROVIDER                      unset
+production default provider                             HERE
+TomTom production enabled                               false
+```
+
+The selector retains HERE as the fail-safe default when no explicit routing provider is configured. The production environment was deliberately left without `ROUTING_PROVIDER`, so the TomTom implementation is available but not activated for normal production routing.
+
+### TomTom local credential and cost-guard validation
+
+Local provider testing was performed without exposing secrets in logs or committing `.env.local`.
+
+Verified local safety state:
+
+```text
+.env.local ignored by Git                               true
+.env.local tracked by Git                               false
+real TOMTOM_API_KEY present                             true
+real UPSTASH_REDIS_REST_URL present                     true
+real UPSTASH_REDIS_REST_TOKEN present                   true
+Upstash Redis ping                                      PONG
+working tree before/after tests                         clean
+```
+
+The first controlled TomTom attempts correctly failed closed when required runtime dependencies were unavailable. After restoring the real local Upstash values, the provider cost guard became available and controlled testing proceeded.
+
+### Real TomTom provider validation
+
+A controlled real TomTom Orbis routing request was executed successfully with the provider implementation while production remained on HERE.
+
+Observed normalized result from the initial real provider validation:
+
+```text
+provider                                                 tomtom_orbis_routing_v3
+routing profile                                          safest
+route count                                              1
+recommended route present                                true
+route distance                                           4429 m
+route duration                                           1114 s
+route points                                             235
+navigation instructions                                  13
+turn-by-turn actions                                     13
+```
+
+That initial test intentionally supplied an empty road-risk segment array, so the resulting route risk was `0` and safety score was `100`. The result proved provider connectivity, response normalization, route geometry handling, and navigation-action normalization without claiming real risk matching from that test.
+
+### Real HarborGuard risk-segment inventory
+
+A read-only Supabase inventory confirmed the current test dataset contained exactly one usable real `road_risk_segments` row for the available organization.
+
+The genuine segment used for final validation had:
+
+```text
+risk_score                                               32
+radius_meters                                            150
+verification_count                                       2
+```
+
+No synthetic second database segment was created merely to make a test pass.
+
+### Shared route-risk scorer contract
+
+The correct shared geometry scorer is:
+
+```text
+lib/routing/routeRiskRanking.ts
+```
+
+TomTom passes normalized route geometry into the shared `scoreRouteRisk()` path. A road-risk segment is matched when at least one normalized route point falls within that segment's stored `radius_meters` boundary.
+
+This is distinct from the provider-geometry threat-weighting logic elsewhere in the prediction pipeline. The route-risk segment matcher does not use the separate 50/150/300/500/1000 metre provider-geometry weighting bands.
+
+### End-to-end real risk propagation proof
+
+A final controlled TomTom route deliberately used the one genuine HarborGuard risk segment as the destination so the provider route geometry would pass into its matching radius. Supabase access for the test was SELECT-only.
+
+Observed end-to-end result:
+
+```text
+real database segment used                              true
+TomTom provider                                         tomtom_orbis_routing_v3
+route distance                                           2612 m
+route duration                                           423 s
+normalized route points                                  104
+matched risk segments                                    1
+base stored segment risk                                 32
+calculated total risk score                              33.28
+normalized route risk score                              33
+route safety score                                       67
+real segment geometry match                              PASS
+real segment risk propagation                            PASS
+```
+
+This proves the tested path:
+
+```text
+real Supabase road_risk_segments row
+    -> TomTom Orbis route
+    -> normalized TomTom route geometry
+    -> shared HarborGuard scoreRouteRisk()
+    -> real segment geometry match
+    -> route risk propagation
+    -> ranked normalized HarborGuard route result
+```
+
+### Production closeout verification
+
+The final Phase 2L.5 production-safety audit confirmed:
+
+```text
+Git HEAD == origin/main                                  PASS
+working tree                                             CLEAN
+server control boundary                                  PASS
+client provider selection allowed                        false
+HERE fail-safe                                           PASS
+TomTom provider implementation present                   PASS
+production ROUTING_PROVIDER present                      false
+production default provider                              HERE
+TomTom production enabled                                false
+production aliases                                       verified
+production root HTTP                                     200
+real TomTom calls during closeout audit                  0
+real HERE calls during closeout audit                    0
+source mutation during closeout audit                    false
+database mutation during closeout audit                  false
+```
+
+The production aliases were verified against the Ready Vercel deployment and `https://harborguard.vercel.app/` returned HTTP `200` during closeout.
+
+### Billing client/server boundary correction completed in the same September 19 workstream
+
+The local `/billing` runtime error caused by importing a server-side Supabase service-role client into the billing client bundle was corrected by separating the client-safe subscription-access logic from the server-only subscription module.
+
+Verified delivery state:
+
+```text
+billing client/server boundary fix                       PASS
+service-role key remains server-only                     true
+local billing runtime verification                       PASS
+feature commit                                            4bdb9428b090582f4b0ac3789de0d7599b30d8b0
+commit pushed                                             true
+production deployment                                    Ready
+```
+
+This work corrected the runtime boundary without making the service-role key public.
+
+### Safe Navigation / production deployment verification
+
+The September 19 deployment sequence also verified the production aliases and custom domain behavior, including the expected apex redirect from `billiskills.co.za` to `www.billiskills.co.za`, final HTTP `200`, and successful Safe Navigation HTTP checks.
+
+UTF-8 corruption in the Safe Navigation road-label middle-dot separator and its voice-normalization regex was repaired earlier in the sequence and validated before deployment.
+
+### What Phase 2L.5 proves
+
+For the tested scope, HarborGuard now has concrete evidence that:
+
+- the application can hold both HERE and TomTom routing implementations behind a server-controlled selector;
+- HERE remains the safe default when no provider override exists;
+- the TomTom provider can perform a real route request and normalize its response into HarborGuard's route model;
+- Upstash-backed cost guarding is reachable in the controlled local runtime;
+- TomTom route geometry can be evaluated by HarborGuard's existing shared road-risk scorer;
+- a genuine persisted `road_risk_segments` row can be matched by real TomTom geometry;
+- matched persisted risk propagates into route risk and safety scores;
+- the tested TomTom path does not require enabling TomTom in production.
+
+This is an integration and production-safety closure for the tested scope. It is not a claim that TomTom is production-enabled, that every route/provider failure mode has been exhaustively tested, or that external-provider spend has been validated under customer-scale traffic.
+
+### Current production provider decision
+
+Do **not** set `ROUTING_PROVIDER=tomtom` in production merely because Phase 2L.5 passed.
+
+Production activation should be treated as a separate controlled phase requiring, at minimum:
+
+1. explicit rollout criteria;
+2. rollback to HERE;
+3. provider cost/budget limits and alerting;
+4. rate-limit and failure monitoring;
+5. production observability around provider latency/errors;
+6. a controlled initial traffic percentage or equivalent limited exposure;
+7. post-activation regression verification.
+
+Until that separate phase is deliberately approved and executed, production remains on HERE by default.
+
+### Resume position after this update
+
+Do not repeat the Phase 2L.5 TomTom validation merely to increase a completion score. The provider integration, real-route normalization, genuine risk-segment propagation, cost-guard reachability, server-controlled selector boundary, HERE fail-safe, and production closeout have all been demonstrated for their tested scopes.
+
+The next engineering item should be selected audit-first from remaining production-hardening or operational-readiness gaps. A future TomTom production activation is one candidate, but it should compete with other open hardening priorities rather than being assumed as the next task.
