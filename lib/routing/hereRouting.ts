@@ -1,4 +1,7 @@
 import {
+  reserveHereProviderRequest,
+} from "@/lib/here/hereCostGuard";
+import {
   buildHereRoutingProviderCacheKey,
   cacheHereRoutingProviderResponse,
   getCachedHereRoutingProviderResponse,
@@ -460,6 +463,16 @@ export async function calculateHereRoutes(
     );
 
   if (!data) {
+    const hereCostReservation =
+      await reserveHereProviderRequest(
+        "routing",
+      );
+
+    if (!hereCostReservation.allowed) {
+      throw new Error(
+        `HERE Routing blocked by cost guard: ${hereCostReservation.reason}.`,
+      );
+    }
     const response = await fetch(
       url,
       {

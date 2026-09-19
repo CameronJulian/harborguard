@@ -1,3 +1,6 @@
+import {
+  reserveHereProviderRequest,
+} from "@/lib/here/hereCostGuard";
 const EARTH_RADIUS_METERS = 6371e3;
 const LOOKAHEAD_DISTANCE_METERS = 100;
 
@@ -89,6 +92,14 @@ export async function resolveHereRoadSpeedLimit({
     `&apikey=${apiKey}`;
 
   try {
+    const hereCostReservation =
+      await reserveHereProviderRequest(
+        "speed-limit",
+      );
+
+    if (!hereCostReservation.allowed) {
+      return null;
+    }
     const response = await fetch(url, {
       cache: "no-store",
     });

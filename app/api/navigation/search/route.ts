@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
+import {
+  reserveHereProviderRequest,
+} from "@/lib/here/hereCostGuard";
 
 type HereSearchItem = {
   id?: string;
@@ -97,6 +100,34 @@ export async function GET(req: NextRequest) {
       "https://discover.search.hereapi.com/v1/discover" +
       `?${params.toString()}`;
 
+    const hereCostReservation =
+      await reserveHereProviderRequest(
+        "destination-search",
+      );
+
+    if (!hereCostReservation.allowed) {
+      return NextResponse.json(
+        {
+          error:
+            "HERE destination search blocked by cost guard.",
+          reason:
+            hereCostReservation.reason,
+          limit:
+            hereCostReservation.limit,
+          remaining:
+            hereCostReservation.remaining,
+          reset:
+            hereCostReservation.reset,
+        },
+        {
+          status:
+            hereCostReservation.reason ===
+            "budget-exhausted"
+              ? 429
+              : 503,
+        },
+      );
+    }
     const response =
       await fetch(
         url,
