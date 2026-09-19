@@ -670,6 +670,24 @@ const AUTO_REROUTE_OFF_ROUTE_THRESHOLD = 45;
 const AUTO_REROUTE_ACCURACY_MULTIPLIER = 1.5;
 const AUTO_REROUTE_SUSTAINED_MS = 4000;
 const AUTO_REROUTE_COOLDOWN_MS = 15000;
+
+/*
+ * Above this accuracy radius, the current GPS fix is too uncertain
+ * for state-changing navigation decisions such as arrival or
+ * automatic rerouting.
+ */
+const GPS_POOR_ACCURACY_METERS = 200;
+
+function gpsAccuracyIsPoor(
+  accuracy: number | null | undefined
+): boolean {
+  const numericAccuracy = Number(accuracy);
+
+  return (
+    Number.isFinite(numericAccuracy) &&
+    numericAccuracy > GPS_POOR_ACCURACY_METERS
+  );
+}
 type RouteProgressState = {
   progressMeters: number;
   distanceFromRouteMeters: number;
@@ -1107,7 +1125,13 @@ export default function SafeNavigationPage() {
 
         setGpsActive(true);
         setGpsMessage(
-          `GPS live - accuracy ${Math.round(gps.coords.accuracy)} m`
+          gpsAccuracyIsPoor(gps.coords.accuracy)
+            ? `GPS accuracy poor - ${Math.round(
+                gps.coords.accuracy
+              )} m. Waiting for a better location fix.`
+            : `GPS live - accuracy ${Math.round(
+                gps.coords.accuracy
+              )} m`
         );
       },
       (error) => {
@@ -2389,6 +2413,11 @@ function simulatorBearing(
         )
       : null;
 
+  const gpsAccuracyPoor =
+    position
+      ? gpsAccuracyIsPoor(position.accuracy)
+      : false;
+
   const arrivalThresholdMeters =
     Math.max(
       35,
@@ -2399,6 +2428,7 @@ function simulatorBearing(
     );
 
   const hasReachedDestination =
+    !gpsAccuracyPoor &&
     navigationInstructions.length > 0 &&
     activeInstructionIndex >=
       Math.max(
@@ -2735,6 +2765,7 @@ function simulatorBearing(
       routePoints;
 
     if (
+      gpsAccuracyPoor ||
       !position ||
       !routeProgress ||
       !selectedRoute ||
@@ -2799,6 +2830,17 @@ function simulatorBearing(
         if (
           !latestPosition ||
           latestRoutePoints.length < 2
+        ) {
+          offRouteStartedAtRef.current =
+            null;
+
+          return;
+        }
+
+        if (
+          gpsAccuracyIsPoor(
+            latestPosition.accuracy
+          )
         ) {
           offRouteStartedAtRef.current =
             null;
