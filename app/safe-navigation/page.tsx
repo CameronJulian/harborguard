@@ -1040,6 +1040,33 @@ export default function SafeNavigationPage() {
       watchIdRef.current = null;
     }
 
+    /*
+     * Stop DEV simulator playback as part of the same GPS lifecycle.
+     * Without this, the next simulator tick can set gpsActive=true again.
+     */
+    clearSimulatorTimer();
+    setSimulatorRunning(false);
+
+    /*
+     * Cancel any pending off-route decision that was based on movement
+     * before GPS tracking was stopped.
+     */
+    clearOffRouteTimer();
+    offRouteStartedAtRef.current = null;
+
+    /*
+     * Preserve the last known map position, but remove stale motion
+     * from the HUD while GPS tracking is stopped.
+     */
+    setPosition((current) =>
+      current
+        ? {
+            ...current,
+            speedKmh: 0,
+          }
+        : current
+    );
+
     setGpsActive(false);
     setGpsMessage("GPS stopped");
   }
@@ -1084,6 +1111,34 @@ export default function SafeNavigationPage() {
         );
       },
       (error) => {
+        /*
+         * Release the failed watch so Start GPS can create a fresh
+         * geolocation watch on the next retry.
+         */
+        if (
+          watchIdRef.current !== null &&
+          typeof navigator !== "undefined" &&
+          navigator.geolocation
+        ) {
+          navigator.geolocation.clearWatch(watchIdRef.current);
+          watchIdRef.current = null;
+        }
+
+        clearOffRouteTimer();
+        offRouteStartedAtRef.current = null;
+
+        /*
+         * Do not leave the last measured speed visible after GPS failure.
+         */
+        setPosition((current) =>
+          current
+            ? {
+                ...current,
+                speedKmh: 0,
+              }
+            : current
+        );
+
         setGpsActive(false);
         setGpsMessage(`GPS error: ${error.message}`);
       },
