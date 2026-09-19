@@ -1797,6 +1797,40 @@ function simulatorBearing(
       }, 1000);
   }
 
+  function endNavigation() {
+    clearOffRouteTimer();
+
+    offRouteStartedAtRef.current = null;
+    lastAutoRerouteAtRef.current = 0;
+    autoRerouteInFlightRef.current = false;
+
+    pauseSyntheticDrive();
+
+    if (
+      typeof window !== "undefined" &&
+      "speechSynthesis" in window
+    ) {
+      window.speechSynthesis.cancel();
+    }
+
+    lastSpokenAnnouncementRef.current.clear();
+    overspeedVoiceArmedRef.current = true;
+
+    setRoutes([]);
+    setSelectedRouteIndex(0);
+    setNavigationInstructions([]);
+    setRecommendation(null);
+
+    setAutoRerouteActive(false);
+    setAutoRerouteMessage("");
+
+    setRouting(false);
+    setFollowVehicle(true);
+
+    setRoutingMessage(
+      "Navigation ended. Destination retained - calculate a route when you are ready."
+    );
+  }
   async function searchDestination() {
     const query =
       destinationName.trim();
@@ -3470,6 +3504,26 @@ function simulatorBearing(
             >
               {routing ? "Calculating..." : "Calculate Safe Route"}
             </button>
+
+            {routes.length > 0 ? (
+              <button
+                type="button"
+                onClick={endNavigation}
+                style={{
+                  width: "100%",
+                  marginTop: 10,
+                  border: "1px solid #475569",
+                  borderRadius: 12,
+                  padding: "12px 14px",
+                  background: "#0f172a",
+                  color: "#f8fafc",
+                  fontWeight: 900,
+                  cursor: "pointer",
+                }}
+              >
+                End Navigation
+              </button>
+            ) : null}
 
             <div
               style={{
