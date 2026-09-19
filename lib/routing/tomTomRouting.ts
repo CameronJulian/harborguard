@@ -7,6 +7,12 @@ import {
   cacheTomTomRoutingProviderResponse,
   getCachedTomTomRoutingProviderResponse,
 } from "@/lib/routing/tomTomRoutingProviderCache";
+import {
+  normalizeRoutingProfile,
+  rankRoutes,
+  scoreRouteRisk,
+  type RoutePoint,
+} from "@/lib/routing/routeRiskRanking";
 
 type RoutingPoint = {
   lat: number;
@@ -17,6 +23,7 @@ type TomTomRoutingRequest = {
   origin: RoutingPoint;
   destination: RoutingPoint;
   routingProfile?: string | null;
+  roadRiskSegments?: any[];
 };
 
 type TextWithPhonetics = {
@@ -766,8 +773,94 @@ export async function calculateTomTomRoutes(
     );
   }
 
-  return normalizeTomTomResponse(
-    data,
-    routingProfile,
-  );
+  const normalized =
+    normalizeTomTomResponse(
+      data,
+      routingProfile,
+    );
+
+  const harborGuardProfile =
+    normalizeRoutingProfile(
+      request.routingProfile,
+    );
+
+  const roadRiskSegments =
+    Array.isArray(
+      request.roadRiskSegments,
+    )
+      ? request.roadRiskSegments
+      : [];
+
+  const scoredRoutes =
+    normalized.routes.map(
+      (route) => {
+        const routeRisk =
+          scoreRouteRisk(
+            route.routePoints.map(
+              (point): RoutePoint => [
+                point.latitude,
+                point.longitude,
+              ],
+            ),
+            roadRiskSegments,
+          );
+
+        return {
+          ...route,
+
+          riskScore:
+            routeRisk.normalizedRiskScore,
+
+          safetyScore:
+            routeRisk.safetyScore,
+
+          matchedRiskSegmentCount:
+            routeRisk.matchedSegmentCount,
+
+          matchedRiskSegmentIds:
+            routeRisk.matchedSegmentIds,
+
+          totalRiskScore:
+            routeRisk.totalRiskScore,
+
+          highestRiskScore:
+            routeRisk.highestRiskScore,
+
+          verificationCount:
+            routeRisk.verificationCount,
+        };
+      },
+    );
+
+  const rankedRoutes =
+    rankRoutes(
+      scoredRoutes,
+      harborGuardProfile,
+    );
+
+  const recommendedRoute =
+    rankedRoutes[0] ?? null;
+
+  return {
+    ...normalized,
+
+    routingProfile:
+      harborGuardProfile,
+
+    routes:
+      rankedRoutes,
+
+    recommendedRoute,
+
+    recommendation:
+      recommendedRoute
+        ? `HarborGuard ${harborGuardProfile} ranking selected TomTom route ${
+            Number(
+              recommendedRoute.index,
+            ) + 1
+          } with a safety score of ${
+            recommendedRoute.safetyScore
+          }.`
+        : "No TomTom route available",
+  };
 }

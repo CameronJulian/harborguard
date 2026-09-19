@@ -210,3 +210,147 @@ test(
     );
   },
 );
+test(
+  "provider applies HarborGuard shared route risk before recommendation",
+  () => {
+    assert.match(
+      source,
+      /roadRiskSegments/,
+    );
+
+    assert.match(
+      source,
+      /normalizeRoutingProfile/,
+    );
+
+    assert.match(
+      source,
+      /scoreRouteRisk/,
+    );
+
+    assert.match(
+      source,
+      /rankRoutes/,
+    );
+
+    assert.match(
+      source,
+      /matchedRiskSegmentCount/,
+    );
+
+    assert.match(
+      source,
+      /matchedRiskSegmentIds/,
+    );
+
+    assert.match(
+      source,
+      /safetyScore/,
+    );
+
+    assert.match(
+      source,
+      /riskScore/,
+    );
+
+    const providerStart =
+      source.indexOf(
+        "export async function calculateTomTomRoutes",
+      );
+
+    assert.notEqual(
+      providerStart,
+      -1,
+    );
+
+    const providerSource =
+      source.slice(
+        providerStart,
+      );
+
+    const normalizeIndex =
+      providerSource.indexOf(
+        "normalizeTomTomResponse(",
+      );
+
+    const scoreIndex =
+      providerSource.indexOf(
+        "scoreRouteRisk(",
+      );
+
+    const rankIndex =
+      providerSource.indexOf(
+        "rankRoutes(",
+      );
+
+    const recommendedIndex =
+      providerSource.indexOf(
+        "const recommendedRoute",
+      );
+
+    assert.ok(
+      normalizeIndex >= 0,
+    );
+
+    assert.ok(
+      scoreIndex >
+        normalizeIndex,
+    );
+
+    assert.ok(
+      rankIndex >
+        scoreIndex,
+    );
+
+    assert.ok(
+      recommendedIndex >
+        rankIndex,
+    );
+  },
+);
+
+test(
+  "provider keeps TomTom normalization separate from HarborGuard risk authority",
+  () => {
+    const normalizerStart =
+      source.indexOf(
+        "export function normalizeTomTomResponse",
+      );
+
+    const providerStart =
+      source.indexOf(
+        "export async function calculateTomTomRoutes",
+      );
+
+    assert.notEqual(
+      normalizerStart,
+      -1,
+    );
+
+    assert.notEqual(
+      providerStart,
+      -1,
+    );
+
+    const normalizerSource =
+      source.slice(
+        normalizerStart,
+        providerStart,
+      );
+
+    assert.doesNotMatch(
+      normalizerSource,
+      /scoreRouteRisk\(/,
+    );
+
+    assert.doesNotMatch(
+      normalizerSource,
+      /rankRoutes\(/,
+    );
+
+    assert.doesNotMatch(
+      normalizerSource,
+      /roadRiskSegments/,
+    );
+  },
+);
