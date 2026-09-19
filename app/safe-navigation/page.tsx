@@ -3311,6 +3311,18 @@ function simulatorBearing(
                 <input
                   value={destinationName}
                   onChange={(event) => {
+                    if (
+                      routes.length > 0 ||
+                      navigationInstructions.length > 0 ||
+                      autoRerouteActive
+                    ) {
+                      endNavigation();
+
+                      setRoutingMessage(
+                        "Destination changed. Select a destination and calculate a new route."
+                      );
+                    }
+
                     setDestinationName(
                       event.target.value
                     );
@@ -3380,6 +3392,14 @@ function simulatorBearing(
                         }
                         type="button"
                         onClick={() => {
+                          if (
+                            routes.length > 0 ||
+                            navigationInstructions.length > 0 ||
+                            autoRerouteActive
+                          ) {
+                            endNavigation();
+                          }
+
                           setSelectedDestination(
                             result
                           );
