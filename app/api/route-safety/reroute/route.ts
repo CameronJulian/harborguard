@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireOrganization } from "@/lib/server-auth";
-import { calculateHereRoutes } from "@/lib/routing/hereRouting";
+import {
+  calculateRoutesWithProvider,
+  normalizeRoutingProvider,
+} from "@/lib/routing/routingProviderSelector";
 
 export async function POST(req: NextRequest) {
   try {
@@ -59,13 +62,22 @@ last_event_at
         { status: 500 }
       );
     }
+    const routingProvider =
+      normalizeRoutingProvider(
+        process.env.ROUTING_PROVIDER,
+      );
 
-    const result = await calculateHereRoutes(
-      origin,
-      destination,
-      roadRiskSegments ?? [],
-      routingProfile
-    );
+    const result =
+      await calculateRoutesWithProvider(
+        {
+          origin,
+          destination,
+          roadRiskSegments:
+            roadRiskSegments ?? [],
+          routingProfile,
+        },
+        routingProvider,
+      );
 
     return NextResponse.json({
       success: true,

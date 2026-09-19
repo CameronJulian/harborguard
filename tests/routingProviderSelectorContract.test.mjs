@@ -151,9 +151,24 @@ test(
 );
 
 test(
-  "live reroute remains HERE-only during selector introduction",
+  "live reroute uses server-controlled provider selector",
   () => {
     assert.match(
+      rerouteSource,
+      /calculateRoutesWithProvider/,
+    );
+
+    assert.match(
+      rerouteSource,
+      /normalizeRoutingProvider/,
+    );
+
+    assert.match(
+      rerouteSource,
+      /process\.env\.ROUTING_PROVIDER/,
+    );
+
+    assert.doesNotMatch(
       rerouteSource,
       /calculateHereRoutes/,
     );
@@ -162,10 +177,30 @@ test(
       rerouteSource,
       /calculateTomTomRoutes/,
     );
+  },
+);
+
+test(
+  "live reroute does not accept client-controlled provider selection",
+  () => {
+    assert.doesNotMatch(
+      rerouteSource,
+      /body\.provider/,
+    );
 
     assert.doesNotMatch(
       rerouteSource,
-      /calculateRoutesWithProvider/,
+      /body\.routingProvider/,
+    );
+
+    assert.doesNotMatch(
+      rerouteSource,
+      /body\.routeProvider/,
+    );
+
+    assert.doesNotMatch(
+      rerouteSource,
+      /body\.preferredProvider/,
     );
   },
 );
