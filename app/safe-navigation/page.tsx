@@ -67,12 +67,21 @@ type NavigationSearchResult = {
   categories: string[];
 };
 
+type TomTomManeuverGuidance =
+  | "keepLeft"
+  | "keepRight"
+  | "mergeLeftLane"
+  | "mergeRightLane";
+
 type NavigationInstruction = {
   sectionIndex?: number;
   instructionIndex?: number;
   text?: string | null;
   voiceText?: string | null;
   action?: string | null;
+  maneuverGuidance?:
+    | TomTomManeuverGuidance
+    | null;
   direction?: string | null;
   length?: number;
   duration?: number;
@@ -112,6 +121,9 @@ type NavigationTurnByTurnAction = {
   sectionIndex?: number;
   actionIndex?: number;
   action?: string | null;
+  maneuverGuidance?:
+    | TomTomManeuverGuidance
+    | null;
   direction?: string | null;
   severity?: string | null;
   length?: number;
@@ -260,9 +272,11 @@ function richInstructionForAction(
   instructionIndex: number
 ): NavigationInstruction {
   const actionName =
-    typeof action.action === "string"
-      ? action.action.trim()
-      : "";
+    typeof action.maneuverGuidance === "string"
+      ? action.maneuverGuidance
+      : typeof action.action === "string"
+        ? action.action.trim()
+        : "";
 
   const direction =
     navigationDirectionPhrase(
@@ -300,6 +314,26 @@ function richInstructionForAction(
   let text = "";
 
   switch (actionName) {
+    case "keepLeft":
+      text =
+        "Keep left";
+      break;
+
+    case "keepRight":
+      text =
+        "Keep right";
+      break;
+
+    case "mergeLeftLane":
+      text =
+        "Merge into the left lane";
+      break;
+
+    case "mergeRightLane":
+      text =
+        "Merge into the right lane";
+      break;
+
     case "depart":
       text =
         roadLabel
@@ -424,6 +458,8 @@ function richInstructionForAction(
     voiceText,
     action:
       action.action ?? null,
+    maneuverGuidance:
+      action.maneuverGuidance ?? null,
     direction:
       action.direction ?? null,
     length:
