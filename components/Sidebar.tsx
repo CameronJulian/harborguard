@@ -180,6 +180,14 @@ export default function Sidebar({
         >
           Mobile Tracker
         </Link>
+
+        <Link
+          href="/safe-navigation"
+          style={navStyle("/safe-navigation")}
+          onClick={onNavigate}
+        >
+          Safe Navigation
+        </Link>
       </div>
 
       <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 18 }}>
