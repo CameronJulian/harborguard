@@ -1119,7 +1119,8 @@ export default function SafeNavigationPage() {
     useCallback(
       (
         announcementKey: string,
-        message: string
+        message: string,
+        interruptExisting = false
       ): boolean => {
         const spokenMessage =
           message.trim();
@@ -1155,7 +1156,11 @@ export default function SafeNavigationPage() {
           speechEngine.speaking ||
           speechEngine.pending
         ) {
-          return false;
+          if (!interruptExisting) {
+            return false;
+          }
+
+          speechEngine.cancel();
         }
 
         try {
@@ -2563,7 +2568,8 @@ function simulatorBearing(
 
       speakNavigationInstruction(
         arrivalKey,
-        arrivalMessage
+        arrivalMessage,
+        true
       );
 
       return;
