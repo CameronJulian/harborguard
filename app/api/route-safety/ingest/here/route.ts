@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+import {
+  reserveHereProviderRequest,
+} from "@/lib/here/hereCostGuard";
 import { requireOrganization } from "@/lib/server-auth";
 import {
   getIntelligenceSourceConfiguration,
@@ -121,7 +124,35 @@ export async function POST(req: Request) {
       `&locationReferencing=shape` +
       `&apikey=${process.env.HERE_API_KEY}`;
 
-    const response = await fetch(url, { cache: "no-store" });
+        const hereCostReservation =
+      await reserveHereProviderRequest(
+        "traffic-incidents",
+      );
+
+    if (!hereCostReservation.allowed) {
+      return NextResponse.json(
+        {
+          error:
+            "HERE Traffic request blocked by cost guard.",
+          reason:
+            hereCostReservation.reason,
+          limit:
+            hereCostReservation.limit,
+          remaining:
+            hereCostReservation.remaining,
+          reset:
+            hereCostReservation.reset,
+        },
+        {
+          status:
+            hereCostReservation.reason ===
+            "budget-exhausted"
+              ? 429
+              : 503,
+        }
+      );
+    }
+const response = await fetch(url, { cache: "no-store" });
     const data = await response.json();
 
     if (!response.ok) {

@@ -1,3 +1,6 @@
+import {
+  reserveHereProviderRequest,
+} from "@/lib/here/hereCostGuard";
 import { randomUUID } from "node:crypto";
 import type {
   IntelligenceSourceConfigurationLoader,
@@ -265,7 +268,17 @@ export async function importHereIncidents(
     const fetchStartedAt =
       Date.now();
 
-    const response = await fetch(url, {
+      const hereCostReservation =
+    await reserveHereProviderRequest(
+      "traffic-incidents",
+    );
+
+  if (!hereCostReservation.allowed) {
+    throw new Error(
+      `HERE Traffic incident import blocked by cost guard: ${hereCostReservation.reason}.`,
+    );
+  }
+const response = await fetch(url, {
       cache: "no-store",
       signal: AbortSignal.timeout(10_000),
     });
