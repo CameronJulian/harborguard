@@ -115,7 +115,7 @@ export default function DriverEmergencyPage() {
   useEffect(() => {
     async function loadVehicles() {
       try {
-        const response = await fetch("/api/fleet/live", { cache: "no-store" });
+        const response = await fetchWithAuth("/api/fleet/live", { cache: "no-store" });
         const result = (await response.json()) as FleetResponse | { error: string };
 
         if (!response.ok) {
@@ -240,7 +240,7 @@ export default function DriverEmergencyPage() {
     setStatusMessage("");
 
     try {
-      const response = await fetch("/api/fleet/start-trip", {
+      const response = await fetchWithAuth("/api/fleet/start-trip", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -282,7 +282,7 @@ export default function DriverEmergencyPage() {
   if (!selectedVehicleId) return;
 
   try {
-    const response = await fetch("/api/fleet/update-location", {
+    const response = await fetchWithAuth("/api/fleet/update-location", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -354,7 +354,7 @@ export default function DriverEmergencyPage() {
 
   async function checkNearbyThreats(latitude: number, longitude: number) {
     try {
-      const response = await fetch(`/api/route-safety/nearby?lat=${latitude}&lng=${longitude}`, {
+      const response = await fetchWithAuth(`/api/route-safety/nearby?lat=${latitude}&lng=${longitude}`, {
         cache: "no-store",
       });
 
