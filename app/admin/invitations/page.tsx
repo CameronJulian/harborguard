@@ -78,7 +78,7 @@ export default function AdminInvitationsPage() {
     const confirmed = window.confirm("Delete this invitation?");
     if (!confirmed) return;
 
-    const response = await fetch(`/api/organization-invitations?id=${id}`, {
+    const response = await fetchWithAuth(`/api/organization-invitations?id=${id}`, {
       method: "DELETE",
     });
 

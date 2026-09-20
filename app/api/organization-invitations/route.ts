@@ -82,7 +82,7 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const { supabase, role } = await requireOrganization();
+    const { supabase, organizationId, role } = await requireOrganization();
     requireRole(role, ["owner", "admin"]);
 
     const url = new URL(req.url);
@@ -95,7 +95,8 @@ export async function DELETE(req: Request) {
     const { error } = await supabase
       .from("organization_invitations")
       .delete()
-      .eq("id", id);
+      .eq("id", id)
+      .eq("organization_id", organizationId);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
