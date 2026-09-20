@@ -10,6 +10,16 @@ export type RoutingProfile =
   | "safest"
   | "fastest"
   | "balanced";
+export type RoadRiskSegment = {
+  id?: string | number | null;
+  latitude?: unknown;
+  longitude?: unknown;
+  radius_meters?: unknown;
+  risk_score?: unknown;
+  verification_count?: unknown;
+  last_event_at?: string | null;
+  [key: string]: unknown;
+};
 
 export function normalizeRoutingProfile(
   value: unknown,
@@ -31,7 +41,7 @@ export function normalizeRoutingProfile(
 
 export function scoreRouteRisk(
   routePoints: RoutePoint[],
-  roadRiskSegments: any[],
+  roadRiskSegments: RoadRiskSegment[],
 ) {
   const matchedSegments =
     roadRiskSegments.filter(

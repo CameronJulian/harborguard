@@ -4,6 +4,7 @@ import { calculateHereRoutes } from "@/lib/routing/hereRouting";
 import { calculateTomTomRoutes } from "@/lib/routing/tomTomRouting";
 import {
   normalizeRoutingProfile,
+  type RoadRiskSegment,
   type RoutingProfile,
 } from "@/lib/routing/routeRiskRanking";
 
@@ -11,10 +12,19 @@ export type RoutingProvider =
   | "here"
   | "tomtom";
 
+export type RoutingProviderPoint = {
+  lat: number;
+  lng: number;
+  sideOfStreetHint?: {
+    lat?: number;
+    lng?: number;
+  } | null;
+};
+
 export type RoutingProviderRequest = {
-  origin: any;
-  destination: any;
-  roadRiskSegments?: any[];
+  origin: RoutingProviderPoint;
+  destination: RoutingProviderPoint;
+  roadRiskSegments?: RoadRiskSegment[];
   routingProfile?: RoutingProfile | string | null;
 };
 

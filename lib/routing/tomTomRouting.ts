@@ -11,6 +11,7 @@ import {
   normalizeRoutingProfile,
   rankRoutes,
   scoreRouteRisk,
+  type RoadRiskSegment,
   type RoutePoint,
 } from "@/lib/routing/routeRiskRanking";
 
@@ -23,7 +24,7 @@ type TomTomRoutingRequest = {
   origin: RoutingPoint;
   destination: RoutingPoint;
   routingProfile?: string | null;
-  roadRiskSegments?: any[];
+  roadRiskSegments?: RoadRiskSegment[];
 };
 
 type TextWithPhonetics = {

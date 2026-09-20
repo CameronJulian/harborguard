@@ -3154,6 +3154,7 @@ function simulatorBearing(
     destination,
     hasReachedDestination,
     routing,
+    gpsAccuracyPoor,
     offRouteThresholdMeters,
     autoRerouteFromCurrentPosition,
     clearOffRouteTimer,
