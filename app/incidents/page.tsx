@@ -4,6 +4,7 @@ import Link from "next/link";
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import AppShell from "@/components/AppShell";
 import { supabase } from "@/lib/supabase";
+import { fetchWithAuth } from "@/lib/auth-fetch";
 
 type IncidentRow = {
   id: string;
@@ -213,15 +214,10 @@ const { data } = await supabase
 
     setResolvingId(id);
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    const response = await fetch("/api/incidents/resolve", {
+    const response = await fetchWithAuth("/api/incidents/resolve", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${session?.access_token}`,
       },
       body: JSON.stringify({ id, resolutionNote }),
     });
