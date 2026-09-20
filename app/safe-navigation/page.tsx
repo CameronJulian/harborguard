@@ -878,6 +878,8 @@ export default function SafeNavigationPage() {
    */
   const autoRerouteRequestIdRef =
     useRef(0);
+  const autoRerouteAbortControllerRef =
+    useRef<AbortController | null>(null);
   const offRouteTimerRef =
     useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -1018,6 +1020,18 @@ export default function SafeNavigationPage() {
       manualRouteRequestIdRef.current += 1;
       manualRouteAbortControllerRef.current?.abort();
       manualRouteAbortControllerRef.current = null;
+    };
+  }, []);
+  useEffect(() => {
+    return () => {
+      /*
+       * Invalidate and physically cancel automatic reroute work
+       * when this page leaves the component tree.
+       */
+      autoRerouteRequestIdRef.current += 1;
+      autoRerouteAbortControllerRef.current?.abort();
+      autoRerouteAbortControllerRef.current = null;
+      autoRerouteInFlightRef.current = false;
     };
   }, []);
 
@@ -1771,9 +1785,6 @@ function simulatorBearing(
       segmentLat /
       segmentLength;
 
-    const offsetMeters =
-      220;
-
     const metersPerLatitudeDegree =
       111320;
 
@@ -1791,17 +1802,89 @@ function simulatorBearing(
           )
       );
 
-    const forcedLat =
-      current[0] +
-      (perpendicularLat *
-        offsetMeters) /
-        metersPerLatitudeDegree;
+    /*
+     * The production detector measures distance against the complete
+     * active route, not merely the current simulator segment.
+     *
+     * Try increasing offsets on both sides of the current segment and
+     * accept only a point that calculateRouteProgress confirms is
+     * genuinely outside the route corridor.
+     */
+    const candidateOffsetsMeters =
+      [220, 300, 400, 550, 750, 1000];
 
-    const forcedLng =
-      current[1] +
-      (perpendicularLng *
-        offsetMeters) /
-        metersPerLongitudeDegree;
+    let forcedPosition:
+      | {
+          lat: number;
+          lng: number;
+          distanceFromRouteMeters: number;
+          offsetMeters: number;
+        }
+      | null = null;
+
+    for (
+      const offsetMeters of
+        candidateOffsetsMeters
+    ) {
+      for (
+        const direction of [1, -1]
+      ) {
+        const candidateLat =
+          current[0] +
+          (perpendicularLat *
+            offsetMeters *
+            direction) /
+            metersPerLatitudeDegree;
+
+        const candidateLng =
+          current[1] +
+          (perpendicularLng *
+            offsetMeters *
+            direction) /
+            metersPerLongitudeDegree;
+
+        const candidateProgress =
+          calculateRouteProgress(
+            [
+              candidateLat,
+              candidateLng,
+            ],
+            routePoints
+          );
+
+        if (
+          candidateProgress &&
+          Number.isFinite(
+            candidateProgress.distanceFromRouteMeters
+          ) &&
+          candidateProgress.distanceFromRouteMeters >
+            AUTO_REROUTE_OFF_ROUTE_THRESHOLD +
+              50
+        ) {
+          forcedPosition = {
+            lat: candidateLat,
+            lng: candidateLng,
+            distanceFromRouteMeters:
+              candidateProgress.distanceFromRouteMeters,
+            offsetMeters,
+          };
+
+          break;
+        }
+      }
+
+      if (forcedPosition) {
+        break;
+      }
+    }
+
+    if (!forcedPosition) {
+      setSimulatorMessage(
+        "Could not generate a position safely outside the active route corridor."
+      );
+
+      return;
+    }
 
     const heading =
       simulatorBearing(
@@ -1815,8 +1898,8 @@ function simulatorBearing(
       null;
 
     setPosition({
-      lat: forcedLat,
-      lng: forcedLng,
+      lat: forcedPosition.lat,
+      lng: forcedPosition.lng,
       speedKmh: 25,
       heading,
       accuracy: 5,
@@ -1830,7 +1913,9 @@ function simulatorBearing(
     );
 
     setSimulatorMessage(
-      `Forced approximately ${offsetMeters} m off route. Hold position to test automatic rerouting.`
+      `Forced ${Math.round(
+        forcedPosition.distanceFromRouteMeters
+      )} m from the active route using a ${forcedPosition.offsetMeters} m test offset. Hold position to test automatic rerouting.`
     );
 
     setAutoRerouteMessage("");
@@ -1965,6 +2050,8 @@ function simulatorBearing(
      * that is still awaiting a response.
      */
     autoRerouteRequestIdRef.current += 1;
+    autoRerouteAbortControllerRef.current?.abort();
+    autoRerouteAbortControllerRef.current = null;
     offRouteStartedAtRef.current = null;
     lastAutoRerouteAtRef.current = 0;
     autoRerouteInFlightRef.current = false;
@@ -2189,6 +2276,14 @@ function simulatorBearing(
         autoRerouteRequestIdRef.current =
           requestId;
 
+        autoRerouteAbortControllerRef.current?.abort();
+
+        const autoRerouteAbortController =
+          new AbortController();
+
+        autoRerouteAbortControllerRef.current =
+          autoRerouteAbortController;
+
         autoRerouteInFlightRef.current =
           true;
 
@@ -2216,6 +2311,7 @@ function simulatorBearing(
                     "application/json",
                 },
                 cache: "no-store",
+                signal: autoRerouteAbortController.signal,
                 body: JSON.stringify({
                   origin: {
                     lat:
@@ -2350,6 +2446,13 @@ function simulatorBearing(
             "Automatic reroute failed."
           );
         } finally {
+          if (
+            autoRerouteAbortControllerRef.current ===
+            autoRerouteAbortController
+          ) {
+            autoRerouteAbortControllerRef.current = null;
+          }
+
           /*
            * An obsolete request must not mark a newer reroute complete
            * or alter its in-flight/active state.
@@ -2398,6 +2501,8 @@ function simulatorBearing(
      * reroute that may still be completing in the background.
      */
     autoRerouteRequestIdRef.current += 1;
+    autoRerouteAbortControllerRef.current?.abort();
+    autoRerouteAbortControllerRef.current = null;
     autoRerouteInFlightRef.current = false;
     setAutoRerouteActive(false);
 
@@ -3751,6 +3856,8 @@ function simulatorBearing(
 
                     autoRerouteRequestIdRef.current +=
                       1;
+                    autoRerouteAbortControllerRef.current?.abort();
+                    autoRerouteAbortControllerRef.current = null;
                     setRouting(false);
                     setDestinationSearching(
 
@@ -3873,7 +3980,9 @@ function simulatorBearing(
 
                     autoRerouteRequestIdRef.current +=
                       1;
-                          setRouting(false);
+                    autoRerouteAbortControllerRef.current?.abort();
+                    autoRerouteAbortControllerRef.current = null;
+                    setRouting(false);
 
 
                           setSelectedDestination(
@@ -4010,6 +4119,8 @@ function simulatorBearing(
 
                   autoRerouteRequestIdRef.current +=
                     1;
+                  autoRerouteAbortControllerRef.current?.abort();
+                  autoRerouteAbortControllerRef.current = null;
 
                   setRouting(false);
                 }
