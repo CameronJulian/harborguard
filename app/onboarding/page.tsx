@@ -1,5 +1,7 @@
 "use client";
 
+import { fetchWithAuth } from "@/lib/auth-fetch";
+
 import { supabase } from "@/lib/supabase";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -32,11 +34,10 @@ export default function OnboardingPage() {
         return;
       }
 
-      const response = await fetch("/api/onboarding/complete", {
+      const response = await fetchWithAuth("/api/onboarding/complete", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           organizationName,
