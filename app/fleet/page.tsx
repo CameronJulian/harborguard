@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { CSSProperties, Fragment, useEffect, useMemo, useRef, useState } from "react";
 import AppShell from "@/components/AppShell";
 import { supabase } from "@/lib/supabase";
+import { fetchWithAuth } from "@/lib/auth-fetch";
 
 const MapContainer = dynamic(
   () => import("react-leaflet").then((mod) => mod.MapContainer),
@@ -420,7 +421,7 @@ export default function FleetDashboardPage() {
     else setLoading(true);
 
     try {
-      const response = await fetch("/api/fleet/live", {
+      const response = await fetchWithAuth("/api/fleet/live", {
         cache: "no-store",
       });
 
@@ -443,7 +444,7 @@ export default function FleetDashboardPage() {
 
   async function loadTelematicsHealth() {
     try {
-      const response = await fetch("/api/fleet/telematics-health", {
+      const response = await fetchWithAuth("/api/fleet/telematics-health", {
         cache: "no-store",
       });
 
@@ -477,7 +478,7 @@ export default function FleetDashboardPage() {
   async function loadCrowdIntelligenceHealth() {
     try {
       const response =
-        await fetch(
+        await fetchWithAuth(
           "/api/fleet/crowd-intelligence-health",
           {
             cache: "no-store",
@@ -525,7 +526,7 @@ export default function FleetDashboardPage() {
     setTelematicsHealthUpdating(true);
 
     try {
-      const response = await fetch(
+      const response = await fetchWithAuth(
         "/api/fleet/telematics-health",
         {
           method: "PATCH",
