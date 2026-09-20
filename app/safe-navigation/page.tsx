@@ -3981,21 +3981,45 @@ function simulatorBearing(
             <select
               value={routingProfile}
               onChange={(event) => {
-                /*
-                 * Routing profile changed, so any in-flight
-                 * calculation using the previous profile is stale.
-                 */
-                manualRouteRequestIdRef.current +=
-                  1;
-                manualRouteAbortControllerRef.current?.abort();
-                manualRouteAbortControllerRef.current = null;
+                const nextRoutingProfile =
+                  event.target.value;
 
-                    autoRerouteRequestIdRef.current +=
-                      1;
-                setRouting(false);
+                /*
+                 * A route calculated for one routing profile must not
+                 * remain active after the user selects another profile.
+                 *
+                 * If route/navigation state already exists, reuse the
+                 * complete navigation termination lifecycle so route,
+                 * instruction, recommendation and reroute state are all
+                 * cleared together.
+                 *
+                 * If no route has published yet, only invalidate and
+                 * cancel outstanding route work.
+                 */
+                if (
+                  routes.length > 0 ||
+                  navigationInstructions.length > 0 ||
+                  autoRerouteActive
+                ) {
+                  endNavigation();
+                } else {
+                  manualRouteRequestIdRef.current +=
+                    1;
+                  manualRouteAbortControllerRef.current?.abort();
+                  manualRouteAbortControllerRef.current = null;
+
+                  autoRerouteRequestIdRef.current +=
+                    1;
+
+                  setRouting(false);
+                }
 
                 setRoutingProfile(
-                  event.target.value
+                  nextRoutingProfile
+                );
+
+                setRoutingMessage(
+                  "Routing preference changed. Calculate a new route."
                 );
               }}
               style={inputStyle}
