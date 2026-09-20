@@ -1,5 +1,7 @@
 ﻿"use client";
 
+import { fetchWithAuth } from "@/lib/auth-fetch";
+
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import TrialBanner from "@/components/billing/TrialBanner";
 import { usePremiumAccess } from "@/hooks/usePremiumAccess";
@@ -200,7 +202,7 @@ export default function ReportAdminPage() {
     if (period === "weekly") setRunningWeekly(true);
 
     try {
-      const response = await fetch("/api/reports/run", {
+      const response = await fetchWithAuth("/api/reports/run", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -232,7 +234,7 @@ export default function ReportAdminPage() {
     setMessage("");
 
     try {
-      const response = await fetch("/api/reports/retry", {
+      const response = await fetchWithAuth("/api/reports/retry", {
         method: "POST",
       });
 
@@ -292,7 +294,7 @@ export default function ReportAdminPage() {
     setMessage("");
 
     try {
-      const response = await fetch("/api/reports/toggle-subscription", {
+      const response = await fetchWithAuth("/api/reports/toggle-subscription", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
