@@ -481,7 +481,7 @@ const [timelineThreatLevel, setTimelineThreatLevel] = useState("LOW");
       if (start.trim()) params.set("start", new Date(start).toISOString());
       if (end.trim()) params.set("end", new Date(end).toISOString());
 
-      const response = await fetch(`/api/fleet/replay?${params.toString()}`, {
+      const response = await fetchWithAuth(`/api/fleet/replay?${params.toString()}`, {
         cache: "no-store",
       });
 
