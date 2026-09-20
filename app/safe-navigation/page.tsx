@@ -995,6 +995,18 @@ export default function SafeNavigationPage() {
       }
     };
   }, []);
+  useEffect(() => {
+    return () => {
+      /*
+       * Invalidate and cancel destination search work when this
+       * page leaves the component tree. The request-ID increment
+       * prevents the abort rejection from publishing stale state.
+       */
+      destinationSearchRequestIdRef.current += 1;
+      destinationSearchAbortControllerRef.current?.abort();
+      destinationSearchAbortControllerRef.current = null;
+    };
+  }, []);
 
   const destination = useMemo<LatLng | null>(() => {
     if (
@@ -1915,6 +1927,16 @@ function simulatorBearing(
 
   function endNavigation() {
     clearOffRouteTimer();
+
+    /*
+     * Navigation termination also invalidates destination search
+     * work so a late search response cannot overwrite the ended
+     * navigation state.
+     */
+    destinationSearchRequestIdRef.current += 1;
+    destinationSearchAbortControllerRef.current?.abort();
+    destinationSearchAbortControllerRef.current = null;
+    setDestinationSearching(false);
 
 
     /*
@@ -3790,6 +3812,17 @@ function simulatorBearing(
                             endNavigation();
                           }
 
+                          /*
+                           * A destination selection owns the current search
+                           * intent. Invalidate and cancel any search still
+                           * running before publishing the selected result.
+                           */
+                          destinationSearchRequestIdRef.current +=
+                            1;
+                          destinationSearchAbortControllerRef.current?.abort();
+                          destinationSearchAbortControllerRef.current =
+                            null;
+                          setDestinationSearching(false);
                           /*
 
                            * Selecting a new destination invalidates any
