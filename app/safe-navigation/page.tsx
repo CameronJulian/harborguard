@@ -845,6 +845,8 @@ export default function SafeNavigationPage() {
    */
   const destinationSearchRequestIdRef =
     useRef(0);
+  const destinationSearchAbortControllerRef =
+    useRef<AbortController | null>(null);
 
   /*
    * Monotonic manual-route request generation.
@@ -1971,6 +1973,9 @@ function simulatorBearing(
     destinationSearchRequestIdRef.current =
       requestId;
 
+    destinationSearchAbortControllerRef.current?.abort();
+    destinationSearchAbortControllerRef.current = null;
+
     if (query.length < 2) {
       setDestinationResults([]);
       setDestinationSearching(false);
@@ -1979,6 +1984,12 @@ function simulatorBearing(
       );
       return;
     }
+
+    const abortController =
+      new AbortController();
+
+    destinationSearchAbortControllerRef.current =
+      abortController;
 
     setDestinationSearching(true);
     setRoutingMessage(
@@ -2005,7 +2016,10 @@ function simulatorBearing(
 
       const response =
         await fetchWithAuth(
-          `/api/navigation/search?${params.toString()}`
+          `/api/navigation/search?${params.toString()}`,
+          {
+            signal: abortController.signal,
+          }
         );
 
       /*
@@ -2088,6 +2102,13 @@ function simulatorBearing(
        * A stale request must not clear the loading state of a
        * newer request.
        */
+      if (
+        destinationSearchAbortControllerRef.current ===
+        abortController
+      ) {
+        destinationSearchAbortControllerRef.current = null;
+      }
+
       if (
         requestId ===
         destinationSearchRequestIdRef.current
@@ -3660,6 +3681,8 @@ function simulatorBearing(
                     destinationSearchRequestIdRef.current +=
 
                       1;
+                  destinationSearchAbortControllerRef.current?.abort();
+                  destinationSearchAbortControllerRef.current = null;
 
 
 
