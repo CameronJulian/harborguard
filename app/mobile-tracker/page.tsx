@@ -1,5 +1,7 @@
 "use client";
 
+import { fetchWithAuth } from "@/lib/auth-fetch";
+
 import {
   getDistanceMeters,
 } from "@/lib/geo/getDistanceMeters";
@@ -55,7 +57,7 @@ export default function MobileTrackerPage() {
         setVehiclesLoading(true);
         setVehicleLoadError("");
 
-        const response = await fetch("/api/fleet/road-user-vehicles", {
+        const response = await fetchWithAuth("/api/fleet/road-user-vehicles", {
           cache: "no-store",
         });
 
@@ -174,7 +176,7 @@ export default function MobileTrackerPage() {
         setLastLocation(payload);
 
         try {
-          const res = await fetch("/api/fleet/update-location", {
+          const res = await fetchWithAuth("/api/fleet/update-location", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -235,7 +237,7 @@ export default function MobileTrackerPage() {
     setMessage("Starting journey...");
 
     try {
-      const response = await fetch("/api/fleet/start-trip", {
+      const response = await fetchWithAuth("/api/fleet/start-trip", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -295,7 +297,7 @@ export default function MobileTrackerPage() {
     setMessage("Completing journey...");
 
     try {
-      const response = await fetch(
+      const response = await fetchWithAuth(
         "/api/fleet/update-location",
         {
           method: "POST",
@@ -359,7 +361,7 @@ export default function MobileTrackerPage() {
       setReportSubmitting(true);
       setReportMessage("Submitting safety report...");
 
-      const response = await fetch("/api/route-safety/report", {
+      const response = await fetchWithAuth("/api/route-safety/report", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
