@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import L from "leaflet";
 import {
   CircleMarker,
@@ -97,18 +97,44 @@ function NavigationFollow({
 }: FollowProps) {
   const map = useMap();
 
+  const programmaticMoveRef = useRef(false);
+
   useMapEvents({
     dragstart: onUserMove,
-    zoomstart: onUserMove,
+    zoomstart: () => {
+      if (!programmaticMoveRef.current) {
+        onUserMove();
+      }
+    },
   });
 
   useEffect(() => {
     if (!enabled || !position) return;
 
+    programmaticMoveRef.current = true;
+
+    const clearProgrammaticMove = () => {
+      programmaticMoveRef.current = false;
+    };
+
+    map.once("moveend", clearProgrammaticMove);
+
+    const fallbackTimer =
+      window.setTimeout(
+        clearProgrammaticMove,
+        1000
+      );
+
     map.flyTo(position, Math.max(map.getZoom(), 17), {
       animate: true,
       duration: 0.55,
     });
+
+    return () => {
+      map.off("moveend", clearProgrammaticMove);
+      window.clearTimeout(fallbackTimer);
+      clearProgrammaticMove();
+    };
   }, [enabled, map, position]);
 
   return null;
