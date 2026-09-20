@@ -205,7 +205,7 @@ export default function VehiclesPage() {
       setError("");
       setSuccess("");
 
-      const response = await fetch(`/api/fleet/vehicles/${vehicle.id}`, {
+      const response = await fetchWithAuth(`/api/fleet/vehicles/${vehicle.id}`, {
         method: "DELETE",
       });
 
@@ -512,7 +512,7 @@ export default function VehiclesPage() {
       setError("");
       setSuccess("");
 
-      const response = await fetch(`/api/fleet/vehicles/${vehicle.id}`, {
+      const response = await fetchWithAuth(`/api/fleet/vehicles/${vehicle.id}`, {
         method: "DELETE",
       });
 
