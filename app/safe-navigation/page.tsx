@@ -864,6 +864,16 @@ export default function SafeNavigationPage() {
   const autoRerouteInFlightRef =
     useRef(false);
 
+
+  /*
+   * Monotonic automatic-reroute generation.
+   *
+   * Navigation lifecycle changes and newer route intent invalidate
+   * older automatic reroutes. Only the current generation may
+   * publish route state, errors or completion state.
+   */
+  const autoRerouteRequestIdRef =
+    useRef(0);
   const offRouteTimerRef =
     useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -1910,6 +1920,12 @@ function simulatorBearing(
      * that may still be completing asynchronously.
      */
     manualRouteRequestIdRef.current += 1;
+
+    /*
+     * Navigation termination also invalidates any automatic reroute
+     * that is still awaiting a response.
+     */
+    autoRerouteRequestIdRef.current += 1;
     offRouteStartedAtRef.current = null;
     lastAutoRerouteAtRef.current = 0;
     autoRerouteInFlightRef.current = false;
@@ -2105,6 +2121,16 @@ function simulatorBearing(
           return;
         }
 
+        /*
+         * Each automatic reroute receives a generation ID.
+         * Only this generation may publish response-derived state.
+         */
+        const requestId =
+          autoRerouteRequestIdRef.current + 1;
+
+        autoRerouteRequestIdRef.current =
+          requestId;
+
         autoRerouteInFlightRef.current =
           true;
 
@@ -2146,8 +2172,30 @@ function simulatorBearing(
               }
             );
 
+          /*
+           * Navigation may have ended or route intent may have changed
+           * while the request was awaiting its response.
+           */
+          if (
+            requestId !==
+            autoRerouteRequestIdRef.current
+          ) {
+            return;
+          }
+
           const result =
             (await response.json()) as RerouteResponse;
+
+          /*
+           * Parsing is asynchronous too, so verify the generation again
+           * immediately before publishing response-derived state.
+           */
+          if (
+            requestId !==
+            autoRerouteRequestIdRef.current
+          ) {
+            return;
+          }
 
           if (!response.ok) {
             const message =
@@ -2225,6 +2273,17 @@ function simulatorBearing(
             } ready.`
           );
         } catch {
+          /*
+           * A stale failure must not overwrite state belonging to a
+           * newer route/navigation lifecycle.
+           */
+          if (
+            requestId !==
+            autoRerouteRequestIdRef.current
+          ) {
+            return;
+          }
+
           setAutoRerouteMessage(
             "Automatic reroute failed."
           );
@@ -2233,12 +2292,21 @@ function simulatorBearing(
             "Automatic reroute failed."
           );
         } finally {
-          autoRerouteInFlightRef.current =
-            false;
+          /*
+           * An obsolete request must not mark a newer reroute complete
+           * or alter its in-flight/active state.
+           */
+          if (
+            requestId ===
+            autoRerouteRequestIdRef.current
+          ) {
+            autoRerouteInFlightRef.current =
+              false;
 
-          setAutoRerouteActive(
-            false
-          );
+            setAutoRerouteActive(
+              false
+            );
+          }
         }
       },
       [
@@ -2267,6 +2335,14 @@ function simulatorBearing(
      * Each manual calculation gets a monotonically increasing
      * generation. Only the newest generation may publish state.
      */
+    /*
+     * A deliberate manual calculation supersedes any automatic
+     * reroute that may still be completing in the background.
+     */
+    autoRerouteRequestIdRef.current += 1;
+    autoRerouteInFlightRef.current = false;
+    setAutoRerouteActive(false);
+
     const requestId =
       manualRouteRequestIdRef.current + 1;
 
@@ -3593,6 +3669,9 @@ function simulatorBearing(
                     manualRouteRequestIdRef.current +=
                       1;
 
+
+                    autoRerouteRequestIdRef.current +=
+                      1;
                     setRouting(false);
                     setDestinationSearching(
 
@@ -3700,6 +3779,9 @@ function simulatorBearing(
                             1;
 
 
+
+                    autoRerouteRequestIdRef.current +=
+                      1;
                           setRouting(false);
 
 
@@ -3815,6 +3897,9 @@ function simulatorBearing(
                 manualRouteRequestIdRef.current +=
                   1;
 
+
+                    autoRerouteRequestIdRef.current +=
+                      1;
                 setRouting(false);
 
                 setRoutingProfile(
