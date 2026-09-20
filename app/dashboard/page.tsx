@@ -1,5 +1,7 @@
 "use client";
 
+import { fetchWithAuth } from "@/lib/auth-fetch";
+
 import { CSSProperties, FormEvent, useEffect, useMemo, useState } from "react";
 import TrialBanner from "@/components/billing/TrialBanner";
 
@@ -164,11 +166,10 @@ async function loadSubscription() {
 
   if (!session?.access_token) return;
 
-  const response = await fetch(
+  const response = await fetchWithAuth(
     "/api/fleet/vehicles",
     {
       headers: {
-        Authorization: `Bearer ${session.access_token}`,
       },
     }
   );
@@ -227,23 +228,20 @@ const { data: incidentData } = await supabase
   .eq("organization_id", profile.organization_id)
   .order("created_at", { ascending: false });
 
-const vehicleResponse = await fetch("/api/fleet/vehicles", {
+const vehicleResponse = await fetchWithAuth("/api/fleet/vehicles", {
   headers: {
-    Authorization: `Bearer ${session.access_token}`,
   },
 });
 const vehicleResult = await vehicleResponse.json();
 
-const tripResponse = await fetch("/api/fleet/trips", {
+const tripResponse = await fetchWithAuth("/api/fleet/trips", {
   headers: {
-    Authorization: `Bearer ${session.access_token}`,
   },
 });
 const tripResult = await tripResponse.json();
 
-const alertResponse = await fetch("/api/fleet/alerts", {
+const alertResponse = await fetchWithAuth("/api/fleet/alerts", {
   headers: {
-    Authorization: `Bearer ${session.access_token}`,
   },
 });
 const alertResult = await alertResponse.json();
@@ -448,15 +446,10 @@ const executiveRiskIndex = useMemo(() => {
 
     setLoading(true);
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    const response = await fetch("/api/batches", {
+    const response = await fetchWithAuth("/api/batches", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${session?.access_token}`,
       },
       body: JSON.stringify({
         vessel,
