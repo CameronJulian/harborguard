@@ -845,6 +845,16 @@ export default function SafeNavigationPage() {
    */
   const destinationSearchRequestIdRef =
     useRef(0);
+
+  /*
+   * Monotonic manual-route request generation.
+   *
+   * Only the newest manual route calculation may publish route state.
+   * Destination, profile and navigation lifecycle changes invalidate
+   * older in-flight calculations.
+   */
+  const manualRouteRequestIdRef =
+    useRef(0);
   const offRouteStartedAtRef =
     useRef<number | null>(null);
 
@@ -1894,6 +1904,12 @@ function simulatorBearing(
   function endNavigation() {
     clearOffRouteTimer();
 
+
+    /*
+     * Navigation termination invalidates any manual route request
+     * that may still be completing asynchronously.
+     */
+    manualRouteRequestIdRef.current += 1;
     offRouteStartedAtRef.current = null;
     lastAutoRerouteAtRef.current = 0;
     autoRerouteInFlightRef.current = false;
@@ -2234,52 +2250,94 @@ function simulatorBearing(
     );
   async function calculateRoute() {
     if (!position) {
-      setRoutingMessage("Start GPS before calculating a route.");
+      setRoutingMessage(
+        "Start GPS before calculating a route."
+      );
       return;
     }
 
     if (!destination || !routingDestination) {
-      setRoutingMessage("Enter valid destination coordinates.");
+      setRoutingMessage(
+        "Enter valid destination coordinates."
+      );
       return;
     }
 
+    /*
+     * Each manual calculation gets a monotonically increasing
+     * generation. Only the newest generation may publish state.
+     */
+    const requestId =
+      manualRouteRequestIdRef.current + 1;
+
+    manualRouteRequestIdRef.current =
+      requestId;
+
     setRouting(true);
-    setRoutingMessage("Calculating HarborGuard route...");
+    setRoutingMessage(
+      "Calculating HarborGuard route..."
+    );
 
     try {
-      const response = await fetchWithAuth(
-        "/api/route-safety/reroute",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          cache: "no-store",
-          body: JSON.stringify({
-            origin: {
-              lat: position.lat,
-              lng: position.lng,
+      const response =
+        await fetchWithAuth(
+          "/api/route-safety/reroute",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
             },
-            destination:
-              routingDestination,
-            routingProfile,
-          }),
-        }
-      );
+            cache: "no-store",
+            body: JSON.stringify({
+              origin: {
+                lat: position.lat,
+                lng: position.lng,
+              },
+              destination:
+                routingDestination,
+              routingProfile,
+            }),
+          }
+        );
+
+      /*
+       * A newer route request or lifecycle change superseded
+       * this response while the request was in flight.
+       */
+      if (
+        requestId !==
+        manualRouteRequestIdRef.current
+      ) {
+        return;
+      }
 
       const result =
         (await response.json()) as RerouteResponse;
+
+      /*
+       * Parsing is asynchronous too, so check again before any
+       * response-derived state is published.
+       */
+      if (
+        requestId !==
+        manualRouteRequestIdRef.current
+      ) {
+        return;
+      }
 
       if (!response.ok) {
         setRoutes([]);
         setNavigationInstructions([]);
         setRoutingMessage(
-          result.error ?? "Could not calculate route."
+          result.error ??
+          "Could not calculate route."
         );
         return;
       }
 
-      const nextRoutes = result.routes ?? [];
+      const nextRoutes =
+        result.routes ?? [];
 
       setNavigationInstructions(
         instructionsForRoute(
@@ -2291,24 +2349,55 @@ function simulatorBearing(
 
       setRoutes(nextRoutes);
       setSelectedRouteIndex(0);
-      setRecommendation(result.recommendation ?? null);
+
+      setRecommendation(
+        result.recommendation ?? null
+      );
+
       setFollowVehicle(true);
 
       if (nextRoutes.length === 0) {
-        setRoutingMessage("No route was returned.");
+        setRoutingMessage(
+          "No route was returned."
+        );
       } else {
         setRoutingMessage(
           `${nextRoutes.length} HarborGuard route option${
-            nextRoutes.length === 1 ? "" : "s"
+            nextRoutes.length === 1
+              ? ""
+              : "s"
           } ready.`
         );
       }
     } catch {
+      /*
+       * An obsolete failure must not clear or overwrite state
+       * belonging to a newer route request.
+       */
+      if (
+        requestId !==
+        manualRouteRequestIdRef.current
+      ) {
+        return;
+      }
+
       setRoutes([]);
       setNavigationInstructions([]);
-      setRoutingMessage("Route calculation failed.");
+
+      setRoutingMessage(
+        "Route calculation failed."
+      );
     } finally {
-      setRouting(false);
+      /*
+       * A stale request must not clear the loading state of a
+       * newer manual calculation.
+       */
+      if (
+        requestId ===
+        manualRouteRequestIdRef.current
+      ) {
+        setRouting(false);
+      }
     }
   }
 
@@ -3496,6 +3585,15 @@ function simulatorBearing(
                       1;
 
 
+
+                    /*
+                     * Destination text changed, so any route calculated
+                     * for the previous destination intent is stale.
+                     */
+                    manualRouteRequestIdRef.current +=
+                      1;
+
+                    setRouting(false);
                     setDestinationSearching(
 
                       false
@@ -3589,8 +3687,26 @@ function simulatorBearing(
                             endNavigation();
                           }
 
+                          /*
+
+                           * Selecting a new destination invalidates any
+
+                           * manual route request for the previous destination.
+
+                           */
+
+                          manualRouteRequestIdRef.current +=
+
+                            1;
+
+
+                          setRouting(false);
+
+
                           setSelectedDestination(
+
                             result
+
                           );
 
                           setDestinationName(
@@ -3691,9 +3807,20 @@ function simulatorBearing(
 
             <select
               value={routingProfile}
-              onChange={(event) =>
-                setRoutingProfile(event.target.value)
-              }
+              onChange={(event) => {
+                /*
+                 * Routing profile changed, so any in-flight
+                 * calculation using the previous profile is stale.
+                 */
+                manualRouteRequestIdRef.current +=
+                  1;
+
+                setRouting(false);
+
+                setRoutingProfile(
+                  event.target.value
+                );
+              }}
               style={inputStyle}
             >
               <option value="safest">Safest</option>
