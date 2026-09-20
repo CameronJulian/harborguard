@@ -1235,7 +1235,31 @@ export default function SafeNavigationPage() {
         );
 
         setGpsActive(false);
-        setGpsMessage(`GPS error: ${error.message}`);
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            setGpsMessage(
+              "Location permission was denied. Enable location access for HarborGuard and tap Start GPS again."
+            );
+            break;
+
+          case error.POSITION_UNAVAILABLE:
+            setGpsMessage(
+              "Your location is currently unavailable. Check your GPS/location services and try again."
+            );
+            break;
+
+          case error.TIMEOUT:
+            setGpsMessage(
+              "GPS timed out before getting a precise location. Move to an open area and tap Start GPS again."
+            );
+            break;
+
+          default:
+            setGpsMessage(
+              "GPS could not start. Check location services and try again."
+            );
+            break;
+        }
       },
       {
         enableHighAccuracy: true,
