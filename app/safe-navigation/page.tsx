@@ -835,6 +835,16 @@ export default function SafeNavigationPage() {
   const wakeLockRequestIdRef =
     useRef(0);
 
+
+  /*
+   * Destination-search generation fence.
+   *
+   * A newer search or destination text edit increments this
+   * value. Older requests may finish, but they are forbidden
+   * from publishing stale UI state.
+   */
+  const destinationSearchRequestIdRef =
+    useRef(0);
   const offRouteStartedAtRef =
     useRef<number | null>(null);
 
@@ -1919,8 +1929,19 @@ function simulatorBearing(
     const query =
       destinationName.trim();
 
+    /*
+     * Every invocation gets a monotonically increasing ID.
+     * Only the latest ID is allowed to publish search state.
+     */
+    const requestId =
+      destinationSearchRequestIdRef.current + 1;
+
+    destinationSearchRequestIdRef.current =
+      requestId;
+
     if (query.length < 2) {
       setDestinationResults([]);
+      setDestinationSearching(false);
       setRoutingMessage(
         "Enter at least two characters to search."
       );
@@ -1955,11 +1976,33 @@ function simulatorBearing(
           `/api/navigation/search?${params.toString()}`
         );
 
+      /*
+       * The request may have been superseded while fetch was
+       * in flight.
+       */
+      if (
+        requestId !==
+        destinationSearchRequestIdRef.current
+      ) {
+        return;
+      }
+
       const result =
         (await response.json()) as {
           results?: NavigationSearchResult[];
           error?: string;
         };
+
+      /*
+       * JSON parsing is asynchronous too, so re-check before
+       * publishing anything.
+       */
+      if (
+        requestId !==
+        destinationSearchRequestIdRef.current
+      ) {
+        return;
+      }
 
       if (!response.ok) {
         setDestinationResults([]);
@@ -1993,12 +2036,32 @@ function simulatorBearing(
         );
       }
     } catch {
+      /*
+       * A failure from an obsolete request must not overwrite
+       * the state belonging to the latest request.
+       */
+      if (
+        requestId !==
+        destinationSearchRequestIdRef.current
+      ) {
+        return;
+      }
+
       setDestinationResults([]);
       setRoutingMessage(
         "Destination search failed."
       );
     } finally {
-      setDestinationSearching(false);
+      /*
+       * A stale request must not clear the loading state of a
+       * newer request.
+       */
+      if (
+        requestId ===
+        destinationSearchRequestIdRef.current
+      ) {
+        setDestinationSearching(false);
+      }
     }
   }
   const autoRerouteFromCurrentPosition =
@@ -3420,8 +3483,37 @@ function simulatorBearing(
                       );
                     }
 
+                    /*
+
+                     * Invalidate any destination search started for
+
+                     * the previous input text.
+
+                     */
+
+                    destinationSearchRequestIdRef.current +=
+
+                      1;
+
+
+                    setDestinationSearching(
+
+                      false
+
+                    );
+
+
+                    setDestinationResults(
+
+                      []
+
+                    );
+
+
                     setDestinationName(
+
                       event.target.value
+
                     );
 
                     setSelectedDestination(
