@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import { StatusBadge } from "@/components/ui";
 import { supabase } from "@/lib/supabase";
+import { fetchWithAuth } from "@/lib/auth-fetch";
 
 type HsppWorkerStatus =
   | "unknown"
@@ -190,7 +191,7 @@ export default function OperationsHealthPage() {
 
     try {
       const response =
-        await fetch(
+        await fetchWithAuth(
           "/api/hspp/health",
           {
             cache: "no-store",
