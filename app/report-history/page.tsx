@@ -1,5 +1,7 @@
 ﻿"use client";
 
+import { fetchWithAuth } from "@/lib/auth-fetch";
+
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import AppShell from "@/components/AppShell";
 import RoleGuard from "@/components/RoleGuard";
@@ -143,7 +145,7 @@ export default function ReportHistoryPage() {
     setMessage("");
 
     try {
-      const response = await fetch("/api/reports/retry", {
+      const response = await fetchWithAuth("/api/reports/retry", {
         method: "POST",
       });
 
@@ -175,7 +177,7 @@ export default function ReportHistoryPage() {
     setMessage("");
 
     try {
-      const response = await fetch("/api/reports/retry-one", {
+      const response = await fetchWithAuth("/api/reports/retry-one", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
