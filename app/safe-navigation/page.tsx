@@ -3829,6 +3829,7 @@ function simulatorBearing(
                   color: "#94a3b8",
                   fontWeight: 800,
                 }}
+                htmlFor="safe-navigation-destination"
               >
                 Where to?
               </label>
@@ -3842,6 +3843,7 @@ function simulatorBearing(
                 }}
               >
                 <input
+                  id="safe-navigation-destination"
                   value={destinationName}
                   onChange={(event) => {
                     if (
@@ -4115,6 +4117,7 @@ function simulatorBearing(
             </div>
 
             <select
+              aria-label="Routing preference"
               value={routingProfile}
               onChange={(event) => {
                 const nextRoutingProfile =
