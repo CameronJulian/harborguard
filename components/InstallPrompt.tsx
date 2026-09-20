@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -11,6 +12,7 @@ type BeforeInstallPromptEvent = Event & {
 };
 
 export default function InstallPrompt() {
+  const pathname = usePathname();
   const [installEvent, setInstallEvent] =
     useState<BeforeInstallPromptEvent | null>(null);
 
@@ -41,7 +43,13 @@ export default function InstallPrompt() {
     };
   }, []);
 
-  if (isInstalled || !installEvent) return null;
+  if (
+    pathname === "/safe-navigation" ||
+    isInstalled ||
+    !installEvent
+  ) {
+    return null;
+  }
 
   async function installApp() {
     if (!installEvent) return;
