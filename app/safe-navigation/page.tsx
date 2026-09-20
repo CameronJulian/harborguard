@@ -857,6 +857,8 @@ export default function SafeNavigationPage() {
    */
   const manualRouteRequestIdRef =
     useRef(0);
+  const manualRouteAbortControllerRef =
+    useRef<AbortController | null>(null);
   const offRouteStartedAtRef =
     useRef<number | null>(null);
 
@@ -1005,6 +1007,17 @@ export default function SafeNavigationPage() {
       destinationSearchRequestIdRef.current += 1;
       destinationSearchAbortControllerRef.current?.abort();
       destinationSearchAbortControllerRef.current = null;
+    };
+  }, []);
+  useEffect(() => {
+    return () => {
+      /*
+       * Invalidate and cancel manual route work when this page
+       * leaves the component tree.
+       */
+      manualRouteRequestIdRef.current += 1;
+      manualRouteAbortControllerRef.current?.abort();
+      manualRouteAbortControllerRef.current = null;
     };
   }, []);
 
@@ -1944,6 +1957,8 @@ function simulatorBearing(
      * that may still be completing asynchronously.
      */
     manualRouteRequestIdRef.current += 1;
+    manualRouteAbortControllerRef.current?.abort();
+    manualRouteAbortControllerRef.current = null;
 
     /*
      * Navigation termination also invalidates any automatic reroute
@@ -2392,6 +2407,15 @@ function simulatorBearing(
     manualRouteRequestIdRef.current =
       requestId;
 
+    manualRouteAbortControllerRef.current?.abort();
+    manualRouteAbortControllerRef.current = null;
+
+    const manualRouteAbortController =
+      new AbortController();
+
+    manualRouteAbortControllerRef.current =
+      manualRouteAbortController;
+
     setRouting(true);
     setRoutingMessage(
       "Calculating HarborGuard route..."
@@ -2408,6 +2432,7 @@ function simulatorBearing(
                 "application/json",
             },
             cache: "no-store",
+            signal: manualRouteAbortController.signal,
             body: JSON.stringify({
               origin: {
                 lat: position.lat,
@@ -2511,6 +2536,13 @@ function simulatorBearing(
        * A stale request must not clear the loading state of a
        * newer manual calculation.
        */
+      if (
+        manualRouteAbortControllerRef.current ===
+        manualRouteAbortController
+      ) {
+        manualRouteAbortControllerRef.current = null;
+      }
+
       if (
         requestId ===
         manualRouteRequestIdRef.current
@@ -3714,7 +3746,8 @@ function simulatorBearing(
                      */
                     manualRouteRequestIdRef.current +=
                       1;
-
+                    manualRouteAbortControllerRef.current?.abort();
+                    manualRouteAbortControllerRef.current = null;
 
                     autoRerouteRequestIdRef.current +=
                       1;
@@ -3835,7 +3868,8 @@ function simulatorBearing(
 
                             1;
 
-
+                          manualRouteAbortControllerRef.current?.abort();
+                          manualRouteAbortControllerRef.current = null;
 
                     autoRerouteRequestIdRef.current +=
                       1;
@@ -3953,7 +3987,8 @@ function simulatorBearing(
                  */
                 manualRouteRequestIdRef.current +=
                   1;
-
+                manualRouteAbortControllerRef.current?.abort();
+                manualRouteAbortControllerRef.current = null;
 
                     autoRerouteRequestIdRef.current +=
                       1;
