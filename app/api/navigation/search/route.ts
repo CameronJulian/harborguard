@@ -4,6 +4,8 @@ import {
   reserveHereProviderRequest,
 } from "@/lib/here/hereCostGuard";
 
+const NAVIGATION_SEARCH_TIMEOUT_MS = 15_000;
+
 type HereSearchItem = {
   id?: string;
   title?: string;
@@ -133,6 +135,9 @@ export async function GET(req: NextRequest) {
         url,
         {
           cache: "no-store",
+          signal: AbortSignal.timeout(
+            NAVIGATION_SEARCH_TIMEOUT_MS,
+          ),
         }
       );
 
@@ -244,21 +249,48 @@ export async function GET(req: NextRequest) {
       results,
     });
   } catch (error: unknown) {
-    const message =
+    const errorName =
+      error instanceof Error
+        ? error.name
+        : "";
+
+    const errorMessage =
       error instanceof Error
         ? error.message
-        : "Unauthorized";
+        : "";
+
+    if (errorName === "TimeoutError") {
+      return NextResponse.json(
+        {
+          error:
+            "Destination search timed out. Please try again.",
+        },
+        {
+          status: 504,
+        },
+      );
+    }
+
+    if (errorMessage === "Unauthorized") {
+      return NextResponse.json(
+        {
+          error: "Unauthorized",
+        },
+        {
+          status: 401,
+        },
+      );
+    }
 
     return NextResponse.json(
       {
-        error: message,
+        error:
+          errorMessage ||
+          "Destination search failed.",
       },
       {
-        status:
-          message === "Unauthorized"
-            ? 401
-            : 500,
-      }
+        status: 500,
+      },
     );
   }
 }
