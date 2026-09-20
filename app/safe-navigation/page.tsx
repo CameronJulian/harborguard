@@ -3746,6 +3746,9 @@ function simulatorBearing(
                 marginBottom: 12,
                 fontSize: 14,
               }}
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
             >
               {gpsMessage}
             </div>
@@ -4216,6 +4219,9 @@ function simulatorBearing(
                 fontSize: 13,
                 lineHeight: 1.45,
               }}
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
             >
               {routingMessage}
             </div>
@@ -4623,6 +4629,9 @@ function simulatorBearing(
                   fontWeight: 900,
                   marginTop: 5,
                 }}
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
               >
                 {navigationHeadline}
               </div>
