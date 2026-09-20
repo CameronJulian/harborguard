@@ -15,6 +15,8 @@ import {
   type RoutePoint,
 } from "@/lib/routing/routeRiskRanking";
 
+const ROUTING_PROVIDER_TIMEOUT_MS = 15_000;
+
 type RoutingPoint = {
   lat: number;
   lng: number;
@@ -752,6 +754,10 @@ export async function calculateTomTomRoutes(
             }),
           cache:
             "no-store",
+          signal:
+            AbortSignal.timeout(
+              ROUTING_PROVIDER_TIMEOUT_MS,
+            ),
         },
       );
 

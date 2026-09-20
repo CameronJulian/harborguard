@@ -83,10 +83,49 @@ last_event_at
       success: true,
       ...result,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorName =
+      error instanceof Error
+        ? error.name
+        : "";
+
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : "";
+
+    if (errorName === "TimeoutError") {
+      return NextResponse.json(
+        {
+          error:
+            "Routing provider timed out. Please try again.",
+        },
+        {
+          status: 504,
+        },
+      );
+    }
+
+    if (errorMessage === "Unauthorized") {
+      return NextResponse.json(
+        {
+          error: "Unauthorized",
+        },
+        {
+          status: 401,
+        },
+      );
+    }
+
     return NextResponse.json(
-      { error: error.message || "Unauthorized" },
-      { status: error.message === "Unauthorized" ? 401 : 500 }
+      {
+        error:
+          errorMessage ||
+          "Route calculation failed.",
+      },
+      {
+        status: 500,
+      },
     );
   }
 }

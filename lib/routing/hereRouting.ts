@@ -16,6 +16,8 @@ import {
   type RoutingProfile,
 } from "@/lib/routing/routeRiskRanking";
 export type { RoutingProfile } from "@/lib/routing/routeRiskRanking";
+
+const ROUTING_PROVIDER_TIMEOUT_MS = 15_000;
 function secondsToDuration(
   seconds: number,
 ) {
@@ -259,6 +261,9 @@ export async function calculateHereRoutes(
       url,
       {
         cache: "no-store",
+        signal: AbortSignal.timeout(
+          ROUTING_PROVIDER_TIMEOUT_MS,
+        ),
       }
     );
 
