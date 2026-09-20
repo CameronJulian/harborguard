@@ -2478,7 +2478,7 @@ function simulatorBearing(
       ]
     );
   async function calculateRoute() {
-    if (!position) {
+    if (!gpsActive || !position) {
       setRoutingMessage(
         "Start GPS before calculating a route."
       );
@@ -2836,6 +2836,7 @@ function simulatorBearing(
     );
 
   const hasReachedDestination =
+    gpsActive &&
     !gpsAccuracyPoor &&
     navigationInstructions.length > 0 &&
     activeInstructionIndex >=
@@ -3173,6 +3174,7 @@ function simulatorBearing(
       routePoints;
 
     if (
+      !gpsActive ||
       gpsAccuracyPoor ||
       !position ||
       !routeProgress ||
@@ -3334,6 +3336,7 @@ function simulatorBearing(
     destination,
     hasReachedDestination,
     routing,
+    gpsActive,
     gpsAccuracyPoor,
     offRouteThresholdMeters,
     autoRerouteFromCurrentPosition,
