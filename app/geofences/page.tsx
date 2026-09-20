@@ -220,7 +220,7 @@ export default function GeofencesPage() {
     setMessage("");
 
     try {
-      const response = await fetch(`/api/geofences?id=${id}`, {
+      const response = await fetchWithAuth(`/api/geofences?id=${id}`, {
         method: "DELETE",
       });
 
