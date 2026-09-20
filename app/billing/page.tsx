@@ -1,6 +1,7 @@
 "use client";
 
 import { supabase } from "@/lib/supabase";
+import { fetchWithAuth } from "@/lib/auth-fetch";
 import { canAccessPremiumFeatures } from "@/lib/subscription-access";
 import PermissionGate from "@/components/auth/PermissionGate";
 import { useEffect, useState } from "react";
@@ -99,12 +100,11 @@ export default function BillingPage() {
         return;
       }
 
-      const response = await fetch("/api/billing/professional", {
+      const response = await fetchWithAuth("/api/billing/professional", {
         method: "POST",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           billingEmail,
