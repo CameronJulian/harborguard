@@ -1018,7 +1018,7 @@ const { data: incidentData } = await supabase
     setSendingEmail(true);
 
     try {
-      const response = await fetch("/api/reports/send", {
+      const response = await fetchWithAuth("/api/reports/send", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
