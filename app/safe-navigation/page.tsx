@@ -2974,6 +2974,9 @@ function simulatorBearing(
       }
     }, []);
 
+  const hasNavigationRoute =
+    selectedRoute != null;
+
   useEffect(() => {
     /*
      * Simulator activity can set gpsActive, but only a real
@@ -2985,7 +2988,7 @@ function simulatorBearing(
     const shouldHoldWakeLock =
       gpsActive &&
       hasRealGpsWatch &&
-      selectedRoute != null &&
+      hasNavigationRoute &&
       !hasReachedDestination;
 
     if (!shouldHoldWakeLock) {
@@ -3022,7 +3025,7 @@ function simulatorBearing(
     };
   }, [
     gpsActive,
-    selectedRoute,
+    hasNavigationRoute,
     hasReachedDestination,
     requestWakeLock,
     releaseWakeLock,
