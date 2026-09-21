@@ -3948,6 +3948,7 @@ function simulatorBearing(
                   style={{
                     border: 0,
                     borderRadius: 12,
+                    minHeight: 44,
                     padding: "0 14px",
                     background: "#0891b2",
                     color: "#ffffff",
@@ -4065,6 +4066,7 @@ function simulatorBearing(
                             "#020617",
                           color:
                             "#e2e8f0",
+                          minHeight: 44,
                           padding: 10,
                           cursor: "pointer",
                         }}
