@@ -3847,6 +3847,11 @@ function simulatorBearing(
               >
                 <input
                   id="safe-navigation-destination"
+                  aria-controls={
+                    destinationResults.length > 0
+                      ? "safe-navigation-destination-results"
+                      : undefined
+                  }
                   value={destinationName}
                   onChange={(event) => {
                     if (
@@ -3934,6 +3939,11 @@ function simulatorBearing(
                   onClick={() => {
                     void searchDestination();
                   }}
+                  aria-controls={
+                    destinationResults.length > 0
+                      ? "safe-navigation-destination-results"
+                      : undefined
+                  }
                   disabled={destinationSearching}
                   style={{
                     border: 0,
@@ -3960,6 +3970,9 @@ function simulatorBearing(
 
               {destinationResults.length > 0 ? (
                 <div
+                  id="safe-navigation-destination-results"
+                  role="group"
+                  aria-label="Destination search results"
                   style={{
                     display: "grid",
                     gap: 6,
@@ -4354,11 +4367,18 @@ function simulatorBearing(
 
           {routes.length > 1 && (
             <section style={{ marginTop: 14 }}>
-              <div style={{ fontWeight: 900, marginBottom: 8 }}>
+              <div
+                id="safe-navigation-route-options-heading"
+                style={{ fontWeight: 900, marginBottom: 8 }}
+              >
                 Route options
               </div>
 
-              <div style={{ display: "grid", gap: 8 }}>
+              <div
+                role="group"
+                aria-labelledby="safe-navigation-route-options-heading"
+                style={{ display: "grid", gap: 8 }}
+              >
                 {routes.slice(0, 4).map((route, index) => (
                   <button
                     key={`${route.index ?? index}-${index}`}
