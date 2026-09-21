@@ -4403,6 +4403,7 @@ function simulatorBearing(
                       clearOffRouteTimer();
                       offRouteStartedAtRef.current = null;
                       lastSpokenAnnouncementRef.current.clear();
+                      overspeedVoiceArmedRef.current = true;
                       if (
                         typeof window !== "undefined" &&
                         "speechSynthesis" in window
