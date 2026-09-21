@@ -4400,6 +4400,15 @@ function simulatorBearing(
                       autoRerouteAbortControllerRef.current = null;
                       autoRerouteInFlightRef.current = false;
                       setAutoRerouteActive(false);
+                      clearOffRouteTimer();
+                      offRouteStartedAtRef.current = null;
+                      lastSpokenAnnouncementRef.current.clear();
+                      if (
+                        typeof window !== "undefined" &&
+                        "speechSynthesis" in window
+                      ) {
+                        window.speechSynthesis.cancel();
+                      }
                       setSelectedRouteIndex(index);
                       lastAutoRerouteAtRef.current = 0;
                       setAutoRerouteMessage("");
