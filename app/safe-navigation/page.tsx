@@ -4391,6 +4391,10 @@ function simulatorBearing(
                     type="button"
                     aria-pressed={selectedRouteIndex === index}
                     onClick={() => {
+                      manualRouteRequestIdRef.current += 1;
+                      manualRouteAbortControllerRef.current?.abort();
+                      manualRouteAbortControllerRef.current = null;
+                      setRouting(false);
                       autoRerouteRequestIdRef.current += 1;
                       autoRerouteAbortControllerRef.current?.abort();
                       autoRerouteAbortControllerRef.current = null;
