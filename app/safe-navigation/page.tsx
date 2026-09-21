@@ -4400,6 +4400,10 @@ function simulatorBearing(
                       autoRerouteAbortControllerRef.current = null;
                       autoRerouteInFlightRef.current = false;
                       setAutoRerouteActive(false);
+                      clearSimulatorTimer();
+                      setSimulatorRunning(false);
+                      simulatorPointsRef.current = [];
+                      simulatorIndexRef.current = 0;
                       clearOffRouteTimer();
                       offRouteStartedAtRef.current = null;
                       lastSpokenAnnouncementRef.current.clear();
