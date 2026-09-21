@@ -4363,6 +4363,7 @@ function simulatorBearing(
                   <button
                     key={`${route.index ?? index}-${index}`}
                     type="button"
+                    aria-pressed={selectedRouteIndex === index}
                     onClick={() => {
                       setSelectedRouteIndex(index);
                       setNavigationInstructions(
@@ -4828,6 +4829,5 @@ const inputStyle = {
   border: "1px solid #334155",
   background: "#020617",
   color: "#f8fafc",
-  outline: "none",
   fontSize: 14,
 };
