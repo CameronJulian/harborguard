@@ -2755,7 +2755,17 @@ function simulatorBearing(
         )
       : null;
 
+  /*
+   * Route-derived driver guidance must not trust a position whose
+   * accuracy radius is too large for state-changing navigation work.
+   */
+  const gpsAccuracyPoor =
+    position
+      ? gpsAccuracyIsPoor(position.accuracy)
+      : false;
+
   const activeSpeedLimitKph =
+    !gpsAccuracyPoor &&
     routeProgress &&
     Array.isArray(
       selectedRoute?.speedLimitSegments
@@ -2790,11 +2800,20 @@ function simulatorBearing(
         OVERSPEED_TOLERANCE_KPH;
 
   let activeInstructionIndex =
-    navigationInstructions.length > 0
+    navigationInstructions.length > 0 &&
+    !gpsAccuracyPoor
       ? 0
       : -1;
 
-  if (routeProgress) {
+  /*
+   * Do not advance turn ownership from an uncertain GPS fix.
+   * The active route remains visible while guidance waits for
+   * a trustworthy position.
+   */
+  if (
+    routeProgress &&
+    !gpsAccuracyPoor
+  ) {
     for (
       let index = 0;
       index < navigationInstructions.length;
@@ -2895,11 +2914,6 @@ function simulatorBearing(
           ]
         )
       : null;
-
-  const gpsAccuracyPoor =
-    position
-      ? gpsAccuracyIsPoor(position.accuracy)
-      : false;
 
   const arrivalThresholdMeters =
     Math.max(
@@ -3088,6 +3102,7 @@ function simulatorBearing(
 
     if (
       !voiceEnabled ||
+      gpsAccuracyPoor ||
       !overspeedVoiceArmedRef.current
     ) {
       return;
@@ -3105,12 +3120,14 @@ function simulatorBearing(
   }, [
     isOverspeeding,
     voiceEnabled,
+    gpsAccuracyPoor,
     speakNavigationInstruction,
   ]);
 
   useEffect(() => {
     if (
       !voiceEnabled ||
+      gpsAccuracyPoor ||
       routing ||
       autoRerouteActive ||
       !selectedRoute
@@ -3217,6 +3234,7 @@ function simulatorBearing(
     }
   }, [
     voiceEnabled,
+    gpsAccuracyPoor,
     routing,
     autoRerouteActive,
     selectedRoute,
