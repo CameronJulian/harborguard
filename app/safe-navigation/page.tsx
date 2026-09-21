@@ -2529,6 +2529,7 @@ function simulatorBearing(
     autoRerouteAbortControllerRef.current = null;
     autoRerouteInFlightRef.current = false;
     setAutoRerouteActive(false);
+    setAutoRerouteMessage("");
 
     const requestId =
       manualRouteRequestIdRef.current + 1;
@@ -4392,6 +4393,7 @@ function simulatorBearing(
                     onClick={() => {
                       setSelectedRouteIndex(index);
                       lastAutoRerouteAtRef.current = 0;
+                      setAutoRerouteMessage("");
                       setNavigationInstructions(
                         instructionsForRoute(route)
                       );
