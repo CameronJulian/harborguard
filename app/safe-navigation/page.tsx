@@ -2602,6 +2602,7 @@ function simulatorBearing(
       if (!response.ok) {
         setRoutes([]);
         setNavigationInstructions([]);
+        setRecommendation(null);
         setRoutingMessage(
           result.error ??
           "Could not calculate route."
@@ -2656,6 +2657,7 @@ function simulatorBearing(
 
       setRoutes([]);
       setNavigationInstructions([]);
+      setRecommendation(null);
 
       setRoutingMessage(
         "Route calculation failed."
