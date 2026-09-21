@@ -4425,6 +4425,7 @@ function simulatorBearing(
                         window.speechSynthesis.cancel();
                       }
                       setSelectedRouteIndex(index);
+                      setRecommendation(null);
                       lastAutoRerouteAtRef.current = 0;
                       setAutoRerouteMessage("");
                       setNavigationInstructions(
