@@ -2623,6 +2623,7 @@ function simulatorBearing(
 
       setRoutes(nextRoutes);
       setSelectedRouteIndex(0);
+      lastAutoRerouteAtRef.current = 0;
 
       setRecommendation(
         result.recommendation ?? null
@@ -4390,6 +4391,7 @@ function simulatorBearing(
                     aria-pressed={selectedRouteIndex === index}
                     onClick={() => {
                       setSelectedRouteIndex(index);
+                      lastAutoRerouteAtRef.current = 0;
                       setNavigationInstructions(
                         instructionsForRoute(route)
                       );
