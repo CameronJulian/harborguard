@@ -4400,10 +4400,20 @@ function simulatorBearing(
                       autoRerouteAbortControllerRef.current = null;
                       autoRerouteInFlightRef.current = false;
                       setAutoRerouteActive(false);
+                      const simulatorOwnsPosition =
+                        watchIdRef.current === null &&
+                        gpsActive;
                       clearSimulatorTimer();
                       setSimulatorRunning(false);
                       simulatorPointsRef.current = [];
                       simulatorIndexRef.current = 0;
+                      if (simulatorOwnsPosition) {
+                        setPosition(null);
+                        setGpsActive(false);
+                        setGpsMessage(
+                          "Simulator stopped after route change."
+                        );
+                      }
                       clearOffRouteTimer();
                       offRouteStartedAtRef.current = null;
                       lastSpokenAnnouncementRef.current.clear();
