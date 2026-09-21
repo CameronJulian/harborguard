@@ -1144,6 +1144,31 @@ export default function SafeNavigationPage() {
     offRouteStartedAtRef.current = null;
 
     /*
+     * GPS loss invalidates any automatic reroute already in flight.
+     * Prevent a late response from publishing route state after live
+     * positioning has stopped.
+     */
+    autoRerouteRequestIdRef.current += 1;
+    autoRerouteAbortControllerRef.current?.abort();
+    autoRerouteAbortControllerRef.current = null;
+    autoRerouteInFlightRef.current = false;
+    setAutoRerouteActive(false);
+    setAutoRerouteMessage("");
+
+    /*
+     * GPS-dependent voice guidance stops with live positioning.
+     */
+    if (
+      typeof window !== "undefined" &&
+      "speechSynthesis" in window
+    ) {
+      window.speechSynthesis.cancel();
+    }
+
+    lastSpokenAnnouncementRef.current.clear();
+    overspeedVoiceArmedRef.current = true;
+
+    /*
      * Preserve the last known map position, but remove stale motion
      * from the HUD while GPS tracking is stopped.
      */
@@ -1221,6 +1246,28 @@ export default function SafeNavigationPage() {
 
         clearOffRouteTimer();
         offRouteStartedAtRef.current = null;
+
+        /*
+         * GPS failure invalidates any automatic reroute already in flight.
+         * Prevent a late response from publishing route state after live
+         * positioning has been lost.
+         */
+        autoRerouteRequestIdRef.current += 1;
+        autoRerouteAbortControllerRef.current?.abort();
+        autoRerouteAbortControllerRef.current = null;
+        autoRerouteInFlightRef.current = false;
+        setAutoRerouteActive(false);
+        setAutoRerouteMessage("");
+
+        if (
+          typeof window !== "undefined" &&
+          "speechSynthesis" in window
+        ) {
+          window.speechSynthesis.cancel();
+        }
+
+        lastSpokenAnnouncementRef.current.clear();
+        overspeedVoiceArmedRef.current = true;
 
         /*
          * Do not leave the last measured speed visible after GPS failure.
