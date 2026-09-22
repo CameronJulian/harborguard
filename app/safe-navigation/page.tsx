@@ -1231,11 +1231,17 @@ export default function SafeNavigationPage() {
         );
       },
       (error) => {
+        const isTerminalPermissionError =
+          error.code === error.PERMISSION_DENIED;
+
         /*
-         * Release the failed watch so Start GPS can create a fresh
-         * geolocation watch on the next retry.
+         * Permission denial is terminal for the current watch.
+         * POSITION_UNAVAILABLE and TIMEOUT are transient watch errors:
+         * keep the watch alive so a later good fix can recover without
+         * forcing the driver to restart GPS manually.
          */
         if (
+          isTerminalPermissionError &&
           watchIdRef.current !== null &&
           typeof navigator !== "undefined" &&
           navigator.geolocation
@@ -1269,6 +1275,12 @@ export default function SafeNavigationPage() {
         lastSpokenAnnouncementRef.current.clear();
         overspeedVoiceArmedRef.current = true;
 
+        if (voiceEnabled) {
+          setVoiceStatusMessage(
+            "Voice guidance on"
+          );
+        }
+
         /*
          * Do not leave the last measured speed visible after GPS failure.
          */
@@ -1277,11 +1289,24 @@ export default function SafeNavigationPage() {
             ? {
                 ...current,
                 speedKmh: 0,
+                accuracy:
+                  isTerminalPermissionError
+                    ? current.accuracy
+                    : Math.max(
+                        current.accuracy,
+                        GPS_POOR_ACCURACY_METERS + 1
+                      ),
               }
             : current
         );
 
-        setGpsActive(false);
+        /*
+         * Keep transient watch failures in an active recovery state.
+         * Existing poor-GPS gating suppresses arrival, reroute, turn
+         * progression and voice until a trustworthy fix arrives.
+         */
+        setGpsActive(!isTerminalPermissionError);
+
         switch (error.code) {
           case error.PERMISSION_DENIED:
             setGpsMessage(
@@ -1291,13 +1316,13 @@ export default function SafeNavigationPage() {
 
           case error.POSITION_UNAVAILABLE:
             setGpsMessage(
-              "Your location is currently unavailable. Check your GPS/location services and try again."
+              "GPS signal temporarily unavailable. Waiting for location recovery."
             );
             break;
 
           case error.TIMEOUT:
             setGpsMessage(
-              "GPS timed out before getting a precise location. Move to an open area and tap Start GPS again."
+              "GPS update timed out. Waiting for the next location fix."
             );
             break;
 
