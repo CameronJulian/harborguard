@@ -3137,7 +3137,8 @@ function simulatorBearing(
     const didSpeak =
       speakNavigationInstruction(
         "overspeed-warning",
-        "Warning. You are exceeding the speed limit."
+        "Warning. You are exceeding the speed limit.",
+        true
       );
 
     if (didSpeak) {
