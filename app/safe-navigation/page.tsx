@@ -3152,6 +3152,7 @@ function simulatorBearing(
   useEffect(() => {
     if (
       !voiceEnabled ||
+      !gpsActive ||
       gpsAccuracyPoor ||
       routing ||
       autoRerouteActive ||
@@ -3259,6 +3260,7 @@ function simulatorBearing(
     }
   }, [
     voiceEnabled,
+    gpsActive,
     gpsAccuracyPoor,
     routing,
     autoRerouteActive,
