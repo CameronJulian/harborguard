@@ -1144,6 +1144,16 @@ export default function SafeNavigationPage() {
     offRouteStartedAtRef.current = null;
 
     /*
+     * GPS loss invalidates any manual route calculation still in flight.
+     * Prevent a late manual response from publishing route state after
+     * live positioning has stopped.
+     */
+    manualRouteRequestIdRef.current += 1;
+    manualRouteAbortControllerRef.current?.abort();
+    manualRouteAbortControllerRef.current = null;
+    setRouting(false);
+
+    /*
      * GPS loss invalidates any automatic reroute already in flight.
      * Prevent a late response from publishing route state after live
      * positioning has stopped.
@@ -1252,6 +1262,16 @@ export default function SafeNavigationPage() {
 
         clearOffRouteTimer();
         offRouteStartedAtRef.current = null;
+
+        /*
+         * GPS failure invalidates any manual route calculation still in flight.
+         * Prevent a late manual response from publishing route state after
+         * live positioning has been lost.
+         */
+        manualRouteRequestIdRef.current += 1;
+        manualRouteAbortControllerRef.current?.abort();
+        manualRouteAbortControllerRef.current = null;
+        setRouting(false);
 
         /*
          * GPS failure invalidates any automatic reroute already in flight.
