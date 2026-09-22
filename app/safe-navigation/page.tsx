@@ -2164,6 +2164,31 @@ function simulatorBearing(
     lastSpokenAnnouncementRef.current.clear();
     overspeedVoiceArmedRef.current = true;
 
+    /*
+     * Ending navigation stops route-owned motion.
+     * Preserve the last known map position while removing the
+     * simulator/live speed that belonged to the ended route.
+     */
+    setPosition((current) =>
+      current
+        ? {
+            ...current,
+            speedKmh: 0,
+          }
+        : current
+    );
+
+    /*
+     * speechSynthesis.cancel() does not guarantee that the canceled
+     * utterance will run onend. Normalize the visible voice state
+     * explicitly after ending navigation.
+     */
+    setVoiceStatusMessage(
+      voiceEnabled
+        ? "Voice guidance on"
+        : "Voice guidance off"
+    );
+
     setRoutes([]);
     setSelectedRouteIndex(0);
     setNavigationInstructions([]);
