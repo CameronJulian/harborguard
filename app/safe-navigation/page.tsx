@@ -2789,42 +2789,6 @@ function simulatorBearing(
       ? gpsAccuracyIsPoor(position.accuracy)
       : false;
 
-  const activeSpeedLimitKph =
-    gpsActive &&
-    !gpsAccuracyPoor &&
-    routeProgress &&
-    Array.isArray(
-      selectedRoute?.speedLimitSegments
-    )
-      ? selectedRoute.speedLimitSegments.find(
-          (segment) =>
-            routeProgress.progressMeters >=
-              segment.startOffsetMeters &&
-            routeProgress.progressMeters <
-              segment.endOffsetMeters
-        )?.speedLimitKph ?? null
-      : null;
-  const currentSpeedKph =
-    Math.max(
-      0,
-      Number(position?.speedKmh ?? 0)
-    );
-
-  const overspeedAmountKph =
-    activeSpeedLimitKph != null
-      ? Math.max(
-          0,
-          currentSpeedKph -
-            activeSpeedLimitKph
-        )
-      : 0;
-
-  const isOverspeeding =
-    activeSpeedLimitKph != null &&
-    currentSpeedKph >
-      activeSpeedLimitKph +
-        OVERSPEED_TOLERANCE_KPH;
-
   let activeInstructionIndex =
     navigationInstructions.length > 0 &&
     !gpsAccuracyPoor
@@ -2962,6 +2926,44 @@ function simulatorBearing(
     destinationDistanceMeters != null &&
     destinationDistanceMeters <=
       arrivalThresholdMeters;
+
+  const activeSpeedLimitKph =
+    gpsActive &&
+    !hasReachedDestination &&
+    !gpsAccuracyPoor &&
+    routeProgress &&
+    Array.isArray(
+      selectedRoute?.speedLimitSegments
+    )
+      ? selectedRoute.speedLimitSegments.find(
+          (segment) =>
+            routeProgress.progressMeters >=
+              segment.startOffsetMeters &&
+            routeProgress.progressMeters <
+              segment.endOffsetMeters
+        )?.speedLimitKph ?? null
+      : null;
+  const currentSpeedKph =
+    Math.max(
+      0,
+      Number(position?.speedKmh ?? 0)
+    );
+
+  const overspeedAmountKph =
+    activeSpeedLimitKph != null
+      ? Math.max(
+          0,
+          currentSpeedKph -
+            activeSpeedLimitKph
+        )
+      : 0;
+
+  const isOverspeeding =
+    activeSpeedLimitKph != null &&
+    currentSpeedKph >
+      activeSpeedLimitKph +
+        OVERSPEED_TOLERANCE_KPH;
+
 
   const releaseWakeLock =
     useCallback(async () => {
