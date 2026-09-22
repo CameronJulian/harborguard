@@ -2790,6 +2790,7 @@ function simulatorBearing(
       : false;
 
   const activeSpeedLimitKph =
+    gpsActive &&
     !gpsAccuracyPoor &&
     routeProgress &&
     Array.isArray(
