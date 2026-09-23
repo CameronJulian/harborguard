@@ -1144,6 +1144,24 @@ export default function SafeNavigationPage() {
     offRouteStartedAtRef.current = null;
 
     /*
+     * GPS loss invalidates any destination search still in flight.
+     * Prevent a late search response from publishing results after
+     * live positioning has stopped.
+     */
+    destinationSearchRequestIdRef.current += 1;
+    destinationSearchAbortControllerRef.current?.abort();
+    destinationSearchAbortControllerRef.current = null;
+    setDestinationSearching(false);
+
+    /*
+     * Search loading state and routingMessage are independent.
+     * Replace any search-owned lifecycle message when GPS stops.
+     */
+    setRoutingMessage(
+      "GPS stopped. Start GPS to search or calculate a route."
+    );
+
+    /*
      * GPS loss invalidates any manual route calculation still in flight.
      * Prevent a late manual response from publishing route state after
      * live positioning has stopped.
@@ -1262,6 +1280,26 @@ export default function SafeNavigationPage() {
 
         clearOffRouteTimer();
         offRouteStartedAtRef.current = null;
+
+        if (isTerminalPermissionError) {
+          /*
+           * Terminal GPS permission loss invalidates any destination
+           * search still in flight so a late response cannot publish
+           * results after live positioning has been lost.
+           */
+          destinationSearchRequestIdRef.current += 1;
+          destinationSearchAbortControllerRef.current?.abort();
+          destinationSearchAbortControllerRef.current = null;
+          setDestinationSearching(false);
+
+          /*
+           * Permission denial owns the terminal lifecycle message.
+           * Do not leave stale destination-search text visible.
+           */
+          setRoutingMessage(
+            "Location permission was denied. Enable location access for HarborGuard and tap Start GPS again."
+          );
+        }
 
         /*
          * GPS failure invalidates any manual route calculation still in flight.
