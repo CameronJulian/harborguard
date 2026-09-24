@@ -3569,11 +3569,49 @@ function simulatorBearing(
     autoRerouteFromCurrentPosition,
     clearOffRouteTimer,
   ]);
+  useEffect(() => {
+    if (!hasReachedDestination) {
+      return;
+    }
+
+    /*
+     * Arrival owns the terminal navigation lifecycle.
+     * Invalidate and cancel any automatic reroute that started
+     * before arrival so it cannot publish stale route state.
+     */
+    autoRerouteRequestIdRef.current += 1;
+    autoRerouteAbortControllerRef.current?.abort();
+    autoRerouteAbortControllerRef.current = null;
+    autoRerouteInFlightRef.current = false;
+    clearOffRouteTimer();
+    offRouteStartedAtRef.current = null;
+
+    /*
+     * React state normalization is deferred out of the effect body.
+     * The request generation/ref invalidation above is synchronous,
+     * so a late reroute response is already obsolete.
+     */
+    const normalizeArrivalState =
+      window.setTimeout(() => {
+        setAutoRerouteActive(false);
+        setAutoRerouteMessage("");
+      }, 0);
+
+    return () => {
+      window.clearTimeout(
+        normalizeArrivalState
+      );
+    };
+  }, [
+    hasReachedDestination,
+    clearOffRouteTimer,
+  ]);
+
   const navigationHeadline =
-    autoRerouteActive
-      ? "Rerouting..."
-      : hasReachedDestination
-        ? "You have arrived"
+    hasReachedDestination
+      ? "You have arrived"
+      : autoRerouteActive
+        ? "Rerouting..."
       : activeInstruction?.text ||
         (selectedRoute
           ? `Continue toward ${
@@ -3583,15 +3621,15 @@ function simulatorBearing(
           : "Choose a destination");
 
   const navigationDetail =
-    autoRerouteActive
-      ? "Finding a new HarborGuard safe route from your current position."
-      : hasReachedDestination
+    hasReachedDestination
       ? destinationName
         ? `Arrived at ${destinationName}.${arrivalSide ? ` Destination is on the ${arrivalSide}.` : ""}`
         : arrivalSide
           ? `Destination reached. Destination is on the ${arrivalSide}.`
           : "Destination reached."
-      : activeInstruction
+      : autoRerouteActive
+        ? "Finding a new HarborGuard safe route from your current position."
+        : activeInstruction
         ? `${
             distanceToNextManeuver != null
               ? `${Math.round(
