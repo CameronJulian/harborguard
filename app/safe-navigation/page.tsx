@@ -2229,6 +2229,14 @@ function simulatorBearing(
 
     pauseSyntheticDrive();
 
+    /*
+     * Ending navigation invalidates DEV simulator route ownership.
+     * A future Start / Resume must build playback from the newly
+     * calculated route instead of resuming stale route points.
+     */
+    simulatorPointsRef.current = [];
+    simulatorIndexRef.current = 0;
+
     if (
       typeof window !== "undefined" &&
       "speechSynthesis" in window
