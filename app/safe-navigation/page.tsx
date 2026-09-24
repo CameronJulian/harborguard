@@ -2707,6 +2707,9 @@ function simulatorBearing(
       setSimulatorRunning(false);
       simulatorPointsRef.current = [];
       simulatorIndexRef.current = 0;
+      setGpsMessage(
+        "DEV simulator stopped for route recalculation"
+      );
       setSimulatorMessage(
         "Simulator stopped for route recalculation."
       );
