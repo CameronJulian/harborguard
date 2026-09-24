@@ -2697,6 +2697,22 @@ function simulatorBearing(
     }
 
     /*
+     * A deliberate manual recalculation replaces DEV simulator
+     * route ownership. Stop playback and discard old playback
+     * points while preserving the current simulated position as
+     * the origin for this new route calculation.
+     */
+    if (simulatorEnabled) {
+      clearSimulatorTimer();
+      setSimulatorRunning(false);
+      simulatorPointsRef.current = [];
+      simulatorIndexRef.current = 0;
+      setSimulatorMessage(
+        "Simulator stopped for route recalculation."
+      );
+    }
+
+    /*
      * Each manual calculation gets a monotonically increasing
      * generation. Only the newest generation may publish state.
      */
