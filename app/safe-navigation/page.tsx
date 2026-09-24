@@ -1871,6 +1871,23 @@ function simulatorBearing(
     clearSimulatorTimer();
     setSimulatorRunning(false);
 
+    /*
+     * Force Off Route becomes the sole position owner for this
+     * DEV test. A live browser geolocation watch would otherwise
+     * overwrite the forced position and repeatedly cancel the
+     * sustained off-route confirmation timer.
+     */
+    if (
+      watchIdRef.current !== null &&
+      typeof navigator !== "undefined" &&
+      navigator.geolocation
+    ) {
+      navigator.geolocation.clearWatch(
+        watchIdRef.current
+      );
+      watchIdRef.current = null;
+    }
+
     const points =
       simulatorPointsRef.current.length >= 2
         ? simulatorPointsRef.current
