@@ -961,6 +961,9 @@ export default function SafeNavigationPage() {
       null
     );
 
+  const calculateRouteButtonRef =
+    useRef<HTMLButtonElement | null>(null);
+
   const [
     navigationInstructions,
     setNavigationInstructions,
@@ -4324,6 +4327,14 @@ function simulatorBearing(
                           setRoutingMessage(
                             `Destination selected: ${result.title}`
                           );
+
+                          /*
+                           * The selected search-result button is
+                           * removed when results are cleared.
+                           * Move keyboard focus to the next
+                           * logical navigation action.
+                           */
+                          calculateRouteButtonRef.current?.focus();
                         }}
                         style={{
                           textAlign: "left",
@@ -4457,6 +4468,7 @@ function simulatorBearing(
             </select>
 
             <button
+              ref={calculateRouteButtonRef}
               type="button"
               disabled={routing}
               onClick={calculateRoute}
