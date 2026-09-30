@@ -3883,13 +3883,13 @@ function simulatorBearing(
 
           @media (max-width: 430px) {
             .hg-navigation-sidebar {
-              max-height: 34dvh;
+              max-height: 42dvh;
             }
 
             .hg-navigation-metrics-wrap {
               bottom:
                 calc(
-                  34dvh +
+                  42dvh +
                   max(18px, env(safe-area-inset-bottom))
                 ) !important;
             }
@@ -3902,7 +3902,7 @@ function simulatorBearing(
             .hg-navigation-follow-button {
               bottom:
                 calc(
-                  34dvh +
+                  42dvh +
                   112px +
                   max(12px, env(safe-area-inset-bottom))
                 ) !important;
