@@ -21,12 +21,7 @@ const routeSource = fs.readFileSync(routePath, "utf8");
 test("mission evidence GET signs only authorized mission Storage paths", () => {
   assert.match(
     routeSource,
-    /const missionStoragePrefix = `missions\/\$\{id\}\/`;/
-  );
-
-  assert.match(
-    routeSource,
-    /filePath\.startsWith\(missionStoragePrefix\)/
+    /isMissionEvidenceStorageKey\(filePath,\s*id\)/
   );
 
   assert.match(
@@ -43,7 +38,7 @@ test("mission evidence GET signs only authorized mission Storage paths", () => {
 test("mission evidence GET preserves non-matching and non-file evidence", () => {
   assert.match(
     routeSource,
-    /if\s*\(!filePath\.startsWith\(missionStoragePrefix\)\)\s*\{\s*return item;\s*\}/s
+    /if\s*\(!isMissionEvidenceStorageKey\(filePath,\s*id\)\)\s*\{\s*return item;\s*\}/s
   );
 
   assert.match(
