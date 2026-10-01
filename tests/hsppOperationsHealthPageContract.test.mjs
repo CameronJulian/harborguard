@@ -41,7 +41,7 @@ test(
   () => {
     assert.match(
       page,
-      /fetch\s*\(\s*["']\/api\/hspp\/health["']/
+      /fetchWithAuth\s*\(\s*["']\/api\/hspp\/health["']/
     );
 
     assert.match(
