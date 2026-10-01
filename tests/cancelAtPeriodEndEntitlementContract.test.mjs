@@ -7,6 +7,11 @@ const subscription = fs.readFileSync(
   "utf8"
 );
 
+const subscriptionAccess = fs.readFileSync(
+  "lib/subscription-access.ts",
+  "utf8"
+);
+
 const requirePremium = fs.readFileSync(
   "lib/require-premium.ts",
   "utf8"
@@ -36,17 +41,17 @@ test(
   "cancelled subscription retains premium only before period end",
   () => {
     assert.match(
-      subscription,
+      subscriptionAccess,
       /status === "cancelled" && nextBillingDate/
     );
 
     assert.match(
-      subscription,
+      subscriptionAccess,
       /Number\.isFinite\(periodEnd\)/
     );
 
     assert.match(
-      subscription,
+      subscriptionAccess,
       /periodEnd > Date\.now\(\)/
     );
   }
@@ -56,7 +61,7 @@ test(
   "missing or expired cancellation period falls through to deny",
   () => {
     assert.match(
-      subscription,
+      subscriptionAccess,
       /return false;/
     );
   }
