@@ -181,7 +181,7 @@ test("Fleet realtime location events refresh through the trusted Fleet Live API"
 
   assert.match(
     fleetPage,
-    /fetch\("\/api\/fleet\/live"/
+    /fetchWithAuth\("\/api\/fleet\/live"/
   );
 });
 
