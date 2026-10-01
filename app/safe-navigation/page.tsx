@@ -982,6 +982,233 @@ export default function SafeNavigationPage() {
   const [routing, setRouting] = useState(false);
   const [followVehicle, setFollowVehicle] = useState(true);
 
+  const refreshRecoveryReadyRef =
+    useRef(false);
+
+  const refreshRecoveryHydratingRef =
+    useRef(false);
+
+  const refreshRecoveryStorageKey =
+    "harborguard:safe-navigation:active-session:v1";
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      const stored =
+        window.sessionStorage.getItem(
+          refreshRecoveryStorageKey
+        );
+
+      if (!stored) {
+        refreshRecoveryReadyRef.current = true;
+        return;
+      }
+
+      const parsed =
+        JSON.parse(stored) as {
+          destinationLat?: string;
+          destinationLng?: string;
+          destinationName?: string;
+          selectedDestination?:
+            NavigationSearchResult | null;
+          routes?: RouteOption[];
+          selectedRouteIndex?: number;
+          navigationInstructions?:
+            NavigationInstruction[];
+          routingProfile?: string;
+          recommendation?: string | null;
+          routingMessage?: string;
+          followVehicle?: boolean;
+          voiceEnabled?: boolean;
+          gpsWasActive?: boolean;
+        };
+
+      if (
+        !Array.isArray(parsed.routes) ||
+        parsed.routes.length === 0
+      ) {
+        window.sessionStorage.removeItem(
+          refreshRecoveryStorageKey
+        );
+
+        refreshRecoveryReadyRef.current = true;
+        return;
+      }
+
+      refreshRecoveryHydratingRef.current = true;
+
+      setDestinationLat(
+        typeof parsed.destinationLat === "string"
+          ? parsed.destinationLat
+          : ""
+      );
+
+      setDestinationLng(
+        typeof parsed.destinationLng === "string"
+          ? parsed.destinationLng
+          : ""
+      );
+
+      setDestinationName(
+        typeof parsed.destinationName === "string" &&
+          parsed.destinationName.trim()
+          ? parsed.destinationName
+          : "Destination"
+      );
+
+      setSelectedDestination(
+        parsed.selectedDestination ?? null
+      );
+
+      setRoutes(parsed.routes);
+
+      setSelectedRouteIndex(
+        typeof parsed.selectedRouteIndex === "number" &&
+          Number.isInteger(
+            parsed.selectedRouteIndex
+          ) &&
+          parsed.selectedRouteIndex >= 0 &&
+          parsed.selectedRouteIndex <
+            parsed.routes.length
+          ? parsed.selectedRouteIndex
+          : 0
+      );
+
+      setNavigationInstructions(
+        Array.isArray(
+          parsed.navigationInstructions
+        )
+          ? parsed.navigationInstructions
+          : []
+      );
+
+      setRoutingProfile(
+        typeof parsed.routingProfile === "string" &&
+          parsed.routingProfile
+          ? parsed.routingProfile
+          : "safest"
+      );
+
+      setRecommendation(
+        typeof parsed.recommendation === "string"
+          ? parsed.recommendation
+          : null
+      );
+
+      setRoutingMessage(
+        typeof parsed.routingMessage === "string" &&
+          parsed.routingMessage
+          ? parsed.routingMessage
+          : "Navigation restored after refresh."
+      );
+
+      setFollowVehicle(
+        parsed.followVehicle !== false
+      );
+
+      setVoiceEnabled(
+        parsed.voiceEnabled === true
+      );
+
+      setVoiceStatusMessage(
+        parsed.voiceEnabled === true
+          ? "Voice guidance on"
+          : "Voice guidance off"
+      );
+
+      refreshRecoveryReadyRef.current = true;
+
+      if (parsed.gpsWasActive === true) {
+        void startGps();
+      }
+    } catch {
+      window.sessionStorage.removeItem(
+        refreshRecoveryStorageKey
+      );
+
+      refreshRecoveryHydratingRef.current = false;
+      refreshRecoveryReadyRef.current = true;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (
+      !refreshRecoveryReadyRef.current ||
+      typeof window === "undefined"
+    ) {
+      return;
+    }
+
+    const recoverySelectedRoute =
+      routes[selectedRouteIndex] ?? null;
+
+    /*
+     * During hydration React has not committed the restored route
+     * state yet. Do not let the initial empty render delete the
+     * session we are currently restoring.
+     */
+    if (
+      refreshRecoveryHydratingRef.current
+    ) {
+      if (!recoverySelectedRoute) {
+        return;
+      }
+
+      refreshRecoveryHydratingRef.current =
+        false;
+    }
+
+    if (!recoverySelectedRoute) {
+      window.sessionStorage.removeItem(
+        refreshRecoveryStorageKey
+      );
+      return;
+    }
+
+    try {
+      window.sessionStorage.setItem(
+        refreshRecoveryStorageKey,
+        JSON.stringify({
+          destinationLat,
+          destinationLng,
+          destinationName,
+          selectedDestination,
+          routes,
+          selectedRouteIndex,
+          navigationInstructions,
+          routingProfile,
+          recommendation,
+          routingMessage,
+          followVehicle,
+          voiceEnabled,
+          gpsWasActive: gpsActive,
+        })
+      );
+    } catch {
+      /*
+       * Refresh recovery is best-effort.
+       * Navigation continues if session storage is unavailable.
+       */
+    }
+  }, [
+    destinationLat,
+    destinationLng,
+    destinationName,
+    selectedDestination,
+    routes,
+    selectedRouteIndex,
+    navigationInstructions,
+    routingProfile,
+    recommendation,
+    routingMessage,
+    followVehicle,
+    voiceEnabled,
+    gpsActive,
+  ]);
+
   useEffect(() => {
     return () => {
       if (
@@ -2199,6 +2426,12 @@ function simulatorBearing(
 
   function endNavigation() {
     clearOffRouteTimer();
+
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem(
+        refreshRecoveryStorageKey
+      );
+    }
 
     /*
      * Navigation termination also invalidates destination search
