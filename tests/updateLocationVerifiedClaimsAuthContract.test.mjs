@@ -132,7 +132,7 @@ test(
 
     assert.match(
       fastSource,
-      /subscriptionStatus !== "active"/
+      /canAccessPremiumFeatures\(\s*subscriptionStatus,\s*trialEndsAt,\s*nextBillingDate\s*\)/
     );
   }
 );
