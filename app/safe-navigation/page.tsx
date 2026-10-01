@@ -919,6 +919,8 @@ export default function SafeNavigationPage() {
 
   const simulatorIndexRef =
     useRef(0);
+  const navigationOwnsSimulatorRouteRef =
+    useRef(false);
 
   const [simulatorRunning, setSimulatorRunning] =
     useState(false);
@@ -1062,6 +1064,9 @@ export default function SafeNavigationPage() {
       setSelectedDestination(
         parsed.selectedDestination ?? null
       );
+
+      navigationOwnsSimulatorRouteRef.current =
+        parsed.routes.length > 0;
 
       setRoutes(parsed.routes);
 
@@ -2406,6 +2411,13 @@ function simulatorBearing(
       return;
     }
 
+    if (!navigationOwnsSimulatorRouteRef.current) {
+      setSimulatorMessage(
+        "Calculate a route before starting playback."
+      );
+      return;
+    }
+
     if (routePoints.length < 2) {
       setSimulatorMessage(
         "Calculate a route before starting playback."
@@ -2510,6 +2522,8 @@ function simulatorBearing(
     offRouteStartedAtRef.current = null;
     lastAutoRerouteAtRef.current = 0;
     autoRerouteInFlightRef.current = false;
+
+    navigationOwnsSimulatorRouteRef.current = false;
 
     pauseSyntheticDrive();
 
@@ -2980,6 +2994,8 @@ function simulatorBearing(
       return;
     }
 
+    navigationOwnsSimulatorRouteRef.current = false;
+
     /*
      * A deliberate manual recalculation replaces DEV simulator
      * route ownership. Stop playback and discard old playback
@@ -3096,6 +3112,9 @@ function simulatorBearing(
 
       const nextRoutes =
         result.routes ?? [];
+
+      navigationOwnsSimulatorRouteRef.current =
+        nextRoutes.length > 0;
 
       setNavigationInstructions(
         instructionsForRoute(
