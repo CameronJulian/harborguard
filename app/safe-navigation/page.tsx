@@ -2303,7 +2303,7 @@ function simulatorBearing(
       lng: forcedPosition.lng,
       speedKmh: 25,
       heading,
-      accuracy: 5,
+      accuracy: position && gpsAccuracyIsPoor(position.accuracy) ? position.accuracy : 5,
     });
 
     setGpsActive(true);
@@ -2319,6 +2319,54 @@ function simulatorBearing(
       )} m from the active route using a ${forcedPosition.offsetMeters} m test offset. Hold position to test automatic rerouting.`
     );
 
+    setAutoRerouteMessage("");
+  }
+  function forceSimulatorPoorGps() {
+    if (!simulatorEnabled) {
+      return;
+    }
+
+    clearSimulatorTimer();
+    setSimulatorRunning(false);
+    clearOffRouteTimer();
+    offRouteStartedAtRef.current = null;
+
+    /*
+     * This DEV-only control owns the simulated position while
+     * poor-GPS behavior is being tested. Prevent the browser
+     * geolocation watch from immediately overwriting it.
+     */
+    if (
+      watchIdRef.current !== null &&
+      typeof navigator !== "undefined" &&
+      navigator.geolocation
+    ) {
+      navigator.geolocation.clearWatch(
+        watchIdRef.current
+      );
+
+      watchIdRef.current = null;
+    }
+
+    setPosition((current) => {
+      if (!current) {
+        return current;
+      }
+
+      return {
+        ...current,
+        speedKmh: 0,
+        accuracy: 250,
+      };
+    });
+
+    setGpsActive(true);
+    setGpsMessage(
+      "DEV poor GPS - accuracy 250 m. Waiting for a better location fix."
+    );
+    setSimulatorMessage(
+      "Poor GPS test active - simulated accuracy 250 m."
+    );
     setAutoRerouteMessage("");
   }
   function pauseSyntheticDrive() {
@@ -5113,6 +5161,22 @@ function simulatorBearing(
                   }}
                 >
                   Test 80 km/h
+                </button>
+                <button
+                  type="button"
+                  onClick={forceSimulatorPoorGps}
+                  style={{
+                    gridColumn: "1 / -1",
+                    padding: "9px 10px",
+                    borderRadius: 9,
+                    border: "1px solid #64748b",
+                    background: "#334155",
+                    color: "#f8fafc",
+                    cursor: "pointer",
+                    fontWeight: 800,
+                  }}
+                >
+                  Test Poor GPS
                 </button>
 
                 <button
