@@ -143,12 +143,12 @@ test("CSP report endpoint does not persist raw browser reports", () => {
 test("dedicated CSP report limiter exists", () => {
   assert.match(
     rateLimit,
-    /export\s+const\s+cspReportRatelimit\s*=\s*new\s+Ratelimit/,
+    /export\s+const\s+cspReportRatelimit\s*=\s*createLazyRatelimit\(/,
   );
 
   assert.match(
     rateLimit,
-    /Ratelimit\.slidingWindow\(30,\s*["']60 s["']\)/,
+    /Ratelimit\.slidingWindow\(\s*30,\s*["']60 s["']\s*,\s*\)/,
   );
 
   assert.match(
