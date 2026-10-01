@@ -4416,6 +4416,10 @@ function simulatorBearing(
                       setRoutingMessage(
                         "Destination changed. Select a destination and calculate a new route."
                       );
+                    } else {
+                      setRoutingMessage(
+                        "Destination changed. Search to select a destination."
+                      );
                     }
 
                     /*
