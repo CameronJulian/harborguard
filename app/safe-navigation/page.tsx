@@ -568,6 +568,81 @@ type RerouteResponse = {
   error?: string;
 };
 
+function routeSafetyExplanation(
+  route: RouteOption | null
+): string | null {
+  if (
+    !route ||
+    route.safetyScore == null ||
+    route.riskScore == null
+  ) {
+    return null;
+  }
+
+  const safetyScore =
+    Number(route.safetyScore);
+
+  const riskScore =
+    Number(route.riskScore);
+
+  if (
+    !Number.isFinite(safetyScore) ||
+    !Number.isFinite(riskScore)
+  ) {
+    return null;
+  }
+
+  if (
+    safetyScore >= 85 &&
+    riskScore <= 20
+  ) {
+    return "High safety score with low calculated road risk.";
+  }
+
+  if (
+    safetyScore >= 70 &&
+    riskScore <= 40
+  ) {
+    return "Good safety score with moderate calculated road risk.";
+  }
+
+  if (riskScore >= 70) {
+    return "Elevated calculated road risk. Review the route assessment before continuing.";
+  }
+
+  if (riskScore >= 40) {
+    return "Moderate calculated road risk. Stay alert to changing road conditions.";
+  }
+
+  return "HarborGuard found a balanced route based on the current safety and risk scores.";
+}
+
+function matchedRiskSegmentLabel(
+  route: RouteOption | null
+): string | null {
+  if (
+    !route ||
+    route.matchedRiskSegmentCount == null
+  ) {
+    return null;
+  }
+
+  const count =
+    Math.max(
+      0,
+      Math.round(
+        Number(route.matchedRiskSegmentCount)
+      )
+    );
+
+  if (!Number.isFinite(count)) {
+    return null;
+  }
+
+  return `${count} matched road risk segment${
+    count === 1 ? "" : "s"
+  }`;
+}
 type PositionState = {
   lat: number;
   lng: number;
@@ -5429,26 +5504,99 @@ function simulatorBearing(
             </div>
           </div>
 
-          {recommendation && (
-            <div
-              className="hg-navigation-recommendation"
-              style={{
-                position: "absolute",
-                left: 18,
-                bottom: 122,
-                zIndex: 700,
-                maxWidth: 520,
-                padding: "10px 14px",
-                borderRadius: 14,
-                background: "rgba(2, 6, 23, .9)",
-                color: "#cbd5e1",
-                border: "1px solid #334155",
-                fontSize: 13,
-              }}
-            >
-              {recommendation}
-            </div>
-          )}
+          {selectedRoute &&
+            selectedRoute.safetyScore != null &&
+            selectedRoute.riskScore != null && (
+              <div
+                className="hg-navigation-recommendation"
+                style={{
+                  position: "absolute",
+                  left: 18,
+                  bottom: 190,
+                  zIndex: 700,
+                  maxWidth: 520,
+                  padding: "12px 14px",
+                  borderRadius: 14,
+                  background: "rgba(2, 6, 23, .92)",
+                  color: "#cbd5e1",
+                  border: "1px solid #334155",
+                  fontSize: 13,
+                }}
+              >
+                <div
+                  style={{
+                    color: "#f8fafc",
+                    fontWeight: 900,
+                    marginBottom: 5,
+                  }}
+                >
+                  Why this route?
+                </div>
+
+                <div
+                  style={{
+                    color: "#67e8f9",
+                    fontWeight: 800,
+                    marginBottom: 5,
+                  }}
+                >
+                  Safety{" "}
+                  {Math.round(
+                    selectedRoute.safetyScore
+                  )}
+                  {" · "}
+                  Risk{" "}
+                  {Math.round(
+                    selectedRoute.riskScore
+                  )}
+                </div>
+
+                {routeSafetyExplanation(
+                  selectedRoute
+                ) && (
+                  <div>
+                    {routeSafetyExplanation(
+                      selectedRoute
+                    )}
+                  </div>
+                )}
+
+                {matchedRiskSegmentLabel(
+                  selectedRoute
+                ) && (
+                  <div
+                    style={{
+                      marginTop: 4,
+                      color: "#94a3b8",
+                    }}
+                  >
+                    {matchedRiskSegmentLabel(
+                      selectedRoute
+                    )}
+                  </div>
+                )}
+
+                {recommendation && (
+                  <div
+                    style={{
+                      marginTop: 7,
+                      paddingTop: 7,
+                      borderTop:
+                        "1px solid rgba(148,163,184,.22)",
+                    }}
+                  >
+                    <strong
+                      style={{
+                        color: "#e2e8f0",
+                      }}
+                    >
+                      HarborGuard assessment:
+                    </strong>{" "}
+                    {recommendation}
+                  </div>
+                )}
+              </div>
+            )}
         </section>
       </div>
     </main>
