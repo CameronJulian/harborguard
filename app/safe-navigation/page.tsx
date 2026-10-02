@@ -4223,30 +4223,31 @@ function simulatorBearing(
 
             .hg-navigation-turn-card-wrap {
               left:
-                calc(
-                  min(320px, 42vw) +
-                  max(24px, env(safe-area-inset-left))
-                ) !important;
+                max(8px, env(safe-area-inset-left)) !important;
+              right:
+                max(8px, env(safe-area-inset-right)) !important;
             }
 
             .hg-navigation-metrics-wrap {
               left:
-                calc(
-                  min(320px, 42vw) +
-                  max(24px, env(safe-area-inset-left))
-                ) !important;
+                max(8px, env(safe-area-inset-left)) !important;
+              right:
+                max(8px, env(safe-area-inset-right)) !important;
               bottom:
                 max(8px, env(safe-area-inset-bottom)) !important;
             }
 
             .hg-navigation-metrics {
               grid-template-columns:
-                repeat(5, minmax(0, 1fr)) !important;
+                repeat(3, minmax(0, 1fr)) !important;
             }
 
             .hg-navigation-follow-button {
               bottom:
-                max(86px, env(safe-area-inset-bottom)) !important;
+                max(176px, env(safe-area-inset-bottom)) !important;
+            }
+            .hg-navigation-recommendation {
+              display: none !important;
             }
           }
         `}</style>
