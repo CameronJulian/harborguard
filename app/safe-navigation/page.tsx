@@ -1077,9 +1077,6 @@ export default function SafeNavigationPage() {
   const refreshRecoveryReadyRef =
     useRef(false);
 
-  const refreshRecoveryHydratingRef =
-    useRef(false);
-
   const refreshRecoveryStorageKey =
     "harborguard:safe-navigation:active-session:v1";
 
@@ -1106,31 +1103,8 @@ export default function SafeNavigationPage() {
           destinationName?: string;
           selectedDestination?:
             NavigationSearchResult | null;
-          routes?: RouteOption[];
-          selectedRouteIndex?: number;
-          navigationInstructions?:
-            NavigationInstruction[];
           routingProfile?: string;
-          recommendation?: string | null;
-          routingMessage?: string;
-          followVehicle?: boolean;
-          voiceEnabled?: boolean;
-          gpsWasActive?: boolean;
         };
-
-      if (
-        !Array.isArray(parsed.routes) ||
-        parsed.routes.length === 0
-      ) {
-        window.sessionStorage.removeItem(
-          refreshRecoveryStorageKey
-        );
-
-        refreshRecoveryReadyRef.current = true;
-        return;
-      }
-
-      refreshRecoveryHydratingRef.current = true;
 
       setDestinationLat(
         typeof parsed.destinationLat === "string"
@@ -1155,31 +1129,6 @@ export default function SafeNavigationPage() {
         parsed.selectedDestination ?? null
       );
 
-      navigationOwnsSimulatorRouteRef.current =
-        parsed.routes.length > 0;
-
-      setRoutes(parsed.routes);
-
-      setSelectedRouteIndex(
-        typeof parsed.selectedRouteIndex === "number" &&
-          Number.isInteger(
-            parsed.selectedRouteIndex
-          ) &&
-          parsed.selectedRouteIndex >= 0 &&
-          parsed.selectedRouteIndex <
-            parsed.routes.length
-          ? parsed.selectedRouteIndex
-          : 0
-      );
-
-      setNavigationInstructions(
-        Array.isArray(
-          parsed.navigationInstructions
-        )
-          ? parsed.navigationInstructions
-          : []
-      );
-
       setRoutingProfile(
         typeof parsed.routingProfile === "string" &&
           parsed.routingProfile
@@ -1187,44 +1136,29 @@ export default function SafeNavigationPage() {
           : "safest"
       );
 
-      setRecommendation(
-        typeof parsed.recommendation === "string"
-          ? parsed.recommendation
-          : null
-      );
-
-      setRoutingMessage(
-        typeof parsed.routingMessage === "string" &&
-          parsed.routingMessage
-          ? parsed.routingMessage
-          : "Navigation restored after refresh."
-      );
-
-      setFollowVehicle(
-        parsed.followVehicle !== false
-      );
-
-      setVoiceEnabled(
-        parsed.voiceEnabled === true
-      );
-
+      /*
+       * Refresh restores destination convenience only.
+       * Active route/navigation state must be recalculated
+       * explicitly by the driver after a page reload.
+       */
+      setRoutes([]);
+      setSelectedRouteIndex(0);
+      setNavigationInstructions([]);
+      setRecommendation(null);
+      setRouting(false);
+      setFollowVehicle(true);
+      setVoiceEnabled(false);
       setVoiceStatusMessage(
-        parsed.voiceEnabled === true
-          ? "Voice guidance on"
-          : "Voice guidance off"
+        "Voice guidance off"
       );
-
-      refreshRecoveryReadyRef.current = true;
-
-      if (parsed.gpsWasActive === true) {
-        void startGps();
-      }
+      setRoutingMessage(
+        "Destination restored after refresh. Calculate a route when you are ready."
+      );
     } catch {
       window.sessionStorage.removeItem(
         refreshRecoveryStorageKey
       );
-
-      refreshRecoveryHydratingRef.current = false;
+    } finally {
       refreshRecoveryReadyRef.current = true;
     }
   }, []);
@@ -1237,29 +1171,22 @@ export default function SafeNavigationPage() {
       return;
     }
 
-    const recoverySelectedRoute =
-      routes[selectedRouteIndex] ?? null;
+    const hasRecoverableDestination =
+      selectedDestination !== null ||
+      (
+        destinationLat.trim().length > 0 &&
+        destinationLng.trim().length > 0
+      ) ||
+      (
+        destinationName.trim().length > 0 &&
+        destinationName !== "Destination"
+      );
 
-    /*
-     * During hydration React has not committed the restored route
-     * state yet. Do not let the initial empty render delete the
-     * session we are currently restoring.
-     */
-    if (
-      refreshRecoveryHydratingRef.current
-    ) {
-      if (!recoverySelectedRoute) {
-        return;
-      }
-
-      refreshRecoveryHydratingRef.current =
-        false;
-    }
-
-    if (!recoverySelectedRoute) {
+    if (!hasRecoverableDestination) {
       window.sessionStorage.removeItem(
         refreshRecoveryStorageKey
       );
+
       return;
     }
 
@@ -1271,20 +1198,12 @@ export default function SafeNavigationPage() {
           destinationLng,
           destinationName,
           selectedDestination,
-          routes,
-          selectedRouteIndex,
-          navigationInstructions,
           routingProfile,
-          recommendation,
-          routingMessage,
-          followVehicle,
-          voiceEnabled,
-          gpsWasActive: gpsActive,
         })
       );
     } catch {
       /*
-       * Refresh recovery is best-effort.
+       * Destination recovery is best-effort.
        * Navigation continues if session storage is unavailable.
        */
     }
@@ -1293,15 +1212,7 @@ export default function SafeNavigationPage() {
     destinationLng,
     destinationName,
     selectedDestination,
-    routes,
-    selectedRouteIndex,
-    navigationInstructions,
     routingProfile,
-    recommendation,
-    routingMessage,
-    followVehicle,
-    voiceEnabled,
-    gpsActive,
   ]);
 
   useEffect(() => {
@@ -2576,12 +2487,6 @@ function simulatorBearing(
 
   function endNavigation() {
     clearOffRouteTimer();
-
-    if (typeof window !== "undefined") {
-      window.sessionStorage.removeItem(
-        refreshRecoveryStorageKey
-      );
-    }
 
     /*
      * Navigation termination also invalidates destination search
