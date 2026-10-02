@@ -4054,7 +4054,7 @@ function simulatorBearing(
 
           .hg-navigation-metrics {
             grid-template-columns:
-              repeat(5, minmax(0, 1fr)) !important;
+              repeat(6, minmax(0, 1fr)) !important;
           }
 
           @media (max-width: 1023px) {
@@ -5353,7 +5353,7 @@ function simulatorBearing(
                 width: "min(760px, 100%)",
                 display: "grid",
                 gridTemplateColumns:
-                  "repeat(5, minmax(0, 1fr))",
+                  "repeat(6, minmax(0, 1fr))",
                 gap: 1,
                 borderRadius: 24,
                 overflow: "hidden",
