@@ -419,6 +419,10 @@ function normalizeInstructions(
           previousRoadLabel,
         towardLabel,
         exitNumber,
+        landmark:
+          textOrNull(
+            instruction.landmark,
+          ),
       };
     },
   );

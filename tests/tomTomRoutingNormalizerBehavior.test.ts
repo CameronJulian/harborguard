@@ -339,6 +339,13 @@ assert.equal(
   "atTrafficLight",
 );
 
+
+assert.equal(
+  route.navigationInstructions[1]
+    .landmark,
+  "atTrafficLight",
+);
+
 assert.equal(
   turn.maneuverView
     ?.onRouteAngle,

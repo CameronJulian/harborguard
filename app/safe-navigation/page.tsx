@@ -90,6 +90,7 @@ type NavigationInstruction = {
   roadLabel?: string | null;
   towardLabel?: string | null;
   exitNumber?: string | null;
+  landmark?: string | null;
 };
 
 type NavigationAction = {
@@ -661,7 +662,21 @@ function navigationVoiceText(
       .join(" ")
       .trim();
 
-  return raw
+  const landmark =
+    instruction.landmark?.trim() ||
+    "";
+
+  const contextualRaw =
+    landmark &&
+    !raw
+      .toLocaleLowerCase()
+      .includes(
+        landmark.toLocaleLowerCase()
+      )
+      ? `${raw}. Landmark: ${landmark}`
+      : raw;
+
+  return contextualRaw
     .replace(/<[^>]*>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -4895,7 +4910,8 @@ function simulatorBearing(
                         {(
                           instruction.roadLabel ||
                           instruction.towardLabel ||
-                          instruction.exitNumber
+                          instruction.exitNumber ||
+                          instruction.landmark
                         ) ? (
                           <div
                             style={{
@@ -4921,6 +4937,12 @@ function simulatorBearing(
                             {instruction.towardLabel ? (
                               <div>
                                 Toward {instruction.towardLabel}
+                              </div>
+                            ) : null}
+
+                            {instruction.landmark ? (
+                              <div>
+                                Landmark: {instruction.landmark}
                               </div>
                             ) : null}
                           </div>
