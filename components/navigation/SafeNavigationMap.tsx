@@ -29,20 +29,6 @@ type FollowProps = {
   onUserMove: () => void;
 };
 
-/*
- * React Fast Refresh may preserve the existing DOM node while this
- * module is replaced in development. Leaflet marks its container as
- * initialized, so reusing that node can trigger a map reuse error.
- *
- * A module-scoped development key changes when this module is
- * re-evaluated by HMR, forcing React-Leaflet to receive a fresh mount.
- * Production keeps a stable key and is unaffected.
- */
-const SAFE_NAVIGATION_MAP_MOUNT_KEY =
-  process.env.NODE_ENV === "development"
-    ? `safe-navigation-map-${Date.now()}`
-    : "safe-navigation-map";
-
 function MapViewportSync() {
   const map = useMap();
 
@@ -255,7 +241,6 @@ export default function SafeNavigationMap({
       `}</style>
 
       <MapContainer
-        key={SAFE_NAVIGATION_MAP_MOUNT_KEY}
         center={center}
         zoom={position ? 17 : 11}
         zoomControl={false}
