@@ -591,7 +591,167 @@ type ActiveRouteSafetyWarning = {
   distanceAheadMeters: number;
 };
 
+type SaferRouteOffer = {
+  route: RouteOption;
+  threatKey: string;
+  durationMinutes: number | null;
+};
 
+
+function routeGeometryFingerprint(
+  route: RouteOption | null
+): string {
+  if (
+    !route?.routePoints ||
+    route.routePoints.length < 2
+  ) {
+    return "";
+  }
+
+  const points =
+    route.routePoints;
+
+  const indexes =
+    Array.from(
+      new Set([
+        0,
+        Math.floor(
+          (points.length - 1) * 0.25
+        ),
+        Math.floor(
+          (points.length - 1) * 0.5
+        ),
+        Math.floor(
+          (points.length - 1) * 0.75
+        ),
+        points.length - 1,
+      ])
+    );
+
+  return indexes
+    .map((index) => {
+      const point =
+        points[index];
+
+      return [
+        Number(point[0]).toFixed(5),
+        Number(point[1]).toFixed(5),
+      ].join(",");
+    })
+    .join("|");
+}
+
+/*
+ * A reroute generated from the driver's current position naturally has
+ * a different start point from the original full route.
+ *
+ * Therefore a start/end fingerprint alone cannot decide whether it is
+ * genuinely an alternative.
+ *
+ * Sample the candidate route and project those points onto the existing
+ * route. At least two samples must be more than 75 m from the current
+ * route before HarborGuard calls it a materially different alternative.
+ */
+function routeMateriallyDiffersFromActiveRoute(
+  candidate: RouteOption | null,
+  activeRoutePoints: LatLng[]
+): boolean {
+  if (
+    !candidate?.routePoints ||
+    candidate.routePoints.length < 2 ||
+    activeRoutePoints.length < 2
+  ) {
+    return false;
+  }
+
+  const candidatePoints =
+    candidate.routePoints;
+
+  const indexes =
+    Array.from(
+      new Set([
+        0,
+        Math.floor(
+          (candidatePoints.length - 1) * 0.25
+        ),
+        Math.floor(
+          (candidatePoints.length - 1) * 0.5
+        ),
+        Math.floor(
+          (candidatePoints.length - 1) * 0.75
+        ),
+        candidatePoints.length - 1,
+      ])
+    );
+
+  let divergentSamples =
+    0;
+
+  for (const index of indexes) {
+    const point =
+      candidatePoints[index];
+
+    const projection =
+      calculateRouteProgress(
+        point,
+        activeRoutePoints
+      );
+
+    if (
+      !projection ||
+      !Number.isFinite(
+        projection.distanceFromRouteMeters
+      ) ||
+      projection.distanceFromRouteMeters >
+        75
+    ) {
+      divergentSamples += 1;
+    }
+  }
+
+  return divergentSamples >= 2;
+}
+
+function routeDurationMinutes(
+  route: RouteOption | null
+): number | null {
+  if (!route) {
+    return null;
+  }
+
+  if (
+    route.durationSeconds != null &&
+    Number.isFinite(
+      Number(route.durationSeconds)
+    )
+  ) {
+    return Math.max(
+      1,
+      Math.round(
+        Number(route.durationSeconds) / 60
+      )
+    );
+  }
+
+  if (route.duration) {
+    const seconds =
+      Number(
+        String(route.duration)
+          .replace("s", "")
+      );
+
+    if (Number.isFinite(seconds)) {
+      return Math.max(
+        1,
+        Math.round(
+          seconds / 60
+        )
+      );
+    }
+  }
+
+  return null;
+}
 function routeSafetyExplanation(
   route: RouteOption | null
 ): string | null {
@@ -1028,6 +1188,33 @@ export default function SafeNavigationPage() {
     useRef<AbortController | null>(null);
 
   const activeRouteSafetyThreatRouteKeyRef =
+    useRef("");
+
+  /*
+   * Customer Increment #2
+   * ---------------------
+   * Background safer-route discovery has its own ownership.
+   * It must not interfere with manual calculation or automatic reroute.
+   */
+  const [
+    saferRouteOffer,
+    setSaferRouteOffer,
+  ] =
+    useState<SaferRouteOffer | null>(null);
+
+  const [
+    saferRouteOfferLoading,
+    setSaferRouteOfferLoading,
+  ] =
+    useState(false);
+
+  const saferRouteOfferRequestIdRef =
+    useRef(0);
+
+  const saferRouteOfferAbortControllerRef =
+    useRef<AbortController | null>(null);
+
+  const saferRouteOfferKeyRef =
     useRef("");
 
   const lastSpokenAnnouncementRef =
@@ -2563,6 +2750,19 @@ function simulatorBearing(
     offRouteStartedAtRef.current = null;
     lastAutoRerouteAtRef.current = 0;
     autoRerouteInFlightRef.current = false;
+    /*
+     * End Navigation owns safer-route discovery cleanup too.
+     * A late response must never resurrect an offer after navigation ends.
+     */
+    saferRouteOfferRequestIdRef.current += 1;
+    saferRouteOfferAbortControllerRef.current?.abort();
+    saferRouteOfferAbortControllerRef.current =
+      null;
+    saferRouteOfferKeyRef.current =
+      "";
+    setSaferRouteOffer(null);
+    setSaferRouteOfferLoading(false);
+
 
     navigationOwnsSimulatorRouteRef.current = false;
 
@@ -3706,6 +3906,340 @@ function simulatorBearing(
         activeRouteSafetyThreats,
       ]
     );
+  /*
+   * Customer Increment #2
+   * ---------------------
+   * One meaningful active-route threat may trigger one background
+   * alternative-route discovery request.
+   *
+   * GPS movement does not own this lifecycle.
+   */
+  useEffect(() => {
+    const threat =
+      activeRouteSafetyWarning?.threat ??
+      null;
+
+    const threatLatitude =
+      Number(threat?.latitude);
+
+    const threatLongitude =
+      Number(threat?.longitude);
+
+    const threatKey =
+      threat
+        ? [
+            threat.id ?? "",
+            threat.type ?? "",
+            Number.isFinite(
+              threatLatitude
+            )
+              ? threatLatitude.toFixed(6)
+              : "",
+            Number.isFinite(
+              threatLongitude
+            )
+              ? threatLongitude.toFixed(6)
+              : "",
+          ].join(":")
+        : "";
+
+    const currentRouteFingerprint =
+      routeGeometryFingerprint(
+        selectedRoute
+      );
+
+    const offerKey =
+      [
+        threatKey,
+        currentRouteFingerprint,
+        routingProfile,
+      ].join("::");
+
+    const offerPosition =
+      latestNavigationPositionRef.current;
+
+    if (
+      !activeRouteSafetyWarning ||
+      !selectedRoute ||
+      !offerPosition ||
+      !routingDestination ||
+      !gpsActive ||
+      gpsAccuracyPoor ||
+      hasReachedDestination ||
+      !currentRouteFingerprint
+    ) {
+      saferRouteOfferRequestIdRef.current +=
+        1;
+
+      saferRouteOfferAbortControllerRef.current?.abort();
+      saferRouteOfferAbortControllerRef.current =
+        null;
+
+      saferRouteOfferKeyRef.current =
+        "";
+
+      setSaferRouteOffer(null);
+      setSaferRouteOfferLoading(false);
+
+      return;
+    }
+
+    if (
+      saferRouteOfferKeyRef.current ===
+      offerKey
+    ) {
+      return;
+    }
+
+    saferRouteOfferKeyRef.current =
+      offerKey;
+
+    const requestId =
+      saferRouteOfferRequestIdRef.current +
+      1;
+
+    saferRouteOfferRequestIdRef.current =
+      requestId;
+
+    saferRouteOfferAbortControllerRef.current?.abort();
+
+    const controller =
+      new AbortController();
+
+    saferRouteOfferAbortControllerRef.current =
+      controller;
+
+    setSaferRouteOfferLoading(true);
+    setSaferRouteOffer(null);
+
+    void (async () => {
+      try {
+        const response =
+          await fetchWithAuth(
+            "/api/route-safety/reroute",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+              cache: "no-store",
+              signal: controller.signal,
+              body: JSON.stringify({
+                origin: {
+                  lat: offerPosition.lat,
+                  lng: offerPosition.lng,
+                },
+                destination:
+                  routingDestination,
+                routingProfile,
+              }),
+            }
+          );
+
+        const result =
+          (await response
+            .json()
+            .catch(() => null)) as
+            | RerouteResponse
+            | null;
+
+        if (
+          requestId !==
+          saferRouteOfferRequestIdRef.current
+        ) {
+          return;
+        }
+
+        if (!response.ok) {
+          saferRouteOfferKeyRef.current =
+            "";
+
+          setSaferRouteOffer(null);
+
+          return;
+        }
+
+        const nextRoutes =
+          Array.isArray(result?.routes)
+            ? result.routes
+            : [];
+
+        const activeRoutePoints =
+          selectedRoute.routePoints ??
+          [];
+
+        const candidatePool =
+          [
+            ...nextRoutes,
+            ...(result?.recommendedRoute
+              ? [result.recommendedRoute]
+              : []),
+          ].filter(
+            (
+              route,
+              index,
+              routes
+            ) =>
+              route &&
+              route.routePoints &&
+              route.routePoints.length >= 2 &&
+              routes.indexOf(route) ===
+                index
+          );
+
+        const evaluatedCandidates =
+          candidatePool.map(
+            (route) => {
+              const materiallyDifferent =
+                routeMateriallyDiffersFromActiveRoute(
+                  route,
+                  activeRoutePoints
+                );
+
+              return {
+                route,
+                materiallyDifferent,
+              };
+            }
+          );
+
+        const candidate =
+          evaluatedCandidates.find(
+            (entry) =>
+              entry.materiallyDifferent
+          )?.route ??
+          null;
+
+        if (!candidate) {
+          setSaferRouteOffer(null);
+          return;
+        }
+
+        setSaferRouteOffer({
+          route: candidate,
+          threatKey,
+          durationMinutes:
+            routeDurationMinutes(
+              candidate
+            ),
+        });
+      } catch {
+        if (
+          controller.signal.aborted ||
+          requestId !==
+            saferRouteOfferRequestIdRef.current
+        ) {
+          return;
+        }
+
+        saferRouteOfferKeyRef.current =
+          "";
+
+        setSaferRouteOffer(null);
+      } finally {
+        if (
+          requestId ===
+          saferRouteOfferRequestIdRef.current
+        ) {
+          saferRouteOfferAbortControllerRef.current =
+            null;
+
+          setSaferRouteOfferLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      controller.abort();
+    };
+  }, [
+    activeRouteSafetyWarning?.threat.id,
+    activeRouteSafetyWarning?.threat.type,
+    activeRouteSafetyWarning?.threat.latitude,
+    activeRouteSafetyWarning?.threat.longitude,
+    selectedRoute,
+    routingDestination,
+    routingProfile,
+    gpsActive,
+    gpsAccuracyPoor,
+    hasReachedDestination,
+  ]);
+
+  /*
+   * Nothing changes until the customer explicitly accepts the offer.
+   */
+  function acceptSaferRouteOffer() {
+    if (
+      !saferRouteOffer?.route
+    ) {
+      return;
+    }
+
+    manualRouteRequestIdRef.current += 1;
+    manualRouteAbortControllerRef.current?.abort();
+    manualRouteAbortControllerRef.current =
+      null;
+
+    autoRerouteRequestIdRef.current += 1;
+    autoRerouteAbortControllerRef.current?.abort();
+    autoRerouteAbortControllerRef.current =
+      null;
+
+    autoRerouteInFlightRef.current =
+      false;
+
+    saferRouteOfferRequestIdRef.current +=
+      1;
+
+    saferRouteOfferAbortControllerRef.current?.abort();
+    saferRouteOfferAbortControllerRef.current =
+      null;
+
+    const acceptedRoute =
+      saferRouteOffer.route;
+
+    setRoutes([
+      acceptedRoute,
+    ]);
+
+    setSelectedRouteIndex(0);
+
+    setNavigationInstructions(
+      instructionsForRoute(
+        acceptedRoute
+      )
+    );
+
+    setRecommendation(
+      "Alternative route selected by the driver."
+    );
+
+    setFollowVehicle(true);
+
+    offRouteStartedAtRef.current =
+      null;
+
+    lastAutoRerouteAtRef.current =
+      0;
+
+    navigationOwnsSimulatorRouteRef.current =
+      true;
+
+    saferRouteOfferKeyRef.current =
+      "";
+
+    setSaferRouteOffer(null);
+    setSaferRouteOfferLoading(false);
+
+    setAutoRerouteMessage(
+      "Alternative route selected."
+    );
+
+    setRoutingMessage(
+      "Alternative route selected."
+    );
+  }
   const activeSpeedLimitKph =
     gpsActive &&
     !hasReachedDestination &&
@@ -5845,6 +6379,76 @@ function simulatorBearing(
                 {activeRouteSafetyWarning.threat.recommendation ||
                   "Stay alert and continue with caution."}
               </div>
+              {saferRouteOfferLoading && (
+                <div
+                  style={{
+                    marginTop: 9,
+                    fontSize: 12,
+                    fontWeight: 800,
+                    color: "#fde68a",
+                  }}
+                >
+                  Checking for an alternative route...
+                </div>
+              )}
+
+              {saferRouteOffer && (
+                <div
+                  className="hg-safer-route-offer"
+                  style={{
+                    marginTop: 10,
+                    paddingTop: 10,
+                    borderTop:
+                      "1px solid rgba(251,191,36,.32)",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 900,
+                      color: "#fff7ed",
+                    }}
+                  >
+                    Alternative route available
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: 3,
+                      fontSize: 12,
+                      color: "#fde68a",
+                    }}
+                  >
+                    {saferRouteOffer.durationMinutes != null
+                      ? `Estimated ${saferRouteOffer.durationMinutes} min from your current position`
+                      : "Fresh route calculated from your current position"}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={
+                      acceptSaferRouteOffer
+                    }
+                    style={{
+                      marginTop: 9,
+                      width: "100%",
+                      borderRadius: 10,
+                      border:
+                        "1px solid rgba(34,211,238,.8)",
+                      background:
+                        "#0891b2",
+                      color: "#ecfeff",
+                      padding:
+                        "10px 12px",
+                      fontSize: 13,
+                      fontWeight: 900,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Take Alternative Route
+                  </button>
+                </div>
+              )}
             </div>
           )}
           {selectedRoute &&
