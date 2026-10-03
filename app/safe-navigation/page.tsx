@@ -567,6 +567,30 @@ type RerouteResponse = {
   recommendation?: string | null;
   error?: string;
 };
+type ActiveRouteSafetyThreat = {
+  id?: string | null;
+  type?: string | null;
+  title?: string | null;
+  severity?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  radiusMeters?: number | null;
+  score?: number | null;
+  confidence?: number | null;
+  verificationCount?: number | null;
+  createdAt?: string | null;
+  recommendation?: string | null;
+};
+
+type RouteSafetyPredictionResponse = {
+  threats?: ActiveRouteSafetyThreat[];
+};
+
+type ActiveRouteSafetyWarning = {
+  threat: ActiveRouteSafetyThreat;
+  distanceAheadMeters: number;
+};
+
 
 function routeSafetyExplanation(
   route: RouteOption | null
@@ -984,6 +1008,28 @@ export default function SafeNavigationPage() {
 
   const [autoRerouteMessage, setAutoRerouteMessage] =
     useState("");
+  /*
+   * Customer-facing Route Safety intelligence.
+   *
+   * This does not create another safety engine.
+   * The existing /api/route-safety/predict pipeline remains the
+   * authoritative source for route-relevant threats.
+   */
+  const [
+    activeRouteSafetyThreats,
+    setActiveRouteSafetyThreats,
+  ] =
+    useState<ActiveRouteSafetyThreat[]>([]);
+
+  const activeRouteSafetyThreatRequestIdRef =
+    useRef(0);
+
+  const activeRouteSafetyThreatAbortControllerRef =
+    useRef<AbortController | null>(null);
+
+  const activeRouteSafetyThreatRouteKeyRef =
+    useRef("");
+
   const lastSpokenAnnouncementRef =
     useRef<Set<string>>(new Set());
 
@@ -3352,6 +3398,314 @@ function simulatorBearing(
     destinationDistanceMeters <=
       arrivalThresholdMeters;
 
+  /*
+   * CUSTOMER INCREMENT #1
+   * ---------------------
+   * Load existing Route Safety prediction intelligence for the
+   * selected route. One request is made per route identity rather
+   * than on every GPS position update.
+   */
+  useEffect(() => {
+    const firstRoutePoint =
+      routePoints[0];
+
+    const lastRoutePoint =
+      routePoints[
+        routePoints.length - 1
+      ];
+
+
+    if (
+      !selectedRoute ||
+      !gpsActive ||
+      gpsAccuracyPoor ||
+      hasReachedDestination ||
+      !firstRoutePoint ||
+      !lastRoutePoint ||
+      routePoints.length < 2
+    ) {
+      activeRouteSafetyThreatRequestIdRef.current += 1;
+
+      activeRouteSafetyThreatAbortControllerRef.current?.abort();
+      activeRouteSafetyThreatAbortControllerRef.current = null;
+
+      activeRouteSafetyThreatRouteKeyRef.current =
+        "";
+
+      setActiveRouteSafetyThreats([]);
+
+      return;
+    }
+
+    const routeKey =
+      [
+        selectedRouteIndex,
+        routingProfile,
+        routePoints.length,
+        ...routePoints.flatMap(
+          ([lat, lng]) => [
+            lat.toFixed(6),
+            lng.toFixed(6),
+          ]
+        ),
+      ].join(":");
+
+    if (
+      activeRouteSafetyThreatRouteKeyRef.current ===
+      routeKey
+    ) {
+      return;
+    }
+
+    activeRouteSafetyThreatRouteKeyRef.current =
+      routeKey;
+
+    const requestId =
+      activeRouteSafetyThreatRequestIdRef.current + 1;
+
+    activeRouteSafetyThreatRequestIdRef.current =
+      requestId;
+
+    activeRouteSafetyThreatAbortControllerRef.current?.abort();
+
+    const controller =
+      new AbortController();
+
+    activeRouteSafetyThreatAbortControllerRef.current =
+      controller;
+
+    void (async () => {
+      try {
+        const response =
+          await fetchWithAuth(
+            "/api/route-safety/predict",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+              cache: "no-store",
+              signal: controller.signal,
+              body: JSON.stringify({
+                origin: {
+                  lat: firstRoutePoint[0],
+                  lng: firstRoutePoint[1],
+                },
+                destination: {
+                  lat: lastRoutePoint[0],
+                  lng: lastRoutePoint[1],
+                },
+              }),
+            }
+          );
+
+        const result =
+          (await response
+            .json()
+            .catch(() => null)) as
+            | RouteSafetyPredictionResponse
+            | null;
+
+        if (
+          requestId !==
+          activeRouteSafetyThreatRequestIdRef.current
+        ) {
+          return;
+        }
+
+        if (!response.ok) {
+          activeRouteSafetyThreatRouteKeyRef.current =
+            "";
+
+          setActiveRouteSafetyThreats([]);
+
+          return;
+        }
+
+        setActiveRouteSafetyThreats(
+          Array.isArray(result?.threats)
+            ? result.threats
+            : []
+        );
+      } catch (error) {
+        if (
+          controller.signal.aborted ||
+          requestId !==
+            activeRouteSafetyThreatRequestIdRef.current
+        ) {
+          return;
+        }
+
+        activeRouteSafetyThreatRouteKeyRef.current =
+          "";
+
+        setActiveRouteSafetyThreats([]);
+      } finally {
+        if (
+          requestId ===
+          activeRouteSafetyThreatRequestIdRef.current
+        ) {
+          activeRouteSafetyThreatAbortControllerRef.current =
+            null;
+        }
+      }
+    })();
+
+    return () => {
+      controller.abort();
+    };
+  }, [
+    selectedRoute,
+    selectedRouteIndex,
+    routingProfile,
+    routePoints,
+    gpsActive,
+    gpsAccuracyPoor,
+    hasReachedDestination,
+  ]);
+
+  /*
+   * Convert Route Safety threat coordinates into the same
+   * route-progress coordinate system used by turn-by-turn guidance.
+   *
+   * This gives the customer-facing value:
+   *
+   *   threat position on route
+   *   minus
+   *   current driver position on route
+   *   =
+   *   distance ahead
+   */
+  const activeRouteSafetyWarning =
+    useMemo<ActiveRouteSafetyWarning | null>(
+      () => {
+        if (
+          !routeProgress ||
+          !selectedRoute ||
+          gpsAccuracyPoor ||
+          hasReachedDestination ||
+          routePoints.length < 2 ||
+          activeRouteSafetyThreats.length === 0
+        ) {
+          return null;
+        }
+
+        const candidates =
+          activeRouteSafetyThreats
+            .map((threat) => {
+              const latitude =
+                Number(threat.latitude);
+
+              const longitude =
+                Number(threat.longitude);
+
+              if (
+                !Number.isFinite(latitude) ||
+                !Number.isFinite(longitude)
+              ) {
+                return null;
+              }
+
+              const threatProgress =
+                calculateRouteProgress(
+                  [latitude, longitude],
+                  routePoints
+                );
+
+              if (!threatProgress) {
+                return null;
+              }
+
+              /*
+               * The prediction API has already determined route
+               * relevance. This local geometry fence protects the
+               * customer UI from an obviously remote coordinate.
+               */
+              const corridorToleranceMeters =
+                Math.max(
+                  250,
+                  Number(
+                    threat.radiusMeters || 0
+                  )
+                );
+
+              if (
+                !Number.isFinite(
+                  threatProgress.distanceFromRouteMeters
+                ) ||
+                threatProgress.distanceFromRouteMeters >
+                  corridorToleranceMeters
+              ) {
+                return null;
+              }
+
+              const distanceAheadMeters =
+                threatProgress.progressMeters -
+                routeProgress.progressMeters;
+
+              /*
+               * Do not warn about hazards already behind the driver
+               * or events too far ahead for an immediate navigation
+               * decision.
+               */
+              if (
+                distanceAheadMeters < -50 ||
+                distanceAheadMeters > 3000
+              ) {
+                return null;
+              }
+
+              return {
+                threat,
+                distanceAheadMeters:
+                  Math.max(
+                    0,
+                    distanceAheadMeters
+                  ),
+              };
+            })
+            .filter(
+              (
+                candidate
+              ): candidate is ActiveRouteSafetyWarning =>
+                candidate !== null
+            )
+            .sort(
+              (first, second) => {
+                const distanceDifference =
+                  first.distanceAheadMeters -
+                  second.distanceAheadMeters;
+
+                if (
+                  Math.abs(distanceDifference) >
+                  50
+                ) {
+                  return distanceDifference;
+                }
+
+                return (
+                  Number(
+                    second.threat.score || 0
+                  ) -
+                  Number(
+                    first.threat.score || 0
+                  )
+                );
+              }
+            );
+
+        return candidates[0] ?? null;
+      },
+      [
+        routeProgress,
+        selectedRoute,
+        gpsAccuracyPoor,
+        hasReachedDestination,
+        routePoints,
+        activeRouteSafetyThreats,
+      ]
+    );
   const activeSpeedLimitKph =
     gpsActive &&
     !hasReachedDestination &&
@@ -5410,6 +5764,89 @@ function simulatorBearing(
             </div>
           </div>
 
+          {activeRouteSafetyWarning && (
+            <div
+              className="hg-active-route-safety-warning"
+              role="status"
+              aria-live="polite"
+              style={{
+                position: "absolute",
+                left: 18,
+                bottom: 300,
+                zIndex: 760,
+                width:
+                  "min(520px, calc(100vw - 36px))",
+                padding: "13px 14px",
+                borderRadius: 14,
+                border:
+                  "1px solid rgba(245, 158, 11, .72)",
+                background:
+                  "rgba(69, 26, 3, .96)",
+                color: "#fef3c7",
+                boxShadow:
+                  "0 16px 44px rgba(0,0,0,.4)",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 12,
+                  fontWeight: 900,
+                  letterSpacing: ".06em",
+                  textTransform: "uppercase",
+                  color: "#fbbf24",
+                }}
+              >
+                Safety alert ahead
+              </div>
+
+              <div
+                style={{
+                  marginTop: 4,
+                  fontWeight: 900,
+                  fontSize: 16,
+                  color: "#fff7ed",
+                }}
+              >
+                {activeRouteSafetyWarning.threat.title ||
+                  String(
+                    activeRouteSafetyWarning.threat.type ||
+                      "Route safety hazard"
+                  )
+                    .replaceAll("_", " ")
+                    .replace(
+                      /\b\w/g,
+                      (character) =>
+                        character.toUpperCase()
+                    )}
+              </div>
+
+              <div
+                style={{
+                  marginTop: 4,
+                  fontSize: 13,
+                  fontWeight: 800,
+                  color: "#fde68a",
+                }}
+              >
+                {Math.round(
+                  activeRouteSafetyWarning.distanceAheadMeters
+                )}{" "}
+                m ahead on your current route
+              </div>
+
+              <div
+                style={{
+                  marginTop: 6,
+                  fontSize: 13,
+                  lineHeight: 1.4,
+                  color: "#ffedd5",
+                }}
+              >
+                {activeRouteSafetyWarning.threat.recommendation ||
+                  "Stay alert and continue with caution."}
+              </div>
+            </div>
+          )}
           {selectedRoute &&
             selectedRoute.safetyScore != null &&
             selectedRoute.riskScore != null && (
