@@ -591,6 +591,73 @@ type ActiveRouteSafetyWarning = {
   distanceAheadMeters: number;
 };
 
+function activeRouteSafetyVoiceKey(
+  warning: ActiveRouteSafetyWarning
+): string {
+  const threat =
+    warning.threat;
+
+  const id =
+    typeof threat.id === "string"
+      ? threat.id.trim()
+      : "";
+
+  if (id) {
+    return `route-safety-threat:${id}`;
+  }
+
+  const type =
+    typeof threat.type === "string"
+      ? threat.type
+          .trim()
+          .toLowerCase()
+      : "unknown";
+
+  const latitude =
+    Number(threat.latitude);
+
+  const longitude =
+    Number(threat.longitude);
+
+  const coordinateKey =
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude)
+      ? `${latitude.toFixed(5)}:${longitude.toFixed(5)}`
+      : "unknown-location";
+
+  return `route-safety-threat:${type}:${coordinateKey}`;
+}
+
+function activeRouteSafetyVoiceTitle(
+  threat: ActiveRouteSafetyThreat
+): string {
+  const title =
+    typeof threat.title === "string"
+      ? threat.title.trim()
+      : "";
+
+  if (title) {
+    return title;
+  }
+
+  const type =
+    typeof threat.type === "string"
+      ? threat.type.trim()
+      : "";
+
+  if (!type) {
+    return "Route safety hazard";
+  }
+
+  return type
+    .replace(/[_-]+/g, " ")
+    .replace(
+      /\b\w/g,
+      (character) =>
+        character.toUpperCase()
+    );
+}
+
 type SaferRouteOffer = {
   route: RouteOption;
   threatKey: string;
@@ -4463,6 +4530,66 @@ function simulatorBearing(
     isOverspeeding,
     voiceEnabled,
     gpsAccuracyPoor,
+    speakNavigationInstruction,
+  ]);
+
+  /*
+   * CUSTOMER INCREMENT #3
+   * ---------------------
+   * Speak the existing active-route safety warning through the
+   * existing navigation speech engine.
+   *
+   * A stable threat identity prevents GPS progress updates from
+   * repeatedly speaking the same warning.
+   *
+   * This first increment does not interrupt speech already in progress.
+   */
+  useEffect(() => {
+    if (
+      !voiceEnabled ||
+      !gpsActive ||
+      gpsAccuracyPoor ||
+      routing ||
+      autoRerouteActive ||
+      !selectedRoute ||
+      hasReachedDestination ||
+      !activeRouteSafetyWarning
+    ) {
+      return;
+    }
+
+    const announcementKey =
+      activeRouteSafetyVoiceKey(
+        activeRouteSafetyWarning
+      );
+
+    const title =
+      activeRouteSafetyVoiceTitle(
+        activeRouteSafetyWarning.threat
+      );
+
+    const distanceMeters =
+      Math.max(
+        0,
+        Math.round(
+          activeRouteSafetyWarning
+            .distanceAheadMeters
+        )
+      );
+
+    speakNavigationInstruction(
+      announcementKey,
+      `Safety alert ahead. ${title}. ${distanceMeters} metres ahead.`
+    );
+  }, [
+    voiceEnabled,
+    gpsActive,
+    gpsAccuracyPoor,
+    routing,
+    autoRerouteActive,
+    selectedRoute,
+    hasReachedDestination,
+    activeRouteSafetyWarning,
     speakNavigationInstruction,
   ]);
 
