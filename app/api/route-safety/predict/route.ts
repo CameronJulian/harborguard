@@ -1243,8 +1243,24 @@ const koebergEvacuationDirectionContext =
         ? roadRiskSegmentThreatInputs
         : intelligenceThreatInputs;
 
+    /*
+     * Customer Increment #5 provenance boundary.
+     *
+     * Only current route_safety_alerts rows receive a verifiable
+     * route-safety-alert identity. Historical intelligence and
+     * road-risk segments retain their own unrelated ids.
+     */
+    const currentAlertThreatInputs =
+      (alerts || []).map(
+        (alert: any) => ({
+          ...alert,
+          route_safety_alert_id:
+            alert.id,
+        })
+      );
+
     const threatInputs = [
-      ...(alerts || []),
+      ...currentAlertThreatInputs,
       ...historicalThreatInputs,
     ];
 
@@ -1484,6 +1500,9 @@ const koebergEvacuationDirectionContext =
           verificationCount: normalizedVerificationCount,
           createdAt: normalizedCreatedAt,
           source: alert.source ?? null,
+          routeSafetyAlertId:
+            alert.route_safety_alert_id ??
+            null,
           recommendation:
             alert.recommendation_override ||
             recommendationFor(alert.type, alert.severity),

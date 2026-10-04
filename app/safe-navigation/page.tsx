@@ -569,6 +569,7 @@ type RerouteResponse = {
 };
 type ActiveRouteSafetyThreat = {
   id?: string | null;
+  routeSafetyAlertId?: string | null;
   type?: string | null;
   title?: string | null;
   severity?: string | null;
@@ -1296,6 +1297,29 @@ export default function SafeNavigationPage() {
 
   const activeRouteSafetyThreatRouteKeyRef =
     useRef("");
+
+  /*
+   * Customer Increment #5
+   * ---------------------
+   * Driver confirmation is explicit and locally one-shot.
+   *
+   * GPS ticks and rerenders never own this request lifecycle.
+   */
+  const [
+    hazardConfirmationStateByAlertId,
+    setHazardConfirmationStateByAlertId,
+  ] = useState<
+    Record<
+      string,
+      "submitting" | "confirmed" | "failed"
+    >
+  >({});
+
+  const hazardConfirmationInFlightRef =
+    useRef<Set<string>>(new Set());
+
+  const confirmedHazardAlertIdsRef =
+    useRef<Set<string>>(new Set());
 
   /*
    * Customer Increment #2
@@ -4294,6 +4318,91 @@ function simulatorBearing(
   ]);
 
   /*
+   * Customer Increment #5
+   * ---------------------
+   * Confirm only threats that /predict explicitly proves came from
+   * a live route_safety_alerts row.
+   */
+  async function confirmActiveRouteSafetyHazard() {
+    const alertId =
+      activeRouteSafetyWarning?.threat
+        .routeSafetyAlertId?.trim() ||
+      "";
+
+    if (!alertId) {
+      return;
+    }
+
+    if (
+      hazardConfirmationInFlightRef.current.has(
+        alertId
+      ) ||
+      confirmedHazardAlertIdsRef.current.has(
+        alertId
+      )
+    ) {
+      return;
+    }
+
+    hazardConfirmationInFlightRef.current.add(
+      alertId
+    );
+
+    setHazardConfirmationStateByAlertId(
+      (current) => ({
+        ...current,
+        [alertId]: "submitting",
+      })
+    );
+
+    try {
+      const response =
+        await fetchWithAuth(
+          "/api/route-safety/verify",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            cache: "no-store",
+            body: JSON.stringify({
+              alertId,
+            }),
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          "Hazard confirmation failed."
+        );
+      }
+
+      confirmedHazardAlertIdsRef.current.add(
+        alertId
+      );
+
+      setHazardConfirmationStateByAlertId(
+        (current) => ({
+          ...current,
+          [alertId]: "confirmed",
+        })
+      );
+    } catch {
+      setHazardConfirmationStateByAlertId(
+        (current) => ({
+          ...current,
+          [alertId]: "failed",
+        })
+      );
+    } finally {
+      hazardConfirmationInFlightRef.current.delete(
+        alertId
+      );
+    }
+  }
+
+  /*
    * Nothing changes until the customer explicitly accepts the offer.
    */
   function acceptSaferRouteOffer() {
@@ -6566,6 +6675,101 @@ function simulatorBearing(
                 {activeRouteSafetyWarning.threat.recommendation ||
                   "Stay alert and continue with caution."}
               </div>
+              {activeRouteSafetyWarning.threat
+                .routeSafetyAlertId && (
+                <div
+                  className="hg-hazard-confirmation"
+                  style={{
+                    marginTop: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  {hazardConfirmationStateByAlertId[
+                    activeRouteSafetyWarning
+                      .threat
+                      .routeSafetyAlertId
+                  ] === "confirmed" ? (
+                    <span
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 900,
+                        color: "#bbf7d0",
+                      }}
+                    >
+                      Thanks - hazard confirmed
+                    </span>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void confirmActiveRouteSafetyHazard();
+                        }}
+                        disabled={
+                          hazardConfirmationStateByAlertId[
+                            activeRouteSafetyWarning
+                              .threat
+                              .routeSafetyAlertId
+                          ] === "submitting"
+                        }
+                        style={{
+                          border:
+                            "1px solid rgba(251,191,36,.7)",
+                          borderRadius: 10,
+                          padding: "8px 12px",
+                          background:
+                            "rgba(120,53,15,.55)",
+                          color: "#fff7ed",
+                          fontSize: 13,
+                          fontWeight: 900,
+                          cursor:
+                            hazardConfirmationStateByAlertId[
+                              activeRouteSafetyWarning
+                                .threat
+                                .routeSafetyAlertId
+                            ] === "submitting"
+                              ? "wait"
+                              : "pointer",
+                        }}
+                      >
+                        {hazardConfirmationStateByAlertId[
+                          activeRouteSafetyWarning
+                            .threat
+                            .routeSafetyAlertId
+                        ] === "submitting"
+                          ? "Confirming..."
+                          : hazardConfirmationStateByAlertId[
+                                activeRouteSafetyWarning
+                                  .threat
+                                  .routeSafetyAlertId
+                              ] === "failed"
+                            ? "Try again"
+                            : "Still there"}
+                      </button>
+
+                      {hazardConfirmationStateByAlertId[
+                        activeRouteSafetyWarning
+                          .threat
+                          .routeSafetyAlertId
+                      ] === "failed" && (
+                        <span
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 800,
+                            color: "#fecaca",
+                          }}
+                        >
+                          Could not confirm hazard.
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
               {saferRouteOfferLoading && (
                 <div
                   style={{
