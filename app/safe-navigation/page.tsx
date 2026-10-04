@@ -660,6 +660,7 @@ function activeRouteSafetyVoiceTitle(
 
 type SaferRouteOffer = {
   route: RouteOption;
+  baselineRoute: RouteOption | null;
   threatKey: string;
   durationMinutes: number | null;
 };
@@ -819,6 +820,45 @@ function routeDurationMinutes(
 
   return null;
 }
+
+function alternativeRouteTimeComparisonLabel(
+  baselineRoute: RouteOption | null,
+  alternativeRoute: RouteOption | null
+): string | null {
+  const baselineMinutes =
+    routeDurationMinutes(
+      baselineRoute
+    );
+
+  const alternativeMinutes =
+    routeDurationMinutes(
+      alternativeRoute
+    );
+
+  if (
+    baselineMinutes == null ||
+    alternativeMinutes == null
+  ) {
+    return null;
+  }
+
+  const differenceMinutes =
+    alternativeMinutes -
+    baselineMinutes;
+
+  if (differenceMinutes === 0) {
+    return "About the same estimated travel time";
+  }
+
+  if (differenceMinutes > 0) {
+    return `${differenceMinutes} min longer than the current-path estimate`;
+  }
+
+  return `${Math.abs(
+    differenceMinutes
+  )} min faster than the current-path estimate`;
+}
+
 function routeSafetyExplanation(
   route: RouteOption | null
 ): string | null {
@@ -4171,6 +4211,25 @@ function simulatorBearing(
             }
           );
 
+        /*
+         * CUSTOMER INCREMENT #4
+         * ---------------------
+         * The reroute request starts at the driver's current position.
+         *
+         * Keep one route that still follows the active path as the
+         * same-origin comparison baseline, and one materially different
+         * route as the alternative.
+         *
+         * This prevents comparing a fresh alternative against the
+         * original full-trip ETA or distance.
+         */
+        const baselineRoute =
+          evaluatedCandidates.find(
+            (entry) =>
+              !entry.materiallyDifferent
+          )?.route ??
+          null;
+
         const candidate =
           evaluatedCandidates.find(
             (entry) =>
@@ -4185,6 +4244,7 @@ function simulatorBearing(
 
         setSaferRouteOffer({
           route: candidate,
+          baselineRoute,
           threatKey,
           durationMinutes:
             routeDurationMinutes(
@@ -6539,17 +6599,275 @@ function simulatorBearing(
                     Alternative route available
                   </div>
 
-                  <div
-                    style={{
-                      marginTop: 3,
-                      fontSize: 12,
-                      color: "#fde68a",
-                    }}
-                  >
-                    {saferRouteOffer.durationMinutes != null
-                      ? `Estimated ${saferRouteOffer.durationMinutes} min from your current position`
-                      : "Fresh route calculated from your current position"}
-                  </div>
+                  {saferRouteOffer.baselineRoute ? (
+                    <div
+                      className="hg-alternative-route-comparison"
+                      style={{
+                        marginTop: 8,
+                        display: "grid",
+                        gap: 8,
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: "#fcd34d",
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        Fresh comparison from your current position
+                      </div>
+
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns:
+                            "repeat(2, minmax(0, 1fr))",
+                          gap: 8,
+                        }}
+                      >
+                        <div
+                          style={{
+                            padding: 8,
+                            borderRadius: 9,
+                            background:
+                              "rgba(15, 23, 42, .72)",
+                            border:
+                              "1px solid rgba(148,163,184,.25)",
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 900,
+                              color: "#cbd5e1",
+                              marginBottom: 5,
+                            }}
+                          >
+                            Current path
+                          </div>
+
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: "#f8fafc",
+                            }}
+                          >
+                            ETA{" "}
+                            {durationLabel(
+                              saferRouteOffer.baselineRoute
+                            )}
+                          </div>
+
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: "#f8fafc",
+                              marginTop: 2,
+                            }}
+                          >
+                            Distance{" "}
+                            {distanceLabel(
+                              saferRouteOffer.baselineRoute
+                            )}
+                          </div>
+
+                          {saferRouteOffer.baselineRoute
+                            .safetyScore != null &&
+                          saferRouteOffer.route
+                            .safetyScore != null ? (
+                            <div
+                              style={{
+                                fontSize: 12,
+                                color: "#cbd5e1",
+                                marginTop: 4,
+                              }}
+                            >
+                              Safety{" "}
+                              {Math.round(
+                                saferRouteOffer
+                                  .baselineRoute
+                                  .safetyScore
+                              )}
+                            </div>
+                          ) : null}
+
+                          {saferRouteOffer.baselineRoute
+                            .riskScore != null &&
+                          saferRouteOffer.route
+                            .riskScore != null ? (
+                            <div
+                              style={{
+                                fontSize: 12,
+                                color: "#cbd5e1",
+                                marginTop: 2,
+                              }}
+                            >
+                              Risk{" "}
+                              {Math.round(
+                                saferRouteOffer
+                                  .baselineRoute
+                                  .riskScore
+                              )}
+                            </div>
+                          ) : null}
+
+                          {saferRouteOffer.baselineRoute
+                            .matchedRiskSegmentCount !=
+                            null &&
+                          saferRouteOffer.route
+                            .matchedRiskSegmentCount !=
+                            null ? (
+                            <div
+                              style={{
+                                fontSize: 11,
+                                color: "#94a3b8",
+                                marginTop: 4,
+                              }}
+                            >
+                              {matchedRiskSegmentLabel(
+                                saferRouteOffer.baselineRoute
+                              )}
+                            </div>
+                          ) : null}
+                        </div>
+
+                        <div
+                          style={{
+                            padding: 8,
+                            borderRadius: 9,
+                            background:
+                              "rgba(8, 47, 73, .55)",
+                            border:
+                              "1px solid rgba(34,211,238,.28)",
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 900,
+                              color: "#67e8f9",
+                              marginBottom: 5,
+                            }}
+                          >
+                            Alternative
+                          </div>
+
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: "#f8fafc",
+                            }}
+                          >
+                            ETA{" "}
+                            {durationLabel(
+                              saferRouteOffer.route
+                            )}
+                          </div>
+
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: "#f8fafc",
+                              marginTop: 2,
+                            }}
+                          >
+                            Distance{" "}
+                            {distanceLabel(
+                              saferRouteOffer.route
+                            )}
+                          </div>
+
+                          {saferRouteOffer.baselineRoute
+                            .safetyScore != null &&
+                          saferRouteOffer.route
+                            .safetyScore != null ? (
+                            <div
+                              style={{
+                                fontSize: 12,
+                                color: "#cbd5e1",
+                                marginTop: 4,
+                              }}
+                            >
+                              Safety{" "}
+                              {Math.round(
+                                saferRouteOffer.route
+                                  .safetyScore
+                              )}
+                            </div>
+                          ) : null}
+
+                          {saferRouteOffer.baselineRoute
+                            .riskScore != null &&
+                          saferRouteOffer.route
+                            .riskScore != null ? (
+                            <div
+                              style={{
+                                fontSize: 12,
+                                color: "#cbd5e1",
+                                marginTop: 2,
+                              }}
+                            >
+                              Risk{" "}
+                              {Math.round(
+                                saferRouteOffer.route
+                                  .riskScore
+                              )}
+                            </div>
+                          ) : null}
+
+                          {saferRouteOffer.baselineRoute
+                            .matchedRiskSegmentCount !=
+                            null &&
+                          saferRouteOffer.route
+                            .matchedRiskSegmentCount !=
+                            null ? (
+                            <div
+                              style={{
+                                fontSize: 11,
+                                color: "#94a3b8",
+                                marginTop: 4,
+                              }}
+                            >
+                              {matchedRiskSegmentLabel(
+                                saferRouteOffer.route
+                              )}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      {alternativeRouteTimeComparisonLabel(
+                        saferRouteOffer.baselineRoute,
+                        saferRouteOffer.route
+                      ) ? (
+                        <div
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 800,
+                            color: "#fde68a",
+                          }}
+                        >
+                          {alternativeRouteTimeComparisonLabel(
+                            saferRouteOffer.baselineRoute,
+                            saferRouteOffer.route
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        marginTop: 3,
+                        fontSize: 12,
+                        color: "#fde68a",
+                      }}
+                    >
+                      {saferRouteOffer.durationMinutes != null
+                        ? `Estimated ${saferRouteOffer.durationMinutes} min from your current position`
+                        : "Fresh route calculated from your current position"}
+                    </div>
+                  )}
 
                   <button
                     type="button"
