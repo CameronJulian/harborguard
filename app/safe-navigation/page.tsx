@@ -601,9 +601,62 @@ type ActiveRouteSafetyThreat = {
   recommendation?: string | null;
 };
 
+type LiveRoadIntelligence = {
+  trafficRiskLevel: string | null;
+  trafficRiskScore: number | null;
+  averageDelayMinutes: number | null;
+  overallRiskLevel: string | null;
+  overallRiskScore: number | null;
+};
+
 type RouteSafetyPredictionResponse = {
+  riskScore?: number | null;
+  riskLevel?: string | null;
+  trafficRiskScore?: number | null;
+  trafficRiskLevel?: string | null;
+  trafficError?: string | null;
+  traffic?: {
+    summary?: {
+      averageDelay?: number | null;
+    } | null;
+  } | null;
   threats?: ActiveRouteSafetyThreat[];
 };
+
+function liveRoadIntelligenceLabel(
+  intelligence: LiveRoadIntelligence
+): string | null {
+  const parts: string[] = [];
+
+  if (intelligence.trafficRiskLevel) {
+    parts.push(
+      `Traffic risk ${intelligence.trafficRiskLevel.toLowerCase()}`
+    );
+  }
+
+  if (intelligence.averageDelayMinutes != null) {
+    parts.push(
+      intelligence.averageDelayMinutes >= 1
+        ? `~${Math.max(
+            1,
+            Math.round(intelligence.averageDelayMinutes)
+          )} min delay`
+        : "No major traffic delay"
+    );
+  }
+
+  if (intelligence.overallRiskScore != null) {
+    parts.push(
+      `Route risk ${Math.round(
+        intelligence.overallRiskScore
+      )}/100`
+    );
+  }
+
+  return parts.length > 0
+    ? parts.join(" · ")
+    : null;
+}
 
 type ActiveRouteSafetyWarning = {
   threat: ActiveRouteSafetyThreat;
@@ -1306,6 +1359,19 @@ export default function SafeNavigationPage() {
     setActiveRouteSafetyThreats,
   ] =
     useState<ActiveRouteSafetyThreat[]>([]);
+
+  /*
+   * Customer Increment #13
+   * ----------------------
+   * Reuse the existing Route Safety prediction response to
+   * surface simple live road intelligence to the driver.
+   * No additional traffic or weather request is introduced.
+   */
+  const [
+    liveRoadIntelligence,
+    setLiveRoadIntelligence,
+  ] =
+    useState<LiveRoadIntelligence | null>(null);
 
   const activeRouteSafetyThreatRequestIdRef =
     useRef(0);
@@ -4240,6 +4306,8 @@ function simulatorBearing(
     activeRouteSafetyThreatRouteKeyRef.current =
       routeKey;
 
+    setLiveRoadIntelligence(null);
+
     const requestId =
       activeRouteSafetyThreatRequestIdRef.current + 1;
 
@@ -4299,6 +4367,7 @@ function simulatorBearing(
             "";
 
           setActiveRouteSafetyThreats([]);
+          setLiveRoadIntelligence(null);
 
           return;
         }
@@ -4307,6 +4376,60 @@ function simulatorBearing(
           Array.isArray(result?.threats)
             ? result.threats
             : []
+        );
+
+        const trafficRiskLevel =
+          typeof result?.trafficRiskLevel === "string" &&
+          result.trafficRiskLevel.trim()
+            ? result.trafficRiskLevel.trim().toUpperCase()
+            : null;
+
+        const trafficRiskScore =
+          typeof result?.trafficRiskScore === "number" &&
+          Number.isFinite(result.trafficRiskScore)
+            ? result.trafficRiskScore
+            : null;
+
+        const averageDelayMinutes =
+          typeof result?.traffic?.summary?.averageDelay ===
+            "number" &&
+          Number.isFinite(
+            result.traffic.summary.averageDelay
+          )
+            ? result.traffic.summary.averageDelay
+            : null;
+
+        const overallRiskLevel =
+          typeof result?.riskLevel === "string" &&
+          result.riskLevel.trim()
+            ? result.riskLevel.trim().toUpperCase()
+            : null;
+
+        const overallRiskScore =
+          typeof result?.riskScore === "number" &&
+          Number.isFinite(result.riskScore)
+            ? result.riskScore
+            : null;
+
+        const hasTrafficIntelligence =
+          result?.traffic != null &&
+          !result?.trafficError &&
+          (
+            trafficRiskLevel != null ||
+            trafficRiskScore != null ||
+            averageDelayMinutes != null
+          );
+
+        setLiveRoadIntelligence(
+          hasTrafficIntelligence
+            ? {
+                trafficRiskLevel,
+                trafficRiskScore,
+                averageDelayMinutes,
+                overallRiskLevel,
+                overallRiskScore,
+              }
+            : null
         );
       } catch (error) {
         if (
@@ -4321,6 +4444,7 @@ function simulatorBearing(
           "";
 
         setActiveRouteSafetyThreats([]);
+        setLiveRoadIntelligence(null);
       } finally {
         if (
           requestId ===
@@ -8443,6 +8567,41 @@ function simulatorBearing(
                     selectedRoute.riskScore
                   )}
                 </div>
+
+                {liveRoadIntelligence &&
+                  liveRoadIntelligenceLabel(
+                    liveRoadIntelligence
+                  ) && (
+                    <div
+                      aria-label="Live road intelligence"
+                      style={{
+                        marginBottom: 7,
+                        padding: "8px 10px",
+                        borderRadius: 10,
+                        background:
+                          "rgba(8, 47, 73, .55)",
+                        border:
+                          "1px solid rgba(34,211,238,.28)",
+                        color: "#bae6fd",
+                        fontSize: 12,
+                        fontWeight: 700,
+                      }}
+                    >
+                      <div
+                        style={{
+                          color: "#f8fafc",
+                          fontWeight: 900,
+                          marginBottom: 3,
+                        }}
+                      >
+                        Live road conditions
+                      </div>
+
+                      {liveRoadIntelligenceLabel(
+                        liveRoadIntelligence
+                      )}
+                    </div>
+                  )}
 
                 {routeSafetyExplanation(
                   selectedRoute
