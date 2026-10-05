@@ -599,6 +599,7 @@ type TrafficCalmingAwarenessContext = {
 type ActiveRouteSafetyThreat = {
   id?: string | null;
   routeSafetyAlertId?: string | null;
+  source?: string | null;
   type?: string | null;
   title?: string | null;
   severity?: string | null;
@@ -8463,8 +8464,10 @@ function simulatorBearing(
                 {activeRouteSafetyWarning.threat.recommendation ||
                   "Stay alert and continue with caution."}
               </div>
-              {activeRouteSafetyWarning.threat
-                .routeSafetyAlertId &&
+              {activeRouteSafetyWarning.threat.source ===
+                "operator" &&
+                activeRouteSafetyWarning.threat
+                  .routeSafetyAlertId &&
                 activeRouteSafetyWarning.threat
                   .verificationCount != null && (
                   <div
@@ -8489,7 +8492,9 @@ function simulatorBearing(
                   </div>
                 )}
 
-              {communityHazardFreshnessLabel(
+              {activeRouteSafetyWarning.threat.source ===
+                "operator" &&
+              communityHazardFreshnessLabel(
                 activeRouteSafetyWarning.threat.createdAt
               ) ? (
                 <div
@@ -8508,7 +8513,9 @@ function simulatorBearing(
                 </div>
               ) : null}
 
-              {activeRouteSafetyWarning.threat
+              {activeRouteSafetyWarning.threat.source ===
+                "operator" &&
+              activeRouteSafetyWarning.threat
                 .routeSafetyAlertId && (
                 <div
                   className="hg-hazard-confirmation"
