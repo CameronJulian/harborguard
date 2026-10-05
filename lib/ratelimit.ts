@@ -84,6 +84,16 @@ export const routeSafetyPredictRatelimit =
       ),
     analytics: true,
   });
+export const routeSafetyReportRatelimit =
+  createLazyRatelimit({
+    limiter:
+      Ratelimit.slidingWindow(
+        5,
+        "60 s",
+      ),
+    analytics: true,
+    prefix: "ratelimit:route-safety-report",
+  });
 class LocalFleetPanicRatelimit {
   private readonly requests = new Map<string, number[]>();
   private readonly maxRequests = 10;
