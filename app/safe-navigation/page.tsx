@@ -753,6 +753,61 @@ function routeWeatherIntelligenceLabel(
     : null;
 }
 
+function routeWeatherDriverGuidance(
+  weather: RouteWeatherIntelligence
+): string {
+  const reasons = weather.riskReasons
+    .map((reason) => reason.toLowerCase())
+    .join(" ");
+
+  const guidance: string[] = [];
+
+  if (reasons.includes("visibility")) {
+    guidance.push(
+      "Reduce speed and increase following distance."
+    );
+  }
+
+  if (
+    reasons.includes("precipitation") ||
+    reasons.includes("shower") ||
+    reasons.includes("snow") ||
+    reasons.includes("freezing")
+  ) {
+    guidance.push(
+      "Allow extra braking distance and avoid sudden manoeuvres."
+    );
+  }
+
+  if (reasons.includes("wind")) {
+    guidance.push(
+      "Keep both hands on the wheel and allow extra space around high-sided vehicles."
+    );
+  }
+
+  if (reasons.includes("thunderstorm")) {
+    guidance.push(
+      "Use extra caution and be prepared for rapidly changing road conditions."
+    );
+  }
+
+  if (guidance.length > 0) {
+    return guidance.join(" ");
+  }
+
+  if (
+    weather.riskLevel === "critical" ||
+    weather.riskLevel === "high"
+  ) {
+    return "Drive cautiously and allow extra time for changing weather conditions.";
+  }
+
+  if (weather.riskLevel === "medium") {
+    return "Stay alert for changing weather and road conditions.";
+  }
+
+  return "No significant weather-related driving adjustment is currently indicated.";
+}
 type ActiveRouteSafetyWarning = {
   threat: ActiveRouteSafetyThreat;
   distanceAheadMeters: number;
@@ -9038,6 +9093,18 @@ function simulatorBearing(
                           }
                         </div>
                       )}
+                      <div
+                        aria-label="Weather driving guidance"
+                        style={{
+                          marginTop: 5,
+                          color: "#fde68a",
+                          fontWeight: 700,
+                        }}
+                      >
+                        {routeWeatherDriverGuidance(
+                          routeWeatherIntelligence
+                        )}
+                      </div>
                     </div>
                   )}
 
