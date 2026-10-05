@@ -666,6 +666,25 @@ type RouteSafetyPredictionResponse = {
   threats?: ActiveRouteSafetyThreat[];
 };
 
+function isLiveProviderRouteSafetySource(
+  source: string | null | undefined
+): boolean {
+  return (
+    source === "here_traffic" ||
+    source === "tomtom" ||
+    source === "azure_maps_traffic"
+  );
+}
+
+function providerHazardFreshnessLabel(
+  createdAt: string | null | undefined,
+  nowMs = Date.now()
+): string | null {
+  return communityHazardFreshnessLabel(
+    createdAt,
+    nowMs
+  );
+}
 function communityHazardFreshnessLabel(
   createdAt: string | null | undefined,
   nowMs = Date.now()
@@ -8464,6 +8483,44 @@ function simulatorBearing(
                 {activeRouteSafetyWarning.threat.recommendation ||
                   "Stay alert and continue with caution."}
               </div>
+              {isLiveProviderRouteSafetySource(
+                activeRouteSafetyWarning.threat.source
+              ) && (
+                <div
+                  className="hg-provider-hazard-trust"
+                  aria-label="Live road intelligence source"
+                  style={{
+                    marginTop: 7,
+                    fontSize: 12,
+                    fontWeight: 800,
+                    color: "#bae6fd",
+                  }}
+                >
+                  Live road intelligence
+                </div>
+              )}
+
+              {isLiveProviderRouteSafetySource(
+                activeRouteSafetyWarning.threat.source
+              ) &&
+              providerHazardFreshnessLabel(
+                activeRouteSafetyWarning.threat.createdAt
+              ) ? (
+                <div
+                  className="hg-provider-hazard-freshness"
+                  aria-label="Live road intelligence freshness"
+                  style={{
+                    marginTop: 4,
+                    color: "#cbd5e1",
+                    fontSize: 12,
+                    fontWeight: 600,
+                  }}
+                >
+                  {providerHazardFreshnessLabel(
+                    activeRouteSafetyWarning.threat.createdAt
+                  )}
+                </div>
+              ) : null}
               {activeRouteSafetyWarning.threat.source ===
                 "operator" &&
                 activeRouteSafetyWarning.threat
