@@ -1392,6 +1392,42 @@ export default function SafeNavigationPage() {
   const [gpsMessage, setGpsMessage] =
     useState("GPS is off");
 
+  /*
+   * CUSTOMER INCREMENT #6 PART B
+   * ----------------------------
+   * Driver-originated hazard reporting reuses the existing Safe
+   * Navigation GPS position and the hardened Route Safety report API.
+   */
+  const [hazardReportOpen, setHazardReportOpen] =
+    useState(false);
+
+  const [hazardReportType, setHazardReportType] =
+    useState("roadblock");
+
+  const [
+    hazardReportSeverity,
+    setHazardReportSeverity,
+  ] =
+    useState("medium");
+
+  const [
+    hazardReportDescription,
+    setHazardReportDescription,
+  ] =
+    useState("");
+
+  const [
+    hazardReportSubmitting,
+    setHazardReportSubmitting,
+  ] =
+    useState(false);
+
+  const [
+    hazardReportMessage,
+    setHazardReportMessage,
+  ] =
+    useState("");
+
   const [destinationLat, setDestinationLat] = useState("");
   const [destinationLng, setDestinationLng] = useState("");
   const [destinationName, setDestinationName] =
@@ -3590,6 +3626,111 @@ function simulatorBearing(
     position
       ? gpsAccuracyIsPoor(position.accuracy)
       : false;
+
+  const hazardReportTitles: Record<string, string> = {
+    roadblock: "Roadblock reported",
+    accident: "Road accident reported",
+    flooding: "Flooding reported",
+    traffic_light_outage:
+      "Traffic light outage reported",
+    protest:
+      "Protest or public disruption reported",
+    vehicle_breakdown:
+      "Vehicle breakdown reported",
+    road_hazard:
+      "Road safety hazard reported",
+    police_activity:
+      "Police activity reported",
+    smash_grab_hotspot:
+      "Smash-and-grab hotspot reported",
+  };
+
+  async function submitDriverHazardReport() {
+    if (
+      !gpsActive ||
+      !position ||
+      gpsAccuracyPoor
+    ) {
+      setHazardReportMessage(
+        "A reliable live GPS position is required before reporting a hazard."
+      );
+
+      return;
+    }
+
+    try {
+      setHazardReportSubmitting(true);
+      setHazardReportMessage(
+        "Submitting hazard report..."
+      );
+
+      const response =
+        await fetchWithAuth(
+          "/api/route-safety/report",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            cache: "no-store",
+            body: JSON.stringify({
+              type: hazardReportType,
+              title:
+                hazardReportTitles[
+                  hazardReportType
+                ] ??
+                "Road safety hazard reported",
+              description:
+                hazardReportDescription.trim() ||
+                null,
+              severity:
+                hazardReportSeverity,
+              latitude:
+                position.lat,
+              longitude:
+                position.lng,
+              radius_meters: 500,
+              expires_hours: 6,
+            }),
+          }
+        );
+
+      const result =
+        (await response.json()) as {
+          success?: boolean;
+          duplicate?: boolean;
+          message?: string;
+          error?: string;
+        };
+
+      if (!response.ok) {
+        setHazardReportMessage(
+          result.error ??
+            "The hazard report could not be submitted."
+        );
+
+        return;
+      }
+
+      setHazardReportDescription("");
+
+      setHazardReportMessage(
+        result.duplicate
+          ? "A similar hazard was already reported nearby. HarborGuard kept the existing report."
+          : "Hazard reported successfully using your current GPS location."
+      );
+    }
+    catch (error: any) {
+      setHazardReportMessage(
+        error?.message ??
+          "Network error while submitting the hazard report."
+      );
+    }
+    finally {
+      setHazardReportSubmitting(false);
+    }
+  }
 
   let activeInstructionIndex =
     navigationInstructions.length > 0 &&
@@ -5990,6 +6131,290 @@ function simulatorBearing(
                 End Navigation
               </button>
             ) : null}
+
+            <div
+              className="hg-driver-hazard-report"
+              style={{
+                marginTop: 12,
+                padding: 12,
+                borderRadius: 12,
+                border:
+                  "1px solid rgba(248,113,113,.38)",
+                background:
+                  "rgba(69,10,10,.24)",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setHazardReportOpen(
+                    (current) => !current
+                  );
+
+                  setHazardReportMessage("");
+                }}
+                disabled={
+                  hazardReportSubmitting
+                }
+                style={{
+                  width: "100%",
+                  border:
+                    "1px solid rgba(248,113,113,.55)",
+                  borderRadius: 10,
+                  padding: "11px 13px",
+                  background:
+                    "rgba(127,29,29,.58)",
+                  color: "#fee2e2",
+                  fontWeight: 900,
+                  cursor:
+                    hazardReportSubmitting
+                      ? "wait"
+                      : "pointer",
+                  opacity:
+                    hazardReportSubmitting
+                      ? 0.7
+                      : 1,
+                }}
+              >
+                {hazardReportOpen
+                  ? "Close Hazard Report"
+                  : "Report Hazard"}
+              </button>
+
+              {hazardReportOpen && (
+                <div
+                  style={{
+                    marginTop: 10,
+                    display: "grid",
+                    gap: 9,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 12,
+                      lineHeight: 1.45,
+                      color: "#fecaca",
+                    }}
+                  >
+                    Report what you can see at
+                    your current GPS location.
+                    Community reports remain
+                    unverified until confirmed.
+                  </div>
+
+                  <label
+                    style={{
+                      display: "grid",
+                      gap: 5,
+                      fontSize: 12,
+                      fontWeight: 800,
+                      color: "#e2e8f0",
+                    }}
+                  >
+                    Hazard type
+                    <select
+                      aria-label="Hazard report type"
+                      value={
+                        hazardReportType
+                      }
+                      onChange={(event) => {
+                        setHazardReportType(
+                          event.target.value
+                        );
+
+                        setHazardReportMessage(
+                          ""
+                        );
+                      }}
+                      disabled={
+                        hazardReportSubmitting
+                      }
+                      style={inputStyle}
+                    >
+                      <option value="roadblock">
+                        Roadblock
+                      </option>
+                      <option value="accident">
+                        Accident
+                      </option>
+                      <option value="flooding">
+                        Flooding
+                      </option>
+                      <option value="traffic_light_outage">
+                        Traffic light outage
+                      </option>
+                      <option value="protest">
+                        Protest / disruption
+                      </option>
+                      <option value="vehicle_breakdown">
+                        Vehicle breakdown
+                      </option>
+                      <option value="road_hazard">
+                        Road hazard / debris
+                      </option>
+                      <option value="police_activity">
+                        Police activity
+                      </option>
+                      <option value="smash_grab_hotspot">
+                        Smash-and-grab activity
+                      </option>
+                    </select>
+                  </label>
+
+                  <label
+                    style={{
+                      display: "grid",
+                      gap: 5,
+                      fontSize: 12,
+                      fontWeight: 800,
+                      color: "#e2e8f0",
+                    }}
+                  >
+                    Severity
+                    <select
+                      aria-label="Hazard report severity"
+                      value={
+                        hazardReportSeverity
+                      }
+                      onChange={(event) => {
+                        setHazardReportSeverity(
+                          event.target.value
+                        );
+
+                        setHazardReportMessage(
+                          ""
+                        );
+                      }}
+                      disabled={
+                        hazardReportSubmitting
+                      }
+                      style={inputStyle}
+                    >
+                      <option value="low">
+                        Low
+                      </option>
+                      <option value="medium">
+                        Medium
+                      </option>
+                      <option value="high">
+                        High
+                      </option>
+                      <option value="critical">
+                        Critical
+                      </option>
+                    </select>
+                  </label>
+
+                  <label
+                    style={{
+                      display: "grid",
+                      gap: 5,
+                      fontSize: 12,
+                      fontWeight: 800,
+                      color: "#e2e8f0",
+                    }}
+                  >
+                    Description
+                    <textarea
+                      aria-label="Hazard report description"
+                      value={
+                        hazardReportDescription
+                      }
+                      onChange={(event) => {
+                        setHazardReportDescription(
+                          event.target.value
+                        );
+                      }}
+                      placeholder="Optional details..."
+                      maxLength={500}
+                      rows={3}
+                      disabled={
+                        hazardReportSubmitting
+                      }
+                      style={{
+                        ...inputStyle,
+                        resize: "vertical",
+                        minHeight: 72,
+                      }}
+                    />
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void submitDriverHazardReport();
+                    }}
+                    disabled={
+                      hazardReportSubmitting ||
+                      !gpsActive ||
+                      !position ||
+                      gpsAccuracyPoor
+                    }
+                    style={{
+                      width: "100%",
+                      border: 0,
+                      borderRadius: 10,
+                      padding: "11px 13px",
+                      background:
+                        "#b91c1c",
+                      color: "#ffffff",
+                      fontWeight: 900,
+                      cursor:
+                        hazardReportSubmitting ||
+                        !gpsActive ||
+                        !position ||
+                        gpsAccuracyPoor
+                          ? "not-allowed"
+                          : "pointer",
+                      opacity:
+                        hazardReportSubmitting ||
+                        !gpsActive ||
+                        !position ||
+                        gpsAccuracyPoor
+                          ? 0.55
+                          : 1,
+                    }}
+                  >
+                    {hazardReportSubmitting
+                      ? "Submitting..."
+                      : "Submit Hazard Report"}
+                  </button>
+
+                  {(
+                    !gpsActive ||
+                    !position ||
+                    gpsAccuracyPoor
+                  ) && (
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: "#fbbf24",
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      Start GPS and wait for a
+                      reliable location fix to
+                      submit a report.
+                    </div>
+                  )}
+
+                  {hazardReportMessage && (
+                    <div
+                      role="status"
+                      aria-live="polite"
+                      aria-atomic="true"
+                      style={{
+                        fontSize: 12,
+                        lineHeight: 1.45,
+                        color: "#e2e8f0",
+                      }}
+                    >
+                      {hazardReportMessage}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             <div
               style={{
