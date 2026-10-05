@@ -1251,13 +1251,22 @@ const koebergEvacuationDirectionContext =
      * road-risk segments retain their own unrelated ids.
      */
     const currentAlertThreatInputs =
-      (alerts || []).map(
-        (alert: any) => ({
-          ...alert,
-          route_safety_alert_id:
-            alert.id,
-        })
-      );
+      (alerts || [])
+        .map(
+          (alert: any) => ({
+            ...alert,
+            route_safety_alert_id:
+              alert.id,
+          })
+        )
+        .filter(
+          (alert: any) =>
+            classifyIntelligenceFreshness(
+              alert.last_provider_confirmation_at ??
+                alert.created_at,
+              alert.verification_count
+            ) !== "stale"
+        );
 
     const threatInputs = [
       ...currentAlertThreatInputs,
