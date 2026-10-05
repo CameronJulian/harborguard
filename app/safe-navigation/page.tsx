@@ -609,12 +609,42 @@ type LiveRoadIntelligence = {
   overallRiskScore: number | null;
 };
 
+type RouteWeatherIntelligence = {
+  riskLevel: string | null;
+  riskScore: number | null;
+  contribution: number | null;
+  temperatureC: number | null;
+  windSpeedKph: number | null;
+  windGustKph: number | null;
+  precipitationMm: number | null;
+  visibilityKm: number | null;
+  weatherCode: number | null;
+  riskReasons: string[];
+};
+
 type RouteSafetyPredictionResponse = {
   riskScore?: number | null;
   riskLevel?: string | null;
   trafficRiskScore?: number | null;
   trafficRiskLevel?: string | null;
   trafficError?: string | null;
+  weatherRiskScore?: number | null;
+  weatherContribution?: number | null;
+  weatherError?: string | null;
+  weather?: {
+    latitude?: number | null;
+    longitude?: number | null;
+    observedAt?: string | null;
+    temperatureC?: number | null;
+    windSpeedKph?: number | null;
+    windGustKph?: number | null;
+    precipitationMm?: number | null;
+    visibilityKm?: number | null;
+    weatherCode?: number | null;
+    riskScore?: number | null;
+    riskLevel?: string | null;
+    riskReasons?: string[];
+  } | null;
   traffic?: {
     summary?: {
       averageDelay?: number | null;
@@ -650,6 +680,59 @@ function liveRoadIntelligenceLabel(
       `Route risk ${Math.round(
         intelligence.overallRiskScore
       )}/100`
+    );
+  }
+
+  return parts.length > 0
+    ? parts.join(" · ")
+    : null;
+}
+
+function routeWeatherIntelligenceLabel(
+  intelligence: RouteWeatherIntelligence
+): string | null {
+  const parts: string[] = [];
+
+  if (intelligence.riskLevel) {
+    parts.push(
+      `${intelligence.riskLevel.toUpperCase()} weather risk`
+    );
+  }
+
+  if (intelligence.temperatureC != null) {
+    parts.push(
+      `${Math.round(intelligence.temperatureC)}°C`
+    );
+  }
+
+  if (intelligence.windSpeedKph != null) {
+    parts.push(
+      `Wind ${Math.round(
+        intelligence.windSpeedKph
+      )} km/h`
+    );
+  }
+
+  if (intelligence.precipitationMm != null) {
+    parts.push(
+      `Rain ${intelligence.precipitationMm.toFixed(1)} mm`
+    );
+  }
+
+  if (intelligence.visibilityKm != null) {
+    parts.push(
+      `Visibility ${intelligence.visibilityKm.toFixed(1)} km`
+    );
+  }
+
+  if (
+    intelligence.contribution != null &&
+    intelligence.contribution > 0
+  ) {
+    parts.push(
+      `+${Math.round(
+        intelligence.contribution
+      )} route-risk points`
     );
   }
 
@@ -1372,6 +1455,18 @@ export default function SafeNavigationPage() {
     setLiveRoadIntelligence,
   ] =
     useState<LiveRoadIntelligence | null>(null);
+
+  /*
+   * Customer Increment #15
+   * ----------------------
+   * Route weather comes from the existing Route Safety prediction.
+   * No second weather request is made by Safe Navigation.
+   */
+  const [
+    routeWeatherIntelligence,
+    setRouteWeatherIntelligence,
+  ] =
+    useState<RouteWeatherIntelligence | null>(null);
 
   const activeRouteSafetyThreatRequestIdRef =
     useRef(0);
@@ -4307,6 +4402,7 @@ function simulatorBearing(
       routeKey;
 
     setLiveRoadIntelligence(null);
+    setRouteWeatherIntelligence(null);
 
     const requestId =
       activeRouteSafetyThreatRequestIdRef.current + 1;
@@ -4368,6 +4464,7 @@ function simulatorBearing(
 
           setActiveRouteSafetyThreats([]);
           setLiveRoadIntelligence(null);
+          setRouteWeatherIntelligence(null);
 
           return;
         }
@@ -4411,6 +4508,79 @@ function simulatorBearing(
             ? result.riskScore
             : null;
 
+        const weatherRiskScore =
+          typeof result?.weatherRiskScore === "number" &&
+          Number.isFinite(result.weatherRiskScore)
+            ? result.weatherRiskScore
+            : null;
+
+        const weatherContribution =
+          typeof result?.weatherContribution === "number" &&
+          Number.isFinite(result.weatherContribution)
+            ? result.weatherContribution
+            : null;
+
+        const weather =
+          result?.weather ?? null;
+
+        const nextRouteWeatherIntelligence:
+          RouteWeatherIntelligence | null =
+          weather &&
+          !result?.weatherError
+            ? {
+                riskLevel:
+                  typeof weather.riskLevel === "string" &&
+                  weather.riskLevel.trim()
+                    ? weather.riskLevel.trim()
+                    : null,
+                riskScore:
+                  typeof weather.riskScore === "number" &&
+                  Number.isFinite(weather.riskScore)
+                    ? weather.riskScore
+                    : weatherRiskScore,
+                contribution:
+                  weatherContribution,
+                temperatureC:
+                  typeof weather.temperatureC === "number" &&
+                  Number.isFinite(weather.temperatureC)
+                    ? weather.temperatureC
+                    : null,
+                windSpeedKph:
+                  typeof weather.windSpeedKph === "number" &&
+                  Number.isFinite(weather.windSpeedKph)
+                    ? weather.windSpeedKph
+                    : null,
+                windGustKph:
+                  typeof weather.windGustKph === "number" &&
+                  Number.isFinite(weather.windGustKph)
+                    ? weather.windGustKph
+                    : null,
+                precipitationMm:
+                  typeof weather.precipitationMm === "number" &&
+                  Number.isFinite(weather.precipitationMm)
+                    ? weather.precipitationMm
+                    : null,
+                visibilityKm:
+                  typeof weather.visibilityKm === "number" &&
+                  Number.isFinite(weather.visibilityKm)
+                    ? weather.visibilityKm
+                    : null,
+                weatherCode:
+                  typeof weather.weatherCode === "number" &&
+                  Number.isFinite(weather.weatherCode)
+                    ? weather.weatherCode
+                    : null,
+                riskReasons:
+                  Array.isArray(weather.riskReasons)
+                    ? weather.riskReasons.filter(
+                        (reason): reason is string =>
+                          typeof reason === "string" &&
+                          reason.trim().length > 0
+                      )
+                    : [],
+              }
+            : null;
+
         const hasTrafficIntelligence =
           result?.traffic != null &&
           !result?.trafficError &&
@@ -4419,6 +4589,10 @@ function simulatorBearing(
             trafficRiskScore != null ||
             averageDelayMinutes != null
           );
+
+        setRouteWeatherIntelligence(
+          nextRouteWeatherIntelligence
+        );
 
         setLiveRoadIntelligence(
           hasTrafficIntelligence
@@ -4445,6 +4619,7 @@ function simulatorBearing(
 
         setActiveRouteSafetyThreats([]);
         setLiveRoadIntelligence(null);
+        setRouteWeatherIntelligence(null);
       } finally {
         if (
           requestId ===
@@ -8601,6 +8776,57 @@ function simulatorBearing(
 
                       {liveRoadIntelligenceLabel(
                         liveRoadIntelligence
+                      )}
+                    </div>
+                  )}
+
+                {routeWeatherIntelligence &&
+                  routeWeatherIntelligenceLabel(
+                    routeWeatherIntelligence
+                  ) && (
+                    <div
+                      aria-label="Route weather intelligence"
+                      style={{
+                        marginBottom: 7,
+                        padding: "8px 10px",
+                        borderRadius: 10,
+                        background:
+                          "rgba(30, 41, 59, .72)",
+                        border:
+                          "1px solid rgba(125,211,252,.28)",
+                        color: "#bae6fd",
+                        fontSize: 12,
+                        fontWeight: 700,
+                      }}
+                    >
+                      <div
+                        style={{
+                          color: "#f8fafc",
+                          fontWeight: 900,
+                          marginBottom: 3,
+                        }}
+                      >
+                        Route weather
+                      </div>
+
+                      {routeWeatherIntelligenceLabel(
+                        routeWeatherIntelligence
+                      )}
+
+                      {routeWeatherIntelligence
+                        .riskReasons.length > 0 && (
+                        <div
+                          style={{
+                            marginTop: 4,
+                            color: "#cbd5e1",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {
+                            routeWeatherIntelligence
+                              .riskReasons[0]
+                          }
+                        </div>
                       )}
                     </div>
                   )}
