@@ -73,11 +73,16 @@ test(
 );
 
 test(
-  "existing warning card reuses the same traffic-calming awareness label",
+  "existing warning card preserves traffic-calming awareness through the shared title resolver",
   () => {
     assert.match(
       page,
-      /trafficCalmingAwarenessLabel\([\s\S]{0,80}?activeRouteSafetyWarning\.threat[\s\S]{0,120}?\)\s*\|\|[\s\S]{0,120}?activeRouteSafetyWarning\.threat\.title/,
+      /function activeRouteSafetyVoiceTitle\([\s\S]{0,320}?trafficCalmingAwarenessLabel\(threat\)[\s\S]{0,140}?return trafficCalmingLabel;/,
+    );
+
+    assert.match(
+      page,
+      /\{activeRouteSafetyVoiceTitle\(\s*activeRouteSafetyWarning\.threat\s*\)\}/,
     );
 
     assert.match(

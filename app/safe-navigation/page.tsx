@@ -818,6 +818,57 @@ function trafficCalmingAwarenessLabel(
 
   return null;
 }
+function incidentAwarenessLabel(
+  threat: ActiveRouteSafetyThreat
+): string | null {
+  const type =
+    typeof threat.type === "string"
+      ? threat.type.trim().toLowerCase()
+      : "";
+
+  const title =
+    typeof threat.title === "string"
+      ? threat.title.trim()
+      : "";
+
+  /*
+   * Aggregated road-risk threats intentionally carry a generic backend
+   * title. The dominant incident type already identifies what the driver
+   * is approaching, so expose that existing intelligence without changing
+   * prediction, scoring, routing, or API ownership.
+   *
+   * Specific provider / community titles remain authoritative.
+   */
+  const mayUseIncidentType =
+    !title ||
+    title.toLowerCase() ===
+      "aggregated road-risk segment";
+
+  if (!mayUseIncidentType) {
+    return null;
+  }
+
+  const labels: Record<string, string> = {
+    road_closure: "Road closure",
+    lane_closure: "Lane closure",
+    collision: "Accident",
+    roadblock: "Roadblock",
+    protest: "Protest activity",
+    flooding: "Flooding",
+    weather_hazard: "Weather hazard",
+    vehicle_breakdown: "Vehicle breakdown",
+    road_hazard: "Road hazard",
+    roadworks: "Roadworks",
+    congestion: "Heavy congestion",
+    traffic_light_outage:
+      "Traffic light outage",
+    smash_grab_hotspot:
+      "High-risk area",
+  };
+
+  return labels[type] ?? null;
+}
+
 function activeRouteSafetyVoiceTitle(
   threat: ActiveRouteSafetyThreat
 ): string {
@@ -826,6 +877,13 @@ function activeRouteSafetyVoiceTitle(
 
   if (trafficCalmingLabel) {
     return trafficCalmingLabel;
+  }
+
+  const incidentLabel =
+    incidentAwarenessLabel(threat);
+
+  if (incidentLabel) {
+    return incidentLabel;
   }
 
   const title =
@@ -8204,20 +8262,9 @@ function simulatorBearing(
                   color: "#fff7ed",
                 }}
               >
-                {trafficCalmingAwarenessLabel(
+                {activeRouteSafetyVoiceTitle(
                   activeRouteSafetyWarning.threat
-                ) ||
-                  activeRouteSafetyWarning.threat.title ||
-                  String(
-                    activeRouteSafetyWarning.threat.type ||
-                      "Route safety hazard"
-                  )
-                    .replaceAll("_", " ")
-                    .replace(
-                      /\b\w/g,
-                      (character) =>
-                        character.toUpperCase()
-                    )}
+                )}
               </div>
 
               <div
