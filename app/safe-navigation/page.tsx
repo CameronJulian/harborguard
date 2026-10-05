@@ -585,6 +585,17 @@ type RerouteResponse = {
   recommendation?: string | null;
   error?: string;
 };
+type TrafficCalmingAwarenessContext = {
+  featureType:
+    | "speed_bump"
+    | "raised_intersection";
+  providerFeatureId?: string | null;
+  ownership?: string | null;
+  statusCode?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  distanceMeters?: number | null;
+};
 type ActiveRouteSafetyThreat = {
   id?: string | null;
   routeSafetyAlertId?: string | null;
@@ -599,6 +610,7 @@ type ActiveRouteSafetyThreat = {
   verificationCount?: number | null;
   createdAt?: string | null;
   recommendation?: string | null;
+  trafficCalmingContext?: TrafficCalmingAwarenessContext | null;
 };
 
 type LiveRoadIntelligence = {
@@ -783,9 +795,39 @@ function activeRouteSafetyVoiceKey(
   return `route-safety-threat:${type}:${coordinateKey}`;
 }
 
+function trafficCalmingAwarenessLabel(
+  threat: ActiveRouteSafetyThreat
+): string | null {
+  const context =
+    threat.trafficCalmingContext;
+
+  if (!context) {
+    return null;
+  }
+
+  if (context.featureType === "speed_bump") {
+    return "Speed bump";
+  }
+
+  if (
+    context.featureType ===
+    "raised_intersection"
+  ) {
+    return "Raised intersection";
+  }
+
+  return null;
+}
 function activeRouteSafetyVoiceTitle(
   threat: ActiveRouteSafetyThreat
 ): string {
+  const trafficCalmingLabel =
+    trafficCalmingAwarenessLabel(threat);
+
+  if (trafficCalmingLabel) {
+    return trafficCalmingLabel;
+  }
+
   const title =
     typeof threat.title === "string"
       ? threat.title.trim()
@@ -8162,7 +8204,10 @@ function simulatorBearing(
                   color: "#fff7ed",
                 }}
               >
-                {activeRouteSafetyWarning.threat.title ||
+                {trafficCalmingAwarenessLabel(
+                  activeRouteSafetyWarning.threat
+                ) ||
+                  activeRouteSafetyWarning.threat.title ||
                   String(
                     activeRouteSafetyWarning.threat.type ||
                       "Route safety hazard"
