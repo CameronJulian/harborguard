@@ -559,6 +559,24 @@ function instructionsForRoute(
 
   return [];
 }
+type SafeNavigationActiveTrip = {
+  id: string;
+  status: string;
+};
+
+type SafeNavigationVehicleOption = {
+  id: string;
+  nickname: string | null;
+  registrationNumber: string;
+  driverName: string | null;
+  activeTrip: SafeNavigationActiveTrip | null;
+};
+
+type SafeNavigationFleetResponse = {
+  success: boolean;
+  fleet: SafeNavigationVehicleOption[];
+};
+
 type RerouteResponse = {
   success?: boolean;
   routingProfile?: string;
@@ -1409,6 +1427,35 @@ export default function SafeNavigationPage() {
   const [position, setPosition] =
     useState<PositionState | null>(null);
 
+  /*
+   * Customer Increment #9 Part A
+   * ----------------------------
+   * Safe Navigation establishes explicit vehicle context before
+   * any later emergency action can be exposed.
+   *
+   * Vehicle identity is loaded from the existing authenticated,
+   * organization-scoped fleet endpoint.
+   */
+  const [
+    safeNavigationVehicles,
+    setSafeNavigationVehicles,
+  ] = useState<SafeNavigationVehicleOption[]>([]);
+
+  const [
+    selectedVehicleId,
+    setSelectedVehicleId,
+  ] = useState("");
+
+  const [
+    vehicleContextLoading,
+    setVehicleContextLoading,
+  ] = useState(false);
+
+  const [
+    vehicleContextMessage,
+    setVehicleContextMessage,
+  ] = useState("");
+
   const [gpsActive, setGpsActive] = useState(false);
   const [gpsMessage, setGpsMessage] =
     useState("GPS is off");
@@ -1706,6 +1753,117 @@ export default function SafeNavigationPage() {
       autoRerouteAbortControllerRef.current?.abort();
       autoRerouteAbortControllerRef.current = null;
       autoRerouteInFlightRef.current = false;
+    };
+  }, []);
+
+  const selectedVehicle =
+    useMemo(
+      () =>
+        safeNavigationVehicles.find(
+          (vehicle) =>
+            vehicle.id === selectedVehicleId
+        ) || null,
+      [
+        safeNavigationVehicles,
+        selectedVehicleId,
+      ]
+    );
+
+  const selectedVehicleTripId =
+    selectedVehicle?.activeTrip?.id || null;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSafeNavigationVehicles() {
+      try {
+        setVehicleContextLoading(true);
+        setVehicleContextMessage("");
+
+        const response =
+          await fetchWithAuth(
+            "/api/fleet/live",
+            {
+              cache: "no-store",
+            }
+          );
+
+        const result =
+          (await response.json()) as
+            | SafeNavigationFleetResponse
+            | { error?: string };
+
+        if (cancelled) {
+          return;
+        }
+
+        if (!response.ok) {
+          setSafeNavigationVehicles([]);
+          setSelectedVehicleId("");
+
+          setVehicleContextMessage(
+            "Could not load vehicles for Safe Navigation."
+          );
+
+          return;
+        }
+
+        const fleet =
+          (result as SafeNavigationFleetResponse)
+            .fleet || [];
+
+        setSafeNavigationVehicles(fleet);
+
+        /*
+         * Never silently choose from several vehicles.
+         * One authorized vehicle may safely auto-select;
+         * multiple vehicles require explicit driver choice.
+         */
+        setSelectedVehicleId(
+          (current) => {
+            if (
+              current &&
+              fleet.some(
+                (vehicle) =>
+                  vehicle.id === current
+              )
+            ) {
+              return current;
+            }
+
+            if (fleet.length === 1) {
+              return fleet[0].id;
+            }
+
+            return "";
+          }
+        );
+
+        if (fleet.length === 0) {
+          setVehicleContextMessage(
+            "No vehicles are available for this organization."
+          );
+        }
+      } catch {
+        if (!cancelled) {
+          setSafeNavigationVehicles([]);
+          setSelectedVehicleId("");
+
+          setVehicleContextMessage(
+            "Could not load vehicles for Safe Navigation."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setVehicleContextLoading(false);
+        }
+      }
+    }
+
+    void loadSafeNavigationVehicles();
+
+    return () => {
+      cancelled = true;
     };
   }, []);
 
@@ -5799,6 +5957,106 @@ function simulatorBearing(
           >
             <div style={{ fontWeight: 900, marginBottom: 10 }}>
               Live GPS
+            </div>
+
+            <div
+              style={{
+                marginBottom: 12,
+                padding: 12,
+                borderRadius: 12,
+                background:
+                  "rgba(2,6,23,.65)",
+                border:
+                  "1px solid rgba(148,163,184,.25)",
+              }}
+            >
+              <div
+                style={{
+                  marginBottom: 7,
+                  fontSize: 11,
+                  fontWeight: 900,
+                  letterSpacing: ".08em",
+                  textTransform: "uppercase",
+                  color: "#94a3b8",
+                }}
+              >
+                Vehicle context
+              </div>
+
+              <select
+                aria-label="Safe Navigation vehicle"
+                value={selectedVehicleId}
+                onChange={(event) => {
+                  setSelectedVehicleId(
+                    event.target.value
+                  );
+                  setVehicleContextMessage("");
+                }}
+                disabled={vehicleContextLoading}
+                style={{
+                  width: "100%",
+                  padding: "9px 10px",
+                  borderRadius: 10,
+                  border:
+                    "1px solid rgba(148,163,184,.35)",
+                  background: "#020617",
+                  color: "#e2e8f0",
+                  fontSize: 13,
+                  fontWeight: 700,
+                }}
+              >
+                <option value="">
+                  {vehicleContextLoading
+                    ? "Loading vehicles..."
+                    : "Select vehicle"}
+                </option>
+
+                {safeNavigationVehicles.map(
+                  (vehicle) => (
+                    <option
+                      key={vehicle.id}
+                      value={vehicle.id}
+                    >
+                      {vehicle.nickname
+                        ? `${vehicle.nickname} - ${vehicle.registrationNumber}`
+                        : vehicle.registrationNumber}
+                    </option>
+                  )
+                )}
+              </select>
+
+              {selectedVehicle && (
+                <div
+                  style={{
+                    marginTop: 7,
+                    fontSize: 12,
+                    color: "#cbd5e1",
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {selectedVehicle.driverName
+                    ? `Driver: ${selectedVehicle.driverName} ? `
+                    : ""}
+                  Active trip:{" "}
+                  {selectedVehicleTripId ||
+                    "none"}
+                </div>
+              )}
+
+              {vehicleContextMessage && (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  style={{
+                    marginTop: 7,
+                    fontSize: 12,
+                    color: "#fbbf24",
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {vehicleContextMessage}
+                </div>
+              )}
             </div>
 
             <div
