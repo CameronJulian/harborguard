@@ -124,21 +124,48 @@ test(
 );
 
 test(
-  "Part A does not expose or call panic",
+  "vehicle selection itself does not trigger Emergency SOS",
   () => {
+    const selector =
+      page.indexOf(
+        'aria-label="Safe Navigation vehicle"'
+      );
+
+    assert.ok(
+      selector >= 0,
+      "Safe Navigation vehicle selector not found"
+    );
+
+    const selectorEnd =
+      page.indexOf(
+        "</select>",
+        selector
+      );
+
+    assert.ok(
+      selectorEnd > selector,
+      "Safe Navigation vehicle selector end not found"
+    );
+
+    const block =
+      page.slice(
+        selector,
+        selectorEnd
+      );
+
+    assert.match(
+      block,
+      /setSelectedVehicleId/
+    );
+
     assert.doesNotMatch(
-      page,
+      block,
+      /sendEmergencySos/
+    );
+
+    assert.doesNotMatch(
+      block,
       /\/api\/fleet\/panic/
-    );
-
-    assert.doesNotMatch(
-      page,
-      /sendPanic/
-    );
-
-    assert.doesNotMatch(
-      page,
-      /Emergency SOS/
     );
   }
 );

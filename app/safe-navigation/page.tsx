@@ -1490,6 +1490,28 @@ export default function SafeNavigationPage() {
   ] =
     useState(false);
 
+  /*
+   * Customer Increment #9 Part B
+   * ----------------------------
+   * Emergency SOS deliberately uses a two-step confirmation.
+   * Opening the confirmation performs no mutation.
+   * Only the explicit confirmation sends /api/fleet/panic.
+   */
+  const [
+    panicConfirmOpen,
+    setPanicConfirmOpen,
+  ] = useState(false);
+
+  const [
+    panicSending,
+    setPanicSending,
+  ] = useState(false);
+
+  const [
+    panicMessage,
+    setPanicMessage,
+  ] = useState("");
+
   const [
     hazardReportMessage,
     setHazardReportMessage,
@@ -3189,6 +3211,86 @@ function simulatorBearing(
       "Navigation ended. Destination retained - calculate a route when you are ready."
     );
   }
+  async function sendEmergencySos() {
+    if (!selectedVehicleId) {
+      setPanicMessage(
+        "Select the vehicle you are driving before sending Emergency SOS."
+      );
+      setPanicConfirmOpen(false);
+      return;
+    }
+
+    if (panicSending) {
+      return;
+    }
+
+    setPanicSending(true);
+    setPanicMessage("");
+
+    try {
+      const response =
+        await fetchWithAuth(
+          "/api/fleet/panic",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            cache: "no-store",
+            body: JSON.stringify({
+              vehicleId:
+                selectedVehicleId,
+              tripId:
+                selectedVehicleTripId,
+              message:
+                "Safe Navigation Emergency SOS activated by driver.",
+            }),
+          }
+        );
+
+      const result =
+        (await response.json()) as {
+          success?: boolean;
+          skipped?: string;
+          message?: string;
+          error?: string;
+          alert?: {
+            id?: string;
+          };
+        };
+
+      if (!response.ok) {
+        setPanicMessage(
+          result.error ||
+            "Could not confirm Emergency SOS. Retry if needed."
+        );
+        return;
+      }
+
+      if (
+        result.skipped ===
+        "duplicate_open_panic"
+      ) {
+        setPanicMessage(
+          "Emergency SOS is already active for this vehicle. HarborGuard operations already has the alert."
+        );
+      } else {
+        setPanicMessage(
+          "Emergency SOS sent. HarborGuard operations has been alerted."
+        );
+      }
+
+      setPanicConfirmOpen(false);
+    } catch {
+      setPanicMessage(
+        "Could not confirm Emergency SOS. Retry if needed."
+      );
+    } finally {
+      setPanicSending(false);
+    }
+  }
+
   async function searchDestination() {
     const query =
       destinationName.trim();
@@ -5991,6 +6093,8 @@ function simulatorBearing(
                     event.target.value
                   );
                   setVehicleContextMessage("");
+                  setPanicConfirmOpen(false);
+                  setPanicMessage("");
                 }}
                 disabled={vehicleContextLoading}
                 style={{
@@ -6563,6 +6667,185 @@ function simulatorBearing(
                 End Navigation
               </button>
             ) : null}
+
+            <div
+              className="hg-emergency-sos"
+              style={{
+                marginTop: 12,
+                padding: 12,
+                borderRadius: 12,
+                border:
+                  "1px solid rgba(239,68,68,.72)",
+                background:
+                  "rgba(69,10,10,.42)",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  if (!selectedVehicleId) {
+                    setPanicMessage(
+                      "Select the vehicle you are driving before sending Emergency SOS."
+                    );
+                    setPanicConfirmOpen(false);
+                    return;
+                  }
+
+                  setPanicMessage("");
+                  setPanicConfirmOpen(true);
+                }}
+                disabled={panicSending}
+                style={{
+                  width: "100%",
+                  border:
+                    "1px solid #ef4444",
+                  borderRadius: 10,
+                  padding: "12px 13px",
+                  background: "#991b1b",
+                  color: "#ffffff",
+                  fontWeight: 950,
+                  cursor: panicSending
+                    ? "wait"
+                    : "pointer",
+                  opacity: panicSending
+                    ? 0.7
+                    : 1,
+                }}
+              >
+                {panicSending
+                  ? "Sending Emergency SOS..."
+                  : "Emergency SOS"}
+              </button>
+
+              {!selectedVehicleId && (
+                <div
+                  style={{
+                    marginTop: 8,
+                    fontSize: 12,
+                    lineHeight: 1.4,
+                    color: "#fecaca",
+                  }}
+                >
+                  Select your vehicle first.
+                  No emergency alert is sent
+                  until a vehicle is selected
+                  and SOS is confirmed.
+                </div>
+              )}
+
+              {panicConfirmOpen && (
+                <div
+                  role="alertdialog"
+                  aria-label="Confirm Emergency SOS"
+                  style={{
+                    marginTop: 10,
+                    padding: 11,
+                    borderRadius: 10,
+                    border:
+                      "1px solid rgba(248,113,113,.55)",
+                    background:
+                      "rgba(127,29,29,.42)",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontWeight: 900,
+                      color: "#fee2e2",
+                      marginBottom: 6,
+                    }}
+                  >
+                    Confirm Emergency SOS
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: 12,
+                      lineHeight: 1.45,
+                      color: "#fecaca",
+                    }}
+                  >
+                    This creates a critical
+                    HarborGuard emergency alert
+                    for the selected vehicle and
+                    notifies operations.
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: 10,
+                      display: "grid",
+                      gridTemplateColumns:
+                        "1fr 1fr",
+                      gap: 8,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPanicConfirmOpen(
+                          false
+                        );
+                        setPanicMessage("");
+                      }}
+                      disabled={panicSending}
+                      style={{
+                        border:
+                          "1px solid #64748b",
+                        borderRadius: 9,
+                        padding: "10px 8px",
+                        background: "#0f172a",
+                        color: "#f8fafc",
+                        fontWeight: 850,
+                        cursor: panicSending
+                          ? "wait"
+                          : "pointer",
+                      }}
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void sendEmergencySos();
+                      }}
+                      disabled={panicSending}
+                      style={{
+                        border:
+                          "1px solid #f87171",
+                        borderRadius: 9,
+                        padding: "10px 8px",
+                        background: "#dc2626",
+                        color: "#ffffff",
+                        fontWeight: 950,
+                        cursor: panicSending
+                          ? "wait"
+                          : "pointer",
+                      }}
+                    >
+                      {panicSending
+                        ? "Sending..."
+                        : "Confirm SOS"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {panicMessage && (
+                <div
+                  role="status"
+                  aria-live="assertive"
+                  style={{
+                    marginTop: 9,
+                    fontSize: 12,
+                    lineHeight: 1.45,
+                    color: "#fee2e2",
+                  }}
+                >
+                  {panicMessage}
+                </div>
+              )}
+            </div>
 
             <div
               className="hg-driver-hazard-report"
