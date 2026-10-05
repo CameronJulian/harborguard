@@ -1322,6 +1322,27 @@ export default function SafeNavigationPage() {
     useRef<Set<string>>(new Set());
 
   /*
+   * Customer Increment #7
+   * ---------------------
+   * Negative live-hazard feedback has its own request lifecycle.
+   */
+  const [
+    hazardResolutionStateByAlertId,
+    setHazardResolutionStateByAlertId,
+  ] = useState<
+    Record<
+      string,
+      "submitting" | "resolved" | "failed"
+    >
+  >({});
+
+  const hazardResolutionInFlightRef =
+    useRef<Set<string>>(new Set());
+
+  const resolvedHazardAlertIdsRef =
+    useRef<Set<string>>(new Set());
+
+  /*
    * Customer Increment #2
    * ---------------------
    * Background safer-route discovery has its own ownership.
@@ -4480,6 +4501,12 @@ function simulatorBearing(
       ) ||
       confirmedHazardAlertIdsRef.current.has(
         alertId
+      ) ||
+      hazardResolutionInFlightRef.current.has(
+        alertId
+      ) ||
+      resolvedHazardAlertIdsRef.current.has(
+        alertId
       )
     ) {
       return;
@@ -4538,6 +4565,127 @@ function simulatorBearing(
       );
     } finally {
       hazardConfirmationInFlightRef.current.delete(
+        alertId
+      );
+    }
+  }
+
+  /*
+   * Customer Increment #7
+   * ---------------------
+   * Explicitly resolve the backing live route_safety_alerts row when
+   * the driver says the hazard is no longer present.
+   */
+  async function resolveActiveRouteSafetyHazard() {
+    const alertId =
+      activeRouteSafetyWarning?.threat
+        .routeSafetyAlertId?.trim() ||
+      "";
+
+    if (!alertId) {
+      return;
+    }
+
+    if (
+      hazardResolutionInFlightRef.current.has(
+        alertId
+      ) ||
+      resolvedHazardAlertIdsRef.current.has(
+        alertId
+      ) ||
+      hazardConfirmationInFlightRef.current.has(
+        alertId
+      )
+    ) {
+      return;
+    }
+
+    hazardResolutionInFlightRef.current.add(
+      alertId
+    );
+
+    setHazardResolutionStateByAlertId(
+      (current) => ({
+        ...current,
+        [alertId]: "submitting",
+      })
+    );
+
+    try {
+      const response =
+        await fetchWithAuth(
+          "/api/route-safety/resolve",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            cache: "no-store",
+            body: JSON.stringify({
+              alertId,
+            }),
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          "Hazard resolution failed."
+        );
+      }
+
+      resolvedHazardAlertIdsRef.current.add(
+        alertId
+      );
+
+      setHazardResolutionStateByAlertId(
+        (current) => ({
+          ...current,
+          [alertId]: "resolved",
+        })
+      );
+
+      /*
+       * The alternative route offer belonged to an alert that is no
+       * longer active, so cancel and remove it.
+       */
+      saferRouteOfferRequestIdRef.current +=
+        1;
+
+      saferRouteOfferAbortControllerRef.current?.abort();
+
+      saferRouteOfferAbortControllerRef.current =
+        null;
+
+      saferRouteOfferKeyRef.current =
+        "";
+
+      setSaferRouteOffer(null);
+      setSaferRouteOfferLoading(false);
+
+      /*
+       * Remove only this resolved live alert from the customer-facing
+       * threat collection. Navigation route state itself is untouched.
+       */
+      setActiveRouteSafetyThreats(
+        (current) =>
+          current.filter(
+            (threat) =>
+              threat.routeSafetyAlertId?.trim() !==
+              alertId
+          )
+      );
+    }
+    catch {
+      setHazardResolutionStateByAlertId(
+        (current) => ({
+          ...current,
+          [alertId]: "failed",
+        })
+      );
+    }
+    finally {
+      hazardResolutionInFlightRef.current.delete(
         alertId
       );
     }
@@ -7138,6 +7286,11 @@ function simulatorBearing(
                             activeRouteSafetyWarning
                               .threat
                               .routeSafetyAlertId
+                          ] === "submitting" ||
+                          hazardResolutionStateByAlertId[
+                            activeRouteSafetyWarning
+                              .threat
+                              .routeSafetyAlertId
                           ] === "submitting"
                         }
                         style={{
@@ -7191,6 +7344,74 @@ function simulatorBearing(
                         </span>
                       )}
                     </>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void resolveActiveRouteSafetyHazard();
+                    }}
+                    disabled={
+                      hazardResolutionStateByAlertId[
+                        activeRouteSafetyWarning
+                          .threat
+                          .routeSafetyAlertId
+                      ] === "submitting" ||
+                      hazardConfirmationStateByAlertId[
+                        activeRouteSafetyWarning
+                          .threat
+                          .routeSafetyAlertId
+                      ] === "submitting"
+                    }
+                    style={{
+                      border:
+                        "1px solid rgba(134,239,172,.65)",
+                      borderRadius: 10,
+                      padding: "8px 12px",
+                      background:
+                        "rgba(20,83,45,.55)",
+                      color: "#dcfce7",
+                      fontSize: 13,
+                      fontWeight: 900,
+                      cursor:
+                        hazardResolutionStateByAlertId[
+                          activeRouteSafetyWarning
+                            .threat
+                            .routeSafetyAlertId
+                        ] === "submitting"
+                          ? "wait"
+                          : "pointer",
+                    }}
+                  >
+                    {hazardResolutionStateByAlertId[
+                      activeRouteSafetyWarning
+                        .threat
+                        .routeSafetyAlertId
+                    ] === "submitting"
+                      ? "Clearing..."
+                      : hazardResolutionStateByAlertId[
+                            activeRouteSafetyWarning
+                              .threat
+                              .routeSafetyAlertId
+                          ] === "failed"
+                        ? "Try clear again"
+                        : "No longer there"}
+                  </button>
+
+                  {hazardResolutionStateByAlertId[
+                    activeRouteSafetyWarning
+                      .threat
+                      .routeSafetyAlertId
+                  ] === "failed" && (
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 800,
+                        color: "#fecaca",
+                      }}
+                    >
+                      Could not clear hazard.
+                    </span>
                   )}
                 </div>
               )}
