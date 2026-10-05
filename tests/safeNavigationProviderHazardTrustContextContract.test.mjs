@@ -17,7 +17,25 @@ test("live provider classifier uses only canonical provider sources", () => {
 test("provider trust context uses customer-facing road intelligence wording", () => {
   assert.match(source, /className="hg-provider-hazard-trust"/);
   assert.match(source, /aria-label="Live road intelligence source"/);
-  assert.match(source, />\s*Live road intelligence\s*</);
+  assert.match(
+    source,
+    /function providerHazardTrustLabel\(/,
+  );
+
+  assert.match(
+    source,
+    /\? "Live road intelligence"/,
+  );
+
+  assert.match(
+    source,
+    /: "Road intelligence"/,
+  );
+
+  assert.match(
+    source,
+    /activeRouteSafetyWarning\.threat\.freshness/,
+  );
 });
 
 test("provider hazard freshness reuses existing truthful Updated wording", () => {

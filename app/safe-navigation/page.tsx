@@ -600,6 +600,7 @@ type ActiveRouteSafetyThreat = {
   id?: string | null;
   routeSafetyAlertId?: string | null;
   source?: string | null;
+  freshness?: "fresh" | "needs_verification" | "stale" | null;
   type?: string | null;
   title?: string | null;
   severity?: string | null;
@@ -676,6 +677,13 @@ function isLiveProviderRouteSafetySource(
   );
 }
 
+function providerHazardTrustLabel(
+  freshness: "fresh" | "needs_verification" | "stale" | null | undefined
+): string {
+  return freshness === "fresh"
+    ? "Live road intelligence"
+    : "Road intelligence";
+}
 function providerHazardFreshnessLabel(
   createdAt: string | null | undefined,
   nowMs = Date.now()
@@ -8496,7 +8504,9 @@ function simulatorBearing(
                     color: "#bae6fd",
                   }}
                 >
-                  Live road intelligence
+                  {providerHazardTrustLabel(
+                    activeRouteSafetyWarning.threat.freshness
+                  )}
                 </div>
               )}
 
