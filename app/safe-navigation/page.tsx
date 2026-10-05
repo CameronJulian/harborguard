@@ -1536,6 +1536,12 @@ export default function SafeNavigationPage() {
     useState(false);
 
   const [
+    activeDestinationResultIndex,
+    setActiveDestinationResultIndex,
+  ] =
+    useState(-1);
+
+  const [
     selectedDestination,
     setSelectedDestination,
   ] =
@@ -6270,9 +6276,20 @@ function simulatorBearing(
               >
                 <input
                   id="safe-navigation-destination"
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-expanded={destinationResults.length > 0}
                   aria-controls={
                     destinationResults.length > 0
                       ? "safe-navigation-destination-results"
+                      : undefined
+                  }
+                  aria-activedescendant={
+                    activeDestinationResultIndex >= 0 &&
+                    destinationResults[
+                      activeDestinationResultIndex
+                    ]
+                      ? `safe-navigation-destination-option-${activeDestinationResultIndex}`
                       : undefined
                   }
                   value={destinationName}
@@ -6335,6 +6352,7 @@ function simulatorBearing(
                       []
 
                     );
+                    setActiveDestinationResultIndex(-1);
 
 
                     setDestinationName(
@@ -6351,8 +6369,67 @@ function simulatorBearing(
                     setDestinationLng("");
                   }}
                   onKeyDown={(event) => {
+                    if (
+                      event.key === "ArrowDown" &&
+                      destinationResults.length > 0
+                    ) {
+                      event.preventDefault();
+
+                      setActiveDestinationResultIndex(
+                        (currentIndex) =>
+                          currentIndex >=
+                          destinationResults.length - 1
+                            ? 0
+                            : currentIndex + 1
+                      );
+
+                      return;
+                    }
+
+                    if (
+                      event.key === "ArrowUp" &&
+                      destinationResults.length > 0
+                    ) {
+                      event.preventDefault();
+
+                      setActiveDestinationResultIndex(
+                        (currentIndex) =>
+                          currentIndex <= 0
+                            ? destinationResults.length - 1
+                            : currentIndex - 1
+                      );
+
+                      return;
+                    }
+
+                    if (
+                      event.key === "Escape" &&
+                      destinationResults.length > 0
+                    ) {
+                      event.preventDefault();
+                      setDestinationResults([]);
+                      setActiveDestinationResultIndex(-1);
+                      return;
+                    }
+
                     if (event.key === "Enter") {
                       event.preventDefault();
+
+                      if (
+                        activeDestinationResultIndex >= 0 &&
+                        destinationResults[
+                          activeDestinationResultIndex
+                        ]
+                      ) {
+                        document
+                          .getElementById(
+                            `safe-navigation-destination-option-${activeDestinationResultIndex}`
+                          )
+                          ?.click();
+
+                        return;
+                      }
+
                       void searchDestination();
                     }
                   }}
@@ -6399,7 +6476,7 @@ function simulatorBearing(
               {destinationResults.length > 0 ? (
                 <div
                   id="safe-navigation-destination-results"
-                  role="group"
+                  role="listbox"
                   aria-label="Destination search results"
                   style={{
                     display: "grid",
@@ -6409,8 +6486,15 @@ function simulatorBearing(
                   }}
                 >
                   {destinationResults.map(
-                    (result) => (
+                    (result, resultIndex) => (
                       <button
+                        id={`safe-navigation-destination-option-${resultIndex}`}
+                        role="option"
+                        aria-selected={
+                          activeDestinationResultIndex ===
+                          resultIndex
+                        }
+                        tabIndex={-1}
                         key={
                           result.id ??
                           `${result.lat}-${result.lng}`
