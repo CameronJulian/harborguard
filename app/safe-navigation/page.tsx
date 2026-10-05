@@ -665,6 +665,55 @@ type RouteSafetyPredictionResponse = {
   threats?: ActiveRouteSafetyThreat[];
 };
 
+function communityHazardFreshnessLabel(
+  createdAt: string | null | undefined,
+  nowMs = Date.now()
+): string | null {
+  if (!createdAt) {
+    return null;
+  }
+
+  const timestamp = new Date(createdAt).getTime();
+
+  if (!Number.isFinite(timestamp)) {
+    return null;
+  }
+
+  const ageMs = Math.max(
+    0,
+    nowMs - timestamp
+  );
+
+  const ageMinutes = Math.floor(
+    ageMs / (60 * 1000)
+  );
+
+  if (ageMinutes < 1) {
+    return "Updated just now";
+  }
+
+  if (ageMinutes < 60) {
+    return `Updated ${ageMinutes} min ago`;
+  }
+
+  const ageHours = Math.floor(
+    ageMinutes / 60
+  );
+
+  if (ageHours < 24) {
+    return `Updated ${ageHours} hr${
+      ageHours === 1 ? "" : "s"
+    } ago`;
+  }
+
+  const ageDays = Math.floor(
+    ageHours / 24
+  );
+
+  return `Updated ${ageDays} day${
+    ageDays === 1 ? "" : "s"
+  } ago`;
+}
 function liveRoadIntelligenceLabel(
   intelligence: LiveRoadIntelligence
 ): string | null {
@@ -8439,6 +8488,25 @@ function simulatorBearing(
                       : "Community report - verified"}
                   </div>
                 )}
+
+              {communityHazardFreshnessLabel(
+                activeRouteSafetyWarning.threat.createdAt
+              ) ? (
+                <div
+                  className="hg-community-hazard-freshness"
+                  aria-label="Community hazard freshness"
+                  style={{
+                    marginTop: 4,
+                    color: "#cbd5e1",
+                    fontSize: 12,
+                    fontWeight: 600,
+                  }}
+                >
+                  {communityHazardFreshnessLabel(
+                    activeRouteSafetyWarning.threat.createdAt
+                  )}
+                </div>
+              ) : null}
 
               {activeRouteSafetyWarning.threat
                 .routeSafetyAlertId && (
