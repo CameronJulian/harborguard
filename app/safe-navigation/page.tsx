@@ -6666,10 +6666,12 @@ function simulatorBearing(
                     setRouting(false);
 
 
+                          setRefreshRecoveryAvailable(
+                            false
+                          );
+
                           setSelectedDestination(
-
                             result
-
                           );
 
                           setDestinationName(
