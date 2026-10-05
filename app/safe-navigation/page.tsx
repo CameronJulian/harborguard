@@ -1495,6 +1495,19 @@ export default function SafeNavigationPage() {
   const [routing, setRouting] = useState(false);
   const [followVehicle, setFollowVehicle] = useState(true);
 
+  /*
+   * Customer Increment #8
+   * ---------------------
+   * This flag means a destination was restored after a page refresh,
+   * but no stale route/navigation state was restored.
+   *
+   * A fresh route must still be calculated from current GPS position.
+   */
+  const [
+    refreshRecoveryAvailable,
+    setRefreshRecoveryAvailable,
+  ] = useState(false);
+
   const refreshRecoveryReadyRef =
     useRef(false);
 
@@ -1572,10 +1585,14 @@ export default function SafeNavigationPage() {
       setVoiceStatusMessage(
         "Voice guidance off"
       );
+      setRefreshRecoveryAvailable(true);
+
       setRoutingMessage(
         "Destination restored after refresh. Calculate a route when you are ready."
       );
     } catch {
+      setRefreshRecoveryAvailable(false);
+
       window.sessionStorage.removeItem(
         refreshRecoveryStorageKey
       );
@@ -3556,6 +3573,10 @@ function simulatorBearing(
       setRoutes(nextRoutes);
       setSelectedRouteIndex(0);
       lastAutoRerouteAtRef.current = 0;
+
+      if (nextRoutes.length > 0) {
+        setRefreshRecoveryAvailable(false);
+      }
 
       setRecommendation(
         result.recommendation ?? null
@@ -6257,7 +6278,12 @@ function simulatorBearing(
                 opacity: routing ? 0.7 : 1,
               }}
             >
-              {routing ? "Calculating..." : "Calculate Safe Route"}
+              {routing
+                ? "Calculating..."
+                : refreshRecoveryAvailable &&
+                    routes.length === 0
+                  ? "Resume Journey"
+                  : "Calculate Safe Route"}
             </button>
 
             {routes.length > 0 ? (
