@@ -8415,6 +8415,32 @@ function simulatorBearing(
                   "Stay alert and continue with caution."}
               </div>
               {activeRouteSafetyWarning.threat
+                .routeSafetyAlertId &&
+                activeRouteSafetyWarning.threat
+                  .verificationCount != null && (
+                  <div
+                    className="hg-community-hazard-trust"
+                    aria-label="Community hazard verification"
+                    style={{
+                      marginTop: 7,
+                      fontSize: 12,
+                      fontWeight: 800,
+                      color: "#fed7aa",
+                    }}
+                  >
+                    {Math.max(
+                      0,
+                      Math.round(
+                        activeRouteSafetyWarning.threat
+                          .verificationCount
+                      )
+                    ) === 0
+                      ? "Community report - awaiting confirmation"
+                      : "Community report - verified"}
+                  </div>
+                )}
+
+              {activeRouteSafetyWarning.threat
                 .routeSafetyAlertId && (
                 <div
                   className="hg-hazard-confirmation"
