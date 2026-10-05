@@ -7950,7 +7950,7 @@ function simulatorBearing(
               style={{
                 position: "absolute",
                 left: 18,
-                bottom: 300,
+                bottom: 390,
                 zIndex: 760,
                 width:
                   "min(520px, calc(100vw - 36px))",
