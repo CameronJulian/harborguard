@@ -1114,6 +1114,70 @@ function alternativeRouteTimeComparisonLabel(
   )} min faster than the current-path estimate`;
 }
 
+function saferRouteDecisionIntelligence(
+  baselineRoute: RouteOption | null,
+  alternativeRoute: RouteOption | null
+): {
+  recommended: boolean;
+  safetyImprovement: number | null;
+  riskReduction: number | null;
+} {
+  const baselineSafety =
+    baselineRoute?.safetyScore != null
+      ? Number(baselineRoute.safetyScore)
+      : null;
+
+  const alternativeSafety =
+    alternativeRoute?.safetyScore != null
+      ? Number(alternativeRoute.safetyScore)
+      : null;
+
+  const baselineRisk =
+    baselineRoute?.riskScore != null
+      ? Number(baselineRoute.riskScore)
+      : null;
+
+  const alternativeRisk =
+    alternativeRoute?.riskScore != null
+      ? Number(alternativeRoute.riskScore)
+      : null;
+
+  const hasComparableSafety =
+    baselineSafety != null &&
+    alternativeSafety != null &&
+    Number.isFinite(baselineSafety) &&
+    Number.isFinite(alternativeSafety);
+
+  const hasComparableRisk =
+    baselineRisk != null &&
+    alternativeRisk != null &&
+    Number.isFinite(baselineRisk) &&
+    Number.isFinite(alternativeRisk);
+
+  const safetyImprovement =
+    hasComparableSafety
+      ? Math.round(
+          alternativeSafety - baselineSafety
+        )
+      : null;
+
+  const riskReduction =
+    hasComparableRisk
+      ? Math.round(
+          baselineRisk - alternativeRisk
+        )
+      : null;
+
+  return {
+    recommended:
+      safetyImprovement != null &&
+      riskReduction != null &&
+      safetyImprovement > 0 &&
+      riskReduction > 0,
+    safetyImprovement,
+    riskReduction,
+  };
+}
 function routeSafetyExplanation(
   route: RouteOption | null
 ): string | null {
@@ -5380,6 +5444,9 @@ function simulatorBearing(
   /*
    * Nothing changes until the customer explicitly accepts the offer.
    */
+  function keepCurrentRoute() {
+    setSaferRouteOffer(null);
+  }
   function acceptSaferRouteOffer() {
     if (
       !saferRouteOffer?.route
@@ -8490,7 +8557,13 @@ function simulatorBearing(
                       color: "#fff7ed",
                     }}
                   >
-                    Alternative route available
+                    {saferRouteOffer.baselineRoute &&
+                    saferRouteDecisionIntelligence(
+                      saferRouteOffer.baselineRoute,
+                      saferRouteOffer.route
+                    ).recommended
+                      ? "Safer route recommended"
+                      : "Alternative route available"}
                   </div>
 
                   {saferRouteOffer.baselineRoute ? (
@@ -8731,6 +8804,30 @@ function simulatorBearing(
                         </div>
                       </div>
 
+                      {saferRouteDecisionIntelligence(
+                        saferRouteOffer.baselineRoute,
+                        saferRouteOffer.route
+                      ).recommended ? (
+                        <div
+                          className="hg-safer-route-decision-intelligence"
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 900,
+                            color: "#67e8f9",
+                          }}
+                        >
+                          Safety +
+                          {saferRouteDecisionIntelligence(
+                            saferRouteOffer.baselineRoute,
+                            saferRouteOffer.route
+                          ).safetyImprovement}
+                          {" · "}Risk -
+                          {saferRouteDecisionIntelligence(
+                            saferRouteOffer.baselineRoute,
+                            saferRouteOffer.route
+                          ).riskReduction}
+                        </div>
+                      ) : null}
                       {alternativeRouteTimeComparisonLabel(
                         saferRouteOffer.baselineRoute,
                         saferRouteOffer.route
@@ -8785,6 +8882,27 @@ function simulatorBearing(
                     }}
                   >
                     Take Alternative Route
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={keepCurrentRoute}
+                    style={{
+                      marginTop: 7,
+                      width: "100%",
+                      borderRadius: 10,
+                      border:
+                        "1px solid rgba(148,163,184,.45)",
+                      background:
+                        "rgba(15,23,42,.72)",
+                      color: "#cbd5e1",
+                      padding: "9px 12px",
+                      fontSize: 12,
+                      fontWeight: 800,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Keep Current Route
                   </button>
                 </div>
               )}
