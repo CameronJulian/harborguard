@@ -5915,7 +5915,8 @@ function simulatorBearing(
    * A stable threat identity prevents GPS progress updates from
    * repeatedly speaking the same warning.
    *
-   * This first increment does not interrupt speech already in progress.
+   * The active safety winner interrupts older queued speech so voice
+   * guidance cannot lag behind the warning currently shown to the driver.
    */
   useEffect(() => {
     if (
@@ -5952,7 +5953,8 @@ function simulatorBearing(
 
     speakNavigationInstruction(
       announcementKey,
-      `Safety alert ahead. ${title}. ${distanceMeters} metres ahead.`
+      `Safety alert ahead. ${title}. ${distanceMeters} metres ahead.`,
+      true
     );
   }, [
     voiceEnabled,

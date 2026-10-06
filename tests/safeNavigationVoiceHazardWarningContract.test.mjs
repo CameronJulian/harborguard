@@ -236,7 +236,7 @@ test(
 );
 
 test(
-  "first voice hazard increment does not interrupt current speech",
+  "voice hazard warning interrupts older speech for the active safety winner",
   () => {
     const block =
       voiceHazardBlock();
@@ -246,7 +246,7 @@ test(
       /speakNavigationInstruction\(\s*announcementKey,\s*`Safety alert ahead\./
     );
 
-    assert.doesNotMatch(
+    assert.match(
       block,
       /speakNavigationInstruction\([\s\S]*?,\s*true\s*\)/
     );
