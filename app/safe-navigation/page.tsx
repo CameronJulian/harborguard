@@ -4817,10 +4817,25 @@ function simulatorBearing(
           return;
         }
 
-        setActiveRouteSafetyThreats(
+        const nextRouteSafetyThreats =
           Array.isArray(result?.threats)
-            ? result.threats
-            : []
+            ? result.threats.filter(
+                (threat) => {
+                  const alertId =
+                    threat.routeSafetyAlertId?.trim();
+
+                  return (
+                    !alertId ||
+                    !resolvedHazardAlertIdsRef.current.has(
+                      alertId
+                    )
+                  );
+                }
+              )
+            : [];
+
+        setActiveRouteSafetyThreats(
+          nextRouteSafetyThreats
         );
 
         const trafficRiskLevel =
