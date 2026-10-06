@@ -635,6 +635,26 @@ type RouteWeatherIntelligence = {
   weatherCode: number | null;
   riskReasons: string[];
 };
+type RouteEnvironmentalContext = {
+  openWatercourseContext: {
+    riverName?: string | null;
+    description?: string | null;
+    watercourseType?: string | null;
+    distanceMeters?: number | null;
+    catchment?: string | null;
+  } | null;
+  mainDrainageContext: {
+    assetType?: string | null;
+    locationDescription?: string | null;
+    sapDescription?: string | null;
+    distanceMeters?: number | null;
+    catchment?: string | null;
+  } | null;
+  drainageCatchmentContext: {
+    catchmentRegion?: string | null;
+    areaKm2?: number | null;
+  } | null;
+};
 
 type RouteSafetyPredictionResponse = {
   riskScore?: number | null;
@@ -665,6 +685,10 @@ type RouteSafetyPredictionResponse = {
     } | null;
   } | null;
   threats?: ActiveRouteSafetyThreat[];
+
+  openWatercourseContext?: RouteEnvironmentalContext["openWatercourseContext"];
+  mainDrainageContext?: RouteEnvironmentalContext["mainDrainageContext"];
+  drainageCatchmentContext?: RouteEnvironmentalContext["drainageCatchmentContext"];
 };
 
 function isLiveProviderRouteSafetySource(
@@ -1815,6 +1839,19 @@ export default function SafeNavigationPage() {
     setRouteWeatherIntelligence,
   ] =
     useState<RouteWeatherIntelligence | null>(null);
+  /*
+   * Increment #35
+   * -------------
+   * Environmental infrastructure is informational route context only.
+   *
+   * It reuses the existing Route Safety prediction response and must not
+   * independently assert flooding, danger, rerouting or escalation.
+   */
+  const [
+    routeEnvironmentalContext,
+    setRouteEnvironmentalContext,
+  ] =
+    useState<RouteEnvironmentalContext | null>(null);
 
   const activeRouteSafetyThreatRequestIdRef =
     useRef(0);
@@ -4751,6 +4788,7 @@ function simulatorBearing(
 
     setLiveRoadIntelligence(null);
     setRouteWeatherIntelligence(null);
+    setRouteEnvironmentalContext(null);
 
     const requestId =
       activeRouteSafetyThreatRequestIdRef.current + 1;
@@ -4813,6 +4851,7 @@ function simulatorBearing(
           setActiveRouteSafetyThreats([]);
           setLiveRoadIntelligence(null);
           setRouteWeatherIntelligence(null);
+          setRouteEnvironmentalContext(null);
 
           return;
         }
@@ -4956,6 +4995,24 @@ function simulatorBearing(
         setRouteWeatherIntelligence(
           nextRouteWeatherIntelligence
         );
+        const nextRouteEnvironmentalContext:
+          RouteEnvironmentalContext | null =
+          result?.openWatercourseContext ||
+          result?.mainDrainageContext ||
+          result?.drainageCatchmentContext
+            ? {
+                openWatercourseContext:
+                  result?.openWatercourseContext ?? null,
+                mainDrainageContext:
+                  result?.mainDrainageContext ?? null,
+                drainageCatchmentContext:
+                  result?.drainageCatchmentContext ?? null,
+              }
+            : null;
+
+        setRouteEnvironmentalContext(
+          nextRouteEnvironmentalContext
+        );
 
         setLiveRoadIntelligence(
           hasTrafficIntelligence
@@ -4983,6 +5040,7 @@ function simulatorBearing(
         setActiveRouteSafetyThreats([]);
         setLiveRoadIntelligence(null);
         setRouteWeatherIntelligence(null);
+        setRouteEnvironmentalContext(null);
       } finally {
         if (
           requestId ===
@@ -9260,6 +9318,123 @@ function simulatorBearing(
                     </div>
                   )}
 
+                {routeEnvironmentalContext && (
+                  <div
+                    aria-label="Route environmental context"
+                    style={{
+                      marginBottom: 7,
+                      padding: "8px 10px",
+                      borderRadius: 10,
+                      background:
+                        "rgba(8, 47, 73, .45)",
+                      border:
+                        "1px solid rgba(34,211,238,.22)",
+                      color: "#bae6fd",
+                      fontSize: 12,
+                      fontWeight: 700,
+                    }}
+                  >
+                    <div
+                      style={{
+                        color: "#f8fafc",
+                        fontWeight: 900,
+                        marginBottom: 3,
+                      }}
+                    >
+                      Environmental context
+                    </div>
+
+                    <div
+                      style={{
+                        color: "#cbd5e1",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        marginBottom: 5,
+                      }}
+                    >
+                      Route context only. This does not by itself indicate
+                      flooding or an active road hazard.
+                    </div>
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gap: 4,
+                      }}
+                    >
+                      {routeEnvironmentalContext.openWatercourseContext && (
+                        <div>
+                          <strong>Nearby watercourse:</strong>{" "}
+                          {routeEnvironmentalContext.openWatercourseContext
+                            .riverName ||
+                            routeEnvironmentalContext.openWatercourseContext
+                              .description ||
+                            routeEnvironmentalContext.openWatercourseContext
+                              .watercourseType ||
+                            "City open watercourse"}
+                          {Number.isFinite(
+                            routeEnvironmentalContext.openWatercourseContext
+                              .distanceMeters
+                          )
+                            ? ` - ${Math.round(
+                                Number(
+                                  routeEnvironmentalContext
+                                    .openWatercourseContext.distanceMeters
+                                )
+                              )} m away`
+                            : ""}
+                          {routeEnvironmentalContext.openWatercourseContext
+                            .catchment
+                            ? ` | Catchment: ${routeEnvironmentalContext.openWatercourseContext.catchment}`
+                            : ""}
+                        </div>
+                      )}
+
+                      {routeEnvironmentalContext.mainDrainageContext && (
+                        <div>
+                          <strong>Nearby main drainage:</strong>{" "}
+                          {routeEnvironmentalContext.mainDrainageContext
+                            .assetType ||
+                            routeEnvironmentalContext.mainDrainageContext
+                              .locationDescription ||
+                            routeEnvironmentalContext.mainDrainageContext
+                              .sapDescription ||
+                            "City drainage asset"}
+                          {Number.isFinite(
+                            routeEnvironmentalContext.mainDrainageContext
+                              .distanceMeters
+                          )
+                            ? ` - ${Math.round(
+                                Number(
+                                  routeEnvironmentalContext
+                                    .mainDrainageContext.distanceMeters
+                                )
+                              )} m away`
+                            : ""}
+                          {routeEnvironmentalContext.mainDrainageContext
+                            .catchment
+                            ? ` | Catchment: ${routeEnvironmentalContext.mainDrainageContext.catchment}`
+                            : ""}
+                        </div>
+                      )}
+
+                      {routeEnvironmentalContext.drainageCatchmentContext && (
+                        <div>
+                          <strong>Drainage catchment:</strong>{" "}
+                          {routeEnvironmentalContext.drainageCatchmentContext
+                            .catchmentRegion ||
+                            "City catchment region"}
+                          {Number.isFinite(
+                            routeEnvironmentalContext.drainageCatchmentContext
+                              .areaKm2
+                          )
+                            ? ` | ${routeEnvironmentalContext.drainageCatchmentContext.areaKm2} km²`
+                            : ""}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
                 {routeWeatherIntelligence &&
                   routeWeatherIntelligenceLabel(
                     routeWeatherIntelligence
