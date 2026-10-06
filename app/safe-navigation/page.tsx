@@ -656,6 +656,19 @@ type RouteEnvironmentalContext = {
   } | null;
 };
 
+type RouteEmergencySupportContext = {
+  fireStationContext: {
+    stationName?: string | null;
+    stationClass?: string | null;
+    distanceMeters?: number | null;
+  } | null;
+  policeStationContext: {
+    stationName?: string | null;
+    cluster?: string | null;
+    distanceMeters?: number | null;
+  } | null;
+};
+
 type RouteSafetyPredictionResponse = {
   riskScore?: number | null;
   riskLevel?: string | null;
@@ -689,6 +702,8 @@ type RouteSafetyPredictionResponse = {
   openWatercourseContext?: RouteEnvironmentalContext["openWatercourseContext"];
   mainDrainageContext?: RouteEnvironmentalContext["mainDrainageContext"];
   drainageCatchmentContext?: RouteEnvironmentalContext["drainageCatchmentContext"];
+  fireStationContext?: RouteEmergencySupportContext["fireStationContext"];
+  policeStationContext?: RouteEmergencySupportContext["policeStationContext"];
 };
 
 function isLiveProviderRouteSafetySource(
@@ -1852,6 +1867,27 @@ export default function SafeNavigationPage() {
     setRouteEnvironmentalContext,
   ] =
     useState<RouteEnvironmentalContext | null>(null);
+
+  /*
+   * Increment #36
+   * -------------
+   * Emergency-resource context is informational support only.
+   *
+   * It reuses the existing Route Safety prediction response.
+   * It does not contact, dispatch or notify police/fire services and
+   * it must never gate the existing Emergency SOS workflow.
+   */
+  const [
+    routeEmergencySupportContext,
+    setRouteEmergencySupportContext,
+  ] =
+    useState<RouteEmergencySupportContext | null>(null);
+
+  const [
+    sosEmergencySupportVisible,
+    setSosEmergencySupportVisible,
+  ] =
+    useState(false);
 
   const activeRouteSafetyThreatRequestIdRef =
     useRef(0);
@@ -3778,6 +3814,7 @@ function simulatorBearing(
 
     setPanicSending(true);
     setPanicMessage("");
+    setSosEmergencySupportVisible(false);
 
     try {
       const response =
@@ -3833,6 +3870,7 @@ function simulatorBearing(
         );
       }
 
+      setSosEmergencySupportVisible(true);
       setPanicConfirmOpen(false);
     } catch {
       setPanicMessage(
@@ -4789,6 +4827,7 @@ function simulatorBearing(
     setLiveRoadIntelligence(null);
     setRouteWeatherIntelligence(null);
     setRouteEnvironmentalContext(null);
+    setRouteEmergencySupportContext(null);
 
     const requestId =
       activeRouteSafetyThreatRequestIdRef.current + 1;
@@ -4852,6 +4891,7 @@ function simulatorBearing(
           setLiveRoadIntelligence(null);
           setRouteWeatherIntelligence(null);
           setRouteEnvironmentalContext(null);
+          setRouteEmergencySupportContext(null);
 
           return;
         }
@@ -5014,6 +5054,22 @@ function simulatorBearing(
           nextRouteEnvironmentalContext
         );
 
+        const nextRouteEmergencySupportContext:
+          RouteEmergencySupportContext | null =
+          result?.fireStationContext ||
+          result?.policeStationContext
+            ? {
+                fireStationContext:
+                  result?.fireStationContext ?? null,
+                policeStationContext:
+                  result?.policeStationContext ?? null,
+              }
+            : null;
+
+        setRouteEmergencySupportContext(
+          nextRouteEmergencySupportContext
+        );
+
         setLiveRoadIntelligence(
           hasTrafficIntelligence
             ? {
@@ -5041,6 +5097,7 @@ function simulatorBearing(
         setLiveRoadIntelligence(null);
         setRouteWeatherIntelligence(null);
         setRouteEnvironmentalContext(null);
+        setRouteEmergencySupportContext(null);
       } finally {
         if (
           requestId ===
@@ -7481,6 +7538,7 @@ function simulatorBearing(
                   }
 
                   setPanicMessage("");
+                  setSosEmergencySupportVisible(false);
                   setPanicConfirmOpen(true);
                 }}
                 disabled={panicSending}
@@ -7519,6 +7577,116 @@ function simulatorBearing(
                   No emergency alert is sent
                   until a vehicle is selected
                   and SOS is confirmed.
+                </div>
+              )}
+
+              {sosEmergencySupportVisible && (
+                <div
+                  aria-label="SOS emergency support"
+                  style={{
+                    marginTop: 10,
+                    padding: 11,
+                    borderRadius: 10,
+                    border:
+                      "1px solid rgba(74,222,128,.48)",
+                    background:
+                      "rgba(20,83,45,.32)",
+                    color: "#dcfce7",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontWeight: 950,
+                      marginBottom: 5,
+                    }}
+                  >
+                    Nearby emergency resources
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: 12,
+                      lineHeight: 1.45,
+                      color: "#bbf7d0",
+                      marginBottom: 8,
+                    }}
+                  >
+                    Informational location context only.
+                    HarborGuard has not contacted these services.
+                  </div>
+
+                  {routeEmergencySupportContext?.fireStationContext ? (
+                    <div
+                      style={{
+                        fontSize: 12,
+                        lineHeight: 1.5,
+                        marginBottom:
+                          routeEmergencySupportContext
+                            .policeStationContext
+                            ? 6
+                            : 0,
+                      }}
+                    >
+                      <strong>Fire station:</strong>{" "}
+                      {routeEmergencySupportContext
+                        .fireStationContext.stationName ||
+                        "City fire station"}
+                      {routeEmergencySupportContext
+                        .fireStationContext.stationClass
+                        ? ` | ${routeEmergencySupportContext.fireStationContext.stationClass}`
+                        : ""}
+                      {Number.isFinite(
+                        routeEmergencySupportContext
+                          .fireStationContext.distanceMeters
+                      )
+                        ? ` | ${Math.round(
+                            routeEmergencySupportContext
+                              .fireStationContext
+                              .distanceMeters as number
+                          )} m from sampled route location`
+                        : ""}
+                    </div>
+                  ) : null}
+
+                  {routeEmergencySupportContext?.policeStationContext ? (
+                    <div
+                      style={{
+                        fontSize: 12,
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      <strong>Police station:</strong>{" "}
+                      {routeEmergencySupportContext
+                        .policeStationContext.stationName ||
+                        "Police station"}
+                      {routeEmergencySupportContext
+                        .policeStationContext.cluster
+                        ? ` | Cluster: ${routeEmergencySupportContext.policeStationContext.cluster}`
+                        : ""}
+                      {Number.isFinite(
+                        routeEmergencySupportContext
+                          .policeStationContext.distanceMeters
+                      )
+                        ? ` | ${Math.round(
+                            routeEmergencySupportContext
+                              .policeStationContext
+                              .distanceMeters as number
+                          )} m from sampled route location`
+                        : ""}
+                    </div>
+                  ) : null}
+
+                  {!routeEmergencySupportContext && (
+                    <div
+                      style={{
+                        fontSize: 12,
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      No nearby fire or police resource context is
+                      available from the current route prediction.
+                    </div>
+                  )}
                 </div>
               )}
 
