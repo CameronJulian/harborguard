@@ -618,6 +618,7 @@ type ActiveRouteSafetyThreat = {
 type LiveRoadIntelligence = {
   trafficRiskLevel: string | null;
   trafficRiskScore: number | null;
+  trafficContribution: number | null;
   averageDelayMinutes: number | null;
   overallRiskLevel: string | null;
   overallRiskScore: number | null;
@@ -693,6 +694,7 @@ type RouteSafetyPredictionResponse = {
   riskLevel?: string | null;
   trafficRiskScore?: number | null;
   trafficRiskLevel?: string | null;
+  trafficContribution?: number | null;
   trafficError?: string | null;
   weatherRiskScore?: number | null;
   weatherContribution?: number | null;
@@ -810,7 +812,32 @@ function liveRoadIntelligenceLabel(
 
   if (intelligence.trafficRiskLevel) {
     parts.push(
-      `Traffic risk ${intelligence.trafficRiskLevel.toLowerCase()}`
+      intelligence.trafficRiskScore != null
+        ? `Traffic risk ${intelligence.trafficRiskLevel.toLowerCase()} (${Math.round(
+            intelligence.trafficRiskScore
+          )}/100)`
+        : `Traffic risk ${intelligence.trafficRiskLevel.toLowerCase()}`
+    );
+  } else if (intelligence.trafficRiskScore != null) {
+    parts.push(
+      `Traffic risk ${Math.round(
+        intelligence.trafficRiskScore
+      )}/100`
+    );
+  }
+
+  if (
+    intelligence.trafficContribution != null &&
+    intelligence.trafficContribution > 0
+  ) {
+    parts.push(
+      `Traffic adds ${Math.round(
+        intelligence.trafficContribution
+      )} route-risk point${
+        Math.round(intelligence.trafficContribution) === 1
+          ? ""
+          : "s"
+      }`
     );
   }
 
@@ -4951,6 +4978,12 @@ function simulatorBearing(
             ? result.trafficRiskScore
             : null;
 
+        const trafficContribution =
+          typeof result?.trafficContribution === "number" &&
+          Number.isFinite(result.trafficContribution)
+            ? result.trafficContribution
+            : null;
+
         const averageDelayMinutes =
           typeof result?.traffic?.summary?.averageDelay ===
             "number" &&
@@ -5051,6 +5084,7 @@ function simulatorBearing(
           (
             trafficRiskLevel != null ||
             trafficRiskScore != null ||
+            trafficContribution != null ||
             averageDelayMinutes != null
           );
 
@@ -5106,6 +5140,7 @@ function simulatorBearing(
             ? {
                 trafficRiskLevel,
                 trafficRiskScore,
+                trafficContribution,
                 averageDelayMinutes,
                 overallRiskLevel,
                 overallRiskScore,
