@@ -282,7 +282,7 @@ test(
 );
 
 test(
-  "Koeberg planning context is excluded from Increment 36 SOS support",
+  "Increment 36 SOS resource safety boundary remains intact after Increment 37",
   () => {
     const supportStart =
       page.indexOf(
@@ -304,24 +304,24 @@ test(
         confirmationStart
       );
 
-    assert.doesNotMatch(
+    assert.match(
       supportBlock,
-      /Koeberg/i
+      /HarborGuard has not contacted these services\./
     );
 
-    assert.doesNotMatch(
+    assert.match(
       supportBlock,
-      /koebergProtectiveActionZoneContext/
+      /Published planning information only\./
     );
 
-    assert.doesNotMatch(
+    assert.match(
       supportBlock,
-      /koebergRadiiPlanningContext/
+      /does\s+not indicate an active nuclear emergency/
     );
 
-    assert.doesNotMatch(
+    assert.match(
       supportBlock,
-      /koebergEvacuationDirectionContext/
+      /active\s+evacuation order/
     );
   }
 );

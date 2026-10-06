@@ -667,6 +667,25 @@ type RouteEmergencySupportContext = {
     cluster?: string | null;
     distanceMeters?: number | null;
   } | null;
+  koebergProtectiveActionZoneContext: {
+    provider?: "city_of_cape_town" | null;
+    providerFeatureId?: string | null;
+    zoneNumber?: string | null;
+  } | null;
+  koebergRadiiPlanningContext: {
+    provider?: "city_of_cape_town" | null;
+    providerFeatureId?: string | null;
+    planningDistanceKm?: number | null;
+  } | null;
+  koebergEvacuationDirectionContext: {
+    provider?: "city_of_cape_town" | null;
+    providerFeatureId?: string | null;
+    sourceLayerId?: 0 | 1 | 2 | null;
+    direction?: "north" | "south" | "east" | null;
+    routeName?: string | null;
+    routeType?: string | null;
+    distanceMeters?: number | null;
+  } | null;
 };
 
 type RouteSafetyPredictionResponse = {
@@ -704,6 +723,9 @@ type RouteSafetyPredictionResponse = {
   drainageCatchmentContext?: RouteEnvironmentalContext["drainageCatchmentContext"];
   fireStationContext?: RouteEmergencySupportContext["fireStationContext"];
   policeStationContext?: RouteEmergencySupportContext["policeStationContext"];
+  koebergProtectiveActionZoneContext?: RouteEmergencySupportContext["koebergProtectiveActionZoneContext"];
+  koebergRadiiPlanningContext?: RouteEmergencySupportContext["koebergRadiiPlanningContext"];
+  koebergEvacuationDirectionContext?: RouteEmergencySupportContext["koebergEvacuationDirectionContext"];
 };
 
 function isLiveProviderRouteSafetySource(
@@ -5057,12 +5079,21 @@ function simulatorBearing(
         const nextRouteEmergencySupportContext:
           RouteEmergencySupportContext | null =
           result?.fireStationContext ||
-          result?.policeStationContext
+          result?.policeStationContext ||
+          result?.koebergProtectiveActionZoneContext ||
+          result?.koebergRadiiPlanningContext ||
+          result?.koebergEvacuationDirectionContext
             ? {
                 fireStationContext:
                   result?.fireStationContext ?? null,
                 policeStationContext:
                   result?.policeStationContext ?? null,
+                koebergProtectiveActionZoneContext:
+                  result?.koebergProtectiveActionZoneContext ?? null,
+                koebergRadiiPlanningContext:
+                  result?.koebergRadiiPlanningContext ?? null,
+                koebergEvacuationDirectionContext:
+                  result?.koebergEvacuationDirectionContext ?? null,
               }
             : null;
 
@@ -7683,8 +7714,129 @@ function simulatorBearing(
                         lineHeight: 1.5,
                       }}
                     >
-                      No nearby fire or police resource context is
-                      available from the current route prediction.
+                      No nearby emergency-resource or special-zone
+                      planning context is available from the current
+                      route prediction.
+                    </div>
+                  )}
+
+                  {routeEmergencySupportContext
+                    ?.koebergEvacuationDirectionContext && (
+                    <div
+                      aria-label="Koeberg emergency planning context"
+                      style={{
+                        marginTop: 10,
+                        paddingTop: 9,
+                        borderTop:
+                          "1px solid rgba(187,247,208,.25)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontWeight: 900,
+                          marginBottom: 5,
+                        }}
+                      >
+                        Koeberg emergency-planning context
+                      </div>
+
+                      <div
+                        style={{
+                          fontSize: 12,
+                          lineHeight: 1.45,
+                          color: "#bbf7d0",
+                          marginBottom: 7,
+                        }}
+                      >
+                        Published planning information only. This does
+                        not indicate an active nuclear emergency,
+                        current radiological conditions or an active
+                        evacuation order. Follow official emergency
+                        instructions if authorities issue them.
+                      </div>
+
+                      {routeEmergencySupportContext
+                        ?.koebergProtectiveActionZoneContext ? (
+                        <div
+                          style={{
+                            fontSize: 12,
+                            lineHeight: 1.5,
+                            marginBottom: 5,
+                          }}
+                        >
+                          <strong>
+                            Protective Action Zone:
+                          </strong>{" "}
+                          {routeEmergencySupportContext
+                            .koebergProtectiveActionZoneContext
+                            .zoneNumber ||
+                            "Published zone"}
+                        </div>
+                      ) : null}
+
+                      {routeEmergencySupportContext
+                        ?.koebergRadiiPlanningContext ? (
+                        <div
+                          style={{
+                            fontSize: 12,
+                            lineHeight: 1.5,
+                            marginBottom: 5,
+                          }}
+                        >
+                          <strong>
+                            Planning-distance band:
+                          </strong>{" "}
+                          {Number.isFinite(
+                            routeEmergencySupportContext
+                              .koebergRadiiPlanningContext
+                              .planningDistanceKm
+                          )
+                            ? `${routeEmergencySupportContext.koebergRadiiPlanningContext.planningDistanceKm} km`
+                            : "Published Koeberg planning band"}
+                        </div>
+                      ) : null}
+
+                      {routeEmergencySupportContext
+                        ?.koebergEvacuationDirectionContext ? (
+                        <div
+                          style={{
+                            fontSize: 12,
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          <strong>
+                            Published evacuation-direction geometry:
+                          </strong>{" "}
+                          {routeEmergencySupportContext
+                            .koebergEvacuationDirectionContext
+                            .direction
+                            ? routeEmergencySupportContext
+                                .koebergEvacuationDirectionContext
+                                .direction.toUpperCase()
+                            : "Published route"}
+                          {routeEmergencySupportContext
+                            .koebergEvacuationDirectionContext
+                            .routeName
+                            ? ` | ${routeEmergencySupportContext.koebergEvacuationDirectionContext.routeName}`
+                            : ""}
+                          {routeEmergencySupportContext
+                            .koebergEvacuationDirectionContext
+                            .routeType
+                            ? ` | ${routeEmergencySupportContext.koebergEvacuationDirectionContext.routeType}`
+                            : ""}
+                          {Number.isFinite(
+                            routeEmergencySupportContext
+                              .koebergEvacuationDirectionContext
+                              .distanceMeters
+                          )
+                            ? ` | ${Math.round(
+                                routeEmergencySupportContext
+                                  .koebergEvacuationDirectionContext
+                                  .distanceMeters as number
+                              )} m from sampled route location`
+                            : ""}
+                        </div>
+                      ) : null}
                     </div>
                   )}
                 </div>
