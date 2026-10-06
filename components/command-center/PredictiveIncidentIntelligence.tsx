@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { fetchWithAuth } from "@/lib/auth-fetch";
@@ -162,13 +162,25 @@ export default function PredictiveIncidentIntelligence() {
                       </div>
 
                       <div style={{ textAlign: "right" }}>
-                        <div style={{ color, fontWeight: 900, fontSize: 28 }}>{item.score}%</div>
-                        <div style={{ color: "#64748b", fontSize: 12 }}>escalation likelihood</div>
+                        <div style={{ color, fontWeight: 900, fontSize: 28 }}>{item.score} / 99</div>
+                        <div style={{ color: "#64748b", fontSize: 12 }}>operational risk score</div>
                       </div>
                     </div>
 
                     <div style={{ marginTop: 10, color: "#475569" }}>
                       {item.prediction}
+                    </div>
+
+                    <div
+                      style={{
+                        marginTop: 8,
+                        color: "#64748b",
+                        fontSize: 12,
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      Composite operational indicator based on current fleet signals.
+                      It is not a calibrated probability of an incident occurring.
                     </div>
 
                     <div
@@ -186,6 +198,12 @@ export default function PredictiveIncidentIntelligence() {
                         ["Panic/SOS", item.panicAlerts],
                         ["Incidents", item.openIncidentCount],
                         ["Road Risk", item.activeRoadRisk],
+                        [
+                          "Behavioral Risk",
+                          item.behavioralRisk === "high"
+                            ? "HIGH"
+                            : "Normal",
+                        ],
                       ].map(([label, value]) => (
                         <div key={String(label)} style={{ padding: 10, borderRadius: 12, background: "#ffffff", border: "1px solid #e2e8f0" }}>
                           <div style={{ color: "#64748b", fontSize: 12 }}>{label}</div>
