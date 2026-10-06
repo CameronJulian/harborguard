@@ -8926,6 +8926,37 @@ function simulatorBearing(
                 )}
               </div>
 
+              {typeof activeRouteSafetyWarning.threat.severity ===
+                "string" &&
+                Boolean(
+                  activeRouteSafetyWarning.threat.severity.trim()
+                ) && (
+                  <div
+                    aria-label="Route hazard severity"
+                    style={{
+                      marginTop: 5,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      padding: "3px 8px",
+                      borderRadius: 999,
+                      border:
+                        "1px solid rgba(251,191,36,.5)",
+                      background:
+                        "rgba(120,53,15,.52)",
+                      color: "#fde68a",
+                      fontSize: 11,
+                      fontWeight: 900,
+                      letterSpacing: ".05em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Severity:{" "}
+                    {activeRouteSafetyWarning.threat.severity
+                      .trim()
+                      .toUpperCase()}
+                  </div>
+                )}
+
               <div
                 style={{
                   marginTop: 4,
