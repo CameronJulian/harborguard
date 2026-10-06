@@ -927,6 +927,58 @@ function activeRouteSafetyVoiceKey(
   return `route-safety-threat:${type}:${coordinateKey}`;
 }
 
+function compareActiveRouteSafetyWarnings(
+  first: ActiveRouteSafetyWarning,
+  second: ActiveRouteSafetyWarning
+): number {
+  const distanceDifference =
+    first.distanceAheadMeters -
+    second.distanceAheadMeters;
+
+  /*
+   * Preserve the existing driver-warning policy:
+   * threats more than 50 m apart are ordered by distance.
+   */
+  if (Math.abs(distanceDifference) > 50) {
+    return distanceDifference;
+  }
+
+  /*
+   * Within the same 50 m decision window, preserve the
+   * existing higher-risk-score priority.
+   */
+  const scoreDifference =
+    Number(second.threat.score || 0) -
+    Number(first.threat.score || 0);
+
+  if (scoreDifference !== 0) {
+    return scoreDifference;
+  }
+
+  /*
+   * Make equal-score selection deterministic without
+   * introducing a new provenance or severity policy.
+   */
+  if (distanceDifference !== 0) {
+    return distanceDifference;
+  }
+
+  const firstKey =
+    activeRouteSafetyVoiceKey(first);
+
+  const secondKey =
+    activeRouteSafetyVoiceKey(second);
+
+  if (firstKey < secondKey) {
+    return -1;
+  }
+
+  if (firstKey > secondKey) {
+    return 1;
+  }
+
+  return 0;
+}
 function trafficCalmingAwarenessLabel(
   threat: ActiveRouteSafetyThreat
 ): string | null {
@@ -5046,29 +5098,7 @@ function simulatorBearing(
               ): candidate is ActiveRouteSafetyWarning =>
                 candidate !== null
             )
-            .sort(
-              (first, second) => {
-                const distanceDifference =
-                  first.distanceAheadMeters -
-                  second.distanceAheadMeters;
-
-                if (
-                  Math.abs(distanceDifference) >
-                  50
-                ) {
-                  return distanceDifference;
-                }
-
-                return (
-                  Number(
-                    second.threat.score || 0
-                  ) -
-                  Number(
-                    first.threat.score || 0
-                  )
-                );
-              }
-            );
+            .sort(compareActiveRouteSafetyWarnings);
 
         return candidates[0] ?? null;
       },
