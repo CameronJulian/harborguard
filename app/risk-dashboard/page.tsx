@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { fetchWithAuth } from "@/lib/auth-fetch";
 
@@ -56,6 +56,8 @@ type ThreatPrediction = {
   criticalAlerts: number;
   nearIncident: boolean;
   isOffline: boolean;
+  predictedGeofenceRisk?: number;
+  predictedBreach?: boolean;
 };
 
 const cardStyle: CSSProperties = {
@@ -620,7 +622,7 @@ return (
 
             <div>
               <div style={{ color: "#64748b", fontSize: 13 }}>
-                Threat Probability
+                Threat Risk Score
               </div>
 
               <div
@@ -637,7 +639,7 @@ return (
                       : "#16a34a",
                 }}
               >
-                {prediction.probability}%
+                {prediction.probability} / 100
               </div>
             </div>
 
@@ -670,6 +672,26 @@ return (
 
               <div style={{ fontSize: 14, color: "#475569" }}>
                 • Offline: {prediction.isOffline ? "Yes" : "No"}
+              </div>
+
+              <div style={{ fontSize: 14, color: "#475569" }}>
+                • Geofence Risk: {prediction.predictedGeofenceRisk ?? 0} / 100
+              </div>
+
+              <div style={{ fontSize: 14, color: "#475569" }}>
+                • Predicted Geofence Breach: {prediction.predictedBreach ? "Yes" : "No"}
+              </div>
+
+              <div
+                style={{
+                  marginTop: 8,
+                  color: "#64748b",
+                  fontSize: 12,
+                  lineHeight: 1.5,
+                }}
+              >
+                Composite threat-risk indicator based on current operational signals.
+                It is not a calibrated probability that a threat will occur.
               </div>
             </div>
           </div>

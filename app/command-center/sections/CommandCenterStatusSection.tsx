@@ -30,7 +30,7 @@ export default function CommandCenterStatusSection({
       <div style={{ display: "grid", gap: 14, marginTop: 24 }}>
         {topThreatVehicles.map((threat, index) => (
           <div key={index}>
-            {threat.registrationNumber} — {threat.probability}%
+            {threat.registrationNumber} — risk score {threat.probability} / 100
           </div>
         ))}
       </div>

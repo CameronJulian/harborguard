@@ -1,4 +1,4 @@
-﻿type ThreatItem = {
+type ThreatItem = {
   registrationNumber: string;
   nickname?: string | null;
   level: string;
@@ -8,6 +8,8 @@
   criticalAlerts: number;
   nearIncident: boolean;
   isOffline: boolean;
+  predictedGeofenceRisk?: number;
+  predictedBreach?: boolean;
 };
 
 type Props = {
@@ -110,7 +112,7 @@ export default function CommandCenterThreatIntelligenceSection({
 
                 <div>
                   <div style={{ color: "#64748b", fontSize: 13 }}>
-                    Threat Probability
+                    Threat Risk Score
                   </div>
 
                   <div
@@ -127,7 +129,7 @@ export default function CommandCenterThreatIntelligenceSection({
                           : "#16a34a",
                     }}
                   >
-                    {threat.probability}%
+                    {threat.probability} / 100
                   </div>
                 </div>
               </div>
@@ -148,6 +150,26 @@ export default function CommandCenterThreatIntelligenceSection({
                   - Near Incident Zone: {threat.nearIncident ? "Yes" : "No"}
                 </div>
                 <div>- Offline: {threat.isOffline ? "Yes" : "No"}</div>
+
+                <div>
+                  - Geofence Risk: {threat.predictedGeofenceRisk ?? 0} / 100
+                </div>
+
+                <div>
+                  - Predicted Geofence Breach: {threat.predictedBreach ? "Yes" : "No"}
+                </div>
+
+                <div
+                  style={{
+                    marginTop: 6,
+                    color: "#64748b",
+                    fontSize: 12,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Composite threat-risk indicator based on current operational signals.
+                  It is not a calibrated probability that a threat will occur.
+                </div>
               </div>
             </div>
           ))}
