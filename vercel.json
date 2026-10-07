@@ -39,10 +39,6 @@
                   {
                       "path":  "/api/route-safety/cron/providers/reconcile",
                       "schedule":  "15 6 * * *"
-                  },
-                  {
-                      "path":  "/api/traffic-flow/cron",
-                      "schedule":  "*/30 * * * *"
                   }
               ]
 }

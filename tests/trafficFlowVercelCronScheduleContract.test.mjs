@@ -10,8 +10,14 @@ const config =
     )
   );
 
+const routeSource =
+  fs.readFileSync(
+    "app/api/traffic-flow/cron/route.ts",
+    "utf8"
+  );
+
 test(
-  "traffic flow collection is scheduled every 30 minutes",
+  "traffic flow collection is not scheduled by Vercel on Hobby",
   () => {
     assert.ok(
       Array.isArray(config.crons),
@@ -27,19 +33,43 @@ test(
 
     assert.equal(
       matches.length,
-      1,
-      "traffic-flow cron must appear exactly once",
-    );
-
-    assert.equal(
-      matches[0].schedule,
-      "*/30 * * * *",
+      0,
+      "traffic-flow collection must be scheduled externally while HarborGuard uses Vercel Hobby",
     );
   },
 );
 
 test(
-  "30 minute baseline remains below the 100 request daily HERE traffic budget",
+  "traffic flow cron route remains externally schedulable",
+  () => {
+    assert.match(
+      routeSource,
+      /export async function GET\s*\(/,
+      "traffic-flow cron route must expose GET",
+    );
+
+    assert.match(
+      routeSource,
+      /process\.env\.CRON_SECRET/,
+      "traffic-flow cron route must require CRON_SECRET",
+    );
+
+    assert.match(
+      routeSource,
+      /request\.headers\.get\(["']authorization["']\)/,
+      "traffic-flow cron route must read the Authorization header",
+    );
+
+    assert.match(
+      routeSource,
+      /Bearer \$\{cronSecret\}/,
+      "traffic-flow cron route must require Bearer CRON_SECRET authentication",
+    );
+  },
+);
+
+test(
+  "30 minute external baseline remains below the 100 request daily HERE traffic budget",
   () => {
     const runsPerDay =
       (24 * 60) / 30;
