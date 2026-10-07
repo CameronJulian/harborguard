@@ -4,6 +4,9 @@ import {
   calculateRoutesWithProvider,
   normalizeRoutingProvider,
 } from "@/lib/routing/routingProviderSelector";
+import {
+  buildCandidateTrafficContext,
+} from "@/lib/traffic/buildCandidateTrafficContext";
 
 export async function POST(req: NextRequest) {
   try {
@@ -79,9 +82,44 @@ last_event_at
         routingProvider,
       );
 
+
+    const withCandidateTrafficContext =
+      (route: any) => {
+        if (!route) {
+          return route;
+        }
+
+        return {
+          ...route,
+          candidateTrafficContext:
+            buildCandidateTrafficContext({
+              durationSeconds:
+                route.durationSeconds,
+              baseDurationSeconds:
+                route.baseDurationSeconds,
+              trafficDelaySeconds:
+                route.trafficDelaySeconds,
+            }),
+        };
+      };
+
+    const routes =
+      Array.isArray(result?.routes)
+        ? result.routes.map(
+            withCandidateTrafficContext
+          )
+        : [];
+
+    const recommendedRoute =
+      withCandidateTrafficContext(
+        result?.recommendedRoute ?? null
+      );
+
     return NextResponse.json({
       success: true,
       ...result,
+      routes,
+      recommendedRoute,
     });
   } catch (error: unknown) {
     const errorName =
