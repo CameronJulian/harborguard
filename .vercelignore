@@ -35,3 +35,13 @@ tsconfig.tsbuildinfo
 
 # Temporary downloaded environment files
 .env.vercel-production
+
+# Root development, audit, and engineering artifacts
+/*Audit*.txt
+/*audit*.txt
+/B7490-*.txt
+/HSPP-*.txt
+/HarborGuard-*.txt
+/HarborGuard_Engineering_Master*.md
+/*.bak.md
+/_audit-output/
