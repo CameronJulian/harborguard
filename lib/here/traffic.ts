@@ -1,6 +1,8 @@
 import {
   reserveHereProviderRequest,
 } from "@/lib/here/hereCostGuard";
+
+const HERE_TRAFFIC_FLOW_TIMEOUT_MS = 15_000;
 function toKmh(value: any) {
   const speed = Number(value || 0);
   if (!Number.isFinite(speed) || speed <= 0) return 0;
@@ -118,7 +120,15 @@ export async function getHereTrafficFlow(options: {
       `HERE Traffic Flow blocked by cost guard: ${hereCostReservation.reason}.`,
     );
   }
-const response = await fetch(url, { cache: "no-store" });
+const response = await fetch(
+    url,
+    {
+      cache: "no-store",
+      signal: AbortSignal.timeout(
+        HERE_TRAFFIC_FLOW_TIMEOUT_MS,
+      ),
+    }
+  );
   const data = await response.json();
 
   if (!response.ok) {
