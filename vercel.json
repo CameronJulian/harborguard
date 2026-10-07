@@ -25,20 +25,8 @@
                       "schedule":  "0 3 * * *"
                   },
                   {
-                      "path":  "/api/route-safety/cron/providers/here",
-                      "schedule":  "0 6 * * *"
-                  },
-                  {
-                      "path":  "/api/route-safety/cron/providers/tomtom",
-                      "schedule":  "5 6 * * *"
-                  },
-                  {
                       "path":  "/api/route-safety/cron/providers/azure-maps",
                       "schedule":  "10 6 * * *"
-                  },
-                  {
-                      "path":  "/api/route-safety/cron/providers/reconcile",
-                      "schedule":  "15 6 * * *"
                   }
               ]
 }

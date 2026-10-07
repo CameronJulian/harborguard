@@ -187,7 +187,7 @@ test(
 );
 
 test(
-  "Vercel schedules provider phases in lifecycle order",
+  "Vercel retains only the provider phases it still owns",
   () => {
     const schedules =
       new Map(
@@ -200,17 +200,17 @@ test(
       );
 
     assert.equal(
-      schedules.get(
+      schedules.has(
         "/api/route-safety/cron/providers/here"
       ),
-      "0 6 * * *"
+      false
     );
 
     assert.equal(
-      schedules.get(
+      schedules.has(
         "/api/route-safety/cron/providers/tomtom"
       ),
-      "5 6 * * *"
+      false
     );
 
     assert.equal(
@@ -221,10 +221,10 @@ test(
     );
 
     assert.equal(
-      schedules.get(
+      schedules.has(
         "/api/route-safety/cron/providers/reconcile"
       ),
-      "15 6 * * *"
+      false
     );
   }
 );
