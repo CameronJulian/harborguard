@@ -7,6 +7,13 @@ import {
 import {
   buildCandidateTrafficContext,
 } from "@/lib/traffic/buildCandidateTrafficContext";
+import {
+  loadLatestStoredTrafficFlowObservations,
+  type LatestStoredTrafficFlowObservation,
+} from "@/lib/traffic/loadRecentTrafficFlowObservations";
+import {
+  matchStoredTrafficObservationsToRoute,
+} from "@/lib/traffic/matchStoredTrafficObservationsToRoute";
 
 export async function POST(req: NextRequest) {
   try {
@@ -83,11 +90,46 @@ last_event_at
       );
 
 
+
+    let storedTrafficObservations:
+      LatestStoredTrafficFlowObservation[] =
+        [];
+
+    try {
+      const storedTraffic =
+        await loadLatestStoredTrafficFlowObservations(
+          supabase,
+          organizationId,
+          {
+            maximumAgeMinutes: 60,
+          },
+        );
+
+      storedTrafficObservations =
+        storedTraffic.observations;
+    } catch {
+      /*
+       * Stored traffic enrichment is advisory only.
+       *
+       * A traffic-observation read failure must not
+       * prevent Safe Navigation from returning routes.
+       * The CandidateTrafficContext will simply fall
+       * back to routing-summary evidence.
+       */
+      storedTrafficObservations = [];
+    }
+
     const withCandidateTrafficContext =
       (route: any) => {
         if (!route) {
           return route;
         }
+
+        const matchedStoredTraffic =
+          matchStoredTrafficObservationsToRoute(
+            route.routePoints,
+            storedTrafficObservations,
+          );
 
         return {
           ...route,
@@ -99,6 +141,20 @@ last_event_at
                 route.baseDurationSeconds,
               trafficDelaySeconds:
                 route.trafficDelaySeconds,
+              observations:
+                matchedStoredTraffic.map(
+                  (observation) => ({
+                    congestion:
+                      observation.congestion,
+                    jamFactor:
+                      observation.jamFactor,
+                    delayMinutes:
+                      observation.delayMinutes,
+                    observedAt:
+                      observation.observedAt,
+                  }),
+                ),
+              maximumAgeMinutes: 60,
             }),
         };
       };
