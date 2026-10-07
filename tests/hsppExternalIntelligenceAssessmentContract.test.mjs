@@ -27,32 +27,27 @@ test(
   () => {
     assert.match(
       assessor,
-      /provider === "here"/
+      /here:\s*"here_traffic"/
     );
 
     assert.match(
       assessor,
-      /return "here_traffic"/
+      /tomtom:\s*"tomtom"/
     );
 
     assert.match(
       assessor,
-      /provider === "tomtom"/
+      /azure_maps:\s*"azure_maps_traffic"/
     );
 
     assert.match(
       assessor,
-      /return "tomtom"/
+      /hasOwnProperty\.call/
     );
 
     assert.match(
       assessor,
-      /provider === "azure_maps"/
-    );
-
-    assert.match(
-      assessor,
-      /return "azure_maps_traffic"/
+      /return null/
     );
 
     assert.match(

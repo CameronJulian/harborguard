@@ -70,22 +70,40 @@ export type HsppExternalIntelligenceAssessmentResult =
       | "plausibility_passed";
   };
 
+/**
+ * Explicit fail-closed HSPP provider policy registry.
+ *
+ * Presence here only defines the canonical relationship between an approved
+ * external-intelligence provider identity and its expected intelligence-source
+ * key. It does not by itself enable ingestion or grant operational, Crowd,
+ * validation, or ML-training authority.
+ *
+ * Unknown providers remain unsupported because there is no fallback mapping.
+ */
+const HSPP_EXTERNAL_INTELLIGENCE_PROVIDER_SOURCE_KEYS = {
+  here: "here_traffic",
+  tomtom: "tomtom",
+  azure_maps: "azure_maps_traffic",
+} as const satisfies Record<
+  HsppExternalIntelligenceProvider,
+  string
+>;
+
 function expectedSourceKey(
   provider: string
 ): string | null {
-  if (provider === "here") {
-    return "here_traffic";
+  if (
+    !Object.prototype.hasOwnProperty.call(
+      HSPP_EXTERNAL_INTELLIGENCE_PROVIDER_SOURCE_KEYS,
+      provider,
+    )
+  ) {
+    return null;
   }
 
-  if (provider === "tomtom") {
-    return "tomtom";
-  }
-
-  if (provider === "azure_maps") {
-    return "azure_maps_traffic";
-  }
-
-  return null;
+  return HSPP_EXTERNAL_INTELLIGENCE_PROVIDER_SOURCE_KEYS[
+    provider as HsppExternalIntelligenceProvider
+  ];
 }
 
 export function assessHsppExternalIntelligenceEvidence(
