@@ -97,3 +97,27 @@ test(
     );
   },
 );
+test(
+  "TomTom cost guard exposes traffic incident budget",
+  () => {
+    assert.match(
+      source,
+      /"traffic-incidents"/,
+    );
+
+    assert.match(
+      source,
+      /TOMTOM_TRAFFIC_INCIDENTS_DAILY_LIMIT/,
+    );
+  },
+);
+
+test(
+  "TomTom traffic incident budget has conservative default",
+  () => {
+    assert.match(
+      source,
+      /"traffic-incidents"\s*:\s*\{[\s\S]*?defaultDailyLimit:\s*48/,
+    );
+  },
+);

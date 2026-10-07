@@ -1,3 +1,6 @@
+import {
+  reserveTomTomProviderRequest,
+} from "@/lib/tomtom/tomTomCostGuard";
 import { randomUUID } from "node:crypto";
 import type { ProviderResult } from "@/lib/route-safety/providers/types";
 import type {
@@ -209,6 +212,17 @@ export async function importTomTomIncidents(
 
     const fetchStartedAt =
       Date.now();
+
+    const tomTomCostReservation =
+      await reserveTomTomProviderRequest(
+        "traffic-incidents",
+      );
+
+    if (!tomTomCostReservation.allowed) {
+      throw new Error(
+        `TomTom Traffic incident import blocked by cost guard: ${tomTomCostReservation.reason}.`
+      );
+    }
 
     const response = await fetch(url, {
       cache: "no-store",

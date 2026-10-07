@@ -7,7 +7,8 @@ import {
 } from "@/lib/redis";
 
 export type TomTomCostSurface =
-  | "routing";
+  | "routing"
+  | "traffic-incidents";
 
 export type TomTomCostGuardResult = {
   allowed: boolean;
@@ -37,6 +38,12 @@ const TOMTOM_COST_POLICIES:
       environmentVariable:
         "TOMTOM_ROUTING_DAILY_LIMIT",
       defaultDailyLimit: 100,
+    },
+
+    "traffic-incidents": {
+      environmentVariable:
+        "TOMTOM_TRAFFIC_INCIDENTS_DAILY_LIMIT",
+      defaultDailyLimit: 48,
     },
   };
 
