@@ -6,6 +6,29 @@ const DEFAULT_MAXIMUM_AGE_MINUTES = 60;
 const MAX_QUERY_ROWS = 500;
 const MAX_FLOW_CORRIDORS = 20;
 
+export type LatestStoredTrafficFlowObservation = {
+  providerSegmentId: string;
+  providerGeometry: unknown;
+  road: string;
+  currentSpeed: number;
+  freeFlowSpeed: number;
+  congestion: number;
+  delayMinutes: number;
+  confidence: number;
+  jamFactor: number;
+  observedAt: string;
+};
+
+export type LoadLatestStoredTrafficFlowObservationsOptions = {
+  maximumAgeMinutes?: number;
+};
+
+export type LoadLatestStoredTrafficFlowObservationsResult = {
+  rawCount: number;
+  latestSegmentCount: number;
+  observations: LatestStoredTrafficFlowObservation[];
+};
+
 type TrafficFlowObservationRow = {
   provider_segment_id: string;
   provider_geometry: unknown;
@@ -128,11 +151,11 @@ function finiteNumber(
     : fallback;
 }
 
-export async function loadRecentTrafficFlowObservations(
+export async function loadLatestStoredTrafficFlowObservations(
   supabase: any,
   organizationId: string,
-  options: LoadRecentTrafficFlowObservationsOptions
-): Promise<LoadRecentTrafficFlowObservationsResult> {
+  options: LoadLatestStoredTrafficFlowObservationsOptions = {},
+): Promise<LoadLatestStoredTrafficFlowObservationsResult> {
   const normalizedOrganizationId =
     organizationId.trim();
 
@@ -142,29 +165,18 @@ export async function loadRecentTrafficFlowObservations(
     );
   }
 
-  const latitude = Number(options.latitude);
-  const longitude = Number(options.longitude);
-  const radiusMeters = Number(options.radiusMeters);
-
-  const maximumAgeMinutes = Number(
-    options.maximumAgeMinutes ??
-      DEFAULT_MAXIMUM_AGE_MINUTES
-  );
+  const maximumAgeMinutes =
+    Number(
+      options.maximumAgeMinutes ??
+        DEFAULT_MAXIMUM_AGE_MINUTES
+    );
 
   if (
-    !Number.isFinite(latitude) ||
-    latitude < -90 ||
-    latitude > 90 ||
-    !Number.isFinite(longitude) ||
-    longitude < -180 ||
-    longitude > 180 ||
-    !Number.isFinite(radiusMeters) ||
-    radiusMeters <= 0 ||
     !Number.isFinite(maximumAgeMinutes) ||
     maximumAgeMinutes <= 0
   ) {
     throw new Error(
-      "Valid latitude, longitude, radiusMeters, and maximumAgeMinutes are required to load traffic-flow observations."
+      "A valid maximumAgeMinutes value is required to load traffic-flow observations."
     );
   }
 
@@ -213,9 +225,8 @@ export async function loadRecentTrafficFlowObservations(
    * Rows are ordered newest-first.
    *
    * Keep only the newest observation for each
-   * provider segment before geographic filtering
-   * so historical measurements are never treated
-   * as simultaneous traffic conditions.
+   * provider segment so historical measurements
+   * are never treated as simultaneous conditions.
    */
   const latestBySegment =
     new Map<string, TrafficFlowObservationRow>();
@@ -228,7 +239,9 @@ export async function loadRecentTrafficFlowObservations(
 
     if (
       !providerSegmentId ||
-      latestBySegment.has(providerSegmentId)
+      latestBySegment.has(
+        providerSegmentId
+      )
     ) {
       continue;
     }
@@ -239,12 +252,135 @@ export async function loadRecentTrafficFlowObservations(
     );
   }
 
+  const observations =
+    Array.from(
+      latestBySegment.values()
+    ).map((row) => {
+      const providerSegmentId =
+        String(
+          row.provider_segment_id
+        ).trim();
+
+      const congestion =
+        Math.max(
+          0,
+          Math.min(
+            100,
+            finiteNumber(
+              row.congestion_percent
+            )
+          )
+        );
+
+      return {
+        providerSegmentId,
+        providerGeometry:
+          row.provider_geometry,
+        road:
+          row.road_name?.trim() ||
+          "HERE road segment",
+        currentSpeed:
+          Math.max(
+            0,
+            finiteNumber(
+              row.current_speed_kmh
+            )
+          ),
+        freeFlowSpeed:
+          Math.max(
+            0,
+            finiteNumber(
+              row.free_flow_speed_kmh
+            )
+          ),
+        congestion,
+        delayMinutes:
+          Math.max(
+            0,
+            finiteNumber(
+              row.delay_minutes
+            )
+          ),
+        confidence:
+          Math.max(
+            0,
+            finiteNumber(
+              row.confidence
+            )
+          ),
+        jamFactor:
+          Math.max(
+            0,
+            finiteNumber(
+              row.jam_factor
+            )
+          ),
+        observedAt:
+          row.observed_at,
+      };
+    });
+
+  return {
+    rawCount:
+      rows.length,
+    latestSegmentCount:
+      latestBySegment.size,
+    observations,
+  };
+}
+
+export async function loadRecentTrafficFlowObservations(
+  supabase: any,
+  organizationId: string,
+  options: LoadRecentTrafficFlowObservationsOptions
+): Promise<LoadRecentTrafficFlowObservationsResult> {
+  const latitude =
+    Number(options.latitude);
+
+  const longitude =
+    Number(options.longitude);
+
+  const radiusMeters =
+    Number(options.radiusMeters);
+
+  const maximumAgeMinutes =
+    Number(
+      options.maximumAgeMinutes ??
+        DEFAULT_MAXIMUM_AGE_MINUTES
+    );
+
+  if (
+    !Number.isFinite(latitude) ||
+    latitude < -90 ||
+    latitude > 90 ||
+    !Number.isFinite(longitude) ||
+    longitude < -180 ||
+    longitude > 180 ||
+    !Number.isFinite(radiusMeters) ||
+    radiusMeters <= 0 ||
+    !Number.isFinite(maximumAgeMinutes) ||
+    maximumAgeMinutes <= 0
+  ) {
+    throw new Error(
+      "Valid latitude, longitude, radiusMeters, and maximumAgeMinutes are required to load traffic-flow observations."
+    );
+  }
+
+  const latest =
+    await loadLatestStoredTrafficFlowObservations(
+      supabase,
+      organizationId,
+      {
+        maximumAgeMinutes,
+      }
+    );
+
   const flow =
-    Array.from(latestBySegment.values())
-      .flatMap((row) => {
+    latest.observations
+      .flatMap((observation) => {
         const paths =
           extractHereGeometryPaths(
-            row.provider_geometry
+            observation.providerGeometry
           );
 
         if (paths.length === 0) {
@@ -268,71 +404,44 @@ export async function loadRecentTrafficFlowObservations(
           return [];
         }
 
-        const providerSegmentId =
-          String(
-            row.provider_segment_id
-          ).trim();
-
-        const congestion = Math.max(
-          0,
-          Math.min(
-            100,
-            finiteNumber(
-              row.congestion_percent
-            )
-          )
-        );
-
         return [
           {
-            id: providerSegmentId,
-            providerSegmentId,
+            id:
+              observation.providerSegmentId,
+            providerSegmentId:
+              observation.providerSegmentId,
             providerGeometry:
-              row.provider_geometry,
+              observation.providerGeometry,
             road:
-              row.road_name?.trim() ||
-              "HERE road segment",
-            currentSpeed: Math.max(
-              0,
-              finiteNumber(
-                row.current_speed_kmh
-              )
-            ),
-            freeFlowSpeed: Math.max(
-              0,
-              finiteNumber(
-                row.free_flow_speed_kmh
-              )
-            ),
-            congestion,
-            delayMinutes: Math.max(
-              0,
-              finiteNumber(
-                row.delay_minutes
-              )
-            ),
-            confidence: Math.max(
-              0,
-              finiteNumber(
-                row.confidence
-              )
-            ),
-            jamFactor: Math.max(
-              0,
-              finiteNumber(
-                row.jam_factor
-              )
-            ),
+              observation.road,
+            currentSpeed:
+              observation.currentSpeed,
+            freeFlowSpeed:
+              observation.freeFlowSpeed,
+            congestion:
+              observation.congestion,
+            delayMinutes:
+              observation.delayMinutes,
+            confidence:
+              observation.confidence,
+            jamFactor:
+              observation.jamFactor,
             riskLevel:
-              riskLevel(congestion),
+              riskLevel(
+                observation.congestion
+              ),
             source:
               "here_flow_stored" as const,
             recommendedAction:
-              recommendation(congestion),
+              recommendation(
+                observation.congestion
+              ),
             observedAt:
-              row.observed_at,
+              observation.observedAt,
             distanceMeters:
-              Math.round(distanceMeters),
+              Math.round(
+                distanceMeters
+              ),
           },
         ];
       })
@@ -347,9 +456,10 @@ export async function loadRecentTrafficFlowObservations(
       );
 
   return {
-    rawCount: rows.length,
+    rawCount:
+      latest.rawCount,
     latestSegmentCount:
-      latestBySegment.size,
+      latest.latestSegmentCount,
     flow,
   };
 }
