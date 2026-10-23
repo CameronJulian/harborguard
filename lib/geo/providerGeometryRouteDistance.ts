@@ -1,6 +1,15 @@
 export type ProviderGeometryCoordinate =
   [number, number];
 
+type ProviderGeometryPoint = {
+  lat?: unknown;
+  lng?: unknown;
+};
+
+type ProviderGeometryLink = {
+  points?: unknown;
+};
+
 function distanceMeters(
   lat1: number,
   lng1: number,
@@ -48,7 +57,12 @@ export function extractProviderGeometryCoordinates(
   }
 
   const value =
-    geometry as any;
+    geometry as {
+      type?: unknown;
+      coordinates?: unknown;
+      links?: unknown;
+      shape?: { links?: unknown } | null;
+    };
 
   // TomTom GeoJSON LineString:
   // [longitude, latitude].
@@ -58,7 +72,7 @@ export function extractProviderGeometryCoordinates(
   ) {
     return value.coordinates
       .filter(
-        (coordinate: unknown) =>
+        (coordinate: unknown): coordinate is unknown[] =>
           Array.isArray(coordinate) &&
           coordinate.length >= 2 &&
           Number.isFinite(
@@ -70,7 +84,7 @@ export function extractProviderGeometryCoordinates(
       )
       .map(
         (
-          coordinate: any,
+          coordinate: unknown[],
         ): ProviderGeometryCoordinate => [
           Number(coordinate[1]),
           Number(coordinate[0]),
@@ -96,11 +110,11 @@ export function extractProviderGeometryCoordinates(
   }
 
   return hereLinks.flatMap(
-    (link: any) =>
+    (link: ProviderGeometryLink | null | undefined) =>
       Array.isArray(link?.points)
         ? link.points
             .filter(
-              (point: any) =>
+              (point: ProviderGeometryPoint | null | undefined): point is ProviderGeometryPoint =>
                 Number.isFinite(
                   Number(point?.lat),
                 ) &&
@@ -110,7 +124,7 @@ export function extractProviderGeometryCoordinates(
             )
             .map(
               (
-                point: any,
+                point: ProviderGeometryPoint,
               ): ProviderGeometryCoordinate => [
                 Number(point.lat),
                 Number(point.lng),

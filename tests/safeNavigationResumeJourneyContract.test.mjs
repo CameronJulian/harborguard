@@ -198,12 +198,6 @@ test(
         "const refreshRecoveryStorageKey"
       );
 
-    const recoveryEnd =
-      page.indexOf(
-        "useEffect(() => {",
-        recoveryStart + 50
-      );
-
     assert.ok(
       recoveryStart >= 0
     );

@@ -1,3 +1,5 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 import {
   getPointToPolylineDistanceMeters,
 } from "@/lib/geo/getPointToPolylineDistanceMeters";
@@ -152,7 +154,7 @@ function finiteNumber(
 }
 
 export async function loadLatestStoredTrafficFlowObservations(
-  supabase: any,
+  supabase: SupabaseClient,
   organizationId: string,
   options: LoadLatestStoredTrafficFlowObservationsOptions = {},
 ): Promise<LoadLatestStoredTrafficFlowObservationsResult> {
@@ -330,7 +332,7 @@ export async function loadLatestStoredTrafficFlowObservations(
 }
 
 export async function loadRecentTrafficFlowObservations(
-  supabase: any,
+  supabase: SupabaseClient,
   organizationId: string,
   options: LoadRecentTrafficFlowObservationsOptions
 ): Promise<LoadRecentTrafficFlowObservationsResult> {

@@ -1,5 +1,4 @@
 import {
-  extractProviderGeometryCoordinates,
   getMinimumProviderGeometryDistanceMeters,
   providerGeometryScoreMultiplier,
 } from "@/lib/geo/providerGeometryRouteDistance";

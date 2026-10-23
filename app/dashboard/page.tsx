@@ -41,6 +41,30 @@ type IncidentRow = {
   created_at: string | null;
 };
 
+type DashboardFleetVehicle = {
+  id: string;
+  is_active?: boolean | null;
+  registration_number?: string | null;
+  registrationNumber?: string | null;
+  nickname?: string | null;
+  speed_kmh?: number | string | null;
+  speedKmh?: number | string | null;
+  maintenanceProfile?: { maintenanceRisk?: string | null } | null;
+};
+
+type DashboardFleetTrip = {
+  status?: string | null;
+};
+
+type DashboardFleetAlert = {
+  id: string;
+  is_resolved?: boolean | null;
+  severity?: string | null;
+  alert_type?: string | null;
+  created_at?: string | null;
+  vehicle?: Pick<DashboardFleetVehicle, "registration_number" | "nickname"> | null;
+};
+
 const cardStyle: CSSProperties = {
   background: "#ffffff",
   borderRadius: 20,
@@ -106,9 +130,9 @@ export default function DashboardPage() {
   const [batches, setBatches] = useState<BatchRow[]>([]);
   const [batchDataStatus, setBatchDataStatus] = useState<"loading" | "available" | "empty" | "unavailable">("loading");
   const [incidents, setIncidents] = useState<IncidentRow[]>([]);
-  const [fleetVehicles, setFleetVehicles] = useState<any[]>([]);
-  const [fleetTrips, setFleetTrips] = useState<any[]>([]);
-  const [fleetAlerts, setFleetAlerts] = useState<any[]>([]);
+  const [fleetVehicles, setFleetVehicles] = useState<DashboardFleetVehicle[]>([]);
+  const [fleetTrips, setFleetTrips] = useState<DashboardFleetTrip[]>([]);
+  const [fleetAlerts, setFleetAlerts] = useState<DashboardFleetAlert[]>([]);
   const [fleetDataStatus, setFleetDataStatus] = useState<"loading" | "available" | "empty" | "unavailable">("loading");
   const fleetRequestId = useRef(0);
   const [routeSafetyAlerts, setRouteSafetyAlerts] = useState<any[]>([]);
@@ -255,9 +279,9 @@ const { data: incidentData } = await supabase
   .eq("organization_id", profile.organization_id)
   .order("created_at", { ascending: false });
 
-let nextFleetVehicles: any[] = [];
-let nextFleetTrips: any[] = [];
-let nextFleetAlerts: any[] = [];
+let nextFleetVehicles: DashboardFleetVehicle[] = [];
+let nextFleetTrips: DashboardFleetTrip[] = [];
+let nextFleetAlerts: DashboardFleetAlert[] = [];
 let nextFleetStatus: "available" | "empty" | "unavailable" = "unavailable";
 
 try {
@@ -289,8 +313,8 @@ try {
 
   nextFleetVehicles = vehicleResult.vehicles;
   nextFleetTrips = tripResult.trips;
-  nextFleetAlerts = alertResult.alerts.filter(
-    (alert: any) => !alert.is_resolved
+  nextFleetAlerts = (alertResult.alerts as DashboardFleetAlert[]).filter(
+    (alert) => !alert.is_resolved
   );
   nextFleetStatus =
     nextFleetVehicles.length === 0 ? "empty" : "available";

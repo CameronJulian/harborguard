@@ -71,12 +71,13 @@ export async function POST(req: NextRequest) {
       roadRiskAggregated: false,
     });
   }
-  catch (error: any) {
+  catch (error: unknown) {
     return NextResponse.json(
       {
         error:
-          error.message ||
-          "Unauthorized",
+          error instanceof Error && error.message
+            ? error.message
+            : "Unauthorized",
       },
       { status: 401 }
     );

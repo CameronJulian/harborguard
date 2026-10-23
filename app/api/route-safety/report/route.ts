@@ -293,7 +293,7 @@ export async function POST(
 
     const duplicate =
       (possibleDuplicates || []).find(
-        (candidate: any) => {
+        (candidate: { latitude: unknown; longitude: unknown }) => {
           const candidateLatitude =
             Number(candidate.latitude);
 
@@ -407,12 +407,13 @@ export async function POST(
       alert: data,
     });
   }
-  catch (error: any) {
+  catch (error: unknown) {
     return NextResponse.json(
       {
         error:
-          error.message ||
-          "Unauthorized",
+          error instanceof Error && error.message
+            ? error.message
+            : "Unauthorized",
       },
       {
         status: 401,

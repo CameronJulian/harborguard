@@ -2225,86 +2225,100 @@ export default function SafeNavigationPage() {
       return;
     }
 
-    try {
-      const stored =
-        window.sessionStorage.getItem(
-          refreshRecoveryStorageKey
-        );
+    // Restore browser storage after hydration. Keep persistence blocked until
+    // the read completes, and discard the queued work if this page unmounts.
+    let cancelled = false;
 
-      if (!stored) {
-        refreshRecoveryReadyRef.current = true;
+    queueMicrotask(() => {
+      if (cancelled) {
         return;
       }
 
-      const parsed =
-        JSON.parse(stored) as {
-          destinationLat?: string;
-          destinationLng?: string;
-          destinationName?: string;
-          selectedDestination?:
-            NavigationSearchResult | null;
-          routingProfile?: string;
-        };
+      try {
+        const stored =
+          window.sessionStorage.getItem(
+            refreshRecoveryStorageKey
+          );
 
-      setDestinationLat(
-        typeof parsed.destinationLat === "string"
-          ? parsed.destinationLat
-          : ""
-      );
+        if (!stored) {
+          refreshRecoveryReadyRef.current = true;
+          return;
+        }
 
-      setDestinationLng(
-        typeof parsed.destinationLng === "string"
-          ? parsed.destinationLng
-          : ""
-      );
+        const parsed =
+          JSON.parse(stored) as {
+            destinationLat?: string;
+            destinationLng?: string;
+            destinationName?: string;
+            selectedDestination?:
+              NavigationSearchResult | null;
+            routingProfile?: string;
+          };
 
-      setDestinationName(
-        typeof parsed.destinationName === "string" &&
-          parsed.destinationName.trim()
-          ? parsed.destinationName
-          : "Destination"
-      );
+        setDestinationLat(
+          typeof parsed.destinationLat === "string"
+            ? parsed.destinationLat
+            : ""
+        );
 
-      setSelectedDestination(
-        parsed.selectedDestination ?? null
-      );
+        setDestinationLng(
+          typeof parsed.destinationLng === "string"
+            ? parsed.destinationLng
+            : ""
+        );
 
-      setRoutingProfile(
-        typeof parsed.routingProfile === "string" &&
-          parsed.routingProfile
-          ? parsed.routingProfile
-          : "safest"
-      );
+        setDestinationName(
+          typeof parsed.destinationName === "string" &&
+            parsed.destinationName.trim()
+            ? parsed.destinationName
+            : "Destination"
+        );
 
-      /*
-       * Refresh restores destination convenience only.
-       * Active route/navigation state must be recalculated
-       * explicitly by the driver after a page reload.
-       */
-      setRoutes([]);
-      setSelectedRouteIndex(0);
-      setNavigationInstructions([]);
-      setRecommendation(null);
-      setRouting(false);
-      setFollowVehicle(true);
-      setVoiceEnabled(false);
-      setVoiceStatusMessage(
-        "Voice guidance off"
-      );
-      setRefreshRecoveryAvailable(true);
+        setSelectedDestination(
+          parsed.selectedDestination ?? null
+        );
 
-      setRoutingMessage(
-        "Destination restored after refresh. Calculate a route when you are ready."
-      );
-    } catch {
-      setRefreshRecoveryAvailable(false);
+        setRoutingProfile(
+          typeof parsed.routingProfile === "string" &&
+            parsed.routingProfile
+            ? parsed.routingProfile
+            : "safest"
+        );
 
-      window.sessionStorage.removeItem(
-        refreshRecoveryStorageKey
-      );
-    } finally {
-      refreshRecoveryReadyRef.current = true;
-    }
+        /*
+         * Refresh restores destination convenience only.
+         * Active route/navigation state must be recalculated
+         * explicitly by the driver after a page reload.
+         */
+        setRoutes([]);
+        setSelectedRouteIndex(0);
+        setNavigationInstructions([]);
+        setRecommendation(null);
+        setRouting(false);
+        setFollowVehicle(true);
+        setVoiceEnabled(false);
+        setVoiceStatusMessage(
+          "Voice guidance off"
+        );
+        setRefreshRecoveryAvailable(true);
+
+        setRoutingMessage(
+          "Destination restored after refresh. Calculate a route when you are ready."
+        );
+      } catch {
+        setRefreshRecoveryAvailable(false);
+
+        window.sessionStorage.removeItem(
+          refreshRecoveryStorageKey
+        );
+      } finally {
+        refreshRecoveryReadyRef.current = true;
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -4662,10 +4676,11 @@ function simulatorBearing(
           : "Hazard reported successfully using your current GPS location."
       );
     }
-    catch (error: any) {
+    catch (error: unknown) {
       setHazardReportMessage(
-        error?.message ??
-          "Network error while submitting the hazard report."
+        error instanceof Error
+          ? error.message
+          : "Network error while submitting the hazard report."
       );
     }
     finally {
@@ -4845,9 +4860,17 @@ function simulatorBearing(
       activeRouteSafetyThreatRouteKeyRef.current =
         "";
 
-      setActiveRouteSafetyThreats([]);
+      let cancelled = false;
 
-      return;
+      queueMicrotask(() => {
+        if (!cancelled) {
+          setActiveRouteSafetyThreats([]);
+        }
+      });
+
+      return () => {
+        cancelled = true;
+      };
     }
 
     const routeKey =
@@ -4873,11 +4896,6 @@ function simulatorBearing(
     activeRouteSafetyThreatRouteKeyRef.current =
       routeKey;
 
-    setLiveRoadIntelligence(null);
-    setRouteWeatherIntelligence(null);
-    setRouteEnvironmentalContext(null);
-    setRouteEmergencySupportContext(null);
-
     const requestId =
       activeRouteSafetyThreatRequestIdRef.current + 1;
 
@@ -4891,6 +4909,19 @@ function simulatorBearing(
 
     activeRouteSafetyThreatAbortControllerRef.current =
       controller;
+
+    // A newer route or an unmount must cancel this pending UI reset too.
+    queueMicrotask(() => {
+      if (
+        !controller.signal.aborted &&
+        requestId === activeRouteSafetyThreatRequestIdRef.current
+      ) {
+        setLiveRoadIntelligence(null);
+        setRouteWeatherIntelligence(null);
+        setRouteEnvironmentalContext(null);
+        setRouteEmergencySupportContext(null);
+      }
+    });
 
     void (async () => {
       try {
@@ -5147,7 +5178,7 @@ function simulatorBearing(
               }
             : null
         );
-      } catch (error) {
+      } catch {
         if (
           controller.signal.aborted ||
           requestId !==
@@ -5315,10 +5346,12 @@ function simulatorBearing(
    *
    * GPS movement does not own this lifecycle.
    */
+  // Distance ahead changes with GPS progress; the selected threat identity
+  // stays stable while an alternative-route request is in flight.
+  const alternativeRouteThreat = activeRouteSafetyWarning?.threat ?? null;
+
   useEffect(() => {
-    const threat =
-      activeRouteSafetyWarning?.threat ??
-      null;
+    const threat = alternativeRouteThreat;
 
     const threatLatitude =
       Number(threat?.latitude);
@@ -5360,7 +5393,7 @@ function simulatorBearing(
       latestNavigationPositionRef.current;
 
     if (
-      !activeRouteSafetyWarning ||
+      !threat ||
       !selectedRoute ||
       !offerPosition ||
       !routingDestination ||
@@ -5575,10 +5608,7 @@ function simulatorBearing(
       controller.abort();
     };
   }, [
-    activeRouteSafetyWarning?.threat.id,
-    activeRouteSafetyWarning?.threat.type,
-    activeRouteSafetyWarning?.threat.latitude,
-    activeRouteSafetyWarning?.threat.longitude,
+    alternativeRouteThreat,
     selectedRoute,
     routingDestination,
     routingProfile,
