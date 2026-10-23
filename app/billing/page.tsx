@@ -11,37 +11,46 @@ export default function BillingPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [organization, setOrganization] = useState<any>(null);
+  const [organization, setOrganization] = useState<{
+    id: string;
+    name: string;
+    plan: string | null;
+    subscription_plan: string | null;
+    subscription_status: string | null;
+    trial_ends_at: string | null;
+    next_billing_date: string | null;
+    cancelled_at: string | null;
+  } | null>(null);
 
   useEffect(() => {
-    loadOrganization();
+    async function loadOrganization() {
+      const {
+        data: { session: currentSession },
+      } = await supabase.auth.getSession();
+
+      if (!currentSession?.user?.id) return;
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("organization_id")
+        .eq("id", currentSession.user.id)
+        .single();
+
+      if (!profile?.organization_id) return;
+
+      const { data: organizationData } = await supabase
+        .from("organizations")
+        .select("id, name, plan, subscription_plan, subscription_status, trial_ends_at, next_billing_date, cancelled_at")
+        .eq("id", profile.organization_id)
+        .single();
+
+      if (organizationData) {
+        setOrganization(organizationData);
+      }
+    }
+
+    void loadOrganization();
   }, []);
-
-  async function loadOrganization() {
-  const {
-    data: { session: currentSession },
-  } = await supabase.auth.getSession();
-
-  if (!currentSession?.user?.id) return;
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("organization_id")
-    .eq("id", currentSession.user.id)
-    .single();
-
-  if (!profile?.organization_id) return;
-
-  const { data: organizationData } = await supabase
-    .from("organizations")
-    .select("*")
-    .eq("id", profile.organization_id)
-    .single();
-
-  if (organizationData) {
-    setOrganization(organizationData);
-  }
-}
 
   const hasPremiumAccess =
     canAccessPremiumFeatures(
@@ -120,8 +129,12 @@ export default function BillingPage() {
       }
 
       window.location.href = result.paymentUrl;
-    } catch (err: any) {
-      setError(err.message || "Something went wrong.");
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error
+          ? err.message || "Something went wrong."
+          : "Something went wrong."
+      );
       setLoading(false);
     }
   }

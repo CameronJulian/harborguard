@@ -13,86 +13,150 @@ export default function CreateOrganizationPage() {
   const [plan, setPlan] = useState("starter");
   const [seats, setSeats] = useState("1");
   const [trialDays, setTrialDays] = useState("14");
-  const [loading, setLoading] = useState(false);
+
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [authorized, setAuthorized] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    checkAdminAccess();
-  }, []);
+    let cancelled = false;
 
-  async function checkAdminAccess() {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    async function checkAdminAccess() {
+      try {
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
 
-    if (!session?.user) {
-      router.replace("/");
-      return;
+        if (cancelled) return;
+
+        if (sessionError || !session?.user) {
+          router.replace("/");
+          return;
+        }
+
+        const { data: profile, error } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", session.user.id)
+          .single();
+
+        if (cancelled) return;
+
+        if (error || !profile?.role) {
+          router.replace("/dashboard");
+          return;
+        }
+
+        const allowedRoles = ["platform_admin", "super_admin"];
+
+        if (!allowedRoles.includes(profile.role)) {
+          router.replace("/dashboard");
+          return;
+        }
+
+        setAuthorized(true);
+        setCheckingAccess(false);
+      } catch {
+        if (!cancelled) {
+          router.replace("/dashboard");
+        }
+      }
     }
 
-    const { data: profile, error } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", session.user.id)
-      .single();
+    void checkAdminAccess();
 
-    if (error || !profile?.role) {
-      router.replace("/dashboard");
-      return;
-    }
-
-    const allowedRoles = ["admin", "super_admin"];
-
-    if (!allowedRoles.includes(profile.role)) {
-      router.replace("/dashboard");
-      return;
-    }
-
-    setAuthorized(true);
-    setCheckingAccess(false);
-  }
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   async function createOrganization() {
-    try {
-      setLoading(true);
+    if (loading || !authorized) return;
 
-      if (!name.trim()) {
-        alert("Please enter an organization name.");
-        setLoading(false);
+    const organizationName = name.trim();
+    const fleet = Number(fleetSize || "0");
+    const seatCount = Number(seats);
+    const trialDuration = Number(trialDays);
+
+    if (organizationName.length < 2 || organizationName.length > 150) {
+      alert("Organization name must contain 2 to 150 characters.");
+      return;
+    }
+
+    if (
+      !Number.isInteger(fleet) ||
+      fleet < 0 ||
+      fleet > 100000 ||
+      !Number.isInteger(seatCount) ||
+      seatCount < 1 ||
+      seatCount > 100000 ||
+      !Number.isInteger(trialDuration) ||
+      trialDuration < 1 ||
+      trialDuration > 90
+    ) {
+      alert("Please enter valid fleet, seat and trial values.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError || !session?.access_token) {
+        alert("Your session has expired. Please sign in again.");
         return;
       }
 
-      const trialEndDate = new Date();
-      trialEndDate.setDate(
-        trialEndDate.getDate() + Number(trialDays || 14)
-      );
+      const response = await fetch("/api/admin/organizations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          name: organizationName,
+          plan,
+          fleet_size: fleet,
+          seats: seatCount,
+          trial_days: trialDuration,
+        }),
+        cache: "no-store",
+      });
 
-      const { error } = await supabase
-        .from("organizations")
-        .insert({
-          name: name.trim(),
-          fleet_size: Number(fleetSize || 0),
-          plan: plan,
-          subscription_status: "trialing",
-          seats: Number(seats || 1),
-          trial_ends_at: trialEndDate.toISOString(),
-        });
+      const result: unknown = await response.json();
 
-      if (error) {
-        alert(error.message);
-        setLoading(false);
+      if (
+        !response.ok ||
+        !result ||
+        typeof result !== "object" ||
+        !("success" in result) ||
+        result.success !== true
+      ) {
+        if (response.status === 401) {
+          alert("Your session has expired. Please sign in again.");
+        } else if (response.status === 403) {
+          alert("Platform administrator permission is required.");
+        } else if (response.status === 400) {
+          alert("Invalid organization details.");
+        } else {
+          alert("Failed to create organization.");
+        }
         return;
       }
 
       alert("Organization created successfully.");
       router.push("/admin");
-    } catch (err: any) {
-      alert(err.message || "Failed to create organization.");
+    } catch {
+      alert("Failed to create organization.");
+    } finally {
       setLoading(false);
     }
   }
-
   if (checkingAccess) {
     return (
       <AppShell>
@@ -136,7 +200,7 @@ export default function CreateOrganizationPage() {
             style={{
               fontSize: 14,
               fontWeight: 700,
-              opacity: 0.7,
+              opacity: loading ? 0.7 : 1,
               marginBottom: 16,
             }}
           >
@@ -262,9 +326,7 @@ export default function CreateOrganizationPage() {
               opacity: loading ? 0.7 : 1,
             }}
           >
-            {loading
-              ? "Creating Organization..."
-              : "Create Organization"}
+            {loading ? "Creating Organization..." : "Create Organization"}
           </button>
         </div>
       </div>

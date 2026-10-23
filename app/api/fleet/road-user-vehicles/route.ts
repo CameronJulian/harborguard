@@ -53,9 +53,76 @@ export async function GET() {
       );
     }
 
+    const authorizedVehicles = data || [];
+    const vehicleIds = authorizedVehicles.map((vehicle) => vehicle.id);
+
+    if (vehicleIds.length === 0) {
+      return NextResponse.json({
+        success: true,
+        vehicles: [],
+      });
+    }
+
+    const { data: activeTrips, error: tripsError } = await supabase
+      .from("vehicle_trips")
+      .select(`
+        id,
+        vehicle_id,
+        status,
+        expected_route,
+        origin_port,
+        destination_fishery,
+        created_at
+      `)
+      .eq("organization_id", organizationId)
+      .in("vehicle_id", vehicleIds)
+      .in("status", [
+        "scheduled",
+        "en_route_to_port",
+        "collecting",
+        "en_route_to_fishery",
+        "emergency",
+      ])
+      .order("created_at", { ascending: false });
+
+    if (tripsError) {
+      return NextResponse.json(
+        { error: tripsError.message },
+        { status: 500 }
+      );
+    }
+
+    const activeTripByVehicle = new Map<
+      string,
+      {
+        id: string;
+        status: string;
+        expectedRoute: unknown;
+        originPort: string | null;
+        destinationFishery: string | null;
+      }
+    >();
+
+    for (const trip of activeTrips || []) {
+      if (!trip.vehicle_id || activeTripByVehicle.has(trip.vehicle_id)) {
+        continue;
+      }
+
+      activeTripByVehicle.set(trip.vehicle_id, {
+        id: trip.id,
+        status: trip.status,
+        expectedRoute: trip.expected_route,
+        originPort: trip.origin_port,
+        destinationFishery: trip.destination_fishery,
+      });
+    }
+
     return NextResponse.json({
       success: true,
-      vehicles: data || [],
+      vehicles: authorizedVehicles.map((vehicle) => ({
+        ...vehicle,
+        activeTrip: activeTripByVehicle.get(vehicle.id) || null,
+      })),
     });
   } catch (err: unknown) {
     const message =

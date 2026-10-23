@@ -28,84 +28,87 @@ export default function OrganizationDetailPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (organizationId) {
-      loadOrganization();
+    if (!organizationId) return;
+
+    let cancelled = false;
+
+    async function fetchOrganization() {
+      try {
+        const { data: sessionData, error: sessionError } =
+          await supabase.auth.getSession();
+
+        const session = sessionData.session;
+
+        if (sessionError || !session?.access_token) {
+          throw new Error("Please sign in to access platform administration.");
+        }
+
+        const response = await fetch(
+          `/api/admin/organizations/${encodeURIComponent(organizationId)}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            cache: "no-store",
+          }
+        );
+
+        if (response.status === 401) {
+          throw new Error("Your session has expired. Please sign in again.");
+        }
+
+        if (response.status === 403) {
+          throw new Error("Platform administrator access is required.");
+        }
+
+        if (response.status === 404) {
+          throw new Error("Organization not found.");
+        }
+
+        if (!response.ok) {
+          throw new Error("Failed to load organization.");
+        }
+
+        const result: {
+          success: boolean;
+          organization: Organization;
+          vehicle_count: number;
+        } = await response.json();
+
+        if (
+          !result.success ||
+          !result.organization ||
+          !Number.isSafeInteger(result.vehicle_count) ||
+          result.vehicle_count < 0
+        ) {
+          throw new Error("Invalid organization response.");
+        }
+
+        if (!cancelled) {
+          setOrganization(result.organization);
+          setVehicleCount(result.vehicle_count);
+          setError("");
+          setLoading(false);
+        }
+      } catch (err: unknown) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Failed to load organization."
+          );
+          setLoading(false);
+        }
+      }
     }
+
+    void fetchOrganization();
+
+    return () => {
+      cancelled = true;
+    };
   }, [organizationId]);
-
-  async function loadOrganization() {
-    try {
-      setLoading(true);
-
-      const { data, error } = await supabase
-        .from("organizations")
-        .select("*")
-        .eq("id", organizationId)
-        .single();
-
-      if (error) {
-        throw error;
-      }
-
-      setOrganization(data);
-
-      const { count } = await supabase
-        .from("vehicles")
-        .select("id", {
-          count: "exact",
-          head: true,
-        })
-        .eq("organization_id", organizationId);
-
-      setVehicleCount(count || 0);
-    } catch (err: any) {
-      setError(err.message || "Failed to load organization.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function updatePlan(plan: string) {
-    try {
-      const { error } = await supabase
-        .from("organizations")
-        .update({
-          plan,
-        })
-        .eq("id", organizationId);
-
-      if (error) {
-        throw error;
-      }
-
-      await loadOrganization();
-
-      alert("Organization updated.");
-    } catch (err: any) {
-      alert(err.message);
-    }
-  }
-
-  async function suspendOrganization() {
-    try {
-      const { error } = await supabase
-        .from("organizations")
-        .update({
-          subscription_status: "suspended",
-        })
-        .eq("id", organizationId);
-
-      if (error) {
-        throw error;
-      }
-
-      await loadOrganization();
-
-      alert("Organization suspended.");
-    } catch (err: any) {
-      alert(err.message);
-    }
-  }
 
   if (loading) {
     return (
@@ -283,34 +286,34 @@ export default function OrganizationDetailPage() {
             }}
           >
             <button
-              onClick={() => updatePlan("starter")}
+              disabled
               style={buttonStyle}
             >
-              Set Starter
+              Set Starter (Unavailable)
             </button>
 
             <button
-              onClick={() => updatePlan("professional")}
+              disabled
               style={buttonStyle}
             >
-              Set Professional
+              Set Professional (Unavailable)
             </button>
 
             <button
-              onClick={() => updatePlan("enterprise")}
+              disabled
               style={buttonStyle}
             >
-              Set Enterprise
+              Set Enterprise (Unavailable)
             </button>
 
             <button
-              onClick={suspendOrganization}
+              disabled
               style={{
                 ...buttonStyle,
                 background: "#991b1b",
               }}
             >
-              Suspend Organization
+              Suspend Organization (Unavailable)
             </button>
           </div>
         </div>

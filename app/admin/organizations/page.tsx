@@ -20,31 +20,64 @@ export default function OrganizationsPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    loadOrganizations();
-  }, []);
-
-  async function loadOrganizations() {
+    async function loadOrganizations() {
     try {
       setLoading(true);
 
-      const { data, error } = await supabase
-        .from("organizations")
-        .select("*")
-        .order("created_at", {
-          ascending: false,
-        });
+      setError("");
 
-      if (error) {
-        throw error;
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError || !session?.access_token) {
+        throw new Error("Please sign in to access platform administration.");
       }
 
-      setOrganizations(data || []);
-    } catch (err: any) {
-      setError(err.message || "Failed to load organizations.");
+      const response = await fetch("/api/admin/organizations", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        cache: "no-store",
+      });
+
+      if (response.status === 401) {
+        throw new Error("Your session has expired. Please sign in again.");
+      }
+
+      if (response.status === 403) {
+        throw new Error("Platform administrator access is required.");
+      }
+
+      if (!response.ok) {
+        throw new Error("Failed to load organizations.");
+      }
+
+      const result: {
+        success: boolean;
+        organizations: Organization[];
+      } = await response.json();
+
+      if (!result.success || !Array.isArray(result.organizations)) {
+        throw new Error("Unexpected organization API response.");
+      }
+
+      setOrganizations(result.organizations);
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to load organizations."
+      );
     } finally {
       setLoading(false);
     }
-  }
+    }
+
+    void loadOrganizations();
+  }, []);
 
   return (
     <AppShell>

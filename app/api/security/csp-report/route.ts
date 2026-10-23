@@ -1,6 +1,10 @@
 import * as Sentry from "@sentry/nextjs";
 
-import { cspReportRatelimit } from "@/lib/ratelimit";
+import {
+  cspReportRatelimit,
+  localCspReportRatelimit,
+  shouldUseLocalCspReportRatelimit,
+} from "@/lib/ratelimit";
 
 const MAX_REPORT_BYTES = 16_384;
 
@@ -298,9 +302,9 @@ export async function POST(
     );
 
   const limitResult =
-    await cspReportRatelimit.limit(
-      identifier
-    );
+    shouldUseLocalCspReportRatelimit()
+      ? await localCspReportRatelimit.limit(identifier)
+      : await cspReportRatelimit.limit(identifier);
 
   if (!limitResult.success) {
     return Response.json(

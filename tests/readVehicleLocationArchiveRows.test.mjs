@@ -6,7 +6,7 @@ const source =
   fs.readFileSync(
     "lib/fleet/readVehicleLocationArchiveRows.ts",
     "utf8"
-  );
+  ).replace(/\r\n/g, "\n");
 
 test(
   "archive reader is bounded by organization vehicle trip and time window",

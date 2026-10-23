@@ -368,6 +368,46 @@ export function shouldUseLocalFleetLiveRatelimit(): boolean {
     return false;
   }
 }
+class LocalCspReportRatelimit {
+  private readonly requests = new Map<string, number[]>();
+  private readonly maxRequests = 30;
+  private readonly windowMs = 60_000;
+
+  async limit(key: string): Promise<LocalRateLimitResult> {
+    const now = Date.now();
+    const cutoff = now - this.windowMs;
+    const recent = (this.requests.get(key) ?? []).filter(
+      (timestamp) => timestamp > cutoff
+    );
+
+    const success = recent.length < this.maxRequests;
+
+    if (success) {
+      recent.push(now);
+    }
+
+    if (recent.length > 0) {
+      this.requests.set(key, recent);
+    } else {
+      this.requests.delete(key);
+    }
+
+    return {
+      success,
+      limit: this.maxRequests,
+      remaining: Math.max(0, this.maxRequests - recent.length),
+      reset: (recent[0] ?? now) + this.windowMs,
+      pending: Promise.resolve(),
+    };
+  }
+}
+
+export const localCspReportRatelimit =
+  new LocalCspReportRatelimit();
+
+export function shouldUseLocalCspReportRatelimit(): boolean {
+  return shouldUseLocalFleetLiveRatelimit();
+}
 export const cspReportRatelimit =
   createLazyRatelimit({
     limiter:

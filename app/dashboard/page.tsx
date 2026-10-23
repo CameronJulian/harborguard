@@ -2,7 +2,7 @@
 
 import { fetchWithAuth } from "@/lib/auth-fetch";
 
-import { CSSProperties, FormEvent, useEffect, useMemo, useState } from "react";
+import { CSSProperties, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import TrialBanner from "@/components/billing/TrialBanner";
 
 import {
@@ -104,10 +104,13 @@ function formatDateTime(value?: string | null) {
 export default function DashboardPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [batches, setBatches] = useState<BatchRow[]>([]);
+  const [batchDataStatus, setBatchDataStatus] = useState<"loading" | "available" | "empty" | "unavailable">("loading");
   const [incidents, setIncidents] = useState<IncidentRow[]>([]);
   const [fleetVehicles, setFleetVehicles] = useState<any[]>([]);
   const [fleetTrips, setFleetTrips] = useState<any[]>([]);
   const [fleetAlerts, setFleetAlerts] = useState<any[]>([]);
+  const [fleetDataStatus, setFleetDataStatus] = useState<"loading" | "available" | "empty" | "unavailable">("loading");
+  const fleetRequestId = useRef(0);
   const [routeSafetyAlerts, setRouteSafetyAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -153,6 +156,7 @@ const [trialEndsAt, setTrialEndsAt] =
       .subscribe();
 
     return () => {
+      fleetRequestId.current += 1;
       supabase.removeChannel(batchChannel);
       supabase.removeChannel(incidentChannel);
     };
@@ -195,11 +199,26 @@ const trialDaysRemaining = trialEndsAt
     )
   : null;
   async function loadAll() {
+    const requestId = ++fleetRequestId.current;
+    setFleetDataStatus("loading");
+    setBatchDataStatus("loading");
+
+    try {
     const {
   data: { session },
 } = await supabase.auth.getSession();
 
-if (!session?.user) return;
+if (!session?.user) {
+  if (requestId === fleetRequestId.current) {
+    setBatches([]);
+    setBatchDataStatus("unavailable");
+    setFleetVehicles([]);
+    setFleetTrips([]);
+    setFleetAlerts([]);
+    setFleetDataStatus("unavailable");
+  }
+  return;
+}
 
 const { data: profile } = await supabase
   .from("profiles")
@@ -208,11 +227,19 @@ const { data: profile } = await supabase
   .single();
 
 if (!profile?.organization_id) {
+  if (requestId === fleetRequestId.current) {
+    setBatches([]);
+    setBatchDataStatus("unavailable");
+    setFleetVehicles([]);
+    setFleetTrips([]);
+    setFleetAlerts([]);
+    setFleetDataStatus("unavailable");
+  }
   window.location.replace("/onboarding");
   return;
 }
 
-const { data: batchData } = await supabase
+const { data: batchData, error: batchError } = await supabase
   .from("batches")
   .select(
     "id, batch_code, vessel, species, catch_kg, dock_kg, storage_kg, status, created_at"
@@ -228,24 +255,48 @@ const { data: incidentData } = await supabase
   .eq("organization_id", profile.organization_id)
   .order("created_at", { ascending: false });
 
-const vehicleResponse = await fetchWithAuth("/api/fleet/vehicles", {
-  headers: {
-  },
-});
-const vehicleResult = await vehicleResponse.json();
+let nextFleetVehicles: any[] = [];
+let nextFleetTrips: any[] = [];
+let nextFleetAlerts: any[] = [];
+let nextFleetStatus: "available" | "empty" | "unavailable" = "unavailable";
 
-const tripResponse = await fetchWithAuth("/api/fleet/trips", {
-  headers: {
-  },
-});
-const tripResult = await tripResponse.json();
+try {
+  const vehicleResponse = await fetchWithAuth("/api/fleet/vehicles", {
+    headers: {},
+  });
+  const tripResponse = await fetchWithAuth("/api/fleet/trips", {
+    headers: {},
+  });
+  const alertResponse = await fetchWithAuth("/api/fleet/alerts", {
+    headers: {},
+  });
 
-const alertResponse = await fetchWithAuth("/api/fleet/alerts", {
-  headers: {
-  },
-});
-const alertResult = await alertResponse.json();
+  if (!vehicleResponse.ok || !tripResponse.ok || !alertResponse.ok) {
+    throw new Error("One or more fleet API requests failed.");
+  }
 
+  const vehicleResult = await vehicleResponse.json();
+  const tripResult = await tripResponse.json();
+  const alertResult = await alertResponse.json();
+
+  if (
+    !Array.isArray(vehicleResult?.vehicles) ||
+    !Array.isArray(tripResult?.trips) ||
+    !Array.isArray(alertResult?.alerts)
+  ) {
+    throw new Error("Invalid fleet API response structure.");
+  }
+
+  nextFleetVehicles = vehicleResult.vehicles;
+  nextFleetTrips = tripResult.trips;
+  nextFleetAlerts = alertResult.alerts.filter(
+    (alert: any) => !alert.is_resolved
+  );
+  nextFleetStatus =
+    nextFleetVehicles.length === 0 ? "empty" : "available";
+} catch {
+  nextFleetStatus = "unavailable";
+}
 const { data: routeAlerts } = await supabase
   .from("route_safety_alerts")
   .select("*")
@@ -253,12 +304,33 @@ const { data: routeAlerts } = await supabase
   .eq("status", "active")
   .order("created_at", { ascending: false });
 
-    setBatches((batchData as BatchRow[]) || []);
-    setIncidents((incidentData as IncidentRow[]) || []);
-    setFleetVehicles(vehicleResult.vehicles || []);
-    setFleetTrips(tripResult.trips || []);
-    setFleetAlerts((alertResult.alerts || []).filter((alert: any) => !alert.is_resolved));
-    setRouteSafetyAlerts(routeAlerts || []);
+    if (requestId === fleetRequestId.current) {
+      const batchQueryValid = !batchError && Array.isArray(batchData);
+      setBatches(batchQueryValid ? (batchData as BatchRow[]) : []);
+      setBatchDataStatus(
+        !batchQueryValid
+          ? "unavailable"
+          : batchData.length === 0
+            ? "empty"
+            : "available"
+      );
+      setIncidents((incidentData as IncidentRow[]) || []);
+      setFleetVehicles(nextFleetVehicles);
+      setFleetTrips(nextFleetTrips);
+      setFleetAlerts(nextFleetAlerts);
+      setFleetDataStatus(nextFleetStatus);
+      setRouteSafetyAlerts(routeAlerts || []);
+    }
+    } catch {
+      if (requestId === fleetRequestId.current) {
+        setBatches([]);
+        setBatchDataStatus("unavailable");
+        setFleetVehicles([]);
+        setFleetTrips([]);
+        setFleetAlerts([]);
+        setFleetDataStatus("unavailable");
+      }
+    }
   }
 
   const totalCatch = useMemo(
@@ -337,6 +409,13 @@ const { data: routeAlerts } = await supabase
   }, [fleetAlerts]);
 
 const readinessStatus =
+  fleetDataStatus === "loading"
+    ? "LOADING"
+    : fleetDataStatus === "unavailable"
+    ? "DATA UNAVAILABLE"
+    : fleetDataStatus === "empty"
+    ? "INSUFFICIENT DATA"
+    :
   operationalReadiness >= 85
     ? "OPTIMAL"
     : operationalReadiness >= 70
@@ -346,6 +425,15 @@ const readinessStatus =
     : "CRITICAL";
 
 const aiOperationalNarrative = useMemo(() => {
+  if (fleetDataStatus === "loading") {
+    return "Fleet monitoring information is loading. Operational readiness cannot yet be determined.";
+  }
+  if (fleetDataStatus === "unavailable") {
+    return "Fleet monitoring data could not be verified. Operational readiness is unavailable.";
+  }
+  if (fleetDataStatus === "empty") {
+    return "No vehicles are registered for this organization. There is insufficient fleet data to calculate operational readiness.";
+  }
   if (operationalReadiness < 50) {
     return "AI systems detected elevated operational instability requiring immediate intervention.";
   }
@@ -359,14 +447,14 @@ const aiOperationalNarrative = useMemo(() => {
   }
 
   return "Fleet operations are currently performing within optimal intelligence thresholds.";
-}, [operationalReadiness]);
+}, [operationalReadiness, fleetDataStatus]);
 
 const executiveRiskIndex = useMemo(() => {
   if (fleetAlerts.some((alert) => alert.severity === "critical")) return 100;
   if (fleetAlerts.some((alert) => alert.severity === "high")) return 75;
   if (fleetAlerts.length > 0) return 50;
-  return Math.min(100, Math.round(averageLossPercent));
-}, [fleetAlerts, averageLossPercent]);
+  return 0;
+}, [fleetAlerts]);
 
   const trendData = useMemo(
     () =>
@@ -584,7 +672,7 @@ const executiveRiskIndex = useMemo(() => {
           lineHeight: 1,
         }}
       >
-        {operationalReadiness}
+        {fleetDataStatus === "available" ? operationalReadiness : "—"}
       </div>
 
       <div
@@ -593,7 +681,7 @@ const executiveRiskIndex = useMemo(() => {
           opacity: 0.85,
         }}
       >
-        /100 AI Score
+        {fleetDataStatus === "available" ? "/100 AI Score" : "Score unavailable"}
       </div>
     </div>
   </div>
@@ -609,19 +697,25 @@ const executiveRiskIndex = useMemo(() => {
   {[
     {
       label: "Active Vehicles",
-      value: fleetVehicles.filter((v) => v.is_active).length,
+      value: fleetDataStatus === "available"
+        ? fleetVehicles.filter((v) => v.is_active).length
+        : "—",
     },
     {
       label: "Active Trips",
-      value: fleetTrips.filter((trip) => trip.status === "active" || trip.status === "emergency").length,
+      value: fleetDataStatus === "available"
+        ? fleetTrips.filter((trip) => trip.status === "active" || trip.status === "emergency").length
+        : "—",
     },
     {
       label: "Open Fleet Alerts",
-      value: fleetAlerts.length,
+      value: fleetDataStatus === "available" ? fleetAlerts.length : "—",
     },
     {
       label: "AI Threat Score",
-      value: `${fleetAlerts.some((alert) => alert.severity === "critical") ? 100 : fleetAlerts.some((alert) => alert.severity === "high") ? 75 : fleetAlerts.length > 0 ? 50 : 0}%`,
+      value: fleetDataStatus === "available"
+        ? `${fleetAlerts.some((alert) => alert.severity === "critical") ? 100 : fleetAlerts.some((alert) => alert.severity === "high") ? 75 : fleetAlerts.length > 0 ? 50 : 0}%`
+        : "—",
     },
   ].map((metric) => (
     <div
@@ -744,20 +838,20 @@ const executiveRiskIndex = useMemo(() => {
     {[
       {
         label: "Executive Threat Index",
-        value: `${executiveRiskIndex}/100`,
+        value: fleetDataStatus === "available" ? `${executiveRiskIndex}/100` : "—",
       },
       {
-        label: "Open Fleet Alerts", value: fleetAlerts.length,
+        label: "Open Fleet Alerts", value: fleetDataStatus === "available" ? fleetAlerts.length : "—",
       },
       {
         label: "Flagged Operations",
-        value: flaggedCount,
+        value: batchDataStatus === "available" ? flaggedCount : "—",
       },
       {
         label: "Average Loss %",
-        value: `${formatOneDecimal(
-          averageLossPercent
-        )}%`,
+        value: batchDataStatus === "available"
+          ? `${formatOneDecimal(averageLossPercent)}%`
+          : "—",
       },
     ].map((item, index) => (
       <div
@@ -861,10 +955,10 @@ const executiveRiskIndex = useMemo(() => {
         }}
       >
         {[
-          { label: "Total Catch", value: `${formatNumber(totalCatch)} kg` },
-          { label: "Stored", value: `${formatNumber(totalStored)} kg` },
-          { label: "Open Fleet Alerts", value: formatNumber(fleetAlerts.length) },
-          { label: "Flagged Batches", value: formatNumber(flaggedCount) },
+          { label: "Total Catch", value: batchDataStatus === "available" ? `${formatNumber(totalCatch)} kg` : "—" },
+          { label: "Stored", value: batchDataStatus === "available" ? `${formatNumber(totalStored)} kg` : "—" },
+          { label: "Open Fleet Alerts", value: fleetDataStatus === "available" ? formatNumber(fleetAlerts.length) : "—" },
+          { label: "Flagged Batches", value: batchDataStatus === "available" ? formatNumber(flaggedCount) : "—" },
         ].map((item, index) => (
           <div key={index} style={{ ...cardStyle, padding: 26 }}>
             <div style={{ color: "#64748b", fontSize: 15, marginBottom: 12 }}>{item.label}</div>
@@ -956,29 +1050,29 @@ const executiveRiskIndex = useMemo(() => {
       >
         <div style={{ ...cardStyle, padding: 24 }}>
           <div style={{ color: "#64748b", fontSize: 14, marginBottom: 10 }}>Average Loss / Batch</div>
-          <div style={{ fontSize: 32, fontWeight: 800 }}>{formatOneDecimal(averageLossPerBatch)} kg</div>
+          <div style={{ fontSize: 32, fontWeight: 800 }}>{batchDataStatus === "available" ? `${formatOneDecimal(averageLossPerBatch)} kg` : "—"}</div>
         </div>
 
         <div style={{ ...cardStyle, padding: 24 }}>
           <div style={{ color: "#64748b", fontSize: 14, marginBottom: 10 }}>Average Loss %</div>
-          <div style={{ fontSize: 32, fontWeight: 800 }}>{formatOneDecimal(averageLossPercent)}%</div>
+          <div style={{ fontSize: 32, fontWeight: 800 }}>{batchDataStatus === "available" ? `${formatOneDecimal(averageLossPercent)}%` : "—"}</div>
         </div>
 
         <div style={{ ...cardStyle, padding: 24 }}>
           <div style={{ color: "#64748b", fontSize: 14, marginBottom: 10 }}>Top Risky Vessel</div>
-          <div style={{ fontSize: 24, fontWeight: 800, lineHeight: 1.2 }}>{topRiskyVessel}</div>
+          <div style={{ fontSize: 24, fontWeight: 800, lineHeight: 1.2 }}>{batchDataStatus === "available" ? topRiskyVessel : "—"}</div>
         </div>
       </div>
 
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: isMobile ? "1fr" : "1.45fr 1fr",
+          gridTemplateColumns: isMobile ? "minmax(0, 1fr)" : "minmax(0, 1.45fr) minmax(0, 1fr)",
           gap: 24,
           marginBottom: 24,
         }}
       >
-        <div style={{ ...cardStyle, padding: 26 }}>
+        <div style={{ ...cardStyle, padding: 26, minWidth: 0 }}>
           <h2 style={sectionTitleStyle}>Performance Trend</h2>
           <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
             Track catch, storage, and actual loss across recent batches.
@@ -993,7 +1087,26 @@ const executiveRiskIndex = useMemo(() => {
               background: "#fff",
             }}
           >
-            <ResponsiveContainer width="100%" height="100%">
+            {batchDataStatus !== "available" || trendData.length === 0 ? (
+              <div
+                style={{
+                  height: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  textAlign: "center",
+                  color: "#64748b",
+                  fontSize: 15,
+                }}
+              >
+                {batchDataStatus === "loading"
+  ? "Loading batch performance data..."
+  : batchDataStatus === "unavailable"
+    ? "Batch performance data could not be verified."
+    : "No batch performance data is available yet."}
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 300, height: 300 }}>
               <LineChart data={trendData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
@@ -1021,6 +1134,7 @@ const executiveRiskIndex = useMemo(() => {
                 />
               </LineChart>
             </ResponsiveContainer>
+            )}
           </div>
         </div>
 
@@ -1091,11 +1205,11 @@ const executiveRiskIndex = useMemo(() => {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+          gridTemplateColumns: isMobile ? "minmax(0, 1fr)" : "repeat(2, minmax(0, 1fr))",
           gap: 24,
         }}
       >
-        <div style={{ ...cardStyle, padding: 26 }}>
+        <div style={{ ...cardStyle, padding: 26, minWidth: 0 }}>
           <h2 style={sectionTitleStyle}>Status Distribution</h2>
           <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
             Monitor the mix of normal, review, and flagged batches.
@@ -1110,7 +1224,26 @@ const executiveRiskIndex = useMemo(() => {
               background: "#fff",
             }}
           >
-            <ResponsiveContainer width="100%" height="100%">
+            {batchDataStatus !== "available" || batches.length === 0 ? (
+              <div
+                style={{
+                  height: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  textAlign: "center",
+                  color: "#64748b",
+                  fontSize: 15,
+                }}
+              >
+                {batchDataStatus === "loading"
+  ? "Loading batch status data..."
+  : batchDataStatus === "unavailable"
+    ? "Batch status data could not be verified."
+    : "No batch status data is available yet."}
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 300, height: 300 }}>
               <BarChart
                 data={statusData}
                 margin={{ top: 10, right: 10, left: 0, bottom: 10 }}
@@ -1123,10 +1256,11 @@ const executiveRiskIndex = useMemo(() => {
                 <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
+            )}
           </div>
         </div>
 
-        <div style={{ ...cardStyle, padding: 26 }}>
+        <div style={{ ...cardStyle, padding: 26, minWidth: 0 }}>
           <h2 style={sectionTitleStyle}>Vessel Risk Profile</h2>
           <p style={{ ...mutedTextStyle, marginBottom: 18 }}>
             Compare which vessels are producing the most risk events.
@@ -1141,7 +1275,26 @@ const executiveRiskIndex = useMemo(() => {
               background: "#fff",
             }}
           >
-            <ResponsiveContainer width="100%" height="100%">
+            {batchDataStatus !== "available" || vesselRiskData.length === 0 ? (
+              <div
+                style={{
+                  height: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  textAlign: "center",
+                  color: "#64748b",
+                  fontSize: 15,
+                }}
+              >
+                {batchDataStatus === "loading"
+  ? "Loading vessel risk data..."
+  : batchDataStatus === "unavailable"
+    ? "Vessel risk data could not be verified."
+    : "No vessel risk data is available yet."}
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 300, height: 300 }}>
               <BarChart data={vesselRiskData} layout="vertical" margin={{ top: 10, right: 20, left: 20, bottom: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis type="number" allowDecimals={false} />
@@ -1153,6 +1306,7 @@ const executiveRiskIndex = useMemo(() => {
                 <Bar dataKey="normal" stackId="a" fill="#16a34a" />
               </BarChart>
             </ResponsiveContainer>
+            )}
           </div>
         </div>
       </div>

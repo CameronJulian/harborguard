@@ -44,94 +44,187 @@ const buttonStyle: CSSProperties = {
   cursor: "pointer",
 };
 
+type AdminOrganization = {
+  id: string;
+  name: string;
+  plan: string | null;
+  subscription_status: string | null;
+  fleet_size: number | null;
+  seats: number | null;
+  trial_ends_at: string | null;
+};
 export default function AdminPage() {
   const router = useRouter();
 
   const [authorized, setAuthorized] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(true);
+  const [dashboardError, setDashboardError] = useState("");
 
   const [organizationCount, setOrganizationCount] = useState(0);
   const [vehicleCount, setVehicleCount] = useState(0);
   const [incidentCount, setIncidentCount] = useState(0);
   const [professionalCount, setProfessionalCount] = useState(0);
-  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [organizations, setOrganizations] = useState<AdminOrganization[]>([]);
 
   useEffect(() => {
-    checkAdminAccess();
-  }, []);
+    let cancelled = false;
 
-  async function checkAdminAccess() {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    async function loadDashboard() {
+      try {
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
 
-    if (!session?.user) {
-      router.replace("/");
-      return;
+        if (cancelled) return;
+
+        if (sessionError || !session?.access_token) {
+          router.replace("/");
+          return;
+        }
+
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", session.user.id)
+          .single();
+
+        if (cancelled) return;
+
+        if (
+          profileError ||
+          !profile ||
+          !["platform_admin", "super_admin"].includes(profile.role)
+        ) {
+          router.replace("/dashboard");
+          return;
+        }
+
+        const headers = {
+          Authorization: `Bearer ${session.access_token}`,
+        };
+
+        const [metricsResponse, organizationsResponse] =
+          await Promise.all([
+            fetch("/api/admin/metrics", {
+              headers,
+              cache: "no-store",
+            }),
+            fetch("/api/admin/organizations", {
+              headers,
+              cache: "no-store",
+            }),
+          ]);
+
+        if (cancelled) return;
+
+        if (!metricsResponse.ok || !organizationsResponse.ok) {
+          throw new Error("Protected admin API request failed");
+        }
+
+        const metricsPayload: unknown = await metricsResponse.json();
+        const organizationsPayload: unknown =
+          await organizationsResponse.json();
+
+        if (cancelled) return;
+
+        if (
+          !metricsPayload ||
+          typeof metricsPayload !== "object" ||
+          !("success" in metricsPayload) ||
+          metricsPayload.success !== true ||
+          !("metrics" in metricsPayload) ||
+          !metricsPayload.metrics ||
+          typeof metricsPayload.metrics !== "object"
+        ) {
+          throw new Error("Invalid metrics response");
+        }
+
+        const metrics = metricsPayload.metrics as Record<string, unknown>;
+
+        const counts = [
+          metrics.organization_count,
+          metrics.vehicle_count,
+          metrics.incident_count,
+          metrics.professional_count,
+        ];
+
+        if (
+          counts.some(
+            (count) =>
+              typeof count !== "number" ||
+              !Number.isSafeInteger(count) ||
+              count < 0
+          )
+        ) {
+          throw new Error("Invalid metric counts");
+        }
+
+        if (
+          !organizationsPayload ||
+          typeof organizationsPayload !== "object" ||
+          !("success" in organizationsPayload) ||
+          organizationsPayload.success !== true ||
+          !("organizations" in organizationsPayload) ||
+          !Array.isArray(organizationsPayload.organizations)
+        ) {
+          throw new Error("Invalid organizations response");
+        }
+
+        const rows: unknown[] = organizationsPayload.organizations;
+
+        if (
+          rows.some(
+            (row) =>
+              !row ||
+              typeof row !== "object" ||
+              !("id" in row) ||
+              typeof row.id !== "string" ||
+              !("name" in row) ||
+              typeof row.name !== "string" ||
+              !("plan" in row) ||
+              (row.plan !== null && typeof row.plan !== "string") ||
+              !("subscription_status" in row) ||
+              (row.subscription_status !== null &&
+                typeof row.subscription_status !== "string") ||
+              !("fleet_size" in row) ||
+              (row.fleet_size !== null &&
+                typeof row.fleet_size !== "number") ||
+              !("seats" in row) ||
+              (row.seats !== null && typeof row.seats !== "number") ||
+              !("trial_ends_at" in row) ||
+              (row.trial_ends_at !== null &&
+                typeof row.trial_ends_at !== "string")
+          )
+        ) {
+          throw new Error("Invalid organization rows");
+        }
+
+        if (cancelled) return;
+
+        setOrganizationCount(metrics.organization_count as number);
+        setVehicleCount(metrics.vehicle_count as number);
+        setIncidentCount(metrics.incident_count as number);
+        setProfessionalCount(metrics.professional_count as number);
+        setOrganizations(rows as AdminOrganization[]);
+        setAuthorized(true);
+      } catch {
+        if (!cancelled) {
+          setDashboardError("Unable to load protected platform dashboard.");
+        }
+      } finally {
+        if (!cancelled) {
+          setCheckingAccess(false);
+        }
+      }
     }
 
-    const { data: profile, error } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", session.user.id)
-      .single();
+    void loadDashboard();
 
-    if (error || !profile?.role) {
-      router.replace("/dashboard");
-      return;
-    }
-
-    const allowedRoles = ["admin", "super_admin"];
-
-    if (!allowedRoles.includes(profile.role)) {
-      router.replace("/dashboard");
-      return;
-    }
-
-    setAuthorized(true);
-    setCheckingAccess(false);
-
-    loadMetrics();
-    loadOrganizations();
-  }
-
-  async function loadMetrics() {
-    const { count: orgs } = await supabase
-      .from("organizations")
-      .select("*", { count: "exact", head: true });
-
-    const { count: vehicles } = await supabase
-      .from("vehicles")
-      .select("*", { count: "exact", head: true });
-
-    const { count: incidents } = await supabase
-      .from("incidents")
-      .select("*", { count: "exact", head: true });
-
-    const { count: professional } = await supabase
-      .from("organizations")
-      .select("*", { count: "exact", head: true })
-      .eq("plan", "professional");
-
-    setOrganizationCount(orgs || 0);
-    setVehicleCount(vehicles || 0);
-    setIncidentCount(incidents || 0);
-    setProfessionalCount(professional || 0);
-  }
-
-  async function loadOrganizations() {
-    const { data, error } = await supabase
-      .from("organizations")
-      .select("*")
-      .order("created_at", {
-        ascending: false,
-      });
-
-    if (!error && data) {
-      setOrganizations(data);
-    }
-  }
-
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
   if (checkingAccess) {
     return (
       <AppShell>
@@ -140,6 +233,15 @@ export default function AdminPage() {
     );
   }
 
+  if (dashboardError) {
+    return (
+      <AppShell>
+        <div style={cardStyle} role="alert">
+          {dashboardError}
+        </div>
+      </AppShell>
+    );
+  }
   if (!authorized) return null;
 
   return (
@@ -240,16 +342,16 @@ export default function AdminPage() {
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 20 }}>
           {[
-            { title: "Webhook Status", status: "Operational" },
-            { title: "AI Processing", status: "Stable" },
-            { title: "Notification Queue", status: "Healthy" },
-            { title: "Supabase", status: "Connected" },
+            { title: "Webhook Status", status: "Not verified" },
+            { title: "AI Processing", status: "Not verified" },
+            { title: "Notification Queue", status: "Not verified" },
+            { title: "Supabase", status: "Not verified" },
           ].map((item) => (
             <div key={item.title} style={cardStyle}>
               <div style={{ color: "#64748b", fontWeight: 700, marginBottom: 12 }}>
                 {item.title}
               </div>
-              <div style={{ fontSize: 32, fontWeight: 900, color: "#16a34a" }}>
+              <div style={{ fontSize: 32, fontWeight: 900, color: "#64748b" }}>
                 {item.status}
               </div>
             </div>

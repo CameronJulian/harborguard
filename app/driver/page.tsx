@@ -23,9 +23,16 @@ type VehicleOption = {
   activeTrip: ActiveTrip | null;
 };
 
-type FleetResponse = {
+type RoadUserVehicle = {
+  id: string;
+  nickname: string | null;
+  registration_number: string;
+  activeTrip: ActiveTrip | null;
+};
+
+type RoadUserVehiclesResponse = {
   success: boolean;
-  fleet: VehicleOption[];
+  vehicles: RoadUserVehicle[];
 };
 
 const cardStyle: CSSProperties = {
@@ -113,29 +120,58 @@ export default function DriverEmergencyPage() {
   const [selectedSaferRoute, setSelectedSaferRoute] = useState<any | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     async function loadVehicles() {
       try {
-        const response = await fetchWithAuth("/api/fleet/live", { cache: "no-store" });
-        const result = (await response.json()) as FleetResponse | { error: string };
+        const response = await fetchWithAuth(
+          "/api/fleet/road-user-vehicles",
+          { cache: "no-store" }
+        );
+        const result = (await response.json()) as
+          | RoadUserVehiclesResponse
+          | { error: string };
+
+        if (cancelled) return;
 
         if (!response.ok) {
           setStatusMessage("Failed to load driver vehicles.");
           return;
         }
 
-        const fleet = (result as FleetResponse).fleet || [];
-        setVehicles(fleet);
+        const authorizedVehicles = (
+          (result as RoadUserVehiclesResponse).vehicles || []
+        ).map((vehicle): VehicleOption => ({
+          id: vehicle.id,
+          nickname: vehicle.nickname,
+          registrationNumber: vehicle.registration_number,
+          driverName: null,
+          activeTrip: vehicle.activeTrip || null,
+        }));
 
-        if (fleet.length > 0 && !selectedVehicleId) {
-          setSelectedVehicleId(fleet[0].id);
+        setVehicles(authorizedVehicles);
+        setSelectedVehicleId((current) =>
+          authorizedVehicles.some((vehicle) => vehicle.id === current)
+            ? current
+            : authorizedVehicles[0]?.id || ""
+        );
+      } catch (err: unknown) {
+        if (!cancelled) {
+          setStatusMessage(
+            err instanceof Error
+              ? err.message
+              : "Failed to load driver vehicles."
+          );
         }
-      } catch (err: any) {
-        setStatusMessage(err.message || "Failed to load driver vehicles.");
       }
     }
 
     loadVehicles();
-  }, [selectedVehicleId]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -568,7 +604,18 @@ const heading =
               <select
                 value={selectedVehicleId}
                 onChange={(e) => setSelectedVehicleId(e.target.value)}
-                style={inputStyle}
+                disabled={locationSharing}
+                aria-label="Select driver vehicle"
+                title={
+                  locationSharing
+                    ? "Stop live location sharing before changing vehicles."
+                    : "Select driver vehicle"
+                }
+                style={{
+                  ...inputStyle,
+                  opacity: locationSharing ? 0.65 : 1,
+                  cursor: locationSharing ? "not-allowed" : "pointer",
+                }}
               >
                 <option value="">Select vehicle</option>
                 {vehicles.map((vehicle) => (

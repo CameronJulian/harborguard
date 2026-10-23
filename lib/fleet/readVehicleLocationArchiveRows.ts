@@ -12,6 +12,9 @@ const DEFAULT_PAGE_SIZE =
 const MAX_PAGE_SIZE =
   5000;
 
+const POSTGREST_PAGE_LIMIT =
+  1000;
+
 export type ReadVehicleLocationArchiveRowsInput = {
   supabase:
     SupabaseClient;
@@ -192,8 +195,11 @@ export async function readVehicleLocationArchiveRows(
   }
 
   const pageSize =
-    resolvePageSize(
-      input.pageSize
+    Math.min(
+      resolvePageSize(
+        input.pageSize
+      ),
+      POSTGREST_PAGE_LIMIT
     );
 
   const rows:
@@ -274,13 +280,7 @@ export async function readVehicleLocationArchiveRows(
     ) {
       query =
         query.or(
-          [
-            `recorded_at.gt.${cursorRecordedAt}`,
-            [
-              `recorded_at.eq.${cursorRecordedAt}`,
-              `id.gt.${cursorId}`,
-            ].join(","),
-          ].join(",")
+          `recorded_at.gt.${cursorRecordedAt},and(recorded_at.eq.${cursorRecordedAt},id.gt.${cursorId})`
         );
     }
 
