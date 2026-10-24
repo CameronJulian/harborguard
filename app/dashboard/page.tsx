@@ -1,6 +1,13 @@
 "use client";
 
 import { fetchWithAuth } from "@/lib/auth-fetch";
+import {
+  loadDashboardFleet,
+  readDashboardWithDeadline,
+  type DashboardFleetVehicle,
+  type DashboardFleetTrip,
+  type DashboardFleetAlert,
+} from "@/lib/dashboard/loadDashboardData";
 
 import { CSSProperties, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import TrialBanner from "@/components/billing/TrialBanner";
@@ -39,30 +46,6 @@ type IncidentRow = {
   status: string | null;
   summary: string | null;
   created_at: string | null;
-};
-
-type DashboardFleetVehicle = {
-  id: string;
-  is_active?: boolean | null;
-  registration_number?: string | null;
-  registrationNumber?: string | null;
-  nickname?: string | null;
-  speed_kmh?: number | string | null;
-  speedKmh?: number | string | null;
-  maintenanceProfile?: { maintenanceRisk?: string | null } | null;
-};
-
-type DashboardFleetTrip = {
-  status?: string | null;
-};
-
-type DashboardFleetAlert = {
-  id: string;
-  is_resolved?: boolean | null;
-  severity?: string | null;
-  alert_type?: string | null;
-  created_at?: string | null;
-  vehicle?: Pick<DashboardFleetVehicle, "registration_number" | "nickname"> | null;
 };
 
 const cardStyle: CSSProperties = {
@@ -135,6 +118,7 @@ export default function DashboardPage() {
   const [fleetAlerts, setFleetAlerts] = useState<DashboardFleetAlert[]>([]);
   const [fleetDataStatus, setFleetDataStatus] = useState<"loading" | "available" | "empty" | "unavailable">("loading");
   const fleetRequestId = useRef(0);
+  const dashboardReadController = useRef<AbortController | null>(null);
   const [routeSafetyAlerts, setRouteSafetyAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -154,8 +138,7 @@ const [trialEndsAt, setTrialEndsAt] =
   }, []);
 
   useEffect(() => {
-	  loadSubscription();
-    loadAll();
+    void loadAll();
 
     const batchChannel = supabase
       .channel("batches-realtime-dashboard")
@@ -181,37 +164,12 @@ const [trialEndsAt, setTrialEndsAt] =
 
     return () => {
       fleetRequestId.current += 1;
+      dashboardReadController.current?.abort();
       supabase.removeChannel(batchChannel);
       supabase.removeChannel(incidentChannel);
     };
   }, []);
 
-
-async function loadSubscription() {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session?.access_token) return;
-
-  const response = await fetchWithAuth(
-    "/api/fleet/vehicles",
-    {
-      headers: {
-      },
-    }
-  );
-
-  if (!response.ok) return;
-
-  const result = await response.json();
-
-  if (result.subscription?.trial_ends_at) {
-    setTrialEndsAt(
-      result.subscription.trial_ends_at
-    );
-  }
-}
 
 const trialDaysRemaining = trialEndsAt
   ? Math.max(
@@ -224,136 +182,118 @@ const trialDaysRemaining = trialEndsAt
   : null;
   async function loadAll() {
     const requestId = ++fleetRequestId.current;
+    dashboardReadController.current?.abort();
+    const controller = new AbortController();
+    dashboardReadController.current = controller;
+    const options = { signal: controller.signal };
+    const isCurrent = () =>
+      requestId === fleetRequestId.current && !controller.signal.aborted;
+
     setFleetDataStatus("loading");
     setBatchDataStatus("loading");
 
-    try {
-    const {
-  data: { session },
-} = await supabase.auth.getSession();
-
-if (!session?.user) {
-  if (requestId === fleetRequestId.current) {
-    setBatches([]);
-    setBatchDataStatus("unavailable");
-    setFleetVehicles([]);
-    setFleetTrips([]);
-    setFleetAlerts([]);
-    setFleetDataStatus("unavailable");
-  }
-  return;
-}
-
-const { data: profile } = await supabase
-  .from("profiles")
-  .select("organization_id")
-  .eq("id", session.user.id)
-  .single();
-
-if (!profile?.organization_id) {
-  if (requestId === fleetRequestId.current) {
-    setBatches([]);
-    setBatchDataStatus("unavailable");
-    setFleetVehicles([]);
-    setFleetTrips([]);
-    setFleetAlerts([]);
-    setFleetDataStatus("unavailable");
-  }
-  window.location.replace("/onboarding");
-  return;
-}
-
-const { data: batchData, error: batchError } = await supabase
-  .from("batches")
-  .select(
-    "id, batch_code, vessel, species, catch_kg, dock_kg, storage_kg, status, created_at"
-  )
-  .eq("organization_id", profile.organization_id)
-  .order("created_at", { ascending: false });
-
-const { data: incidentData } = await supabase
-  .from("incidents")
-  .select(
-    "id, incident_code, severity, status, summary, created_at"
-  )
-  .eq("organization_id", profile.organization_id)
-  .order("created_at", { ascending: false });
-
-let nextFleetVehicles: DashboardFleetVehicle[] = [];
-let nextFleetTrips: DashboardFleetTrip[] = [];
-let nextFleetAlerts: DashboardFleetAlert[] = [];
-let nextFleetStatus: "available" | "empty" | "unavailable" = "unavailable";
-
-try {
-  const vehicleResponse = await fetchWithAuth("/api/fleet/vehicles", {
-    headers: {},
-  });
-  const tripResponse = await fetchWithAuth("/api/fleet/trips", {
-    headers: {},
-  });
-  const alertResponse = await fetchWithAuth("/api/fleet/alerts", {
-    headers: {},
-  });
-
-  if (!vehicleResponse.ok || !tripResponse.ok || !alertResponse.ok) {
-    throw new Error("One or more fleet API requests failed.");
-  }
-
-  const vehicleResult = await vehicleResponse.json();
-  const tripResult = await tripResponse.json();
-  const alertResult = await alertResponse.json();
-
-  if (
-    !Array.isArray(vehicleResult?.vehicles) ||
-    !Array.isArray(tripResult?.trips) ||
-    !Array.isArray(alertResult?.alerts)
-  ) {
-    throw new Error("Invalid fleet API response structure.");
-  }
-
-  nextFleetVehicles = vehicleResult.vehicles;
-  nextFleetTrips = tripResult.trips;
-  nextFleetAlerts = (alertResult.alerts as DashboardFleetAlert[]).filter(
-    (alert) => !alert.is_resolved
-  );
-  nextFleetStatus =
-    nextFleetVehicles.length === 0 ? "empty" : "available";
-} catch {
-  nextFleetStatus = "unavailable";
-}
-const { data: routeAlerts } = await supabase
-  .from("route_safety_alerts")
-  .select("*")
-  .eq("organization_id", profile.organization_id)
-  .eq("status", "active")
-  .order("created_at", { ascending: false });
-
-    if (requestId === fleetRequestId.current) {
-      const batchQueryValid = !batchError && Array.isArray(batchData);
-      setBatches(batchQueryValid ? (batchData as BatchRow[]) : []);
-      setBatchDataStatus(
-        !batchQueryValid
-          ? "unavailable"
-          : batchData.length === 0
-            ? "empty"
-            : "available"
-      );
-      setIncidents((incidentData as IncidentRow[]) || []);
-      setFleetVehicles(nextFleetVehicles);
-      setFleetTrips(nextFleetTrips);
-      setFleetAlerts(nextFleetAlerts);
-      setFleetDataStatus(nextFleetStatus);
-      setRouteSafetyAlerts(routeAlerts || []);
-    }
-    } catch {
-      if (requestId === fleetRequestId.current) {
-        setBatches([]);
-        setBatchDataStatus("unavailable");
+    // Fleet requests do not depend on the supply-chain or profile reads.
+    const fleetLoad = loadDashboardFleet(fetchWithAuth, options)
+      .then(snapshot => {
+        if (!isCurrent()) return;
+        setFleetVehicles(snapshot.vehicles);
+        setFleetTrips(snapshot.trips);
+        setFleetAlerts(snapshot.alerts);
+        setFleetDataStatus(snapshot.vehicles.length ? "available" : "empty");
+        if (snapshot.trialEndsAt) setTrialEndsAt(snapshot.trialEndsAt);
+      })
+      .catch(() => {
+        if (!isCurrent()) return;
         setFleetVehicles([]);
         setFleetTrips([]);
         setFleetAlerts([]);
         setFleetDataStatus("unavailable");
+      });
+
+    async function loadOrganizationData() {
+      try {
+        const { authenticated, profile } = await readDashboardWithDeadline(
+          async signal => {
+            const { data: { session } } = await supabase.auth.getSession();
+            signal.throwIfAborted();
+            if (!session?.user) return { authenticated: false, profile: null };
+
+            const { data, error } = await supabase
+              .from("profiles")
+              .select("organization_id")
+              .eq("id", session.user.id)
+              .abortSignal(signal)
+              .single();
+            if (error) throw error;
+            return { authenticated: true, profile: data };
+          },
+          options
+        );
+        if (!isCurrent()) return;
+        if (!authenticated) throw new Error("Unauthorized");
+
+        if (!profile?.organization_id) {
+          setBatches([]);
+          setBatchDataStatus("unavailable");
+          window.location.replace("/onboarding");
+          return;
+        }
+
+        // Each panel publishes its result as soon as its own read completes.
+        const batchLoad = readDashboardWithDeadline(signal => supabase
+          .from("batches")
+          .select("id, batch_code, vessel, species, catch_kg, dock_kg, storage_kg, status, created_at")
+          .eq("organization_id", profile.organization_id)
+          .order("created_at", { ascending: false })
+          .abortSignal(signal), options)
+          .then(({ data, error }) => {
+            if (!isCurrent()) return;
+            if (error || !Array.isArray(data)) throw new Error("Batch data unavailable");
+            setBatches(data as BatchRow[]);
+            setBatchDataStatus(data.length ? "available" : "empty");
+          })
+          .catch(() => {
+            if (!isCurrent()) return;
+            setBatches([]);
+            setBatchDataStatus("unavailable");
+          });
+
+        const incidentLoad = readDashboardWithDeadline(signal => supabase
+          .from("incidents")
+          .select("id, incident_code, severity, status, summary, created_at")
+          .eq("organization_id", profile.organization_id)
+          .order("created_at", { ascending: false })
+          .abortSignal(signal), options)
+          .then(({ data, error }) => {
+            if (isCurrent()) setIncidents(!error && Array.isArray(data) ? data as IncidentRow[] : []);
+          })
+          .catch(() => { if (isCurrent()) setIncidents([]); });
+
+        const routeLoad = readDashboardWithDeadline(signal => supabase
+          .from("route_safety_alerts")
+          .select("*")
+          .eq("organization_id", profile.organization_id)
+          .eq("status", "active")
+          .order("created_at", { ascending: false })
+          .abortSignal(signal), options)
+          .then(({ data, error }) => {
+            if (isCurrent()) setRouteSafetyAlerts(!error && Array.isArray(data) ? data : []);
+          })
+          .catch(() => { if (isCurrent()) setRouteSafetyAlerts([]); });
+
+        await Promise.all([batchLoad, incidentLoad, routeLoad]);
+      } catch {
+        if (!isCurrent()) return;
+        setBatches([]);
+        setBatchDataStatus("unavailable");
+        setIncidents([]);
+        setRouteSafetyAlerts([]);
       }
+    }
+
+    await Promise.all([fleetLoad, loadOrganizationData()]);
+    if (dashboardReadController.current === controller) {
+      dashboardReadController.current = null;
     }
   }
 
@@ -611,6 +551,14 @@ const executiveRiskIndex = useMemo(() => {
           }}
         >
           {message}
+        </div>
+      ) : null}
+      {fleetDataStatus === "unavailable" || batchDataStatus === "unavailable" ? (
+        <div role="status" style={{ ...cardStyle, padding: 16, marginBottom: 20 }}>
+          <p style={{ marginTop: 0 }}>Some dashboard data could not be loaded. Try again.</p>
+          <button type="button" onClick={() => { void loadAll(); }} style={primaryButtonStyle}>
+            Retry loading data
+          </button>
         </div>
       ) : null}
 <div
